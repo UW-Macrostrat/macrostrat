@@ -8,9 +8,8 @@
     "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
   },
   "scripts": {
-    "dev": "nodemon --watch v2 --exec ts-node --transpileOnly server.ts",
-    "dev:test": "ts-node-dev app.ts",
-    "start": "ts-node --transpileOnly server.ts",
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
     "docker": "docker build -t macrostrat-api . && docker run --rm -it -p 5000:5000 macrostrat-api",
     "serve": "ts-node --transpileOnly server.ts",
     "test": "mocha -r ts-node/register/transpile-only -r dotenv/config api-tests/v2Tests/main.ts",
@@ -63,6 +62,7 @@
     "tilestrata": "^2.0.1",
     "topojson": "^1.6.19",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "turf-area": "^1.1.1",
     "turf-buffer": "^1.0.4",
     "underscore": "^1.8.3",

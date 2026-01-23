@@ -3,12 +3,15 @@ var async = require("async"),
   credentials = require("./credentials"),
   csv = require("csv-express"),
   api = require("./api"),
-  defs = require("./defs"),
   validator = require("validator"),
   http = require("http"),
   portscanner = require("portscanner");
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
+
+import defs from "./defs";
+
+console.log(credentials);
 
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
@@ -269,7 +272,7 @@ enum APICapability {
   larkin.error = function (req, res, next, message, code) {
     var responseMessage = message
       ? message
-      : "Something went wrong. Please contact Shanan Peters.";
+      : "Something went wrong. Please contact the Macrostrat team.";
     if ((code && code === 500) || code === 404) {
       res.status(code ? code : 200).json({
         error: {

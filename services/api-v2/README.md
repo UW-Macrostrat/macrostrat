@@ -57,6 +57,9 @@ Additionally, you can set a `TEST_PRODUCTION_API_URL` to run comparisons against
 another running instance of the API (e.g., production). This is useful for
 ensuring that new versions of the API return the same results as older versions.
 
+**NOTE:** The API must be running for tests to succeed. Currently, cryptic errors
+are produced if this is not the case.
+
 ## Generating a release
 
 Update the version string in `package.json` and run:

@@ -1,5 +1,6 @@
-var api = require("./api"),
-  defs = require("./defs");
+var api = require("./api");
+
+import defs from "./defs";
 
 module.exports = function (req, res, next) {
   var routes = {};

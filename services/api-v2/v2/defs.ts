@@ -48,7 +48,7 @@ export const sharedUnitFilters = {
   format: "string, desired output format",
 };
 
-module.exports = {
+export default {
   "/columns": {
     description:
       "Search and summarize columns based on unit properties or geographic location",
