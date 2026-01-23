@@ -189,24 +189,25 @@ class TestConvertFieldSite:
         assert resp.status_code == 200
 
         out = resp.json()
-        assert isinstance(out, list)
-        assert len(out) == 1
+        assert isinstance(out, dict)
 
-        c = out[0]
-        # Rockd checkin-ish keys
+        c = out
         assert c["checkin_id"] == 10
         assert c["spot_id"] == 10
         assert c["lat"] == pytest.approx(43.0)
         assert c["lng"] == pytest.approx(-89.0)
-        assert "created" in c and isinstance(c["created"], str)
-        assert "added" in c and isinstance(c["added"], str)
-        assert "observations" in c and isinstance(c["observations"], list)
 
-        # orientation passed through
+        assert "created" in c and isinstance(c["created"], str)
+        assert "updated" in c and isinstance(c["updated"], str)
+        assert c["created"].endswith("Z")
+        assert c["updated"].endswith("Z")
+
+        assert "observations" in c and isinstance(c["observations"], list)
         assert len(c["observations"]) == 1
         assert "orientation" in c["observations"][0]
         assert c["observations"][0]["orientation"]["strike"] == pytest.approx(123.0)
         assert c["observations"][0]["orientation"]["dip"] == pytest.approx(45.0)
+
 
     def test_spot_to_checkin_accepts_single_fieldsite_dict(self, api_client):
         # your spot_to_checkin treats dict with "location" as already-FieldSite-shaped
@@ -215,12 +216,13 @@ class TestConvertFieldSite:
             "/dev/convert/field-site?in=spot&out=checkin", json=payload
         )
         assert resp.status_code == 200
-
         out = resp.json()
-        assert isinstance(out, list)
-        assert len(out) == 1
-        assert out[0]["checkin_id"] == 501
-        assert out[0]["spot_id"] == 501
+        assert isinstance(out, dict)
+        assert out["checkin_id"] == 501
+        assert out["spot_id"] == 501
+        assert "created" in out and isinstance(out["created"], str)
+        assert "updated" in out and isinstance(out["updated"], str)
+
 
     def test_checkin_to_fieldsite_single(self, api_client):
         payload = _checkin(checkin_id=77)
@@ -262,16 +264,15 @@ class TestConvertFieldSite:
             "/dev/convert/field-site?in=fieldsite&out=checkin", json=payload
         )
         assert resp.status_code == 200
-
         out = resp.json()
         assert isinstance(out, list)
         assert len(out) == 2
-
         c0 = out[0]
         assert c0["checkin_id"] == 900
         assert c0["spot_id"] == 900
         assert "created" in c0 and isinstance(c0["created"], str)
-        assert "added" in c0 and isinstance(c0["added"], str)
+        assert "updated" in c0 and isinstance(c0["updated"], str)
+
 
     def test_fieldsite_to_checkin_single_returns_list_of_one(self, api_client):
         payload = _fieldsite_dict(fs_id=999)
@@ -279,12 +280,13 @@ class TestConvertFieldSite:
             "/dev/convert/field-site?in=fieldsite&out=checkin", json=payload
         )
         assert resp.status_code == 200
-
         out = resp.json()
-        assert isinstance(out, list)
-        assert len(out) == 1
-        assert out[0]["checkin_id"] == 999
-        assert out[0]["spot_id"] == 999
+        assert isinstance(out, dict)
+        assert out["checkin_id"] == 999
+        assert out["spot_id"] == 999
+        assert "created" in out and isinstance(out["created"], str)
+        assert "updated" in out and isinstance(out["updated"], str)
+
 
     def test_fieldsite_to_spot_single(self, api_client):
         payload = _fieldsite_dict(fs_id=1234)

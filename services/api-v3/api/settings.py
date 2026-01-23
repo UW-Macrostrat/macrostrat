@@ -1,5 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -20,5 +21,6 @@ class Settings(BaseSettings):
 
     jwt_secret_key: str = Field(alias="SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ENCRYPTION_ALGORITHM")
+
 
 settings = Settings()
