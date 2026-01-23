@@ -57,11 +57,34 @@ async function getColumnIDsForQuery(req): Promise<number[]> {
     const point =
       "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
 
-    const sql =
-      req.query.adjacents === "true"
-        ? "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText($1, 4326))"
-        : "SELECT id FROM macrostrat.cols WHERE ST_Contains(poly_geom, st_setsrid(ST_GeomFromText(:point), 4326)) ORDER BY ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))";
+    let sql = `SELECT id
+       FROM macrostrat.cols
+       WHERE ST_Contains(
+               poly_geom,
+               ST_SetSrid(ST_GeomFromText(:point), 4326))
+       ORDER BY ST_Distance(
+                  ST_Centroid(poly_geom),
+                  ST_GeomFromText(:point, 4326)
+                )`;
 
+    if (req.query.adjacents === "true") {
+      sql = `
+        WITH containing_geom AS (
+          SELECT poly_geom
+          FROM macrostrat.cols
+          WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))
+        )
+        SELECT id
+        FROM macrostrat.cols
+        WHERE ST_Intersects(
+            (SELECT * FROM containing_geom),
+            poly_geom
+          )
+        ORDER BY ST_Distance(
+           ST_Centroid(poly_geom),
+           ST_GeomFromText(:point, 4326)
+         )`;
+    }
     const response = await larkin.queryPgAsync("burwell", sql, { point });
 
     return response.rows.map((d) => d.id);
@@ -69,19 +92,23 @@ async function getColumnIDsForQuery(req): Promise<number[]> {
 
   if (req.query.col_id && req.query.adjacents) {
     const col_ids = larkin.parseMultipleIds(req.query.col_id);
-    const placeholders = col_ids.map((d, i) => "$" + (i + 1));
-
-    let sql =
-      "WITH containing_geom AS (SELECT poly_geom FROM macrostrat.cols WHERE id IN (" +
-      placeholders.join(",") +
-      ")) SELECT id FROM macrostrat.cols WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)";
+    let sql = `WITH containing_geom AS (
+        SELECT poly_geom
+        FROM macrostrat.cols
+        WHERE id = ANY(:col_ids)
+      )
+       SELECT id FROM macrostrat.cols
+       WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)`;
 
     if (col_ids.length === 1) {
+      // If only one col_id, order by distance to that column
       sql +=
         " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))";
     }
 
-    const response = await larkin.queryPgAsync("burwell", sql, col_ids);
+    const response = await larkin.queryPgAsync("burwell", sql, {
+      col_ids,
+    });
     return response.rows.map((d) => d.id);
   }
 
