@@ -6,19 +6,45 @@ from typing import Any
 import starlette.requests
 from api.database import get_async_session, get_engine
 from api.routes.security import has_access
-from api.settings import settings
 from fastapi import (
     APIRouter,
     Depends,
-    File,
     HTTPException,
-    Request,
-    Response,
-    UploadFile,
 )
 from minio import Minio
 from sqlalchemy import text
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
 from starlette.datastructures import UploadFile as StarletteUploadFile
+
+
+class FileSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    s3_access_key: str = Field(alias="S3_ACCESS_KEY")
+    s3_secret_key: str = Field(alias="S3_SECRET_KEY")
+    s3_bucket: str = Field(alias="BUCKET")
+    s3_endpoint: str = Field(alias="S3_HOST")
+    s3_secure: bool = Field(default=True, alias="S3_SECURE")
+
+
+@lru_cache
+def get_file_settings() -> FileSettings:
+    try:
+        return FileSettings()
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=503,
+            detail=f"File management is not configured.",
+        )
+
+
 
 router = APIRouter(
     prefix="/object",
@@ -51,6 +77,7 @@ def sha256_of_uploadfile(
 
 
 def get_s3_client():
+    settings = get_file_settings()
     return Minio(
         endpoint=settings.s3_endpoint,
         access_key=settings.s3_access_key,
@@ -66,6 +93,7 @@ def get_storage_host_bucket() -> tuple[str, str]:
     Also ensures host has no port (hostname only) if storage_host ever includes one.
     """
     import urllib.parse
+    settings = get_file_settings()
 
     raw_host = settings.s3_endpoint
     parsed = urllib.parse.urlparse(
@@ -214,7 +242,6 @@ async def get_object(id: int):
 async def create_object(
     request: starlette.requests.Request,
     user_has_access: bool = Depends(has_access),
-    object: UploadFile | None = File(default=None),
 ):
     """
     Upload to s3 and register in storage.objects.
