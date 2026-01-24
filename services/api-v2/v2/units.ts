@@ -12,8 +12,9 @@ import { buildProjectsFilter } from "./utils";
 
 export async function getUnitsData(req, internal: boolean = true) {
   // First determine age range component of query, if any.
-  const data = await determineAgeRange(req);
-  return await buildAndExecuteMainQuery(req, data, internal);
+
+  checkParamValidity(req);
+  return await buildAndExecuteMainQuery(req, internal);
 }
 
 export async function handleUnitsRoute(req, res, next) {
@@ -158,8 +159,6 @@ async function determineAgeRange(req) {
    * This should be changed.
    * */
 
-  checkParamValidity(req);
-
   if (req.query.interval_name) {
     const sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
     const result = await larkin.queryPgAsync("burwell", sql, {
@@ -212,16 +211,6 @@ async function determineAgeRange(req) {
       interval_name: "none",
       age_bottom: req.query.age_bottom,
       age_top: req.query.age_top,
-    };
-  }
-
-  const col_ids = await getColumnIDsForQuery(req);
-  if (col_ids !== undefined) {
-    return {
-      interval_name: "none",
-      age_bottom: 99999,
-      age_top: 0,
-      col_ids,
     };
   }
 
@@ -305,14 +294,15 @@ function checkParamValidity(req) {
   }
 }
 
-async function buildAndExecuteMainQuery(req, data, internal = false) {
-  let params: any = {};
-  const whereClauses = [];
+async function buildAndExecuteMainQuery(req, internal = false) {
   const limit =
     "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
-  const orderByClauses = [];
 
-  larkin.trace(data);
+  let { params, whereClauses, orderByClauses } = getColumnFilters(req);
+
+  const ageData = await determineAgeRange(req);
+
+  larkin.trace(ageData);
 
   // Status code filter (always required)
   if (req.query.status_code) {
@@ -388,19 +378,19 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
   }
 
   // Age filters
-  if (data.age_bottom !== 99999) {
+  if (ageData.age_bottom !== 99999) {
     whereClauses.push(
       "lookup_units.b_age > :age_top AND lookup_units.t_age < :age_bottom",
     );
-    params.age_top = data.age_top;
-    params.age_bottom = data.age_bottom;
+    params.age_top = ageData.age_top;
+    params.age_bottom = ageData.age_bottom;
   }
 
   // Unit ID filter
   if (req.query.unit_id) {
     whereClauses.push("units.id = ANY(:unit_id)");
     params.unit_id = larkin.parseMultipleIds(req.query.unit_id);
-    orderByClauses.push("units.id ASC");
+    //orderByClauses.push("units.id ASC");
   }
 
   // Section ID filter
@@ -409,17 +399,7 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
     params.section_id = larkin.parseMultipleIds(req.query.section_id);
   }
 
-  // Column ID filters
-  if ("col_ids" in data) {
-    whereClauses.push("units_sections.col_id = ANY(:col_id)");
-    params.col_id = data.col_ids.length ? data.col_ids : [""];
-  } else if (req.query.col_id) {
-    whereClauses.push("units_sections.col_id = ANY(:col_id)");
-    params.col_id = larkin.parseMultipleIds(req.query.col_id);
-  }
-
-  // Stratigraphic name filters
-  if (data.strat_ids) {
+  if (ageData.strat_ids) {
     whereClauses.push(
       `(lookup_strat_names.bed_id = ANY(:strat_ids) OR
         lookup_strat_names.mbr_id = ANY(:strat_ids) OR
@@ -427,7 +407,7 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
         lookup_strat_names.gp_id = ANY(:strat_ids) OR
         lookup_strat_names.sgp_id = ANY(:strat_ids))`,
     );
-    params.strat_ids = data.strat_ids;
+    params.strat_ids = ageData.strat_ids;
   }
 
   // Project filters
@@ -532,6 +512,9 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
     "summarize_measures" in req.query
       ? "lookup_unit_attrs_api.measure_long"
       : "lookup_unit_attrs_api.measure_short";
+
+  // Ensure that unit.id is always the first ORDER BY clause for DISTINCT ON
+  orderByClauses.unshift("units.id");
 
   let columnList = `
     DISTINCT ON (units.id)
