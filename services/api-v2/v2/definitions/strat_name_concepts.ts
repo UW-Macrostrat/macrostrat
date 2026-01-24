@@ -1,15 +1,12 @@
-var api = require("../api"),
-  larkin = require("../larkin"),
-  multiline = require("multiline");
+const api = require("../api");
+const larkin = require("../larkin");
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var sql = multiline(function () {
-      /*
-    SELECT
+  let sql = `SELECT
       snm.concept_id as concept_id,
       snm.name,
       COALESCE(snm.geologic_age::text, '') geologic_age,
@@ -23,11 +20,10 @@ module.exports = function (req, res, next, cb) {
       COALESCE(snm.url, '') url,
       refs.author
      FROM macrostrat.strat_names_meta snm
-     JOIN macrostrat.refs ON snm.ref_id = refs.id
-  */
-    }),
-    params = {},
-    where = [];
+     JOIN macrostrat.refs ON snm.ref_id = refs.id`;
+
+  let params = {};
+  let where = [];
 
   if ("all" in req.query) {
     // do nothing
@@ -98,7 +94,7 @@ module.exports = function (req, res, next, cb) {
             format: api.acceptedFormats.standard[req.query.format]
               ? req.query.format
               : "json",
-            bare: api.acceptedFormats.bare[req.query.format] ? true : false,
+            bare: !!api.acceptedFormats.bare[req.query.format],
             refs: "refs",
           },
           {

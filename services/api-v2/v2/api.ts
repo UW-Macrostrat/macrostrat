@@ -1,5 +1,3 @@
-import { acceptedFormats } from "./defs";
-
 var express = require("express");
 var burwellTileServer = require("./burwellTileServer");
 
