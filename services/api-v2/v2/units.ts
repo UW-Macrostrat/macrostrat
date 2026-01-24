@@ -4,6 +4,10 @@ var api = require("./api"),
   gp = require("geojson-precision"),
   larkin = require("./larkin");
 
+import defs from "./defs";
+
+const validUnitParams = defs["/units"]["options"]["parameters"];
+
 import { buildProjectsFilter } from "./utils";
 
 export async function getUnitsData(req, internal: boolean = true) {
@@ -154,6 +158,8 @@ async function determineAgeRange(req) {
    * This should be changed.
    * */
 
+  checkParamValidity(req);
+
   if (req.query.interval_name) {
     const sql = `SELECT age_bottom, age_top, interval_name FROM macrostrat.intervals WHERE interval_name = :interval_name LIMIT 1`;
     const result = await larkin.queryPgAsync("burwell", sql, {
@@ -275,33 +281,16 @@ async function determineAgeRange(req) {
     };
   }
 
-  const validParams = [
-    "unit_id",
-    "section_id",
-    "col_id",
-    "lith",
-    "lith_id",
-    "lith_class",
-    "lith_type",
-    "lith_group",
-    "environ",
-    "environ_id",
-    "environ_class",
-    "environ_type",
-    "project_id",
-    "sample",
-    "all",
-    "econ_id",
-    "econ",
-    "econ_type",
-    "econ_class",
-    "cltn_id",
-    "lith_att_id",
-    "lith_att",
-    "lith_att_type",
-    "col_type",
-    "status_code",
-  ];
+  return {
+    interval_name: "none",
+    age_bottom: 99999,
+    age_top: 0,
+  };
+}
+
+function checkParamValidity(req) {
+  /** Ensure we have at least one valid parameter to filter on */
+  let validParams = Object.keys(validUnitParams);
 
   let hasValidParam = false;
   for (const param of validParams) {
@@ -314,12 +303,6 @@ async function determineAgeRange(req) {
   if (!hasValidParam) {
     throw new Error("No valid parameters provided");
   }
-
-  return {
-    interval_name: "none",
-    age_bottom: 99999,
-    age_top: 0,
-  };
 }
 
 async function buildAndExecuteMainQuery(req, data, internal = false) {

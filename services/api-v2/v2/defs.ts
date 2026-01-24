@@ -138,6 +138,7 @@ export default {
           "If present, returns summary statistics about the measurements associated with each unit",
         show_position:
           "If present, return the unit top and bottom position in section",
+        sample: "Return a sample of units",
       },
       response_types: ["short", "long"],
       output_formats: [
