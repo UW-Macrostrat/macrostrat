@@ -3,9 +3,7 @@ var async = require("async"),
   credentials = require("./credentials"),
   csv = require("csv-express"),
   api = require("./api"),
-  validator = require("validator"),
-  http = require("http"),
-  portscanner = require("portscanner");
+  validator = require("validator");
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
 
@@ -641,7 +639,7 @@ enum APICapability {
     }
   };
 
-  // Check if Redis is available
+  /**
   portscanner.checkPortStatus(6379, "127.0.0.1", function (error, status) {
     if (status === "open") {
       larkin.log("Using Redis cache for columns");
@@ -662,7 +660,6 @@ enum APICapability {
     console.log("Initialized cache");
   });
 
-  /*
     On API startup cache the following:
       + All columns (with geometries)
       + All columns (without geometries)
