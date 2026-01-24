@@ -250,41 +250,51 @@ async function determineAgeRange(req) {
     };
   }
 
-  if (
-    req.query.unit_id ||
-    req.query.section_id ||
-    req.query.col_id ||
-    req.query.lith ||
-    req.query.lith_id ||
-    req.query.lith_class ||
-    req.query.lith_type ||
-    req.query.lith_group ||
-    req.query.environ ||
-    req.query.environ_id ||
-    req.query.environ_class ||
-    req.query.environ_type ||
-    req.query.project_id ||
-    "sample" in req.query ||
-    "all" in req.query ||
-    req.query.econ_id ||
-    req.query.econ ||
-    req.query.econ_type ||
-    req.query.econ_class ||
-    req.query.cltn_id ||
-    req.query.lith_att_id ||
-    req.query.lith_att ||
-    req.query.lith_att_type ||
-    req.query.col_type ||
-    req.query.status_code
-  ) {
-    return {
-      interval_name: "none",
-      age_bottom: 99999,
-      age_top: 0,
-    };
+  const validParams = [
+    "unit_id",
+    "section_id",
+    "col_id",
+    "lith",
+    "lith_id",
+    "lith_class",
+    "lith_type",
+    "lith_group",
+    "environ",
+    "environ_id",
+    "environ_class",
+    "environ_type",
+    "project_id",
+    "sample",
+    "all",
+    "econ_id",
+    "econ",
+    "econ_type",
+    "econ_class",
+    "cltn_id",
+    "lith_att_id",
+    "lith_att",
+    "lith_att_type",
+    "col_type",
+    "status_code",
+  ];
+
+  let hasValidParam = false;
+  for (const param of validParams) {
+    if (param in req.query) {
+      hasValidParam = true;
+      break;
+    }
   }
 
-  throw new Error("Invalid parameters passed");
+  if (!hasValidParam) {
+    throw new Error("No valid parameters provided");
+  }
+
+  return {
+    interval_name: "none",
+    age_bottom: 99999,
+    age_top: 0,
+  };
 }
 
 async function buildAndExecuteMainQuery(req, data, internal = false) {
