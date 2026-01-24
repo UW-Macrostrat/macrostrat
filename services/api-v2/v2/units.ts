@@ -289,24 +289,24 @@ async function determineAgeRange(req) {
 
 async function buildAndExecuteMainQuery(req, data, internal = false) {
   let params = {};
-  let where = "";
+  const whereClauses = [];
   const limit =
     "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
   const orderby = [];
 
   larkin.trace(data);
 
-  // Build WHERE clauses
+  // Status code filter (always required)
   if (req.query.status_code) {
-    where += "cols.status_code = ANY(:status_code)";
-    params["status_code"] = larkin.parseMultipleStrings(
+    whereClauses.push("cols.status_code = ANY(:status_code)");
+    params.status_code = larkin.parseMultipleStrings(
       decodeURI(req.query.status_code),
     );
   } else {
-    where += "cols.status_code = 'active'";
+    whereClauses.push("cols.status_code = 'active'");
   }
 
-  // Add lith filters
+  // Lithology filters
   if (
     req.query.lith ||
     req.query.lith_class ||
@@ -314,182 +314,201 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
     req.query.lith_id ||
     req.query.lith_group
   ) {
-    where +=
-      " AND units.id = ANY(SELECT unit_liths.unit_id FROM macrostrat.unit_liths JOIN macrostrat.liths ON lith_id = liths.id WHERE ";
-    const lithWhere = [];
+    const lithClauses = [];
 
     if (req.query.lith) {
-      lithWhere.push("lith = ANY(:lith)");
-      params["lith"] = larkin.parseMultipleStrings(req.query.lith);
+      lithClauses.push("lith = ANY(:lith)");
+      params.lith = larkin.parseMultipleStrings(req.query.lith);
     }
     if (req.query.lith_class) {
-      lithWhere.push("lith_class = ANY(:lith_class)");
-      params["lith_class"] = larkin.parseMultipleStrings(req.query.lith_class);
+      lithClauses.push("lith_class = ANY(:lith_class)");
+      params.lith_class = larkin.parseMultipleStrings(req.query.lith_class);
     }
     if (req.query.lith_type) {
-      lithWhere.push("lith_type = ANY(:lith_type)");
-      params["lith_type"] = larkin.parseMultipleStrings(req.query.lith_type);
+      lithClauses.push("lith_type = ANY(:lith_type)");
+      params.lith_type = larkin.parseMultipleStrings(req.query.lith_type);
     }
     if (req.query.lith_group) {
-      lithWhere.push("lith_group = ANY(:lith_group)");
-      params["lith_group"] = larkin.parseMultipleStrings(req.query.lith_group);
+      lithClauses.push("lith_group = ANY(:lith_group)");
+      params.lith_group = larkin.parseMultipleStrings(req.query.lith_group);
     }
     if (req.query.lith_id) {
-      lithWhere.push("liths.id = ANY(:lith_id)");
-      params["lith_id"] = larkin.parseMultipleIds(req.query.lith_id);
+      lithClauses.push("liths.id = ANY(:lith_id)");
+      params.lith_id = larkin.parseMultipleIds(req.query.lith_id);
     }
 
-    where += lithWhere.join(" OR ") + ")";
+    whereClauses.push(
+      `units.id = ANY(SELECT unit_liths.unit_id FROM macrostrat.unit_liths
+       JOIN macrostrat.liths ON lith_id = liths.id
+       WHERE ${lithClauses.join(" OR ")})`,
+    );
   }
 
-  // Add lith_att filters
+  // Lithology attributes filters
   if (req.query.lith_att_id || req.query.lith_att || req.query.lith_att_type) {
-    let lithAttField;
+    let lithAttField, paramValue;
+
     if (req.query.lith_att_id) {
       lithAttField = "unit_liths_atts.lith_att_id";
-      params["lith_att"] = larkin.parseMultipleIds(req.query.lith_att_id);
+      paramValue = larkin.parseMultipleIds(req.query.lith_att_id);
     } else if (req.query.lith_att) {
       lithAttField = "lith_atts.lith_att";
-      params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att);
+      paramValue = larkin.parseMultipleStrings(req.query.lith_att);
     } else if (req.query.lith_att_type) {
       lithAttField = "lith_atts.att_type";
-      params["lith_att"] = larkin.parseMultipleStrings(req.query.lith_att_type);
+      paramValue = larkin.parseMultipleStrings(req.query.lith_att_type);
     }
 
-    where += ` AND units.id = ANY(
-      SELECT unit_liths.unit_id
-      FROM macrostrat.unit_liths
-      JOIN macrostrat.liths ON lith_id = liths.id
-      JOIN macrostrat.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
-      JOIN macrostrat.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
-      WHERE ${lithAttField} = ANY(:lith_att)
-    )`;
+    whereClauses.push(
+      `units.id = ANY(SELECT unit_liths.unit_id FROM macrostrat.unit_liths
+       JOIN macrostrat.liths ON lith_id = liths.id
+       JOIN macrostrat.unit_liths_atts ON unit_liths_atts.unit_lith_id = unit_liths.id
+       JOIN macrostrat.lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
+       WHERE ${lithAttField} = ANY(:lith_att))`,
+    );
+    params.lith_att = paramValue;
   }
 
-  // Add age filters - Fixed column reference
+  // Age filters
   if (data.age_bottom !== 99999) {
-    where +=
-      " AND lookup_units.b_age > :age_top AND lookup_units.t_age < :age_bottom";
-    params["age_top"] = data.age_top;
-    params["age_bottom"] = data.age_bottom;
+    whereClauses.push(
+      "lookup_units.b_age > :age_top AND lookup_units.t_age < :age_bottom",
+    );
+    params.age_top = data.age_top;
+    params.age_bottom = data.age_bottom;
   }
 
-  // Add remaining filters...
+  // Unit ID filter
   if (req.query.unit_id) {
-    where += " AND units.id = ANY(:unit_id)";
-    params["unit_id"] = larkin.parseMultipleIds(req.query.unit_id);
-    orderby.push(" units.id ");
+    whereClauses.push("units.id = ANY(:unit_id)");
+    params.unit_id = larkin.parseMultipleIds(req.query.unit_id);
+    orderby.push("units.id");
   }
 
+  // Section ID filter
   if (req.query.section_id) {
-    where += " AND units_sections.section_id = ANY(:section_id)";
-    params["section_id"] = larkin.parseMultipleIds(req.query.section_id);
+    whereClauses.push("units_sections.section_id = ANY(:section_id)");
+    params.section_id = larkin.parseMultipleIds(req.query.section_id);
   }
 
+  // Column ID filters
   if ("col_ids" in data) {
-    where += " AND units_sections.col_id = ANY(:col_id)";
-    if (!data.col_ids.length) {
-      data.col_ids = [""];
-    }
-    params["col_id"] = data.col_ids;
+    whereClauses.push("units_sections.col_id = ANY(:col_id)");
+    params.col_id = data.col_ids.length ? data.col_ids : [""];
   } else if (req.query.col_id) {
-    where += " AND units_sections.col_id = ANY(:col_id)";
-    params["col_id"] = larkin.parseMultipleIds(req.query.col_id);
+    whereClauses.push("units_sections.col_id = ANY(:col_id)");
+    params.col_id = larkin.parseMultipleIds(req.query.col_id);
   }
 
+  // Stratigraphic name filters
   if (data.strat_ids) {
-    where +=
-      " AND (lookup_strat_names.bed_id = ANY(:strat_ids) OR lookup_strat_names.mbr_id = ANY(:strat_ids) OR lookup_strat_names.fm_id = ANY(:strat_ids) OR lookup_strat_names.gp_id = ANY(:strat_ids) OR lookup_strat_names.sgp_id = ANY(:strat_ids))";
-    params["strat_ids"] = data.strat_ids;
+    whereClauses.push(
+      `(lookup_strat_names.bed_id = ANY(:strat_ids) OR
+        lookup_strat_names.mbr_id = ANY(:strat_ids) OR
+        lookup_strat_names.fm_id = ANY(:strat_ids) OR
+        lookup_strat_names.gp_id = ANY(:strat_ids) OR
+        lookup_strat_names.sgp_id = ANY(:strat_ids))`,
+    );
+    params.strat_ids = data.strat_ids;
   }
 
-  const [whereClauses, projectParams] = buildProjectsFilter(
+  // Project filters
+  const [projectWhereClauses, projectParams] = buildProjectsFilter(
     req,
     "lookup_units.project_id",
   );
-  if (whereClauses.length > 0) {
-    where += " AND " + whereClauses.join(" AND ");
-    Object.assign(params, projectParams);
-  }
+  whereClauses.push(...projectWhereClauses);
+  Object.assign(params, projectParams);
 
-  // Add environ filters
+  // Environment filters
   if (
     req.query.environ_id ||
     req.query.environ ||
     req.query.environ_class ||
     req.query.environ_type
   ) {
-    where +=
-      " AND units.id = ANY(SELECT unit_environs.unit_id FROM macrostrat.unit_environs JOIN macrostrat.environs on environ_id=environs.id WHERE ";
-    const environWhere = [];
+    const environClauses = [];
 
     if (req.query.environ) {
-      environWhere.push("environ = ANY(:environ)");
-      params["environ"] = larkin.parseMultipleStrings(req.query.environ);
+      environClauses.push("environ = ANY(:environ)");
+      params.environ = larkin.parseMultipleStrings(req.query.environ);
     }
     if (req.query.environ_class) {
-      environWhere.push("environ_class = ANY(:environ_class)");
-      params["environ_class"] = larkin.parseMultipleStrings(
+      environClauses.push("environ_class = ANY(:environ_class)");
+      params.environ_class = larkin.parseMultipleStrings(
         req.query.environ_class,
       );
     }
     if (req.query.environ_type) {
-      environWhere.push("environ_type = ANY(:environ_type)");
-      params["environ_type"] = larkin.parseMultipleStrings(
-        req.query.environ_type,
-      );
+      environClauses.push("environ_type = ANY(:environ_type)");
+      params.environ_type = larkin.parseMultipleStrings(req.query.environ_type);
     }
     if (req.query.environ_id) {
-      environWhere.push("environs.id = ANY(:environ_id)");
-      params["environ_id"] = larkin.parseMultipleIds(req.query.environ_id);
+      environClauses.push("environs.id = ANY(:environ_id)");
+      params.environ_id = larkin.parseMultipleIds(req.query.environ_id);
     }
 
-    where += environWhere.join(" OR ") + ")";
+    whereClauses.push(
+      `units.id = ANY(SELECT unit_environs.unit_id FROM macrostrat.unit_environs
+       JOIN macrostrat.environs ON environ_id = environs.id
+       WHERE ${environClauses.join(" OR ")})`,
+    );
   }
 
-  // Add econ filters
+  // Economic filters
   if (
     req.query.econ_id ||
     req.query.econ ||
     req.query.econ_type ||
     req.query.econ_class
   ) {
-    let econ_field;
+    let econField, paramValue;
+
     if (req.query.econ_id) {
-      params["econ"] = larkin.parseMultipleIds(req.query.econ_id);
-      econ_field = "econs.id";
+      econField = "econs.id";
+      paramValue = larkin.parseMultipleIds(req.query.econ_id);
     } else if (req.query.econ) {
-      params["econ"] = larkin.parseMultipleStrings(req.query.econ);
-      econ_field = "econs.econ";
+      econField = "econs.econ";
+      paramValue = larkin.parseMultipleStrings(req.query.econ);
     } else if (req.query.econ_type) {
-      params["econ"] = larkin.parseMultipleStrings(req.query.econ_type);
-      econ_field = "econs.econ_type";
+      econField = "econs.econ_type";
+      paramValue = larkin.parseMultipleStrings(req.query.econ_type);
     } else if (req.query.econ_class) {
-      params["econ"] = larkin.parseMultipleStrings(req.query.econ_class);
-      econ_field = "econs.econ_class";
+      econField = "econs.econ_class";
+      paramValue = larkin.parseMultipleStrings(req.query.econ_class);
     }
 
-    where += ` AND units.id = ANY(SELECT unit_econs.unit_id
-      FROM macrostrat.unit_econs
-      JOIN macrostrat.econs on econ_id=econs.id
-      WHERE ${econ_field} = ANY(:econ))`;
+    whereClauses.push(
+      `units.id = ANY(SELECT unit_econs.unit_id FROM macrostrat.unit_econs
+       JOIN macrostrat.econs ON econ_id = econs.id
+       WHERE ${econField} = ANY(:econ))`,
+    );
+    params.econ = paramValue;
   }
 
+  // Collection ID filter
   if (req.query.cltn_id) {
-    where +=
-      " AND units.id = ANY(SELECT unit_id FROM macrostrat.pbdb_matches WHERE collection_no = ANY(:cltn_ids))";
-    params["cltn_ids"] = larkin.parseMultipleIds(req.query.cltn_id);
+    whereClauses.push(
+      "units.id = ANY(SELECT unit_id FROM macrostrat.pbdb_matches WHERE collection_no = ANY(:cltn_ids))",
+    );
+    params.cltn_ids = larkin.parseMultipleIds(req.query.cltn_id);
   }
 
+  // Column type filter
   if (req.query.col_type) {
-    where += " AND cols.col_type = ANY(:col_type)";
-    params["col_type"] = larkin.parseMultipleStrings(req.query.col_type);
+    whereClauses.push("cols.col_type = ANY(:col_type)");
+    params.col_type = larkin.parseMultipleStrings(req.query.col_type);
   }
 
+  // Sample filter
   if ("sample" in req.query) {
-    where +=
-      " AND units_sections.col_id = ANY(ARRAY[92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675])";
+    whereClauses.push(
+      "units_sections.col_id = ANY(ARRAY[92, 488, 463, 289, 430, 481, 261, 534, 369, 798, 771, 1675])",
+    );
   }
+
+  // Build final WHERE clause
+  const where = whereClauses.join(" AND ");
 
   const measureField =
     "summarize_measures" in req.query
@@ -556,24 +575,24 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
 
   const sql = `
     WITH orig_query AS (SELECT ${columnList}
-    FROM macrostrat.units
-    LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-    LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
-    LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
-    LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
-    LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-    LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-    LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-    LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
-    WHERE ${where}
-    ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""})
+                        FROM macrostrat.units
+                               LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+                               LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
+                               LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+                               LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+                               LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
+                               LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+                               LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+                               LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
+                        WHERE ${where}
+                                ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""})
     SELECT * FROM orig_query
     ORDER BY t_age ASC
-    ${limit}`;
+      ${limit}`;
 
   const result = await larkin.queryPgAsync("burwell", sql, params);
 
-  // Process results
+  // Process results (rest of function remains the same)...
   if (req.query.response === "long" || internal) {
     for (let i = 0; i < result.rows.length; i++) {
       result.rows[i].lith = JSON.parse(result.rows[i].lith) || [];
