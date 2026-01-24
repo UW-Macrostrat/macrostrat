@@ -1,8 +1,11 @@
 import type { Suite } from "mocha";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 require("../settings");
 
 const loadTests = (path: string) => {
-  return (this: Suite) => {
+  return () => {
     return require(path);
   };
 };

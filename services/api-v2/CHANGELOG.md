@@ -1,5 +1,19 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.0-beta.1] - 2026-01-24
+
+- Create a "fast path" for column queries that do not require unit-based filtering
+- Reduce the number of queries made when fetching columns and units
+- Convert lots of callback-based code to async/await for better readability
+- Started conversion to ESM modules
+- Switch from `ts-node` to `tsx`
+
+## [2.2.0] - 2025-12-18
+
+- Update `project_id` handling to accept composite projects or multiple projects.
+- `project_id=all` now returns results from all projects.
+- Add `project_name` to column output.
+
 ## [2.1.7] - 2025-11-19
 
 - Allow multiple `status_code` values in `/columns` route

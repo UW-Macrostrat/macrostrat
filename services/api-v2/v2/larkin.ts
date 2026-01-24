@@ -11,8 +11,6 @@ const { Client, Pool } = require("pg");
 
 import defs from "./defs";
 
-console.log(credentials);
-
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
 }

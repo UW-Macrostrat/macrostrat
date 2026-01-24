@@ -1,9 +1,4 @@
-import {
-  buildSQLQuery,
-  getColumnFilters,
-  getColumnIDsForQuery,
-  getUnitsData,
-} from "./units";
+import { getColumnFilters, getColumnIDsForQuery, getUnitsData } from "./units";
 
 import dbgeo from "dbgeo";
 import * as larkin from "./larkin";
@@ -11,7 +6,7 @@ import _ from "underscore";
 import gp from "geojson-precision";
 import { acceptedFormats } from "./api";
 import { sharedUnitFilters } from "./defs";
-import { buildProjectsFilter } from "./utils";
+import { buildProjectsFilter, buildSQLQuery } from "./utils";
 
 export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
@@ -210,8 +205,6 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
       limit,
     },
   );
-
-  console.log(sql, params);
 
   const result = await larkin.queryPgAsync("macrostrat", sql, params);
 

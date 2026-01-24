@@ -5,10 +5,9 @@ var api = require("./api"),
   larkin = require("./larkin");
 
 import defs from "./defs";
+import { buildProjectsFilter, buildSQLQuery, FilterStatements } from "./utils";
 
 const validUnitParams = defs["/units"]["options"]["parameters"];
-
-import { buildProjectsFilter } from "./utils";
 
 export async function getUnitsData(req, internal: boolean = true) {
   // First determine age range component of query, if any.
@@ -55,14 +54,6 @@ export function getUnitsDataCompat(req, callback) {
     .catch((error) => {
       callback(error);
     });
-}
-
-interface FilterStatements {
-  withStatements?: Record<string, string>;
-  whereClauses?: string[];
-  orderByClauses?: string[];
-  groupByClauses?: string[];
-  limit?: number;
 }
 
 interface FilterDefinition extends FilterStatements {
@@ -135,14 +126,14 @@ export function getColumnFilters(
       whereClauses.push(
         `ST_Intersects((${containingGeomSubquery}), ${adjacentsColumnName})`,
       );
+      // Order adjacent cols by distance to point
+      orderByClauses.push(
+        `ST_Distance(ST_Centroid(${adjacentsColumnName}), ${geomRepr})`,
+      );
     } else {
       whereClauses.push(`ST_Contains(${adjacentsColumnName}, ${geomRepr})`);
     }
     groupByClauses.push(adjacentsColumnName);
-    // Order by distance to point (always a single point)
-    orderByClauses.push(
-      `ST_Distance(ST_Centroid(${adjacentsColumnName}), ${geomRepr})`,
-    );
   }
 
   if (hasColID) {
@@ -170,8 +161,8 @@ export function getColumnFilters(
       );
 
       if (params.col_ids.length === 1) {
-        const adjacentsDistanceQuery = `SELECT ST_Centroid(${adjacentsColumnName}) FROM macrostrat.${spatialTable}`;
         // If only one col_id, order by distance to column centroid
+        const adjacentsDistanceQuery = `SELECT ST_Centroid(${adjacentsColumnName}) FROM macrostrat.${spatialTable}`;
         const adjacentWhereSubquery = buildSQLQuery(adjacentsDistanceQuery, {
           whereClauses: adjacentWhereFilters,
         });
@@ -179,9 +170,10 @@ export function getColumnFilters(
         orderByClauses.push(
           `ST_Distance(ST_Centroid(${adjacentsColumnName}), (${adjacentWhereSubquery}))`,
         );
-      } else {
-        whereClauses.push(colWhere);
       }
+    } else {
+      // If we are not getting adjacents, just filter by the column name.
+      whereClauses.push(colWhere);
     }
     groupByClauses.push(adjacentsColumnName);
   }
@@ -210,48 +202,6 @@ function hasBooleanParam(req, paramName: string): boolean {
     }
   }
   return false;
-}
-
-export function buildSQLQuery(
-  baseQuery: string,
-  filters: FilterStatements,
-): string {
-  const {
-    withStatements = {},
-    whereClauses = [],
-    orderByClauses = [],
-    groupByClauses = [],
-    limit,
-  } = filters;
-  let sql = "";
-  if (Object.keys(withStatements).length > 0) {
-    const withStrings = [];
-    for (const [key, value] of Object.entries(filters.withStatements)) {
-      withStrings.push(`${key} AS (${value})`);
-    }
-    sql += `WITH ${dedupe(withStrings).join(", ")}\n`;
-  }
-  sql += baseQuery;
-  if (whereClauses.length > 0) {
-    sql += "\nWHERE " + dedupe(whereClauses).join("\nAND ");
-  }
-
-  if (groupByClauses.length > 0) {
-    sql += "\nGROUP BY " + dedupe(groupByClauses).join(",\n");
-  }
-
-  if (orderByClauses.length > 0) {
-    sql += "\nORDER BY " + dedupe(orderByClauses).join(",\n");
-  }
-  if (limit) {
-    sql += `\nLIMIT ${limit} `;
-  }
-
-  return sql;
-}
-
-function dedupe(arr: any[]) {
-  return Array.from(new Set(arr));
 }
 
 export async function getColumnIDsForQuery(req): Promise<number[]> {
@@ -692,8 +642,6 @@ async function buildAndExecuteMainQuery(req, internal = false) {
     orderByClauses: ["t_age ASC"],
     limit,
   });
-
-  console.log(sql);
 
   const result = await larkin.queryPgAsync("burwell", sql, params);
 
