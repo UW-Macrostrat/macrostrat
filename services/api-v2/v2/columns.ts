@@ -187,10 +187,9 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
   whereClauses = whereClauses.concat(projectFilters);
   params = { ...params, ...projectParams };
 
-  /**
-   // Handle geometry - adds col_areas.col_area to GROUP BY
+  // Handle geometry - adds col_areas.col_area to GROUP BY
   const needsGeometry =
-    req.query.format && api.acceptedFormats.geo[req.query.format];
+    req.query.format && acceptedFormats.geo[req.query.format];
   if (needsGeometry) {
     if (req.query.shape) {
       geo =
@@ -199,33 +198,34 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
     } else {
       geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
     }
-    additionalGroupBy.push("col_areas.col_area");
+    groupByClauses.push("col_areas.col_area");
   }
 
-  // Handle ordering - also adds col_areas.col_area to GROUP BY if not already added
-  if (req.query.lat && req.query.lng && req.query.adjacents) {
-    orderBy =
-      "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))";
-    params["lat"] = req.query.lat;
-    params["lng"] = larkin.normalizeLng(req.query.lng);
-
-    // Add col_areas.col_area to GROUP BY if not already added for geometry
-    if (!needsGeometry) {
-      additionalGroupBy.push("col_areas.col_area");
-    }
-  } else if (req.query.col_id && req.query.adjacents) {
-    orderBy = `ORDER BY ST_Distance(
-      ST_Centroid(col_areas.col_area),
-      (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = :col_id)
-    )`;
-    params["col_id"] = req.query.col_id;
-
-    // Add col_areas.col_area to GROUP BY if not already added for geometry
-    if (!needsGeometry) {
-      additionalGroupBy.push("col_areas.col_area");
-    }
-  }
-    */
+  // // Handle ordering - also adds col_areas.col_area to GROUP BY if not already added
+  // if (req.query.lat && req.query.lng && req.query.adjacents) {
+  //   orderBy =
+  //     "ORDER BY ST_Distance(ST_SetSRID(col_areas.col_area, 4326), ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))";
+  //   params["lat"] = req.query.lat;
+  //   params["lng"] = larkin.normalizeLng(req.query.lng);
+  //
+  //   // Add col_areas.col_area to GROUP BY if not already added for geometry
+  //   if (!needsGeometry) {
+  //     groupByClauses.push("col_areas.col_area");
+  //   }
+  // } else if (req.query.col_id && req.query.adjacents) {
+  //   orderByClauses = [
+  //     `ST_Distance(
+  //     ST_Centroid(col_areas.col_area),
+  //     (SELECT ST_Centroid(col_area) FROM macrostrat.col_areas WHERE col_id = :col_id)
+  //   )`,
+  //   ];
+  //   params["col_id"] = req.query.col_id;
+  //
+  //   // Add col_areas.col_area to GROUP BY if not already added for geometry
+  //   if (!needsGeometry) {
+  //     groupByClauses.push("col_areas.col_area");
+  //   }
+  // }
   //
   // if (new_cols == null) {
   //   // We have to filter directly instead of relying on units filtering
