@@ -71,13 +71,54 @@ interface FilterDefinition extends FilterStatements {
   params: Record<string, any>;
 }
 
-export function getColumnFilters(req): FilterDefinition {
+export function getColumnFilters(
+  req,
+  // The spatial table to use for spatial queries. manages different tables
+  // used for spatial information between the units and columns endpoints.
+  // Not sure if this handling is necessary long-term.
+  spatialTable: "col_areas" | "cols" = "cols",
+): FilterDefinition {
   const whereClauses = [];
   let params: any = {};
   const orderByClauses = [];
   const groupByClauses = [];
 
-  if (req.query.lat && req.query.lng) {
+  // Handle status code
+  if (req.query.status_code) {
+    params["status_code"] = larkin.parseMultipleStrings(
+      decodeURI(req.query.status_code),
+    );
+  } else {
+    params["status_code"] = ["active"];
+  }
+  whereClauses.push("cols.status_code::text = ANY(:status_code::text[])");
+
+  const [projectFilters, projectParams] = buildProjectsFilter(
+    req,
+    "cols.project_id",
+  );
+  whereClauses.push(...projectFilters);
+  params = { ...params, ...projectParams };
+
+  let adjacentsColumnName: string;
+  switch (spatialTable) {
+    case "cols":
+      adjacentsColumnName = "cols.poly_geom";
+      break;
+    case "col_areas":
+      adjacentsColumnName = "col_areas.col_area";
+      break;
+  }
+
+  const adjacentsBaseQuery = `SELECT ${adjacentsColumnName} FROM macrostrat.${spatialTable}`;
+
+  const hasLngLat = req.query.lat != null && req.query.lng != null;
+  const hasColID = req.query.col_id != null;
+
+  let shouldGetAdjacents =
+    (hasLngLat || hasColID) && hasBooleanParam(req, "adjacents");
+
+  if (hasLngLat) {
     const geomRepr = `ST_SetSRID(ST_MakePoint(:lng, :lat), :srid)`;
 
     params = {
@@ -86,42 +127,63 @@ export function getColumnFilters(req): FilterDefinition {
       lng: larkin.normalizeLng(req.query.lng),
       srid: 4326,
     };
-    if (req.query.adjacents) {
-      const containingGeomSubquery = `
-        SELECT poly_geom
-        FROM macrostrat.cols
-        WHERE ST_Contains(poly_geom, ${geomRepr})`;
+
+    if (shouldGetAdjacents) {
+      const containingGeomSubquery = buildSQLQuery(adjacentsBaseQuery, {
+        whereClauses: [`ST_Contains(${adjacentsColumnName}, ${geomRepr})`],
+      });
       whereClauses.push(
-        `ST_Intersects((${containingGeomSubquery}), poly_geom)`,
+        `ST_Intersects((${containingGeomSubquery}), ${adjacentsColumnName})`,
       );
     } else {
-      whereClauses.push(`ST_Contains(poly_geom, ${geomRepr})`);
+      whereClauses.push(`ST_Contains(${adjacentsColumnName}, ${geomRepr})`);
     }
-    groupByClauses.push("poly_geom");
-    // Order by distance to point
-    orderByClauses.push(`ST_Distance(ST_Centroid(poly_geom), ${geomRepr})`);
+    groupByClauses.push(adjacentsColumnName);
+    // Order by distance to point (always a single point)
+    orderByClauses.push(
+      `ST_Distance(ST_Centroid(${adjacentsColumnName}), ${geomRepr})`,
+    );
   }
 
-  if (req.query.col_id && req.query.adjacents) {
-    const containingGeomSubquery =
-      "SELECT poly_geom FROM macrostrat.cols WHERE id = ANY(:col_ids)";
+  if (hasColID) {
+    const colIds = larkin.parseMultipleIds(req.query.col_id);
 
+    const colWhere = "cols.id = ANY(:col_ids)";
     params = {
       ...params,
-      col_ids: larkin.parseMultipleIds(req.query.col_id),
+      col_ids: colIds,
     };
+    if (shouldGetAdjacents) {
+      // Get adjacent columns too...
 
-    whereClauses.push(`ST_Intersects((${containingGeomSubquery}), poly_geom)`);
+      const adjacentsFilterCol =
+        spatialTable == "cols" ? "cols.id" : "col_areas.col_id";
 
-    if (params.col_ids.length === 1) {
-      // If only one col_id, order by distance to column centroid
-      orderByClauses.push(
-        `ST_Distance(ST_Centroid(poly_geom), (${containingGeomSubquery}))`,
+      const adjacentWhereFilters = [adjacentsFilterCol + " = ANY(:col_ids)"];
+
+      const containingGeomSubquery = buildSQLQuery(adjacentsBaseQuery, {
+        whereClauses: adjacentWhereFilters,
+      });
+
+      whereClauses.push(
+        `ST_Intersects(${adjacentsColumnName}, (${containingGeomSubquery}))`,
       );
+
+      if (params.col_ids.length === 1) {
+        const adjacentsDistanceQuery = `SELECT ST_Centroid(${adjacentsColumnName}) FROM macrostrat.${spatialTable}`;
+        // If only one col_id, order by distance to column centroid
+        const adjacentWhereSubquery = buildSQLQuery(adjacentsDistanceQuery, {
+          whereClauses: adjacentWhereFilters,
+        });
+
+        orderByClauses.push(
+          `ST_Distance(ST_Centroid(${adjacentsColumnName}), (${adjacentWhereSubquery}))`,
+        );
+      } else {
+        whereClauses.push(colWhere);
+      }
     }
-    if (!groupByClauses.includes("poly_geom")) {
-      groupByClauses.push("poly_geom");
-    }
+    groupByClauses.push(adjacentsColumnName);
   }
 
   if (req.query.col_group_id) {
@@ -138,6 +200,16 @@ export function getColumnFilters(req): FilterDefinition {
     orderByClauses,
     groupByClauses,
   };
+}
+
+function hasBooleanParam(req, paramName: string): boolean {
+  if (paramName in req.query) {
+    const val = req.query[paramName];
+    if (val !== "false" && val !== "0" && val !== "no" && val !== false) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function buildSQLQuery(
@@ -157,25 +229,29 @@ export function buildSQLQuery(
     for (const [key, value] of Object.entries(filters.withStatements)) {
       withStrings.push(`${key} AS (${value})`);
     }
-    sql += `WITH ${withStrings.join(", ")}\n`;
+    sql += `WITH ${dedupe(withStrings).join(", ")}\n`;
   }
   sql += baseQuery;
   if (whereClauses.length > 0) {
-    sql += "\nWHERE " + whereClauses.join("\nAND ");
+    sql += "\nWHERE " + dedupe(whereClauses).join("\nAND ");
   }
 
   if (groupByClauses.length > 0) {
-    sql += "\nGROUP BY " + groupByClauses.join(",\n");
+    sql += "\nGROUP BY " + dedupe(groupByClauses).join(",\n");
   }
 
   if (orderByClauses.length > 0) {
-    sql += "\nORDER BY " + orderByClauses.join(",\n");
+    sql += "\nORDER BY " + dedupe(orderByClauses).join(",\n");
   }
   if (limit) {
     sql += `\nLIMIT ${limit} `;
   }
 
   return sql;
+}
+
+function dedupe(arr: any[]) {
+  return Array.from(new Set(arr));
 }
 
 export async function getColumnIDsForQuery(req): Promise<number[]> {
@@ -344,16 +420,6 @@ async function buildAndExecuteMainQuery(req, internal = false) {
 
   larkin.trace(ageData);
 
-  // Status code filter (always required)
-  if (req.query.status_code) {
-    whereClauses.push("cols.status_code = ANY(:status_code)");
-    params.status_code = larkin.parseMultipleStrings(
-      decodeURI(req.query.status_code),
-    );
-  } else {
-    whereClauses.push("cols.status_code = 'active'");
-  }
-
   // Lithology filters
   if (
     req.query.lith ||
@@ -449,14 +515,6 @@ async function buildAndExecuteMainQuery(req, internal = false) {
     );
     params.strat_ids = ageData.strat_ids;
   }
-
-  // Project filters
-  const [projectWhereClauses, projectParams] = buildProjectsFilter(
-    req,
-    "lookup_units.project_id",
-  );
-  whereClauses.push(...projectWhereClauses);
-  Object.assign(params, projectParams);
 
   // Environment filters
   if (
