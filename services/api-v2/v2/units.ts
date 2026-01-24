@@ -53,41 +53,55 @@ export function getUnitsDataCompat(req, callback) {
 }
 
 export async function getColumnIDsForQuery(req): Promise<number[]> {
+  const whereClauses = [];
+  const params: any = {};
+  const orderByClauses = [];
+
   if (req.query.lat && req.query.lng) {
     const point =
       "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
 
-    let sql = `SELECT id
-       FROM macrostrat.cols
-       WHERE ST_Contains(
-               poly_geom,
-               ST_SetSrid(ST_GeomFromText(:point), 4326))
-       ORDER BY ST_Distance(
-                  ST_Centroid(poly_geom),
-                  ST_GeomFromText(:point, 4326)
-                )`;
-
     if (req.query.adjacents) {
-      // Selector to get all columns that are near a containing geometry
       const containingGeomSubquery = `
         SELECT poly_geom
         FROM macrostrat.cols
         WHERE ST_Contains(
                 poly_geom,
-                ST_SetSrid(ST_GeomFromText(:point), 4326)
-              )
-      `;
-
-      sql = `
-        SELECT id
-        FROM macrostrat.cols
-        WHERE ST_Intersects((${containingGeomSubquery}), poly_geom)
-        ORDER BY ST_Distance(
-           ST_Centroid(poly_geom),
-           ST_GeomFromText(:point, 4326)
-         )`;
+                st_setsrid(st_geomfromtext(:point), 4326)
+              )`;
+      whereClauses.push(
+        "ST_Intersects((${containingGeomSubquery}), poly_geom)",
+      );
+      params.point = point;
+      orderByClauses.push(
+        "ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))",
+      );
+    } else {
+      whereClauses.push(
+        "ST_Contains(poly_geom, ST_SetSrid(ST_GeomFromText(:point), 4326))",
+      );
+      params.point = point;
+      orderByClauses.push(
+        "ST_Distance(ST_Centroid(poly_geom), ST_GeomFromText(:point, 4326))",
+      );
     }
-    const response = await larkin.queryPgAsync("burwell", sql, { point });
+
+    let where = "";
+    if (whereClauses.length > 0) {
+      where = "WHERE " + whereClauses.join(" AND ");
+    }
+
+    let orderBy = "";
+    if (orderByClauses.length > 0) {
+      orderBy = "ORDER BY " + orderByClauses.join(", ");
+    }
+
+    const sql = `
+      SELECT id
+      FROM macrostrat.cols
+      WHERE ${where}
+      ${orderBy}`;
+    const response = await larkin.queryPgAsync("burwell", sql, params);
 
     return response.rows.map((d) => d.id);
   }
