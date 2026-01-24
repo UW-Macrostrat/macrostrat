@@ -1,4 +1,9 @@
-import { getColumnIDsForQuery, getUnitsData } from "./units";
+import {
+  buildSQLQuery,
+  getColumnFilters,
+  getColumnIDsForQuery,
+  getUnitsData,
+} from "./units";
 
 import dbgeo from "dbgeo";
 import * as larkin from "./larkin";
@@ -6,6 +11,7 @@ import _ from "underscore";
 import gp from "geojson-precision";
 import { acceptedFormats } from "./api";
 import { sharedUnitFilters } from "./defs";
+import { buildProjectsFilter } from "./utils";
 
 export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
@@ -27,7 +33,7 @@ async function getColumnData(req) {
 
   let unitGroups = null;
   // Get units data grouped by col_id
-  if (isUnitFilteringRequired(req) || true) {
+  if (isUnitFilteringRequired(req)) {
     const unitsResult = (await getUnitsData(req)) ?? [];
 
     // Group and process units data
@@ -144,36 +150,25 @@ function synthesizeColumnDataFromGroupedUnits(cols) {
 }
 
 async function queryColumnsData(req, new_cols: UnitDataMap | null) {
-  let params: any = {};
-  if (new_cols !== null) {
-    if (Object.keys(new_cols).length === 0) {
-      return [];
-    }
+  let { orderByClauses, whereClauses, groupByClauses, params } =
+    getColumnFilters(req);
 
+  if (new_cols !== null && Object.keys(new_cols).length > 0) {
     const col_ids = Object.keys(new_cols).map((d) => parseInt(d));
-    params = { col_ids };
-  } else if (req.query.col_id != null) {
-    params = {
-      col_ids: larkin.parseMultipleIds(req.query.col_id),
-    };
-  } else {
-    params = {
-      col_ids: await getColumnIDsForQuery(req),
-    };
+    whereClauses.push("cols.id = ANY(:col_ids_from_units::integer[])");
+    params = { ...params, col_ids_from_units: col_ids };
   }
 
-  const limit = "sample" in req.query ? " LIMIT 5" : "";
-  let orderBy = "";
+  const limit = "sample" in req.query ? 5 : null;
   let geo = "";
 
   // Base GROUP BY columns that are always needed
-  const baseGroupBy = [
+  groupByClauses.push(
     "col_areas.col_id",
     "cols.id",
     "col_groups.col_group",
     "col_groups.id",
-  ];
-  let additionalGroupBy = [];
+  );
 
   // Handle status code
   if (req.query.status_code) {
@@ -183,8 +178,14 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
   } else {
     params["status_code"] = ["active"];
   }
+  whereClauses.push("cols.status_code::text = ANY(:status_code::text[])");
 
-  const whereClauses = ["cols.status_code = ANY(:status_code)"];
+  const [projectFilters, projectParams] = buildProjectsFilter(
+    req,
+    "cols.project_id",
+  );
+  whereClauses = whereClauses.concat(projectFilters);
+  params = { ...params, ...projectParams };
 
   /**
    // Handle geometry - adds col_areas.col_area to GROUP BY
@@ -225,66 +226,58 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
     }
   }
     */
+  //
+  // if (new_cols == null) {
+  //   // We have to filter directly instead of relying on units filtering
+  //
+  //   if ("col_group_id" in req.query) {
+  //     whereClauses.push("cols.col_group_id = :col_group_id");
+  //     params["col_group_id"] = req.query.col_group_id;
+  //   }
+  //   if ("lat" in req.query && "lng" in req.query) {
+  //     const point = `ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)`;
+  //     whereClauses.push(`ST_Contains(col_areas.col_area, ${point})`);
+  //     params["lat"] = req.query.lat;
+  //     params["lng"] = larkin.normalizeLng(req.query.lng);
+  //   }
+  //   if ("col_type" in req.query) {
+  //     whereClauses.push("cols.col_type = :col_type");
+  //     params["col_type"] = req.query.col_type;
+  //   }
+  //   if ("project_id" in req.query) {
+  //     whereClauses.push("cols.project_id = :project_id");
+  //     params["project_id"] = req.query.project_id;
+  //   }
+  // }
 
-  if ("col_ids" in params) {
-    whereClauses.push("cols.id = ANY(:col_ids)");
-  }
-  if (new_cols == null) {
-    // We have to filter directly instead of relying on units filtering
-
-    if ("col_group_id" in req.query) {
-      whereClauses.push("cols.col_group_id = :col_group_id");
-      params["col_group_id"] = req.query.col_group_id;
-    }
-    if ("lat" in req.query && "lng" in req.query) {
-      const point = `ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)`;
-      whereClauses.push(`ST_Contains(col_areas.col_area, ${point})`);
-      params["lat"] = req.query.lat;
-      params["lng"] = larkin.normalizeLng(req.query.lng);
-    }
-    if ("col_type" in req.query) {
-      whereClauses.push("cols.col_type = :col_type");
-      params["col_type"] = req.query.col_type;
-    }
-    if ("project_id" in req.query) {
-      whereClauses.push("cols.project_id = :project_id");
-      params["project_id"] = req.query.project_id;
-    }
-  }
-
-  // Assemble final GROUP BY clause
-  const allGroupByColumns = [...baseGroupBy, ...additionalGroupBy];
-  const groupByClause = `GROUP BY ${allGroupByColumns.join(", ")}`;
-
-  const whereClause = whereClauses.join(" AND ");
-
-  const result = await larkin.queryPgAsync(
-    "burwell",
+  const sql = buildSQLQuery(
     `
-    SELECT
-      cols.id AS col_id,
-      col_name,
-      col_group_long AS col_group,
-      col_groups.id AS col_group_id,
-      col AS group_col_id,
-      cols.lat,
-      cols.lng,
-      round(cols.col_area::numeric, 1) AS col_area,
-      cols.project_id,
-      col_type,
-      string_agg(col_refs.ref_id::varchar, '|') AS refs
-      ${geo}
-    FROM macrostrat.cols
-    LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
-    LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
-    LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-    WHERE ${whereClause}
-    ${groupByClause}
-    ${orderBy}
-    ${limit}
-  `,
-    params,
+      SELECT
+        cols.id AS col_id,
+        col_name,
+        col_group_long AS col_group,
+        col_groups.id AS col_group_id,
+        col AS group_col_id,
+        cols.lat,
+        cols.lng,
+        round(cols.col_area::numeric, 1) AS col_area,
+        cols.project_id,
+        col_type,
+        string_agg(col_refs.ref_id::varchar, '|') AS refs
+        ${geo}
+      FROM macrostrat.cols
+             LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
+             LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
+             LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id`,
+    {
+      whereClauses,
+      groupByClauses,
+      orderByClauses,
+      limit,
+    },
   );
+
+  const result = await larkin.queryPgAsync("macrostrat", sql, params);
 
   return result.rows;
 }

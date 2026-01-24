@@ -61,6 +61,7 @@ interface FilterStatements {
   withStatements?: Record<string, string>;
   whereClauses?: string[];
   orderByClauses?: string[];
+  groupByClauses?: string[];
   limit?: number;
 }
 
@@ -74,13 +75,14 @@ export function getColumnFilters(req): FilterDefinition {
   const whereClauses = [];
   let params: any = {};
   const orderByClauses = [];
+  const groupByClauses = [];
 
   if (req.query.lat && req.query.lng) {
-    const geomRepr = `ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)`;
+    const geomRepr = `ST_SetSRID(ST_MakePoint(:lng, :lat), :srid)`;
 
     params = {
       ...params,
-      lat: req.query.lat,
+      lat: parseFloat(req.query.lat),
       lng: larkin.normalizeLng(req.query.lng),
       srid: 4326,
     };
@@ -95,6 +97,7 @@ export function getColumnFilters(req): FilterDefinition {
     } else {
       whereClauses.push(`ST_Contains(poly_geom, ${geomRepr})`);
     }
+    groupByClauses.push("poly_geom");
     // Order by distance to point
     orderByClauses.push(`ST_Distance(ST_Centroid(poly_geom), ${geomRepr})`);
   }
@@ -116,6 +119,9 @@ export function getColumnFilters(req): FilterDefinition {
         `ST_Distance(ST_Centroid(poly_geom), (${containingGeomSubquery}))`,
       );
     }
+    if (!groupByClauses.includes("poly_geom")) {
+      groupByClauses.push("poly_geom");
+    }
   }
 
   if (req.query.col_group_id) {
@@ -130,14 +136,19 @@ export function getColumnFilters(req): FilterDefinition {
     whereClauses,
     params,
     orderByClauses,
+    groupByClauses,
   };
 }
 
-function buildSQLQuery(baseQuery: string, filters: FilterStatements): string {
+export function buildSQLQuery(
+  baseQuery: string,
+  filters: FilterStatements,
+): string {
   const {
     withStatements = {},
     whereClauses = [],
     orderByClauses = [],
+    groupByClauses = [],
     limit,
   } = filters;
   let sql = "";
@@ -146,17 +157,22 @@ function buildSQLQuery(baseQuery: string, filters: FilterStatements): string {
     for (const [key, value] of Object.entries(filters.withStatements)) {
       withStrings.push(`${key} AS (${value})`);
     }
-    sql += `WITH ${withStrings.join(", ")} `;
+    sql += `WITH ${withStrings.join(", ")}\n`;
   }
   sql += baseQuery;
   if (whereClauses.length > 0) {
-    sql += " WHERE " + whereClauses.join(" AND ");
+    sql += "\nWHERE " + whereClauses.join("\nAND ");
   }
+
+  if (groupByClauses.length > 0) {
+    sql += "\nGROUP BY " + groupByClauses.join(",\n");
+  }
+
   if (orderByClauses.length > 0) {
-    sql += " ORDER BY " + orderByClauses.join(", ");
+    sql += "\nORDER BY " + orderByClauses.join(",\n");
   }
   if (limit) {
-    sql += ` LIMIT ${limit} `;
+    sql += `\nLIMIT ${limit} `;
   }
 
   return sql;
