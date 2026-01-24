@@ -57,10 +57,17 @@ export function getUnitsDataCompat(req, callback) {
     });
 }
 
-interface FilterDefinition {
+interface FilterStatements {
+  withStatements?: Record<string, string>;
+  whereClauses?: string[];
+  orderByClauses?: string[];
+  limit?: number;
+}
+
+interface FilterDefinition extends FilterStatements {
   whereClauses: string[];
-  params: Record<string, any>;
   orderByClauses: string[];
+  params: Record<string, any>;
 }
 
 export function getColumnFilters(req): FilterDefinition {
@@ -126,14 +133,32 @@ export function getColumnFilters(req): FilterDefinition {
   };
 }
 
-function buildSQLQuery(baseQuery: string, filters: FilterDefinition): string {
-  let sql = baseQuery;
-  if (filters.whereClauses.length > 0) {
-    sql += " WHERE " + filters.whereClauses.join(" AND ");
+function buildSQLQuery(baseQuery: string, filters: FilterStatements): string {
+  const {
+    withStatements = {},
+    whereClauses = [],
+    orderByClauses = [],
+    limit,
+  } = filters;
+  let sql = "";
+  if (Object.keys(withStatements).length > 0) {
+    const withStrings = [];
+    for (const [key, value] of Object.entries(filters.withStatements)) {
+      withStrings.push(`${key} AS (${value})`);
+    }
+    sql += `WITH ${withStrings.join(", ")} `;
   }
-  if (filters.orderByClauses.length > 0) {
-    sql += " ORDER BY " + filters.orderByClauses.join(", ");
+  sql += baseQuery;
+  if (whereClauses.length > 0) {
+    sql += " WHERE " + whereClauses.join(" AND ");
   }
+  if (orderByClauses.length > 0) {
+    sql += " ORDER BY " + orderByClauses.join(", ");
+  }
+  if (limit) {
+    sql += ` LIMIT ${limit} `;
+  }
+
   return sql;
 }
 
@@ -295,8 +320,7 @@ function checkParamValidity(req) {
 }
 
 async function buildAndExecuteMainQuery(req, internal = false) {
-  const limit =
-    "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
+  const limit = "sample" in req.query ? (internal ? 15 : 5) : null;
 
   let { params, whereClauses, orderByClauses } = getColumnFilters(req);
 
@@ -505,9 +529,6 @@ async function buildAndExecuteMainQuery(req, internal = false) {
     );
   }
 
-  // Build final WHERE clause
-  const where = whereClauses.join(" AND ");
-
   const measureField =
     "summarize_measures" in req.query
       ? "lookup_unit_attrs_api.measure_long"
@@ -574,29 +595,31 @@ async function buildAndExecuteMainQuery(req, internal = false) {
       ", lookup_units.clat::float, lookup_units.clng::float, lookup_units.t_plat::float, lookup_units.t_plng::float, lookup_units.b_plat::float, lookup_units.b_plng::float";
   }
 
-  let orderBy = "";
-  if (orderByClauses.length > 0) {
-    orderBy = `ORDER BY ${orderByClauses.join(", ")}`;
-  }
+  const baseSQL = `
+    SELECT ${columnList}
+    FROM macrostrat.units
+    LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+    LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
+    LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+    LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+    LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
+    LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+    LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+    LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
+  `;
 
-  const sql = `
-    WITH orig_query AS (
-      SELECT ${columnList}
-        FROM macrostrat.units
-               LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-               LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
-               LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
-               LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
-               LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-               LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-               LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-               LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
-        WHERE ${where}
-              ${orderBy}
-    )
-    SELECT * FROM orig_query
-    ORDER BY t_age ASC
-      ${limit}`;
+  const orig_query = buildSQLQuery(baseSQL, {
+    whereClauses,
+    orderByClauses,
+  });
+
+  const sql = buildSQLQuery("SELECT * FROM orig_query", {
+    withStatements: { orig_query },
+    orderByClauses: ["t_age ASC"],
+    limit,
+  });
+
+  console.log(sql);
 
   const result = await larkin.queryPgAsync("burwell", sql, params);
 
