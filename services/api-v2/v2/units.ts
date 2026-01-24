@@ -67,19 +67,21 @@ export async function getColumnIDsForQuery(req): Promise<number[]> {
                   ST_GeomFromText(:point, 4326)
                 )`;
 
-    if (req.query.adjacents === "true") {
+    if (req.query.adjacents) {
+      // Selector to get all columns that are near a containing geometry
+      const containingGeomSubquery = `
+        SELECT poly_geom
+        FROM macrostrat.cols
+        WHERE ST_Contains(
+                poly_geom,
+                ST_SetSrid(ST_GeomFromText(:point), 4326)
+              )
+      `;
+
       sql = `
-        WITH containing_geom AS (
-          SELECT poly_geom
-          FROM macrostrat.cols
-          WHERE ST_Contains(poly_geom, ST_GeomFromText(:point, 4326))
-        )
         SELECT id
         FROM macrostrat.cols
-        WHERE ST_Intersects(
-            (SELECT * FROM containing_geom),
-            poly_geom
-          )
+        WHERE ST_Intersects((${containingGeomSubquery}), poly_geom)
         ORDER BY ST_Distance(
            ST_Centroid(poly_geom),
            ST_GeomFromText(:point, 4326)
@@ -91,19 +93,20 @@ export async function getColumnIDsForQuery(req): Promise<number[]> {
   }
 
   if (req.query.col_id && req.query.adjacents) {
+    const containingGeomSubquery = `
+      SELECT poly_geom
+      FROM macrostrat.cols
+      WHERE id = ANY(:col_ids)
+    `;
+
     const col_ids = larkin.parseMultipleIds(req.query.col_id);
-    let sql = `WITH containing_geom AS (
-        SELECT poly_geom
-        FROM macrostrat.cols
-        WHERE id = ANY(:col_ids)
-      )
+    let sql = `WITH containing_geom AS (${containingGeomSubquery})
        SELECT id FROM macrostrat.cols
        WHERE ST_Intersects((SELECT * FROM containing_geom), poly_geom)`;
 
     if (col_ids.length === 1) {
       // If only one col_id, order by distance to that column
-      sql +=
-        " ORDER BY ST_Distance(ST_Centroid(poly_geom), (SELECT * FROM containing_geom))";
+      sql += ` ORDER BY ST_Distance(ST_Centroid(poly_geom), (${containingGeomSubquery}))`;
     }
 
     const response = await larkin.queryPgAsync("burwell", sql, {
@@ -298,11 +301,11 @@ async function determineAgeRange(req) {
 }
 
 async function buildAndExecuteMainQuery(req, data, internal = false) {
-  let params = {};
+  let params: any = {};
   const whereClauses = [];
   const limit =
     "sample" in req.query ? (internal ? " LIMIT 15 " : " LIMIT 5") : "";
-  const orderby = [];
+  const orderByClauses = [];
 
   larkin.trace(data);
 
@@ -392,7 +395,7 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
   if (req.query.unit_id) {
     whereClauses.push("units.id = ANY(:unit_id)");
     params.unit_id = larkin.parseMultipleIds(req.query.unit_id);
-    orderby.push("units.id");
+    orderByClauses.push("units.id ASC");
   }
 
   // Section ID filter
@@ -583,19 +586,26 @@ async function buildAndExecuteMainQuery(req, data, internal = false) {
       ", lookup_units.clat::float, lookup_units.clng::float, lookup_units.t_plat::float, lookup_units.t_plng::float, lookup_units.b_plat::float, lookup_units.b_plng::float";
   }
 
+  let orderBy = "";
+  if (orderByClauses.length > 0) {
+    orderBy = `ORDER BY ${orderByClauses.join(", ")}`;
+  }
+
   const sql = `
-    WITH orig_query AS (SELECT ${columnList}
-                        FROM macrostrat.units
-                               LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
-                               LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
-                               LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
-                               LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
-                               LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
-                               LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
-                               LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
-                               LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
-                        WHERE ${where}
-                                ${orderby.length > 0 ? `ORDER BY ${orderby.join(", ")} ASC` : ""})
+    WITH orig_query AS (
+      SELECT ${columnList}
+        FROM macrostrat.units
+               LEFT JOIN macrostrat.lookup_unit_attrs_api ON lookup_unit_attrs_api.unit_id = units.id
+               LEFT JOIN macrostrat.lookup_units ON units.id = lookup_units.unit_id
+               LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id=units.id
+               LEFT JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+               LEFT JOIN macrostrat.cols ON units_sections.col_id = cols.id
+               LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id
+               LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+               LEFT JOIN macrostrat.unit_notes ON unit_notes.unit_id=units.id
+        WHERE ${where}
+              ${orderBy}
+    )
     SELECT * FROM orig_query
     ORDER BY t_age ASC
       ${limit}`;
