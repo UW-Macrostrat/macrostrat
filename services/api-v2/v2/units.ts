@@ -52,15 +52,18 @@ export function getUnitsDataCompat(req, callback) {
     });
 }
 
-export async function getColumnIDsForQuery(req): Promise<number[]> {
+interface FilterDefinition {
+  whereClauses: string[];
+  params: Record<string, any>;
+  orderByClauses: string[];
+}
+
+export function getColumnFilters(req): FilterDefinition {
   const whereClauses = [];
   let params: any = {};
   const orderByClauses = [];
 
   if (req.query.lat && req.query.lng) {
-    const point =
-      "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";
-
     const geomRepr = `ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)`;
 
     params = {
@@ -111,26 +114,37 @@ export async function getColumnIDsForQuery(req): Promise<number[]> {
     };
   }
 
-  if (whereClauses.length == 0 && orderByClauses.length == 0) {
+  return {
+    whereClauses,
+    params,
+    orderByClauses,
+  };
+}
+
+function buildSQLQuery(baseQuery: string, filters: FilterDefinition): string {
+  let sql = baseQuery;
+  if (filters.whereClauses.length > 0) {
+    sql += " WHERE " + filters.whereClauses.join(" AND ");
+  }
+  if (filters.orderByClauses.length > 0) {
+    sql += " ORDER BY " + filters.orderByClauses.join(", ");
+  }
+  return sql;
+}
+
+export async function getColumnIDsForQuery(req): Promise<number[]> {
+  const filterDef = getColumnFilters(req);
+
+  if (
+    filterDef.whereClauses.length === 0 &&
+    filterDef.orderByClauses.length === 0
+  ) {
     return undefined;
   }
 
-  let where = "";
-  if (whereClauses.length > 0) {
-    where = "WHERE " + whereClauses.join(" AND ");
-  }
+  const sql = buildSQLQuery(`SELECT id FROM macrostrat.cols`, filterDef);
 
-  let orderBy = "";
-  if (orderByClauses.length > 0) {
-    orderBy = "ORDER BY " + orderByClauses.join(", ");
-  }
-
-  const sql = `
-      SELECT id
-      FROM macrostrat.cols
-      WHERE ${where}
-      ${orderBy}`;
-  const response = await larkin.queryPgAsync("burwell", sql, params);
+  const response = await larkin.queryPgAsync("burwell", sql, filterDef.params);
 
   return response.rows.map((d) => d.id);
 }
