@@ -52,7 +52,7 @@ export function getUnitsDataCompat(req, callback) {
     });
 }
 
-async function getColumnIDsForQuery(req): Promise<number[]> {
+export async function getColumnIDsForQuery(req): Promise<number[]> {
   if (req.query.lat && req.query.lng) {
     const point =
       "POINT(" + larkin.normalizeLng(req.query.lng) + " " + req.query.lat + ")";

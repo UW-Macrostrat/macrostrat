@@ -1,6 +1,5 @@
-import { getUnitsData } from "./units";
+import { getColumnIDsForQuery, getUnitsData } from "./units";
 
-import * as api from "./api";
 import dbgeo from "dbgeo";
 import * as larkin from "./larkin";
 import _ from "underscore";
@@ -156,6 +155,10 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
   } else if (req.query.col_id != null) {
     params = {
       col_ids: larkin.parseMultipleIds(req.query.col_id),
+    };
+  } else {
+    params = {
+      col_ids: await getColumnIDsForQuery(req),
     };
   }
 
