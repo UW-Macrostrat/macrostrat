@@ -42,6 +42,9 @@ module.exports = function (req, res, next, cb) {
         req.query.strat_name_concept_id,
       );
     }
+  } else if ("name" in req.query) {
+    where.push("name = ANY(:concept_name)");
+    params["concept_name"] = req.query.name;
   } else if (req.query.strat_name_id) {
     where.push(
       "concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))",
