@@ -1,6 +1,5 @@
 var api = require("../api"),
   larkin = require("../larkin"),
-  multiline = require("multiline"),
   dbgeo = require("dbgeo"),
   gp = require("geojson-precision");
 

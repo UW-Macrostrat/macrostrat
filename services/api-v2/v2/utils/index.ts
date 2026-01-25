@@ -36,3 +36,53 @@ export function buildProjectsFilter(
 
   return [whereClauses, params];
 }
+
+export interface FilterStatements {
+  withStatements?: Record<string, string>;
+  whereClauses?: string[];
+  orderByClauses?: string[];
+  groupByClauses?: string[];
+  limit?: number;
+}
+
+export function buildSQLQuery(
+  baseQuery: string,
+  filters: FilterStatements,
+): string {
+  const {
+    withStatements = {},
+    whereClauses = [],
+    orderByClauses = [],
+    groupByClauses = [],
+    limit,
+  } = filters;
+  let sql = "";
+  if (Object.keys(withStatements).length > 0) {
+    const withStrings = [];
+    for (const [key, value] of Object.entries(filters.withStatements)) {
+      withStrings.push(`${key} AS (${value})`);
+    }
+    sql += `WITH ${dedupe(withStrings).join(", ")}\n`;
+  }
+  sql += baseQuery;
+  if (whereClauses.length > 0) {
+    sql += "\nWHERE " + dedupe(whereClauses).join("\nAND ");
+  }
+
+  if (groupByClauses.length > 0) {
+    sql += "\nGROUP BY " + dedupe(groupByClauses).join(",\n");
+  }
+
+  if (orderByClauses.length > 0) {
+    sql += "\nORDER BY " + dedupe(orderByClauses).join(",\n");
+  }
+  if (limit) {
+    sql += `\nLIMIT ${limit} `;
+  }
+
+  return sql;
+}
+
+function dedupe(arr: any[]) {
+  return Array.from(new Set(arr));
+}

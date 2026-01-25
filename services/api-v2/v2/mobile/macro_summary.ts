@@ -1,4 +1,4 @@
-import { handleUnitsRoute } from "../units";
+import { getUnitsDataCompat } from "../units";
 
 var api = require("../api"),
   async = require("async"),
@@ -224,10 +224,8 @@ module.exports = function (req, res, next) {
               },
             );
           } else {
-            handleUnitsRoute(
+            getUnitsDataCompat(
               { query: { unit_id: units[0].units } },
-              null,
-              null,
               function (error, result) {
                 if (error) return callback(error);
 

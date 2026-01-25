@@ -1,15 +1,15 @@
-var api = require("../api");
-var larkin = require("../larkin");
+const api = require("../api");
+const larkin = require("../larkin");
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
     return larkin.info(req, res, next);
   }
 
-  var where = [];
+  let where = [];
   //changed back to dict
-  var params = {};
-  var limit = req.query.hasOwnProperty("sample") ? "LIMIT 5" : "";
+  let params = {};
+  let limit = req.query.hasOwnProperty("sample") ? "LIMIT 5" : "";
 
   //updated sql variables to named parameters using yesql
   if (req.query.structure_class) {
@@ -35,7 +35,7 @@ module.exports = function (req, res, next, cb) {
 
   where = where.length ? "WHERE " + where.join(" AND ") : "";
 
-  var sql = `
+  const sql = `
     SELECT
       structures.id AS structure_id,
       structure AS name,

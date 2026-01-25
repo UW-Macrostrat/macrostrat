@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "moduleResolution": "NodeNext",
-    "module": "NodeNext",
-    "skipLibCheck": true
+    "moduleResolution": "Bundler",
+    "module": "preserve",
+    "skipLibCheck": true,
+    "esModuleInterop": true
   },
   "include": [
     "./v2",

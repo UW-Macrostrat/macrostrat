@@ -3,12 +3,11 @@ var async = require("async"),
   credentials = require("./credentials"),
   csv = require("csv-express"),
   api = require("./api"),
-  defs = require("./defs"),
-  validator = require("validator"),
-  http = require("http"),
-  portscanner = require("portscanner");
+  validator = require("validator");
 const named = require("yesql").pg;
 const { Client, Pool } = require("pg");
+
+import defs from "./defs";
 
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
@@ -20,7 +19,7 @@ enum APICapability {
   // Store a global mapping of connection pools, so we don't overload PG with connections
   const connectionPoolStore: { [key: string]: typeof Pool } = {};
 
-  larkin.trace = function (type: string, ...args: any[]) {
+  larkin.trace = function (...args: any[]) {
     if (credentials.debug === false) {
       return;
     }
@@ -269,7 +268,7 @@ enum APICapability {
   larkin.error = function (req, res, next, message, code) {
     var responseMessage = message
       ? message
-      : "Something went wrong. Please contact Shanan Peters.";
+      : "Something went wrong. Please contact the Macrostrat team.";
     if ((code && code === 500) || code === 404) {
       res.status(code ? code : 200).json({
         error: {
@@ -640,7 +639,7 @@ enum APICapability {
     }
   };
 
-  // Check if Redis is available
+  /**
   portscanner.checkPortStatus(6379, "127.0.0.1", function (error, status) {
     if (status === "open") {
       larkin.log("Using Redis cache for columns");
@@ -661,7 +660,6 @@ enum APICapability {
     console.log("Initialized cache");
   });
 
-  /*
     On API startup cache the following:
       + All columns (with geometries)
       + All columns (without geometries)

@@ -1,6 +1,5 @@
-var api = require("../api"),
-  larkin = require("../larkin"),
-  multiline = require("multiline");
+const api = require("../api");
+const larkin = require("../larkin");
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {

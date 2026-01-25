@@ -55,8 +55,6 @@ if (process.env.MACROSTRAT_DATABASE != null) {
     rockdDatabaseURL,
     whosOnFirstDatabaseURL,
   };
-
-  console.log(exports.pg);
 }
 //added exports.pg to https://github.com/UW-Macrostrat/tiger-macrostrat-config/blob/main/manifests/development/dev-web-stack/credentials.js
 else {

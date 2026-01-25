@@ -1,5 +1,7 @@
 "use strict";
 
+import { columnRouteHandlerInternal, getColumnDataCompat } from "../columns";
+
 var api = require("../api"),
   async = require("async"),
   larkin = require("../larkin");
@@ -108,7 +110,7 @@ module.exports = function (req, res, next) {
 
       // Query Macrostrat for polygon
       column: function (callback) {
-        require("../columns")(req, null, null, (error, result) => {
+        getColumnDataCompat(req, (error, result) => {
           if (error) {
             console.warn("[mobile/point] columns() failed:", error);
             return callback(null, "");

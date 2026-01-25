@@ -1,17 +1,18 @@
-const dotenv = require("dotenv");
+import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
-import { buildAPI } from "./v2";
+import express from "express";
+import bodyParser from "body-parser";
 
-var express = require("express"),
-  bodyParser = require("body-parser");
 //defs = require("./v2/defs"),
 
 //TODO: update port to designated env.
 const listenPort = process.argv[2] ?? process.env.PORT ?? 5000;
 
 async function runServer() {
+  const buildAPI = await import("./v2/index").then((mod) => mod.buildAPI);
+
   const app = express();
   // parse application/x-www-form-urlencoded
   app.use(bodyParser.urlencoded({ extended: false }));
@@ -27,7 +28,7 @@ async function runServer() {
   // Load and prefix all routes with /api and appropriate version
   app.use("/v2", v2);
 
-  app.route("/v1*").get(function (req, res, next) {
+  app.route("/v1*splat").get(function (req, res, next) {
     res.status(410).send({
       error:
         "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",

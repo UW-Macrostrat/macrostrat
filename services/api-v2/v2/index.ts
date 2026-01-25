@@ -1,7 +1,10 @@
 const api = require("./api");
 const larkin = require("./larkin");
 
+import { handleColumnRoute } from "./columns";
 import { handleUnitsRoute } from "./units";
+import { handleFossilsRoute } from "./fossils";
+import { handleSectionsRoute } from "./sections";
 
 export async function buildAPI() {
   await larkin.checkCapabilities(api);
@@ -22,17 +25,10 @@ export async function buildAPI() {
 
   api.route("/columns/refresh-cache").get(require("./column-cache-refresh"));
 
-  api.route("/columns").get(function (req, res, next) {
-    require("./columns")(req, res, next);
-  });
-
-  api.route("/sections").get(require("./sections"));
-
-  api.route("/units").get(function (req, res, next) {
-    handleUnitsRoute(req, res, next);
-  });
-
-  api.route("/fossils").get(require("./fossils"));
+  api.route("/columns").get(handleColumnRoute);
+  api.route("/sections").get(handleSectionsRoute);
+  api.route("/units").get(handleUnitsRoute);
+  api.route("/fossils").get(handleFossilsRoute);
 
   api.route("/stats").get(require("./stats"));
 
@@ -92,7 +88,7 @@ export async function buildAPI() {
 
   api.route("/hex-summary/max/:zoom").get(require("./hex_summary_max"));
 
-  api.route("*").get(require("./catchall"));
+  api.route("*splat").get(require("./catchall"));
 
   api.use(function (err, req, res, next) {
     if (err.status !== 404) {

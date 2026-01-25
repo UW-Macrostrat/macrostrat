@@ -2,7 +2,7 @@ var request = require("supertest"),
   validators = require("../validators"),
   settings = require("../settings");
 
-it("should return metadata", function (done) {
+it("sections - should return metadata", function (done) {
   request(settings.host)
     .get("/sections")
     .expect(validators.aSuccessfulRequest)
@@ -14,7 +14,7 @@ it("should return metadata", function (done) {
     });
 });
 
-it("should return a sample", function (done) {
+it("sections - should return a sample", function (done) {
   request(settings.host)
     .get("/sections?sample")
     .expect(validators.aSuccessfulRequest)
@@ -25,7 +25,7 @@ it("should return a sample", function (done) {
     });
 });
 
-it("should accept a column id", function (done) {
+it("sections - should accept a column id", function (done) {
   request(settings.host)
     .get("/sections?col_id=49")
     .expect(validators.aSuccessfulRequest)
@@ -37,7 +37,7 @@ it("should accept a column id", function (done) {
     });
 });
 
-it("should return csv", function (done) {
+it("sections - should return csv", function (done) {
   request(settings.host)
     .get("/sections?col_id=17&format=csv")
     .expect(validators.aSuccessfulRequest)
