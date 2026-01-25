@@ -28,7 +28,7 @@ async function runServer() {
   // Load and prefix all routes with /api and appropriate version
   app.use("/v2", v2);
 
-  app.route("/v1*").get(function (req, res, next) {
+  app.route("/v1*splat").get(function (req, res, next) {
     res.status(410).send({
       error:
         "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",

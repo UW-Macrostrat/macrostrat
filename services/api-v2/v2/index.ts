@@ -88,7 +88,7 @@ export async function buildAPI() {
 
   api.route("/hex-summary/max/:zoom").get(require("./hex_summary_max"));
 
-  api.route("*").get(require("./catchall"));
+  api.route("*splat").get(require("./catchall"));
 
   api.use(function (err, req, res, next) {
     if (err.status !== 404) {
