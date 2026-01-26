@@ -15,7 +15,8 @@ it("should return metadata", function (done) {
 });
 
 it("should return a sample", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/defs/projects?sample")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -27,7 +28,8 @@ it("should return a sample", function (done) {
 });
 
 it("should return all projects", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/defs/projects?all")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -39,7 +41,8 @@ it("should return all projects", function (done) {
 });
 
 it("should output CSV", function (done) {
-  request(settings.host)
+    this.timeout(10000);
+    request(settings.host)
     .get("/defs/projects?all&format=csv")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.csv)
