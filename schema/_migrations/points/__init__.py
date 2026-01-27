@@ -6,6 +6,4 @@ class PointsMigration(Migration):
     subsystem = "core"
     description = """ Move the points table to schema maps """
     readiness_state = "ga"
-    depends_on = ["baseline"]
-
     postconditions = [exists("maps", "points"), view_exists("points", "points")]

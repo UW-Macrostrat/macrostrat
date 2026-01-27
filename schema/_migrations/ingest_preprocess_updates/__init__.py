@@ -11,6 +11,7 @@ class IngestPreprocessUpdates(Migration):
     subsystem = "maps"
     description = "Align maps_metadata.ingest_process table across envs."
     depends_on = ["ingest-state-type"]
+    readiness_state = "ga"
 
     preconditions = [
         has_columns("maps_metadata", "ingest_process", "id"),

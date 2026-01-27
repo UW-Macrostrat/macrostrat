@@ -1,10 +1,11 @@
-from macrostrat.core.migrations import Migration, column_type_is, exists, has_columns
+from macrostrat.core.migrations import Migration, column_type_is, exists, has_columns, ReadinessState
 
 
 class MapsSchemaUpdates(Migration):
     name = "maps-schema-updates"
     subsystem = "maps"
     depends_on = ["ingest-state-type", "maps-sources"]
+    readiness_state = ReadinessState.GA
 
     preconditions = [
         exists("maps", "sources"),

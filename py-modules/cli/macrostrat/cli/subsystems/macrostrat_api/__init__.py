@@ -3,24 +3,15 @@ The macrostrat_api subsystem defines the schema for the Macrostrat API, used
 primarily in Macrostrat's column-builder application and set of routes.
 """
 
+from macrostrat.app_frame import compose
 from pathlib import Path
 
-from macrostrat.app_frame import compose
 from macrostrat.core import MacrostratSubsystem
-from macrostrat.core.migrations import Migration, view_exists
-
-from ...database import SubsystemSchemaDefinition, get_db
+from ...database import get_db
 from ...database.utils import setup_postgrest_access
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "schema"
-
-macrostrat_api = SubsystemSchemaDefinition(
-    name="macrostrat-api",
-    fixtures=[fixtures_dir, setup_postgrest_access("macrostrat_api")],
-)
-
-# TODO: align schema migrations/fixtures with subsystems
 
 
 class MacrostratAPISubsystem(MacrostratSubsystem):
@@ -47,13 +38,3 @@ class MacrostratAPISubsystem(MacrostratSubsystem):
         # fully reloaded the schema.
         if self.app.settings.get("compose_root", None) is not None:
             compose("kill -s SIGUSR1 postgrest")
-
-
-class MacrostratAPIMigration(Migration):
-    name = "macrostrat-api"
-    readiness_state = "ga"
-    postconditions = [view_exists("macrostrat_api", "projects")]
-
-    def apply(self, db):
-        db.run_fixtures(fixtures_dir)
-        setup_postgrest_access("macrostrat_api")(db)
