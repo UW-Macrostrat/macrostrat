@@ -3,10 +3,11 @@ The macrostrat_api subsystem defines the schema for the Macrostrat API, used
 primarily in Macrostrat's column-builder application and set of routes.
 """
 
-from macrostrat.app_frame import compose
 from pathlib import Path
 
+from macrostrat.app_frame import compose
 from macrostrat.core import MacrostratSubsystem
+
 from ...database import get_db
 from ...database.utils import setup_postgrest_access
 

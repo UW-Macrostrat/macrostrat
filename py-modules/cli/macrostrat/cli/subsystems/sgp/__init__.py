@@ -3,9 +3,11 @@ Subsystem for SGP matching
 """
 
 from pathlib import Path
+
 from typer import Typer
 
 from macrostrat.cli.database import get_db
+
 from .match import log_matches, match_sgp_data_cmd
 from .paleogeography import compute_paleo_positions
 from .utils import get_sgp_db

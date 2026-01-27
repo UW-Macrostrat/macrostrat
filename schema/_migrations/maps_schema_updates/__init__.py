@@ -1,4 +1,10 @@
-from macrostrat.core.migrations import Migration, column_type_is, exists, has_columns, ReadinessState
+from macrostrat.core.migrations import (
+    Migration,
+    ReadinessState,
+    column_type_is,
+    exists,
+    has_columns,
+)
 
 
 class MapsSchemaUpdates(Migration):

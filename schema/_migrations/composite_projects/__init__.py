@@ -2,10 +2,10 @@ from pathlib import Path
 
 from macrostrat.core.migrations import (
     Migration,
+    ReadinessState,
     _not,
     exists,
     has_columns,
-    ReadinessState,
 )
 
 
