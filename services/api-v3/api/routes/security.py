@@ -358,6 +358,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
             )
 
             # validate jwt https://dev.macrostrat.org/dev/me
+            # TODO remove the groups and sub and add the user_name
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
@@ -397,7 +398,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 samesite=samesite,
                 secure=secure,
             )
-
+            # TODO remove the token type
             refresh_jwt = jwt.encode(
                 {
                     "user_id": user.id,
@@ -463,6 +464,7 @@ async def refresh_token(
         else "web_user"
     )
     # setting new access cookie
+    # TODO can remove groups, sub. add user_name.
     access_token = create_access_token(
         data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
     )

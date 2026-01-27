@@ -30,10 +30,15 @@ class TEST_SOURCE_TABLE:
     to_filter = {"PTYPE": "eq.Qff"}
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def api_client() -> TestClient:
-    with TestClient(app) as api_client:
-        yield api_client
+    headers = {}
+    test_token = os.environ.get("TEST_ACCESS_TOKEN")
+    if test_token:
+        headers["access_token"] = f"Bearer {test_token}"
+
+    with TestClient(app, headers=headers) as client:
+        yield client
 
 
 @pytest.fixture
