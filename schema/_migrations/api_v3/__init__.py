@@ -14,5 +14,8 @@ class BaselineMigration(Migration):
     postconditions = [
         exists("storage", "object"),
         exists("maps_metadata", "ingest_process", "ingest_process_tag"),
-        exists("macrostrat_auth", "user", "group"),
+        exists(
+            "macrostrat_auth",
+            "user",
+        ),
     ]

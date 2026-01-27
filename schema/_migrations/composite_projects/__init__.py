@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import Migration, _not, exists, has_columns
+from macrostrat.core.migrations import (
+    Migration,
+    _not,
+    exists,
+    has_columns,
+    ReadinessState,
+)
 
 
 def check_slug_not_nullable(db):
@@ -34,6 +40,7 @@ class CompositeProjects(Migration):
     description = "Composite projects support"
     preconditions = [_not(a) for a in success]
     postconditions = success
+    readiness_state = ReadinessState.GA
     fixtures = [
         here / "projects-evolution.sql",
     ]
@@ -44,6 +51,7 @@ class CompositeProjectFunctions(Migration):
     subsystem = "columns"
     description = "Composite projects functions"
     depends_on = ["composite-projects"]
+    readiness_state = ReadinessState.GA
     always_apply = True
     fixtures = [
         here / "project-functions.sql",

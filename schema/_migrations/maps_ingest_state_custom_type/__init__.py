@@ -1,5 +1,11 @@
-from macrostrat.core.migrations import Migration, _not, custom_type_exists
 from macrostrat.database import Database, Identifier
+
+from macrostrat.core.migrations import (
+    Migration,
+    _not,
+    custom_type_exists,
+    ReadinessState,
+)
 
 
 def ingest_type_exists_in_wrong_schema(db: Database) -> bool:
@@ -18,8 +24,7 @@ class MapsIngestStateCustomTypeMigration(Migration):
     - Relocate custom types that drives the map ingestion process.
     - Remove duplicate custom types from the public schema.
     """
-
-    depends_on = ["baseline", "macrostrat-mariadb"]
+    readiness_state = ReadinessState.GA
 
     postconditions = [
         custom_type_exists("maps", "ingest_state"),
