@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="Macrostrat (staging)" uuid="eba34ad1-e18d-43fd-b6c1-38afb2111b1b">
+    <data-source source="LOCAL" name="Macrostrat Staging" uuid="eba34ad1-e18d-43fd-b6c1-38afb2111b1b">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.postgresql.Driver</jdbc-driver>

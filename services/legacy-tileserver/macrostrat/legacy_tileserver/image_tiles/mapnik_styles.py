@@ -180,22 +180,24 @@ def create_polygon_query(scale):
     )
 
 
-def create_line_query(scale):
-    line_sql = " UNION ALL ".join(
-        f"SELECT * FROM lines.{s}" for s in layer_order[scale]
-    )
+def create_line_query(scale: str) -> str:
     return dedent(
         f"""
         SELECT
-            x.line_id,
-            x.geom,
-            q.direction,
-            q.type
+          x.geom AS geom,
+          x.line_id,
+          ml.direction_legacy AS direction,
+          ml.type_legacy AS type
         FROM carto.lines x
-        LEFT JOIN ( {line_sql} ) q
-          ON q.line_id = x.line_id
-        LEFT JOIN maps.sources ON x.source_id = sources.source_id
-        WHERE sources.status_code = 'active'
-          AND x.scale = '{scale}'
-    """
+        JOIN maps.sources s
+          ON s.source_id = x.source_id
+         AND s.status_code = 'active'
+        LEFT JOIN maps.lines ml
+          ON ml.line_id = x.line_id
+          AND ml.scale = x.scale
+        WHERE x.scale = '{scale}'
+          AND x.geom && !bbox!
+        """
     )
+
+

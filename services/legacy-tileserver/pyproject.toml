@@ -1,6 +1,6 @@
 [project]
 name = "macrostrat.legacy-tileserver"
-version = "2.3.1"
+version = "2.3.2"
 description = "Macrostrat legacy tile server"
 authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
 requires-python = ">=3.9,<3.10"
