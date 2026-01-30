@@ -199,5 +199,3 @@ def create_line_query(scale: str) -> str:
           AND x.geom && !bbox!
         """
     )
-
-
