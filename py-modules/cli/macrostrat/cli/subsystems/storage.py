@@ -78,7 +78,9 @@ def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
     show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
     src: str = Option("rockd-photo-backup", help="Source bucket that contains photos"),
-    dst: str = Option("rockd-photo-prod", help="Destination bucket to copy photos into"),
+    dst: str = Option(
+        "rockd-photo-prod", help="Destination bucket to copy photos into"
+    ),
 ):
     """Must be in the development env to run this command."""
     endpoint = settings.get("storage.endpoint")
