@@ -36,6 +36,7 @@ class InitialSchema(RockdMigration):
 
 class RockdTileUtils(RockdMigration):
     name = "tile-utils"
+    readiness_state = "ga"
     description = "Rockd tile utility functions"
 
     postconditions = [
@@ -52,6 +53,7 @@ class RockdTileUtils(RockdMigration):
 
 class UsageStatsTable(RockdMigration):
     name = "usage-stats-table"
+    readiness_state = "beta"
     description = "Create usage_stats table"
     postconditions = [
         # Check if the usage_stats table exists
@@ -65,6 +67,7 @@ class UsageStatsTable(RockdMigration):
 
 class ModelFeedbackSchema(RockdMigration):
     name = "model-feedback-schema"
+    readiness_state = "beta"
     description = "Add model feedback schema"
     postconditions = [
         # Check if the model_feedback table exists
@@ -79,6 +82,7 @@ class ModelFeedbackSchema(RockdMigration):
 
 class StraboIntegration(RockdMigration):
     name = "strabo-integration"
+    readiness_state = "beta"
     description = "Add Strabo integration tables"
     postconditions = [
         # Check if the strabo_integrations table exists
@@ -93,6 +97,7 @@ class StraboIntegration(RockdMigration):
 
 class UserPrivileges(RockdMigration):
     name = "user-privileges"
+    readiness_state = "ga"
     description = "Set default user privileges"
     always_apply = True
     fixtures = [
@@ -102,6 +107,7 @@ class UserPrivileges(RockdMigration):
 
 class IntegrationTokens(RockdMigration):
     name = "integration-tokens"
+    readiness_state = "beta"
     description = "Schema updates and new tables"
     depends_on = [
         "initial-schema",
