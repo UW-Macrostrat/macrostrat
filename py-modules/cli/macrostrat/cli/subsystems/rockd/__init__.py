@@ -1,24 +1,32 @@
+import asyncio
 import importlib
+import time
+from datetime import datetime, timedelta, timezone
 from os import environ
-from sqlalchemy import text
-from macrostrat.core import app as app_
-from typer import Argument, Option, Typer
+from pathlib import Path
+from typing import Any
+
+import typer
 from minio import Minio
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
+from rich.status import Status
+from rich.table import Table
+from sqlalchemy import text
+from typer import Argument, Option, Typer
+
+from macrostrat.cli.database.utils import engine_for_db_name
+from macrostrat.core import app as app_
 from macrostrat.core.migrations import _run_migrations
 from macrostrat.database import Database
-from pathlib import Path
-import typer
-from macrostrat.cli.database.utils import engine_for_db_name
-import asyncio
-from datetime import datetime, timedelta, timezone
-from rich.console import Console
-from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, TextColumn
-from rich.table import Table
-from typing import Any
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
-import time
-from rich.status import Status
-
 
 cli = Typer(help="Rockd database tools")
 settings = app_.settings
@@ -27,7 +35,6 @@ DUMP_BUCKET = "rockd-database-dumps"
 DUMP_SUFFIX = ".rockd.pg_dump"
 DEFAULT_LIMIT = 5
 DEFAULT_LOOKBACK_DAYS = 10
-
 
 
 def get_rockd_db() -> Database:
@@ -49,6 +56,7 @@ def parse_dump_datetime(object_name: str) -> datetime | None:
     except ValueError:
         return None
 
+
 def rockd_v1_s3_connection() -> Minio:
     endpoint = settings.get("storage.endpoint")
     access_key = settings.get("storage.rockd_backup_access")
@@ -69,6 +77,7 @@ def rockd_v1_s3_connection() -> Minio:
         secure=secure,
     )
 
+
 def list_recent_rockd_dumps(
     minio_client: Minio,
     *,
@@ -87,7 +96,9 @@ def list_recent_rockd_dumps(
         day_prefix = (now_utc - timedelta(days=i)).strftime("%Y-%m-%d")
 
         # Filenames are flat -> recursive=False is enough
-        for obj in minio_client.list_objects(bucket, prefix=day_prefix, recursive=False):
+        for obj in minio_client.list_objects(
+            bucket, prefix=day_prefix, recursive=False
+        ):
             if not obj.object_name.endswith(DUMP_SUFFIX):
                 continue
             dt = parse_dump_datetime(obj.object_name)
@@ -169,10 +180,6 @@ def download_object_with_progress(
     return dest_path
 
 
-
-
-
-
 @cli.command()
 def migrations(
     apply: bool = Option(False, "--apply", help="Actually run them"),
@@ -220,7 +227,9 @@ def migrations(
 def download_rockd_dump(
     dump_dst: str = Option(".", "--dump-dst", help="Destination directory"),
     name: str = Option(None, "--name", help="Exact dump filename/key to download"),
-    latest: bool = Option(False, "--latest", help="Download the most recent dump without prompting"),
+    latest: bool = Option(
+        False, "--latest", help="Download the most recent dump without prompting"
+    ),
     limit: int = Option(5, "--limit", help="How many recent dumps to show"),
     lookback_days: int = Option(10, "--lookback-days", help="How far back to search"),
 ):
@@ -283,29 +292,25 @@ def download_rockd_dump(
     console.print(f"[green]Saved[/green] to {dest_path}")
 
 
-
-
-
-
-
-
-
-
 @cli.command()
 def restore_rockd_dump(
     dump_file: str = Argument(..., help="Path to the .pg_dump file to restore"),
     *,
     jobs: int = Option(None, "--jobs", "-j"),
     version: str = Option(
-        None, "--version", "-v",
+        None,
+        "--version",
+        "-v",
         help="Postgres version or docker container to restore with (e.g. 15 or postgres:15)",
     ),
     force: bool = Option(
-        True, "--force/--no-force",
+        True,
+        "--force/--no-force",
         help="Terminate existing connections to rockd/rockd_backup as needed",
     ),
     drop_backup: bool = Option(
-        True, "--drop-backup/--keep-backup",
+        True,
+        "--drop-backup/--keep-backup",
         help="Drop rockd_backup first if it already exists",
     ),
 ):
@@ -337,15 +342,21 @@ def restore_rockd_dump(
 
     with admin_engine.connect() as conn:
         conn = conn.execution_options(isolation_level="AUTOCOMMIT")
-        rockd_exists = conn.execute(
-            text("SELECT 1 FROM pg_database WHERE datname = :n"),
-            {"n": target_db},
-        ).first() is not None
+        rockd_exists = (
+            conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :n"),
+                {"n": target_db},
+            ).first()
+            is not None
+        )
 
-        backup_exists = conn.execute(
-            text("SELECT 1 FROM pg_database WHERE datname = :n"),
-            {"n": backup_db},
-        ).first() is not None
+        backup_exists = (
+            conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :n"),
+                {"n": backup_db},
+            ).first()
+            is not None
+        )
 
         if backup_exists:
             if drop_backup:
@@ -357,7 +368,7 @@ def restore_rockd_dump(
             else:
                 # <-- critical missing branch in your version
                 raise RuntimeError(
-                    'rockd_backup already exists. Use --drop-backup to replace it.'
+                    "rockd_backup already exists. Use --drop-backup to replace it."
                 )
 
         if rockd_exists:
@@ -366,10 +377,9 @@ def restore_rockd_dump(
             conn.execute(text(f'ALTER DATABASE "{target_db}" RENAME TO "{backup_db}"'))
             typer.echo('Renamed "rockd" -> "rockd_backup"')
             if force:
-                terminate_connections(conn, backup_db)   # <-- add this
+                terminate_connections(conn, backup_db)  # <-- add this
         else:
             typer.echo('No existing "rockd" database found; skipping rename')
-
 
         conn.execute(text(f'CREATE DATABASE "{target_db}"'))
         typer.echo('Created fresh empty "rockd"')
@@ -379,7 +389,9 @@ def restore_rockd_dump(
     args = []
     if jobs is not None:
         args.extend(["--jobs", str(jobs)])
-    console.print(f"[bold]Starting restore[/bold] from {dump_path} (this may take a few minutes)")
+    console.print(
+        f"[bold]Starting restore[/bold] from {dump_path} (this may take a few minutes)"
+    )
 
     task = pg_restore_from_file(
         str(dump_path),
@@ -388,18 +400,21 @@ def restore_rockd_dump(
         postgres_container=db_container,
         create=False,
     )
+
     async def _run_with_heartbeat():
         start = time.time()
-        with console.status("[bold]Restoring (pg_restore running)...[/bold] 0s", spinner="dots") as status:
+        with console.status(
+            "[bold]Restoring (pg_restore running)...[/bold] 0s", spinner="dots"
+        ) as status:
             restore_task = asyncio.create_task(task)
             while not restore_task.done():
                 elapsed = int(time.time() - start)
-                status.update(f"[bold]Restoring (pg_restore running)...[/bold] {elapsed}s")
+                status.update(
+                    f"[bold]Restoring (pg_restore running)...[/bold] {elapsed}s"
+                )
                 await asyncio.sleep(0.5)
             return await restore_task  # propagate exceptions
 
     asyncio.run(_run_with_heartbeat())
 
     typer.echo(f'Restored "{target_db}" from {dump_path}')
-
-
