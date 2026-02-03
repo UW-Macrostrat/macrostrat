@@ -14,10 +14,12 @@ VERSION = $(shell grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | h
 TAG = $(NAME)-v$(VERSION)
 
 release:
-	# Ensure that the repository is clean
-	git diff-index --quiet HEAD --
+	uv sync
+	git add .
+	git commit -m "deploying"
 	git tag -a $(TAG) -m "Version $(TAG)"
-	git push origin $(TAG)
+	git push origin main --follow-tags
+
 
 test-fieldsite:
 	uv run pytest -q \
