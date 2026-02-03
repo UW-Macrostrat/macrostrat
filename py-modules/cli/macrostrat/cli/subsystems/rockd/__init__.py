@@ -18,6 +18,7 @@ from typing import Any
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 import time
 from rich.status import Status
+from ..storage import s3_bucket_migration
 
 
 cli = Typer(help="Rockd database tools")
@@ -402,4 +403,6 @@ def restore_rockd_dump(
 
     typer.echo(f'Restored "{target_db}" from {dump_path}')
 
+
+cli.command("s3-bucket-migration")(s3_bucket_migration)
 

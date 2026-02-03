@@ -80,6 +80,7 @@ def s3_bucket_migration(
     src: str = Option("rockd-photo-backup", help="Source bucket that contains photos"),
     dst: str = Option("rockd-photo-prod", help="Destination bucket to copy photos into"),
 ):
+    """Must be in the development env to run this command."""
     endpoint = settings.get("storage.endpoint")
     b_access = settings.get("storage.rockd_backup_access")
     b_secret = settings.get("storage.rockd_backup_secret")
