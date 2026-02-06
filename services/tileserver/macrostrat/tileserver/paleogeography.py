@@ -1,5 +1,6 @@
-from buildpg import render
 from typing import Any
+
+from buildpg import render
 
 from .cached_tiler import CachedStoredFunction
 
