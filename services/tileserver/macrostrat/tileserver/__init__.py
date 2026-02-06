@@ -1,16 +1,17 @@
-from os import environ
-from pathlib import Path
-from time import time
-from typing import Optional
-
 from buildpg import asyncpg, render
 from fastapi import FastAPI
+from macrostrat.database import Database
+from macrostrat.tileserver_utils import DecimalJSONResponse
+from macrostrat.utils import get_logger, setup_stderr_logs
+from os import environ
+from pathlib import Path
 from pydantic_settings import SettingsConfigDict
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
+from time import time
 from timvt.db import (
     close_db_connection,
     con_init,
@@ -21,10 +22,7 @@ from timvt.layer import FunctionRegistry
 from timvt.settings import PostgresSettings
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
-
-from macrostrat.database import Database
-from macrostrat.tileserver_utils import DecimalJSONResponse
-from macrostrat.utils import get_logger, setup_stderr_logs
+from typing import Optional
 
 from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
 from .function_layer import StoredFunction
@@ -158,8 +156,7 @@ functions = [
     "tile_layers.all_maps",
 ]
 
-# Register the layers
-
+# Register the layers, setting appropriate cache profiles
 layers = [StoredFunction(l) for l in functions]
 
 layer = CachedStoredFunction("tile_layers.carto")
@@ -170,8 +167,9 @@ layer = CachedStoredFunction("tile_layers.carto_slim")
 layer.profile_id = "carto-slim"
 layers.append(layer)
 
-
-layers.append(PaleoGeographyLayer())
+paleo_layer = PaleoGeographyLayer()
+paleo_layer.profile_id = "carto-slim-rotated"
+layers.append(paleo_layer)
 
 for layer in layers:
     app.state.function_catalog.register(layer)
