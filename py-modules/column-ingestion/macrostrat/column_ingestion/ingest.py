@@ -1,5 +1,6 @@
 import polars as pl
 from openpyxl import load_workbook
+from .database import ProjectIdentifier, get_or_create_project
 
 
 def ingest_columns_from_file(data_file):
@@ -12,8 +13,10 @@ def ingest_columns_from_file(data_file):
     if "units" not in sheet_names:
         raise ValueError("Sheet 'units' not found in the data file")
 
+    project = None
     if "metadata" in sheet_names:
-        get_metadata(data_file)
+        project = get_metadata(data_file)
+
 
     if "columns" in sheet_names:
         get_column_data(data_file)
@@ -41,16 +44,28 @@ def ingest_columns_from_file(data_file):
         print(f"Column ID: {col_id}")
         prepare_column_units(col_id, group)
 
-def get_metadata(data_file):
+    # Start ingesting the data into the database, using the project information if available
+    if project is not None:
+        print(f"Ingesting data for project: {project.name}")
+        _project = get_or_create_project(project)
+        print("Project", _project.id, _project.slug)
+
+def get_metadata(data_file) -> ProjectIdentifier|None:
     df = pl.read_excel(data_file,
                        sheet_name="metadata",
                        read_options={"header_row": None, "column_names": ["key", "value"]},
                     )
     # Turn the metadata into a dictionary
     metadata = dict(zip(df["key"], df["value"]))
+    project = None
     print("Metadata:")
     for key, value in metadata.items():
         print(f"  {key}: {value}")
+        if key == "project_name":
+            project = ProjectIdentifier(name=value)
+
+    return project
+
 
 
 def get_column_data(data_file):
