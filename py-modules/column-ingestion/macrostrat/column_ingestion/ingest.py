@@ -12,8 +12,13 @@ def ingest_columns_from_file(data_file):
     if "units" not in sheet_names:
         raise ValueError("Sheet 'units' not found in the data file")
 
+    if "metadata" in sheet_names:
+        get_metadata(data_file)
+
+    if "columns" in sheet_names:
+        get_column_data(data_file)
+
     df = pl.read_excel(data_file, sheet_name="units")
-    print(df.head())
 
     # Rename some columns
     df = df.rename({
@@ -34,9 +39,15 @@ def ingest_columns_from_file(data_file):
 
     for (col_id,), group in groups:
         print(f"Column ID: {col_id}")
-        print(group.head())
-
         prepare_column_units(col_id, group)
+
+def get_metadata(data_file):
+    df = pl.read_excel(data_file, sheet_name="metadata")
+    print(df.head())
+
+def get_column_data(data_file):
+    df = pl.read_excel(data_file, sheet_name="columns")
+    print(df.head())
 
 
 def prepare_column_units(col_id, df):
@@ -68,4 +79,24 @@ def prepare_column_units(col_id, df):
     # Allow for one null at the top and one at the bottom
     assert n_rows_2 >= (n_rows - 2)
 
-    print(df.head())
+    fill_specs = ["lithology", "color", "grainsize", "strat_name", "facies"]
+    cols = [pl.col(spec).fill_null(strategy="backward").alias(spec) for spec in fill_specs if spec in df.columns]
+
+    # Fill lithology info upwards
+    df = df.with_columns(*cols)
+
+    # Print some info about the column
+    print(f"Column {col_id}")
+
+    # Get unique lithologies in the column
+    lithologies = df["lithology"].unique().to_list()
+    print_list("Lithologies", lithologies)
+
+    # Get strat names
+    strat_names = df["strat_name"].unique().to_list()
+    print_list("Strat_names", strat_names)
+
+def print_list(title, lst):
+    print(f"{title}:")
+    for item in lst:
+        print(f"  {item}")
