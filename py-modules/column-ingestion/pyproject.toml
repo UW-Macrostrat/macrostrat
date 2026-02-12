@@ -1,0 +1,20 @@
+[project]
+name = "macrostrat.column-ingestion"
+version = "0.1.0"
+description = "Ingestion utilities for Macrostrat columns"
+authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
+requires-python = ">=3.9,<4.0"
+readme = "README.md"
+dependencies = [
+    "typer>=0.12.0,<0.13",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
