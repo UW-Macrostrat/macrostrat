@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from typer import Typer, Argument
 
 app = Typer(
@@ -6,7 +7,7 @@ app = Typer(
     help="Column ingestion subsystem for Macrostrat",
 )
 
-@app.command()
+@app.command(name="ingest")
 def ingest_columns(data_file: Path = Argument(..., help="Path to the data file to ingest")):
     """Ingest columns tabular data."""
     print("Ingesting columns...")
