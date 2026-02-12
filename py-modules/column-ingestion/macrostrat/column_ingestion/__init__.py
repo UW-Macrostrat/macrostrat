@@ -10,7 +10,14 @@ app = Typer(
 @app.command(name="ingest")
 def ingest_columns(data_file: Path = Argument(..., help="Path to the data file to ingest")):
     """Ingest columns tabular data."""
-    print("Ingesting columns...")
+    from .ingest import ingest_columns_from_file
+
+    ingest_columns_from_file(data_file)
+
+
+
+
+
 
 
 
