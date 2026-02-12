@@ -42,8 +42,16 @@ def ingest_columns_from_file(data_file):
         prepare_column_units(col_id, group)
 
 def get_metadata(data_file):
-    df = pl.read_excel(data_file, sheet_name="metadata")
-    print(df.head())
+    df = pl.read_excel(data_file,
+                       sheet_name="metadata",
+                       read_options={"header_row": None, "column_names": ["key", "value"]},
+                    )
+    # Turn the metadata into a dictionary
+    metadata = dict(zip(df["key"], df["value"]))
+    print("Metadata:")
+    for key, value in metadata.items():
+        print(f"  {key}: {value}")
+
 
 def get_column_data(data_file):
     df = pl.read_excel(data_file, sheet_name="columns")
@@ -100,3 +108,4 @@ def print_list(title, lst):
     print(f"{title}:")
     for item in lst:
         print(f"  {item}")
+
