@@ -390,29 +390,59 @@ def multiple_checkin_to_fieldsite(
 
 def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     """
-    Convert FieldSite -> Rockd checkin JSON (based on your example structure),
-    but ALSO include spot_id for compatibility with spot-based pipelines.
+    Convert FieldSite -> CheckinData-compatible request body for create-edit-checkin.
+
+    Notes:
+    - create-edit-checkin expects CheckinData
+    - keep spot_id so Rockd can persist link to originating spot
     """
     if not isinstance(fs, FieldSite):
         fs = FieldSite(**fs)
+
     created = fs.created or datetime.now(timezone.utc)
-    updated = fs.updated or created
+
+    # CheckinData-compatible body (new checkin path)
     d: dict = {
-        "checkin_id": fs.id,
-        "spot_id": fs.id,
-        "notes": fs.notes,
-        "lat": fs.location.latitude,
-        "lng": fs.location.longitude,
+        "notes": (fs.notes or "").strip(),
+        "rating": 0,
+        "lat": float(fs.location.latitude),
+        "lng": float(fs.location.longitude),
         "created": _dt_to_iso_z(created),
-        "updated": _dt_to_iso_z(updated),
+        "spot_id": int(fs.id) if fs.id is not None else None,
+        # create-edit-checkin uses this as the local_id for inserts
+        "new_checkin_id": f"{int(datetime.now(timezone.utc).timestamp() * 1000)}",
     }
+
     if fs.photos:
-        d["photo"] = fs.photos[0].id
+        # create-edit-checkin expects photo as a string (and checks for ".jpg")
+        d["photo"] = str(fs.photos[0].id)
+
+    # CheckinData expects ObservationData[] even though only orientation is provided from the spot.
+    planars = _all_planars_from_fieldsite(fs)
     d["observations"] = [
-        {"orientation": {"strike": float(p.strike), "dip": float(p.dip)}}
-        for p in _all_planars_from_fieldsite(fs)
+        {
+            "new_obs_id": f"interchange_obs_{i}_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+            "rocks": {"strat_name": {}, "liths": [], "interval": {}, "notes": "", "map_unit": {}},
+            "minerals": {"minerals": [], "notes": ""},
+            "orientation": {
+                "strike": float(p.strike) if p.strike is not None else None,
+                "strikestd": None,
+                "dip": float(p.dip) if p.dip is not None else None,
+                "dipstd": None,
+                "dip_dir": None,
+                "feature": {},
+                "notes": "",
+                "trend": None,
+                "trendstd": None,
+                "plunge": None,
+                "plungestd": None,
+            },
+            "fossils": {"taxa": [], "notes": ""},
+        }
+        for i, p in enumerate(planars)
     ]
     return d
+
 
 
 def multiple_fieldsite_to_rockd_checkin(
