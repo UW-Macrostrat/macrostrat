@@ -422,7 +422,13 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     d["observations"] = [
         {
             "new_obs_id": f"interchange_obs_{i}_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
-            "rocks": {"strat_name": {}, "liths": [], "interval": {}, "notes": "", "map_unit": {}},
+            "rocks": {
+                "strat_name": {},
+                "liths": [],
+                "interval": {},
+                "notes": "",
+                "map_unit": {},
+            },
             "minerals": {"minerals": [], "notes": ""},
             "orientation": {
                 "strike": float(p.strike) if p.strike is not None else None,
@@ -442,7 +448,6 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
         for i, p in enumerate(planars)
     ]
     return d
-
 
 
 def multiple_fieldsite_to_rockd_checkin(
