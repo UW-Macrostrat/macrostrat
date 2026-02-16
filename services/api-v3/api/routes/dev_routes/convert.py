@@ -165,9 +165,11 @@ def _all_planars_from_spot(props) -> list[PlanarOrientation]:
             strike = _to_float(item.get("strike"))
             dip = _to_float(item.get("dip"))
             if strike is not None and dip is not None:
-                out.append(PlanarOrientation(
-                    strike=strike, dip=dip, facing=BeddingFacing.upright
-                ))
+                out.append(
+                    PlanarOrientation(
+                        strike=strike, dip=dip, facing=BeddingFacing.upright
+                    )
+                )
     return out
 
 
@@ -184,9 +186,9 @@ def _all_planars_from_checkin(checkin) -> list[PlanarOrientation]:
         strike = _to_float(orientation.get("strike"))
         dip = _to_float(orientation.get("dip"))
         if strike is not None and dip is not None:
-            out.append(PlanarOrientation(
-                strike=strike, dip=dip, facing=BeddingFacing.upright
-            ))
+            out.append(
+                PlanarOrientation(strike=strike, dip=dip, facing=BeddingFacing.upright)
+            )
     return out
 
 
@@ -470,7 +472,11 @@ def fieldsite_to_spot(fs: FieldSite) -> dict:
     planars = _all_planars_from_fieldsite(fs)
     if planars:
         feat["properties"]["orientation_data"] = [
-            {"type": "planar_orientation", "strike": float(p.strike), "dip": float(p.dip)}
+            {
+                "type": "planar_orientation",
+                "strike": float(p.strike),
+                "dip": float(p.dip),
+            }
             for p in planars
         ]
     return {"type": "FeatureCollection", "features": [feat]}

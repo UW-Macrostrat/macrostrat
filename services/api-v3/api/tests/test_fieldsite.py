@@ -100,8 +100,7 @@ def _checkin(
         orientations = [{"strike": 10.0, "dip": 20.0}]
 
     d["observations"] = [
-        {"orientation": {"strike": o["strike"], "dip": o["dip"]}}
-        for o in orientations
+        {"orientation": {"strike": o["strike"], "dip": o["dip"]}} for o in orientations
     ]
     return d
 
@@ -187,16 +186,18 @@ class TestConvertFieldSite:
 
     def test_spot_to_fieldsite_multiple_orientations(self, api_client):
         """All planar orientations in a spot are preserved — not just the first."""
-        payload = _spot_featurecollection([
-            _spot_feature(
-                spot_id=1,
-                orientations=[
-                    {"strike": 10.0, "dip": 5.0},
-                    {"strike": 90.0, "dip": 45.0},
-                    {"strike": 180.0, "dip": 30.0},
-                ],
-            )
-        ])
+        payload = _spot_featurecollection(
+            [
+                _spot_feature(
+                    spot_id=1,
+                    orientations=[
+                        {"strike": 10.0, "dip": 5.0},
+                        {"strike": 90.0, "dip": 45.0},
+                        {"strike": 180.0, "dip": 30.0},
+                    ],
+                )
+            ]
+        )
 
         resp = api_client.post(
             "/dev/convert/field-site?in=spot&out=fieldsite", json=payload
@@ -216,7 +217,7 @@ class TestConvertFieldSite:
             [
                 _spot_feature(spot_id=1, geom_type="LineString"),
                 _spot_feature(spot_id=2, image_basemap="something"),  # skipped
-                _spot_feature(spot_id=3),                              # survives
+                _spot_feature(spot_id=3),  # survives
             ]
         )
 
@@ -264,15 +265,17 @@ class TestConvertFieldSite:
 
     def test_spot_to_checkin_multiple_orientations(self, api_client):
         """All planar orientations flow through the spot → checkin pipeline."""
-        payload = _spot_featurecollection([
-            _spot_feature(
-                spot_id=10,
-                orientations=[
-                    {"strike": 10.0, "dip": 5.0},
-                    {"strike": 90.0, "dip": 45.0},
-                ],
-            )
-        ])
+        payload = _spot_featurecollection(
+            [
+                _spot_feature(
+                    spot_id=10,
+                    orientations=[
+                        {"strike": 10.0, "dip": 5.0},
+                        {"strike": 90.0, "dip": 45.0},
+                    ],
+                )
+            ]
+        )
         resp = api_client.post(
             "/dev/convert/field-site?in=spot&out=checkin", json=payload
         )
@@ -282,7 +285,9 @@ class TestConvertFieldSite:
         assert c["observations"][0]["orientation"]["strike"] == pytest.approx(10.0)
         assert c["observations"][1]["orientation"]["strike"] == pytest.approx(90.0)
 
-    def test_spot_to_checkin_no_orientation_produces_empty_observations(self, api_client):
+    def test_spot_to_checkin_no_orientation_produces_empty_observations(
+        self, api_client
+    ):
         payload = _spot_featurecollection([_spot_feature(spot_id=10, orientations=[])])
         resp = api_client.post(
             "/dev/convert/field-site?in=spot&out=checkin", json=payload
@@ -332,7 +337,7 @@ class TestConvertFieldSite:
             checkin_id=77,
             orientations=[
                 {"strike": 123.0, "dip": 35.0},
-                {"strike": 45.0,  "dip": 10.0},
+                {"strike": 45.0, "dip": 10.0},
             ],
         )
         resp = api_client.post(
@@ -352,8 +357,8 @@ class TestConvertFieldSite:
             "lng": -89.0,
             "observations": [
                 {"orientation": {"strike": 123.0, "dip": 35.0}},
-                {"orientation": {}},          # no strike/dip — skipped
-                {"orientation": None},         # null — skipped
+                {"orientation": {}},  # no strike/dip — skipped
+                {"orientation": None},  # null — skipped
             ],
         }
         resp = api_client.post(
@@ -579,7 +584,9 @@ class TestConvertFieldSite:
         strike (123) / dip (35). The other two have empty orientation dicts.
         After conversion exactly one PlanarOrientation should survive.
         """
-        import json, pathlib
+        import json
+        import pathlib
+
         fixture_path = pathlib.Path(__file__).parent / "fixtures" / "checkin-26692.json"
         if not fixture_path.exists():
             pytest.skip("checkin-26692.json fixture not found")
