@@ -1,5 +1,15 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.1-beta.1] - 2026-02-16
+
+- Fix behavior where columns that lack matching units are retained in results
+- Add `project_name` to `/columns?response=long` output
+
+## [2.3.0] - 2026-01-25
+
+- Modify tests to output warnings instead of errors in certain cases
+- Add support for filtering by concept name
+
 ## [2.3.0-beta.1] - 2026-01-24
 
 - Create a "fast path" for column queries that do not require unit-based filtering
