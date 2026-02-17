@@ -168,3 +168,53 @@ it("should accept a lat/lng and return all adjacent columns", async function () 
     localResponse,
   );
 });
+
+function returnsASingleColumn(res: { body: { success: { data: any[] } } }) {
+  validators.aSuccessfulRequest(res);
+  validators.json(res);
+  if (res.body.success.data.length != 1) {
+    throw new Error("Expected exactly one column to be returned");
+  }
+}
+
+it("should not return a project name when response=long is not specified", async function () {
+  const uri = "/columns?col_id=150";
+  const res = await request(settings.host)
+    .get(uri)
+    .expect(returnsASingleColumn)
+    .expect(function (res: { body: { success: { data: any[] } } }) {
+      const column = res.body.success.data[0];
+      if (column.project_name != null) {
+        throw new Error(
+          "project_name should not be included in response without response=long",
+        );
+      }
+      if (column.project_id != 1) {
+        throw new Error(
+          "project_id should be included in response even without response=long",
+        );
+      }
+    });
+  await validators.compareWithProduction(uri, res);
+});
+
+it("should return a project name when response=long is specified", async function () {
+  const uri = "/columns?col_id=150&response=long";
+  const res = await request(settings.host)
+    .get(uri)
+    .expect(returnsASingleColumn)
+    .expect(function (res: { body: { success: { data: any[] } } }) {
+      const column = res.body.success.data[0];
+      if (column.project_name == null) {
+        throw new Error(
+          "project_name is missing from response with response=long",
+        );
+      }
+      if (column.project_name != "North America") {
+        throw new Error(
+          "project_name is incorrect in response with response=long",
+        );
+      }
+    });
+  await validators.compareWithProduction(uri, res);
+});

@@ -83,6 +83,7 @@ export default {
         "group_col_id",
         "col_area",
         "project_id",
+        "project_name",
         "max_thick",
         "max_min_thick",
         "min_min_thick",

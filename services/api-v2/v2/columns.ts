@@ -179,6 +179,20 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
     groupByClauses.push("col_areas.col_area");
   }
 
+  const joins = [
+    "macrostrat.col_areas ON col_areas.col_id = cols.id",
+    "macrostrat.col_groups ON col_groups.id = cols.col_group_id",
+    "macrostrat.col_refs ON cols.id = col_refs.col_id",
+  ];
+
+  if (req.query.response === "long") {
+    geo += ", p.project AS project_name";
+    joins.push("macrostrat.projects p ON p.id = cols.project_id");
+    groupByClauses.push("p.project");
+  }
+
+  const join_text = joins.map((d) => "LEFT JOIN " + d).join("\n");
+
   const sql = buildSQLQuery(
     `
       SELECT
@@ -195,9 +209,7 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
         string_agg(col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
-             LEFT JOIN macrostrat.col_areas on col_areas.col_id = cols.id
-             LEFT JOIN macrostrat.col_groups ON col_groups.id = cols.col_group_id
-             LEFT JOIN macrostrat.col_refs ON cols.id = col_refs.col_id`,
+      ${join_text}`,
     {
       whereClauses,
       groupByClauses,
