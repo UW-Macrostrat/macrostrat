@@ -1,4 +1,4 @@
-import { getColumnFilters, getColumnIDsForQuery, getUnitsData } from "./units";
+import { getColumnFilters, getUnitsData } from "./units";
 
 import dbgeo from "dbgeo";
 import * as larkin from "./larkin";
@@ -6,7 +6,7 @@ import _ from "underscore";
 import gp from "geojson-precision";
 import { acceptedFormats } from "./api";
 import { sharedUnitFilters } from "./defs";
-import { buildProjectsFilter, buildSQLQuery } from "./utils";
+import { buildSQLQuery } from "./utils";
 
 export async function handleColumnRoute(req, res, next) {
   if (Object.keys(req.query).length < 1) {
@@ -225,27 +225,36 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
 
 function finalizeColumnsData(req, column_data, unit_data) {
   if (!column_data) return column_data;
-  return column_data.map((init) => {
-    let d = { ...init };
-    if (typeof d.refs === "string" || d.refs instanceof String) {
-      d.refs = larkin.jsonifyPipes(d.refs, "integers");
-    }
-    if (unit_data != null) {
-      d.t_units = unit_data[d.col_id].t_units;
-      d.t_sections = unit_data[d.col_id].t_sections;
+  // Merge column and unit data
 
-      if (req.query.response === "long") {
-        d = _.extend(d, unit_data[d.col_id]);
+  return column_data
+    .map((init): ColumnData | null => {
+      let d = { ...init };
+      if (typeof d.refs === "string" || d.refs instanceof String) {
+        d.refs = larkin.jsonifyPipes(d.refs, "integers");
+      }
+      if (unit_data != null) {
+        if (unit_data[d.col_id] == null) {
+          // This column has no units that match the filters, so we should exclude it from the response
+          return null;
+        }
 
-        if (req.query.format === "csv") {
-          d.lith = larkin.pipifyAttrs(d.lith);
-          d.environ = larkin.pipifyAttrs(d.environ);
-          d.econ = larkin.pipifyAttrs(d.econ);
+        d.t_units = unit_data[d.col_id].t_units;
+        d.t_sections = unit_data[d.col_id].t_sections;
+
+        if (req.query.response === "long") {
+          d = _.extend(d, unit_data[d.col_id]);
+
+          if (req.query.format === "csv") {
+            d.lith = larkin.pipifyAttrs(d.lith);
+            d.environ = larkin.pipifyAttrs(d.environ);
+            d.econ = larkin.pipifyAttrs(d.econ);
+          }
         }
       }
-    }
-    return d;
-  });
+      return d;
+    })
+    .filter((d) => d !== null);
 }
 
 function buildOutputConfig(req) {

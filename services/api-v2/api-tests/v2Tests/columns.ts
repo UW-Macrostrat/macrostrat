@@ -169,19 +169,19 @@ it("should accept a lat/lng and return all adjacent columns", async function () 
   );
 });
 
-function returnsASingleColumn(res: { body: { success: { data: any[] } } }) {
-  validators.aSuccessfulRequest(res);
-  validators.json(res);
-  if (res.body.success.data.length != 1) {
-    throw new Error("Expected exactly one column to be returned");
-  }
-}
+it("should not fail even when filtering by a non-existent strat_name_id", async function () {
+  const uri = "/columns?strat_name_id=999999";
+  const localResponse = await request(settings.host)
+    .get("/columns?strat_name_id=999999")
+    .expect(validators.returnsNoItems);
+  await validators.compareWithProduction(uri, localResponse);
+});
 
 it("should not return a project name when response=long is not specified", async function () {
   const uri = "/columns?col_id=150";
   const res = await request(settings.host)
     .get(uri)
-    .expect(returnsASingleColumn)
+    .expect(validators.returnsASingleItem)
     .expect(function (res: { body: { success: { data: any[] } } }) {
       const column = res.body.success.data[0];
       if (column.project_name != null) {
@@ -202,7 +202,7 @@ it("should return a project name when response=long is specified", async functio
   const uri = "/columns?col_id=150&response=long";
   const res = await request(settings.host)
     .get(uri)
-    .expect(returnsASingleColumn)
+    .expect(validators.returnsASingleItem)
     .expect(function (res: { body: { success: { data: any[] } } }) {
       const column = res.body.success.data[0];
       if (column.project_name == null) {

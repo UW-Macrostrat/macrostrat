@@ -284,6 +284,15 @@ it("should accept a strat_name_id parameter", function (done) {
       done();
     });
 });
+
+it("should return an empty response with a non-existent strat_name_id", async function () {
+  const uri = "/units?strat_name_id=999999";
+  const res = await request(settings.host)
+    .get(uri)
+    .expect(validators.returnsNoItems);
+  await validators.compareWithProduction(uri, res);
+});
+
 //fixed api this test works now
 it("should output GeoJSON", function (done) {
   request(settings.host)

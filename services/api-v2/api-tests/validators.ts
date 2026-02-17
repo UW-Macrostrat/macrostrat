@@ -2,7 +2,6 @@
 const axios = require("axios");
 const settings = require("./settings");
 
-
 function sortKeysDeep(x) {
   if (Array.isArray(x)) return x.map(sortKeysDeep);
   if (x && typeof x === "object") {
@@ -15,7 +14,6 @@ function sortKeysDeep(x) {
   }
   return x;
 }
-
 
 function isMetadataPayload(body) {
   return (
@@ -34,8 +32,6 @@ function diffKeys(aObj = {}, bObj = {}) {
   const onlyInB = [...bKeys].filter((k) => !aKeys.has(k)).sort();
   return { onlyInA, onlyInB };
 }
-
-
 
 function extractArrayData(payload) {
   try {
@@ -132,20 +128,48 @@ function uniqueIds(arr, idKey) {
   return out;
 }
 
-module.exports = {
-  aSuccessfulRequest: function (res: {
-    statusCode: number;
-    headers: { [x: string]: string };
-  }) {
-    if (res.statusCode !== 200) {
-      console.log(res.statusCode);
-      throw new Error("Bad status code");
-    }
-    if (res.headers["access-control-allow-origin"] !== "*") {
-      throw new Error("Wrong access-control-allow-origin headers");
-    }
-  },
+type MacrostratResponse = {
+  statusCode: number;
+  headers: { [x: string]: string };
+  body: { success: any; error: any };
+};
 
+function validateJSON(res: MacrostratResponse) {
+  if (!res.body.success && !res.body.error) {
+    throw new Error("Request did not return valid JSON");
+  }
+}
+
+function aSuccessfulRequest(res: MacrostratResponse) {
+  if (res.statusCode !== 200) {
+    console.log(res.statusCode);
+    throw new Error("Bad status code");
+  }
+  if (res.headers["access-control-allow-origin"] !== "*") {
+    throw new Error("Wrong access-control-allow-origin headers");
+  }
+}
+
+function returnsNoItems(res: MacrostratResponse) {
+  aSuccessfulRequest(res);
+  validateJSON(res);
+  if (res.body.success.data.length != 0) {
+    throw new Error("Expected no results to be returned");
+  }
+}
+
+function returnsASingleItem(res: MacrostratResponse) {
+  aSuccessfulRequest(res);
+  validateJSON(res);
+  if (res.body.success.data.length != 1) {
+    throw new Error("Expected exactly one result to be returned");
+  }
+}
+
+module.exports = {
+  aSuccessfulRequest,
+  returnsNoItems,
+  returnsASingleItem,
   metadata: function (res: {
     body: {
       success: {
@@ -251,10 +275,10 @@ module.exports = {
 
     res.body.success.data.features.forEach(function (d, index) {
       if (
-          !d.geometry ||
-          !d.geometry.coordinates ||
-          !d.geometry.coordinates.length ||
-          !d.properties
+        !d.geometry ||
+        !d.geometry.coordinates ||
+        !d.geometry.coordinates.length ||
+        !d.properties
       ) {
         console.error("Malformed feature at index:", index, d); // Log issue for inspection
         throw new Error(`GeoJSON was malformed at feature index ${index}`);
@@ -268,11 +292,7 @@ module.exports = {
     }
   },
 
-  json: function (res: { body: { success: any; error: any } }) {
-    if (!res.body.success && !res.body.error) {
-      throw new Error("Request did not return valid JSON");
-    }
-  },
+  json: validateJSON,
 
   csv: function (res: { body: string | any[] }) {
     if (res.body.length < 10) {
@@ -304,168 +324,167 @@ module.exports = {
   correctDataTypes: function (res: any) {
     const data = res.body.success.data;
     data.forEach(
-        (item: { t_age: any; b_age: any; t_prop?: any; t_int_age?: any }) => {
-          if (typeof item.t_age !== "number") {
-            throw new Error(
-                `t_age is not a numeric type: ${item.t_age} (type: ${typeof item.t_age})`,
-            );
-          }
-          if (typeof item.b_age !== "number") {
-            throw new Error(
-                `b_age is not a numeric type: ${item.b_age} (type: ${typeof item.b_age})`,
-            );
-          }
-          if (item.t_prop !== undefined && typeof item.t_prop !== "number") {
-            throw new Error(
-                `t_prop is not a numeric type: ${item.t_prop} (type: ${typeof item.t_prop})`,
-            );
-          }
-          if (
-              item.t_int_age !== undefined &&
-              typeof item.t_int_age !== "number"
-          ) {
-            throw new Error(
-                `t_int_age is not a numeric type: ${item.t_int_age} (type: ${typeof item.t_int_age})`,
-            );
-          }
-        },
+      (item: { t_age: any; b_age: any; t_prop?: any; t_int_age?: any }) => {
+        if (typeof item.t_age !== "number") {
+          throw new Error(
+            `t_age is not a numeric type: ${item.t_age} (type: ${typeof item.t_age})`,
+          );
+        }
+        if (typeof item.b_age !== "number") {
+          throw new Error(
+            `b_age is not a numeric type: ${item.b_age} (type: ${typeof item.b_age})`,
+          );
+        }
+        if (item.t_prop !== undefined && typeof item.t_prop !== "number") {
+          throw new Error(
+            `t_prop is not a numeric type: ${item.t_prop} (type: ${typeof item.t_prop})`,
+          );
+        }
+        if (
+          item.t_int_age !== undefined &&
+          typeof item.t_int_age !== "number"
+        ) {
+          throw new Error(
+            `t_int_age is not a numeric type: ${item.t_int_age} (type: ${typeof item.t_int_age})`,
+          );
+        }
+      },
     );
   },
-async compareWithProduction(requestPath = "", localResponse) {
-  const { host_prod } = settings;
-  if (!host_prod) return;
+  async compareWithProduction(requestPath = "", localResponse) {
+    const { host_prod } = settings;
+    if (!host_prod) return;
 
-  const prodUrl = host_prod + requestPath;
-  const { data: prodData } = await axios.get(prodUrl);
+    const prodUrl = host_prod + requestPath;
+    const { data: prodData } = await axios.get(prodUrl);
 
-  // Helpers (kept inside the function to keep the diff localized)
-  function keysOfItem(item) {
-    const base =
-      item?.properties && typeof item.properties === "object"
-        ? item.properties
-        : item;
-    return base && typeof base === "object" ? Object.keys(base) : [];
-  }
+    // Helpers (kept inside the function to keep the diff localized)
+    function keysOfItem(item) {
+      const base =
+        item?.properties && typeof item.properties === "object"
+          ? item.properties
+          : item;
+      return base && typeof base === "object" ? Object.keys(base) : [];
+    }
 
-  function diffItemKeys(localArr, prodArr) {
-    const localKeys = new Set(keysOfItem(localArr[0]));
-    const prodKeys = new Set(keysOfItem(prodArr[0]));
-    const onlyInLocal = [...localKeys].filter((k) => !prodKeys.has(k)).sort();
-    const onlyInProd = [...prodKeys].filter((k) => !localKeys.has(k)).sort();
-    return { onlyInLocal, onlyInProd };
-  }
+    function diffItemKeys(localArr, prodArr) {
+      const localKeys = new Set(keysOfItem(localArr[0]));
+      const prodKeys = new Set(keysOfItem(prodArr[0]));
+      const onlyInLocal = [...localKeys].filter((k) => !prodKeys.has(k)).sort();
+      const onlyInProd = [...prodKeys].filter((k) => !localKeys.has(k)).sort();
+      return { onlyInLocal, onlyInProd };
+    }
 
-  function sameIdSet(aSet, bSet) {
-    if (aSet.size !== bSet.size) return false;
-    for (const v of aSet) if (!bSet.has(v)) return false;
-    return true;
-  }
+    function sameIdSet(aSet, bSet) {
+      if (aSet.size !== bSet.size) return false;
+      for (const v of aSet) if (!bSet.has(v)) return false;
+      return true;
+    }
 
-  // 1) Canonical deep-equality (order-insensitive)
-  if (
-    JSON.stringify(sortKeysDeep(localResponse.body)) ===
-    JSON.stringify(sortKeysDeep(prodData))
-  ) {
-    return;
-  }
-
-  // 2) Lenient path: metadata variance (warn, don't fail)
-  if (isMetadataPayload(localResponse.body) && isMetadataPayload(prodData)) {
-    const localParams = localResponse.body.success.options.parameters;
-    const prodParams = prodData.success.options.parameters;
-
-    const { onlyInA: onlyInLocal, onlyInB: onlyInProd } = diffKeys(
-      localParams,
-      prodParams,
-    );
-
-    if (onlyInLocal.length || onlyInProd.length) {
-      console.warn(
-        [
-          `⚠️  metadata parameters mismatch for endpoint: ${requestPath}`,
-          `   - Only in Dev (current host): ${
-            onlyInLocal.length ? onlyInLocal.join(", ") : "(none)"
-          }`,
-          `   - Only in Prod (host_prod): ${
-            onlyInProd.length ? onlyInProd.join(", ") : "(none)"
-          }`,
-          `   → Status: OK (metadata drift tolerated)`,
-        ].join("\n"),
-      );
+    // 1) Canonical deep-equality (order-insensitive)
+    if (
+      JSON.stringify(sortKeysDeep(localResponse.body)) ===
+      JSON.stringify(sortKeysDeep(prodData))
+    ) {
       return;
     }
-    // If no param-key diffs but still not equal, fall through (real mismatch elsewhere)
-  }
 
-  // 3) Existing lenient path for arrays (idKey count checks, sample logic, etc.)
-  const localArr = extractArrayData(localResponse.body);
-  const prodArr = extractArrayData(prodData);
+    // 2) Lenient path: metadata variance (warn, don't fail)
+    if (isMetadataPayload(localResponse.body) && isMetadataPayload(prodData)) {
+      const localParams = localResponse.body.success.options.parameters;
+      const prodParams = prodData.success.options.parameters;
 
-  if (
-    Array.isArray(localArr) &&
-    Array.isArray(prodArr) &&
-    localArr.length &&
-    prodArr.length
-  ) {
-    // 3a) Sample variance (lenient)
-    if (/\bsample\b/i.test(requestPath)) {
-      if (localArr.length === prodArr.length) {
+      const { onlyInA: onlyInLocal, onlyInB: onlyInProd } = diffKeys(
+        localParams,
+        prodParams,
+      );
+
+      if (onlyInLocal.length || onlyInProd.length) {
         console.warn(
-          `⚠️  Sample variance for endpoint: ${requestPath}\n` +
-            `   - Dev sample length: ${localArr.length}\n` +
-            `   - Prod sample length: ${prodArr.length}\n` +
-            `   → Status: OK (non-deterministic sample selection)`,
+          [
+            `⚠️  metadata parameters mismatch for endpoint: ${requestPath}`,
+            `   - Only in Dev (current host): ${
+              onlyInLocal.length ? onlyInLocal.join(", ") : "(none)"
+            }`,
+            `   - Only in Prod (host_prod): ${
+              onlyInProd.length ? onlyInProd.join(", ") : "(none)"
+            }`,
+            `   → Status: OK (metadata drift tolerated)`,
+          ].join("\n"),
         );
         return;
       }
+      // If no param-key diffs but still not equal, fall through (real mismatch elsewhere)
     }
 
-    const idKey = chooseCommonIdKey(localArr, prodArr);
-    if (idKey) {
-      const localIds = uniqueIds(localArr, idKey);
-      const prodIds = uniqueIds(prodArr, idKey);
+    // 3) Existing lenient path for arrays (idKey count checks, sample logic, etc.)
+    const localArr = extractArrayData(localResponse.body);
+    const prodArr = extractArrayData(prodData);
 
-      // 3b) Same-id-set but field-level drift (lenient)
-      if (sameIdSet(localIds, prodIds)) {
-        const { onlyInLocal, onlyInProd } = diffItemKeys(localArr, prodArr);
-        if (onlyInLocal.length || onlyInProd.length) {
+    if (
+      Array.isArray(localArr) &&
+      Array.isArray(prodArr) &&
+      localArr.length &&
+      prodArr.length
+    ) {
+      // 3a) Sample variance (lenient)
+      if (/\bsample\b/i.test(requestPath)) {
+        if (localArr.length === prodArr.length) {
           console.warn(
-            [
-              `⚠️  Field-level drift for endpoint: ${requestPath}`,
-              `   - Same ${idKey} set, but object keys differ`,
-              `   - Only in Dev (current host): ${
-                onlyInLocal.length ? onlyInLocal.join(", ") : "(none)"
-              }`,
-              `   - Only in Prod (host_prod): ${
-                onlyInProd.length ? onlyInProd.join(", ") : "(none)"
-              }`,
-              `   → Status: OK (field drift tolerated)`,
-            ].join("\n"),
+            `⚠️  Sample variance for endpoint: ${requestPath}\n` +
+              `   - Dev sample length: ${localArr.length}\n` +
+              `   - Prod sample length: ${prodArr.length}\n` +
+              `   → Status: OK (non-deterministic sample selection)`,
           );
           return;
         }
       }
 
-      // 3c) idKey count mismatch (lenient)
-      if (localIds.size !== prodIds.size) {
-        console.warn(
-          [
-            `⚠️  ${idKey} count mismatch for endpoint: ${requestPath}`,
-            `   - Dev (current host) ${idKey} count: ${localIds.size}`,
-            `   - Prod (host_prod) ${idKey} count: ${prodIds.size}`,
-          ].join("\n"),
-        );
-        return;
+      const idKey = chooseCommonIdKey(localArr, prodArr);
+      if (idKey) {
+        const localIds = uniqueIds(localArr, idKey);
+        const prodIds = uniqueIds(prodArr, idKey);
+
+        // 3b) Same-id-set but field-level drift (lenient)
+        if (sameIdSet(localIds, prodIds)) {
+          const { onlyInLocal, onlyInProd } = diffItemKeys(localArr, prodArr);
+          if (onlyInLocal.length || onlyInProd.length) {
+            console.warn(
+              [
+                `⚠️  Field-level drift for endpoint: ${requestPath}`,
+                `   - Same ${idKey} set, but object keys differ`,
+                `   - Only in Dev (current host): ${
+                  onlyInLocal.length ? onlyInLocal.join(", ") : "(none)"
+                }`,
+                `   - Only in Prod (host_prod): ${
+                  onlyInProd.length ? onlyInProd.join(", ") : "(none)"
+                }`,
+                `   → Status: OK (field drift tolerated)`,
+              ].join("\n"),
+            );
+            return;
+          }
+        }
+
+        // 3c) idKey count mismatch (lenient)
+        if (localIds.size !== prodIds.size) {
+          console.warn(
+            [
+              `⚠️  ${idKey} count mismatch for endpoint: ${requestPath}`,
+              `   - Dev (current host) ${idKey} count: ${localIds.size}`,
+              `   - Prod (host_prod) ${idKey} count: ${prodIds.size}`,
+            ].join("\n"),
+          );
+          return;
+        }
       }
     }
-  }
 
-  // 4) Strict mismatch
-  throw new Error(
-    `Mismatch for endpoint: ${requestPath}\n` +
-      `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
-      `Production: ${JSON.stringify(prodData, null, 2)}`,
-  );
-}
-
-}
+    // 4) Strict mismatch
+    throw new Error(
+      `Mismatch for endpoint: ${requestPath}\n` +
+        `Local: ${JSON.stringify(localResponse.body, null, 2)}\n` +
+        `Production: ${JSON.stringify(prodData, null, 2)}`,
+    );
+  },
+};
