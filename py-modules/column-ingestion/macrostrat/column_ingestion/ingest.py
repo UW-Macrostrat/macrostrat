@@ -18,7 +18,6 @@ def ingest_columns_from_file(data_file):
     if "metadata" in sheet_names:
         project = get_metadata(data_file)
 
-
     if "columns" in sheet_names:
         get_column_data(data_file)
 

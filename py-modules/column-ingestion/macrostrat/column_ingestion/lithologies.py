@@ -24,41 +24,21 @@ class Lithology:
 class LithsProcessor:
     liths = []
     atts = []
+
     def __init__(self):
         self.liths = get_all_liths()
         self.atts = get_all_lith_attributes()
 
     def match_lith(self, name) -> Lithology | None:
-        return self._match_target(name, self.liths)
+        return _match_target(name, self.liths)
 
     def match_lith_attribute(self, name) -> LithAtt | None:
-        return self._match_target(name, self.atts)
-
-    def _match_target(self, name, target_list):
-        for target in target_list:
-            if target.name == name:
-                return target
-        return None
-
-    def _find_target(self, text, target_type):
-        """Start consuming text word by word, and check for matches at each step.
-        Return the first match found, along with remaining text that was not part of the match.
-        This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic" or attributes like "brownish gray"."""
-        remaining_words = text.split()
-        text_to_match = []
-        while len(remaining_words) > 0:
-            text_to_match.append(remaining_words.pop(0))
-            candidate = " ".join(text_to_match)
-            res = self._match_target(candidate, target_type)
-            if res is not None:
-                return res, " ".join(remaining_words)
-        # Return None if no match was found, along with an empty string for remaining text
-        return None, text
+        return _match_target(name, self.atts)
 
     def find_lith_attribute(self, text) -> tuple[LithAtt | None, str]:
         """Start consuming text word by word, and check for matches at each step.
         This allows us to match multi-word attributes like "cross-bedded" or "brownish gray"""
-        res, remaining_text = self._find_target(text, self.atts)
+        res, remaining_text = _find_target(text, self.atts)
         if res is not None:
             res = LithAtt(name=res.name, id=res.id)  # create a new LithAtt object without attributes for now
         return res, remaining_text
@@ -66,11 +46,31 @@ class LithsProcessor:
     def find_lith(self, text) -> tuple[Lithology | None, str]:
         """Start consuming text word by word, and check for matches at each step.
         This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic"."""
-        res, remaining_text = self._find_target(text, self.liths)
+        res, remaining_text = _find_target(text, self.liths)
         if res is not None:
             res = Lithology(name=res.name, id=res.id)  # create a new Lithology object without attributes for now
         return res, remaining_text
 
+def _match_target(name, liths):
+    for lith in liths:
+        if lith.name == name:
+            return lith
+    return None
+
+def _find_target(text, target_list) -> tuple[Lithology | LithAtt | None, str]:
+    """Start consuming text word by word, and check for matches at each step.
+    Return the first match found, along with remaining text that was not part of the match.
+    This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic" or attributes like "brownish gray"."""
+    remaining_words = text.split()
+    text_to_match = []
+    while len(remaining_words) > 0:
+        text_to_match.append(remaining_words.pop(0))
+        candidate = " ".join(text_to_match)
+        res = _match_target(candidate, target_list)
+        if res is not None:
+            return res, " ".join(remaining_words)
+    # Return None if no match was found, along with an empty string for remaining text
+    return None, text
 
 liths_processor = LithsProcessor()
 
@@ -113,14 +113,14 @@ def process_lith_domain(lith_text) -> set[Lithology] :
             # Now search for lithologies. If we find one, we reset the attribute list.
             lith, remaining_text = liths_processor.find_lith(remaining_text)
             if lith is None:
-                # If we can't find a lithology, we advance to the next word to continue the search
+                # If we can't find a lithology or attribute, we advance to the next word to continue the search
                 remaining_text = " ".join(remaining_text.split()[1:])
             else:
                 if len(atts) > 0:
                     lith.attributes = atts
                     atts = set()  # reset attributes after applying to a lithology
                 liths.add(lith)
-        # Once we've consumed all text, we can move to the next entity
+        # Once we've consumed all text in this entity, we can move to the next entity
 
     return liths
 
