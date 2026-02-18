@@ -84,3 +84,8 @@ def get_all_liths():
     """Get all lithologies from the database."""
     db = get_database()
     return db.run_query("SELECT id, lith name FROM macrostrat.liths").fetchall()
+
+def get_all_lith_attributes():
+    """Get all lithology attributes from the database."""
+    db = get_database()
+    return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
