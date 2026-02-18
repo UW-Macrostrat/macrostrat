@@ -417,7 +417,6 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
         # create-edit-checkin expects photo as a string (and checks for ".jpg")
         d["photo"] = f"{int(fs.photos[0].id)}.jpg"
 
-
     # CheckinData expects ObservationData[] even though only orientation is provided from the spot.
     planars = _all_planars_from_fieldsite(fs)
     d["observations"] = [
