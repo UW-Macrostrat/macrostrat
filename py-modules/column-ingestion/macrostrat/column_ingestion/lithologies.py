@@ -28,71 +28,105 @@ class LithsProcessor:
         self.liths = get_all_liths()
         self.atts = get_all_lith_attributes()
 
-    def find_lith(self, name):
-        for lith in self.liths:
-            if lith.name == name:
-                return Lithology(name=lith.name, id=lith.id)
+    def match_lith(self, name) -> Lithology | None:
+        return self._match_target(name, self.liths)
+
+    def match_lith_attribute(self, name) -> LithAtt | None:
+        return self._match_target(name, self.atts)
+
+    def _match_target(self, name, target_list):
+        for target in target_list:
+            if target.name == name:
+                return target
         return None
 
-    def find_lith_attribute(self, name):
-        for att in self.atts:
-            if att.name == name:
-                return LithAtt(name=name, id=att.id)
-        return None
+    def _find_target(self, text, target_type):
+        """Start consuming text word by word, and check for matches at each step.
+        Return the first match found, along with remaining text that was not part of the match.
+        This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic" or attributes like "brownish gray"."""
+        remaining_words = text.split()
+        text_to_match = []
+        while len(remaining_words) > 0:
+            text_to_match.append(remaining_words.pop(0))
+            candidate = " ".join(text_to_match)
+            res = self._match_target(candidate, target_type)
+            if res is not None:
+                return res, " ".join(remaining_words)
+        # Return None if no match was found, along with an empty string for remaining text
+        return None, text
+
+    def find_lith_attribute(self, text) -> tuple[LithAtt | None, str]:
+        """Start consuming text word by word, and check for matches at each step.
+        This allows us to match multi-word attributes like "cross-bedded" or "brownish gray"""
+        res, remaining_text = self._find_target(text, self.atts)
+        if res is not None:
+            res = LithAtt(name=res.name, id=res.id)  # create a new LithAtt object without attributes for now
+        return res, remaining_text
+
+    def find_lith(self, text) -> tuple[Lithology | None, str]:
+        """Start consuming text word by word, and check for matches at each step.
+        This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic"."""
+        res, remaining_text = self._find_target(text, self.liths)
+        if res is not None:
+            res = Lithology(name=res.name, id=res.id)  # create a new Lithology object without attributes for now
+        return res, remaining_text
+
 
 liths_processor = LithsProcessor()
 
-def process_liths_text(lith) -> set[Lithology] | None:
+split_words = {"and", "or"}
+
+def split_domains(text) -> list[str]:
+    """Splits text into parts within which we will search for lithologies and attributes."""
+    for split_word in split_words:
+        text = text.replace(f" {split_word} ", ";")
+    return text.split(";")
+
+def process_liths_text(lith) -> set[Lithology]:
     # Process the lithology string to extract information about the rock type, grainsize, color, etc.
-    split_lith = lith.split(";")
+    split_lith = split_domains(lith)
     output = set()
     for lith in split_lith:
-        res = process_single_lith(lith.strip().lower())
-        if res is not None:
-            output.add(res)
+        res = process_lith_domain(lith.strip().lower())
+        output.update(res)
     return output
 
-def process_single_lith(lith_text) -> Lithology | None:
+def process_lith_domain(lith_text) -> set[Lithology] :
     """
     This function processes a single lithology block that doesn't have a strong separator (semicolon) from other lithologies.
     It looks for a single lithology and any attributes that are associated with it.
     However, if multiple lithologies are found, the same attributes will be applied to all of them.
     """
-    # Split words
-    words = lith_text.split()
-    # Check for liths
-    lith = None
-    remaining_words = []
-    for word in words:
-        _lith = liths_processor.find_lith(word)
-        if _lith is not None:
-            print(f"Found lithology: {word} (id: {_lith.id})")
-            if lith is not None:
-                raise MultipleLithologiesError(f"Multiple lithologies found in text: '{lith_text}'")
-            else:
-                lith = _lith
-        else:
-            remaining_words.append(word)
-    if lith is None:
-        return None
 
-    # Find attributes
+    liths = set()
     atts = set()
-    for word in remaining_words:
-        # Check for attributes
-        # Trim punctuation from the word
-        word = word.strip(",")
-        att = liths_processor.find_lith_attribute(word)
-        if att is not None:
-            atts.add(att)
-    if len(atts) > 0:
-        lith.attributes = atts
-    return lith
+
+    candidate_entities = [x.strip() for x in lith_text.split(",")]
+
+    for entity in candidate_entities:
+        # Start searching for attributes first, then lithologies
+        remaining_text = entity
+        while len(remaining_text) > 0:
+            att, remaining_text = liths_processor.find_lith_attribute(remaining_text)
+            if att is not None:
+                atts.add(att)
+            # Now search for lithologies. If we find one, we reset the attribute list.
+            lith, remaining_text = liths_processor.find_lith(remaining_text)
+            if lith is None:
+                # If we can't find a lithology, we advance to the next word to continue the search
+                remaining_text = " ".join(remaining_text.split()[1:])
+            else:
+                if len(atts) > 0:
+                    lith.attributes = atts
+                    atts = set()  # reset attributes after applying to a lithology
+                liths.add(lith)
+        # Once we've consumed all text, we can move to the next entity
+
+    return liths
 
 
 class MultipleLithologiesError(ValueError):
     pass
-
 
 
 # TODO: make this more explicit and comprehensive.

@@ -59,6 +59,7 @@ test_cases = [
         sand,
         Lithology(name="siltstone", id=9, attributes={LithAtt(name="fractured", id=169), LithAtt(name="brownish gray", id=133)})
     }),
+
 ]
 
 @mark.parametrize("test_case", test_cases)
