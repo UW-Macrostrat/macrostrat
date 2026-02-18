@@ -63,10 +63,7 @@ def get_metadata(data_file) -> ProjectIdentifier|None:
         print(f"  {key}: {value}")
         if key == "project_name":
             project = ProjectIdentifier(name=value)
-
     return project
-
-
 
 def get_column_data(data_file):
     df = pl.read_excel(data_file, sheet_name="columns")
