@@ -18,11 +18,26 @@ cross_bedded_sandstone = Lithology(
     attributes={LithAtt(name="cross-bedded", id=17)}
 )
 
+cross_bedded_red_sandstone = Lithology(
+    name="sandstone",
+    id=10,
+    attributes={LithAtt(name="cross-bedded", id=17), LithAtt(name="red", id=112)}
+)
+
+stromatolitic_dolomite = Lithology(
+    name="dolomite",
+    id=31,
+    attributes={LithAtt(name="stromatolitic", id=78)}
+)
+
 test_cases = [
     LithologyTestCase("sandstone", {sandstone}),
     LithologyTestCase("limestone; sandstone", {sandstone, limestone}),
     LithologyTestCase("cross-bedded sandstone", {cross_bedded_sandstone}),
     LithologyTestCase("limestone; cross-bedded sandstone", {limestone, cross_bedded_sandstone}),
+    LithologyTestCase("cross-bedded, red sandstone", {cross_bedded_red_sandstone}),
+    LithologyTestCase("cross-bedded, red sandstone; stromatolitic dolomite",
+                      {cross_bedded_red_sandstone, stromatolitic_dolomite}),
 ]
 
 @mark.parametrize("test_case", test_cases)

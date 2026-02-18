@@ -75,6 +75,8 @@ def process_single_lith(lith_text) -> Lithology | None:
     atts = set()
     for word in remaining_words:
         # Check for attributes
+        # Trim punctuation from the word
+        word = word.strip(",")
         att = liths_processor.find_lith_attribute(word)
         if att is not None:
             atts.add(att)
