@@ -228,7 +228,7 @@ def spot_to_fieldsite(feat) -> FieldSite:
             photos.append(
                 Photo(
                     id=int(pid),
-                    url=f"rockd://photo/{pid}",
+                    url=f"https://dev.rockd.org/api/v2/protected/photos",
                     width=int(img.get("width", 0) or 0),
                     height=int(img.get("height", 0) or 0),
                     checksum="",
@@ -415,7 +415,8 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
 
     if fs.photos:
         # create-edit-checkin expects photo as a string (and checks for ".jpg")
-        d["photo"] = str(fs.photos[0].id)
+        d["photo"] = f"{int(fs.photos[0].id)}.jpg"
+
 
     # CheckinData expects ObservationData[] even though only orientation is provided from the spot.
     planars = _all_planars_from_fieldsite(fs)
