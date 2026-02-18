@@ -28,9 +28,8 @@ def get_macrostrat_model(db, table_name: str):
         db.automap(schemas=["macrostrat"])
     return getattr(db.model, name)
 
-def get_or_create_project(project: ProjectIdentifier, create_if_not_exists: bool = True) -> ProjectData:
+def get_or_create_project(db, project: ProjectIdentifier, create_if_not_exists: bool = True) -> ProjectData:
     """Get or create a project in the database."""
-    db = get_database()
     # map the project table
     Project = get_macrostrat_model(db, table_name="projects")
 
@@ -71,7 +70,6 @@ def get_or_create_project(project: ProjectIdentifier, create_if_not_exists: bool
             timescale_id=1,  # TODO: this should be set to a valid timescale ID
         )
         db.session.add(new_project)
-        db.session.commit()
         return ProjectData(
             id=new_project.id,
             slug=new_project.slug,
