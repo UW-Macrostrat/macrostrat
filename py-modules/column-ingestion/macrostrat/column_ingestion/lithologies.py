@@ -53,6 +53,11 @@ def process_liths_text(lith) -> set[Lithology] | None:
     return output
 
 def process_single_lith(lith_text) -> Lithology | None:
+    """
+    This function processes a single lithology block that doesn't have a strong separator (semicolon) from other lithologies.
+    It looks for a single lithology and any attributes that are associated with it.
+    However, if multiple lithologies are found, the same attributes will be applied to all of them.
+    """
     # Split words
     words = lith_text.split()
     # Check for liths
