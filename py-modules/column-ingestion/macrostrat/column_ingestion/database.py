@@ -21,13 +21,18 @@ class ProjectData(ProjectIdentifier):
     slug: str
     name: str
 
+def get_macrostrat_model(db, table_name: str):
+    """Get the SQLAlchemy model for a given table name."""
+    name = "macrostrat_"+table_name
+    if not hasattr(db.model, name):
+        db.automap(schemas=["macrostrat"])
+    return getattr(db.model, name)
+
 def get_or_create_project(project: ProjectIdentifier, create_if_not_exists: bool = True) -> ProjectData:
     """Get or create a project in the database."""
     db = get_database()
     # map the project table
-    if not hasattr(db.model, "macrostrat_projects"):
-        db.automap(schemas=["macrostrat"])
-    Project = db.model.macrostrat_projects
+    Project = get_macrostrat_model(db, table_name="projects")
 
     # Try to find the project by id, slug, or name
     query = db.session.query(Project)
@@ -74,3 +79,8 @@ def get_or_create_project(project: ProjectIdentifier, create_if_not_exists: bool
         )
 
     return None
+
+def get_all_liths():
+    """Get all lithologies from the database."""
+    db = get_database()
+    return db.run_query("SELECT id, lith name FROM macrostrat.liths").fetchall()

@@ -1,5 +1,6 @@
 import polars as pl
 from openpyxl import load_workbook
+
 from .database import ProjectIdentifier, get_or_create_project
 
 
@@ -118,6 +119,8 @@ def prepare_column_units(col_id, df):
     # Get strat names
     strat_names = df["strat_name"].unique().to_list()
     print_list("Strat_names", strat_names)
+
+
 
 def print_list(title, lst):
     print(f"{title}:")
