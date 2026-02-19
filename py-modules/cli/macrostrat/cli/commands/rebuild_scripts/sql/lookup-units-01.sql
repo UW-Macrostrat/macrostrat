@@ -99,3 +99,62 @@ GROUP BY units.id,
   cols.lng,
   colors.unit_hex,
   colors.text_hex;
+
+
+/** Update for boundaries with t_prop = 0
+  Note: switched from an iterative to a bulk update in v2
+*/
+WITH prev_interval AS (
+  SELECT
+    i.id next_id,
+    i1.interval_name,
+    i1.id,
+    i1.age_top,
+    array_agg(ti.timescale_id) timescales
+  FROM macrostrat.intervals i
+  JOIN timescales_intervals ti
+  ON i.id = ti.interval_id
+  JOIN timescales_intervals ti1
+  ON ti.timescale_id = ti1.timescale_id
+  JOIN intervals i1
+  ON i1.age_top = i.age_bottom
+    AND i1.id = ti1.interval_id
+  GROUP BY i.id, i1.interval_name, i1.id, i1.age_top
+)
+UPDATE macrostrat.lookup_units_new
+SET
+  t_int = prev_interval.id,
+  t_int_age = prev_interval.age_top,
+  t_int_name = prev_interval.interval_name,
+  t_prop = 1
+FROM prev_interval
+WHERE lookup_units_new.t_prop = 0;
+
+/** Update for boundaries with b_prop = 1
+  Note: switched from an iterative to a bulk update in v2
+*/
+WITH next_interval AS (
+  SELECT
+    i.id prev_id,
+    i1.interval_name,
+    i1.id,
+    i1.age_bottom,
+    array_agg(ti.timescale_id) timescales
+  FROM macrostrat.intervals i
+  JOIN timescales_intervals ti
+  ON i.id = ti.interval_id
+  JOIN timescales_intervals ti1
+  ON ti.timescale_id = ti1.timescale_id
+  JOIN intervals i1
+  ON i1.age_bottom = i.age_top
+    AND i1.id = ti1.interval_id
+  GROUP BY i.id, i1.interval_name, i1.id, i1.age_top
+)
+UPDATE macrostrat.lookup_units_new
+SET
+  b_int = next_interval.id,
+  b_int_age = next_interval.age_bottom,
+  b_int_name = next_interval.interval_name,
+  b_prop = 0
+FROM next_interval
+WHERE lookup_units_new.b_prop = 1;

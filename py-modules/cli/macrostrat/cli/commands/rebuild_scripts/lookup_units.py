@@ -94,88 +94,8 @@ def _refresh_lookup_units(outfile):
             output_file=outfile,
         )
 
-        # t_prop and b_prop adjustments
+        # t_prop and b_prop adjustments used to be here, but we have converted them to a bulk process.
         # Note: these happen often; we might want to revise so they happen in SQL.
-
-        # Check if t_prop == 0, and if so get the next oldest interval of the same scale
-        if unit["t_prop"] == 0:
-            data = (
-                db.run_query(
-                    """
-                SELECT intervals.interval_name, intervals.id, intervals.age_top
-                FROM intervals
-                JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
-                WHERE timescales_intervals.timescale_id IN (
-                    SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-                ) AND age_top = (
-                    SELECT age_bottom FROM intervals WHERE id = %(int_id)s
-                )
-                """,
-                    {"int_id": unit["t_int"]},
-                )
-                .mappings()
-                .fetchone()
-            )
-
-            if data is not None:
-                # print "Should update top interval ", unit["unit_id"]
-                db.run_sql(
-                    """
-                    UPDATE lookup_units_new SET
-                        t_int = %(t_int)s,
-                        t_int_name = %(t_int_name)s,
-                        t_int_age = %(t_int_age)s,
-                        t_prop = 1
-                    WHERE unit_id = %(unit_id)s
-                    """,
-                    {
-                        "t_int": data["id"],
-                        "t_int_name": data["interval_name"],
-                        "t_int_age": data["age_top"],
-                        "unit_id": unit["unit_id"],
-                    },
-                    outfile=outfile,
-                )
-
-        # Check if b_prop == 1, if so get the next younger time interval
-        if unit["b_prop"] == 1:
-            data = (
-                db.run_query(
-                    """
-                SELECT intervals.interval_name, intervals.id, intervals.age_bottom
-                FROM intervals
-                JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
-                WHERE timescales_intervals.timescale_id IN (
-                    SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-                ) AND age_bottom = (
-                    SELECT age_top FROM intervals WHERE id = %(int_id)s
-                )
-            """,
-                    {"int_id": unit["b_int"]},
-                )
-                .mappings()
-                .fetchone()
-            )
-
-            if data is not None:
-                # print "Should update bottom interval ", unit["unit_id"]
-                db.run_sql(
-                    """
-                    UPDATE lookup_units_new SET
-                        b_int = %(b_int)s,
-                        b_int_name = %(b_int_name)s,
-                        b_int_age = %(b_int_age)s,
-                        b_prop = 0
-                    WHERE unit_id = %(unit_id)s
-                    """,
-                    {
-                        "b_int": data["id"],
-                        "b_int_name": data["interval_name"],
-                        "b_int_age": data["age_bottom"],
-                        "unit_id": unit["unit_id"],
-                    },
-                    outfile=outfile,
-                )
 
     db.run_sql(here / "sql" / "lookup-units-02.sql")
 
