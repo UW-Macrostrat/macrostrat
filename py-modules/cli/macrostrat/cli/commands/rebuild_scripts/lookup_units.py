@@ -3,6 +3,7 @@ import sys
 from ..base import Base
 from ...database import get_db
 from pathlib import Path
+from os import devnull
 
 here = Path(__file__).parent
 
@@ -13,6 +14,9 @@ class LookupUnits(Base):
 
     def run(self):
         _refresh_lookup_units()
+
+
+timescale_cache = {}
 
 
 def _refresh_lookup_units():
@@ -32,59 +36,63 @@ def _refresh_lookup_units():
         .fetchall()
     )
 
-    for idx, unit in enumerate(units):
-        # Give some feedback
-        sys.stdout.write("%s of %s  \r" % (idx, len(units)))
-        sys.stdout.flush()
+    with open(devnull, "w") as outfile:
+        for idx, unit in enumerate(units):
+            # Give some feedback
+            sys.stdout.write("%s of %s  \r" % (idx, len(units)))
+            sys.stdout.flush()
 
-        # Used to get times
-        params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
+            # Used to get times
+            params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
 
-        # Get age
-        age = get_time(db, "international ages", params)
+            # Get age
+            age = get_time(db, "international ages", params)
 
-        # Get epoch
-        epoch = get_time(db, "international epochs", params)
+            # Get epoch
+            epoch = get_time(db, "international epochs", params)
 
-        # Get period
-        period = get_time(db, "international periods", params)
+            # Get period
+            period = get_time(db, "international periods", params)
 
-        # Get era
-        era = get_time(db, "international eras", params)
+            # Get era
+            era = get_time(db, "international eras", params)
 
-        # Get eon
-        eon = get_time(db, "international eons", params)
+            # Get eon
+            eon = get_time(db, "international eons", params)
 
-        # Update the lookup table with detailed time info
-        db.run_sql(
-            """
-            UPDATE lookup_units_new SET
-                age = :age,
-                age_id = :age_id,
-                epoch = :epoch,
-                epoch_id = :epoch_id,
-                period = :period,
-                period_id = :period_id,
-                era = :era,
-                era_id = :era_id,
-                eon = :eon,
-                eon_id = :eon_id
-            WHERE unit_id = :unit_id
-            """,
-            {
-                "age": age["name"],
-                "age_id": age["id"],
-                "epoch": epoch["name"],
-                "epoch_id": epoch["id"],
-                "period": period["name"],
-                "period_id": period["id"],
-                "era": era["name"],
-                "era_id": era["id"],
-                "eon": eon["name"],
-                "eon_id": eon["id"],
-                "unit_id": unit["unit_id"],
-            },
-        )
+            # Update the lookup table with detailed time info
+            db.run_sql(
+                """
+                UPDATE lookup_units_new SET
+                    age = :age,
+                    age_id = :age_id,
+                    epoch = :epoch,
+                    epoch_id = :epoch_id,
+                    period = :period,
+                    period_id = :period_id,
+                    era = :era,
+                    era_id = :era_id,
+                    eon = :eon,
+                    eon_id = :eon_id
+                WHERE unit_id = :unit_id
+                """,
+                {
+                    "age": age["name"],
+                    "age_id": age["id"],
+                    "epoch": epoch["name"],
+                    "epoch_id": epoch["id"],
+                    "period": period["name"],
+                    "period_id": period["id"],
+                    "era": era["name"],
+                    "era_id": era["id"],
+                    "eon": eon["name"],
+                    "eon_id": eon["id"],
+                    "unit_id": unit["unit_id"],
+                },
+                # NOTE: this is a hack to avoid writing to the console on each update.
+                # We need to add a setting to Macrostrat.database to turn this off
+                output_file=outfile,
+            )
 
         # Check if t_prop == 0, and if so get the next oldest interval of the same scale
         if unit["t_prop"] == 0:
@@ -180,27 +188,38 @@ def _refresh_lookup_units():
         )
 
 
-def get_time(db, qtype, params):
-    params["type"] = qtype
-    data = (
-        db.run_query(
-            """
-        SELECT interval_name, intervals.id FROM intervals
-        JOIN timescales_intervals ON intervals.id = interval_id
-        JOIN timescales on timescale_id = timescales.id
-        WHERE timescale = :type
-          AND :b_age > age_top
-          AND :b_age <= age_bottom
-          AND :t_age < age_bottom
-          AND :t_age >= age_top
-        """,
-            params,
-        )
-        .mappings()
-        .one_or_none()
-    )
+def get_timescale(db, qtype):
+    if qtype in timescale_cache:
+        return timescale_cache[qtype]
 
-    if data is not None:
-        return {"name": data["interval_name"], "id": data["id"]}
-    else:
-        return {"name": "", "id": None}
+    res = db.run_query(
+        """
+            SELECT interval_name, intervals.id FROM intervals
+            JOIN timescales_intervals ON intervals.id = interval_id
+            JOIN timescales on timescale_id = timescales.id
+            WHERE timescale = :type
+            -- Keep age range filtering just in case we want to take advantage of it in the future.
+              AND :b_age > age_top
+              AND :b_age <= age_bottom
+              AND :t_age < age_bottom
+              AND :t_age >= age_top
+            """,
+        dict(type=qtype, t_age=-1, b_age=99999),
+    ).fetchall()
+
+    timescale_cache[qtype] = res
+    return res
+
+
+def get_time(db, qtype, params):
+    intervals = get_timescale(db, qtype)
+
+    for interval in intervals:
+        if (
+            params["b_age"] > interval.age_top
+            and params["b_age"] <= interval.age_bottom
+            and params["t_age"] < interval.age_bottom
+            and params["t_age"] >= interval.age_top
+        ):
+            return {"name": interval.interval_name, "id": interval.id}
+    return {"name": "", "id": None}
