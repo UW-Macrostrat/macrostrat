@@ -13,13 +13,14 @@ class LookupUnits(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        _refresh_lookup_units()
+        with open(devnull, "w") as outfile:
+            _refresh_lookup_units(outfile)
 
 
 timescale_cache = {}
 
 
-def _refresh_lookup_units():
+def _refresh_lookup_units(outfile):
     """Bulk refresh method for lookup units table. This is required for the units to show
     up in the API, and is also used to update the lookup table with more detailed time info
     """
@@ -36,63 +37,65 @@ def _refresh_lookup_units():
         .fetchall()
     )
 
-    with open(devnull, "w") as outfile:
-        for idx, unit in enumerate(units):
-            # Give some feedback
-            sys.stdout.write("%s of %s  \r" % (idx, len(units)))
-            sys.stdout.flush()
+    for idx, unit in enumerate(units):
+        # Give some feedback
+        sys.stdout.write("%s of %s  \r" % (idx, len(units)))
+        sys.stdout.flush()
 
-            # Used to get times
-            params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
+        # Used to get times
+        params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
 
-            # Get age
-            age = get_time(db, "international ages", params)
+        # Get age
+        age = get_time(db, "international ages", params)
 
-            # Get epoch
-            epoch = get_time(db, "international epochs", params)
+        # Get epoch
+        epoch = get_time(db, "international epochs", params)
 
-            # Get period
-            period = get_time(db, "international periods", params)
+        # Get period
+        period = get_time(db, "international periods", params)
 
-            # Get era
-            era = get_time(db, "international eras", params)
+        # Get era
+        era = get_time(db, "international eras", params)
 
-            # Get eon
-            eon = get_time(db, "international eons", params)
+        # Get eon
+        eon = get_time(db, "international eons", params)
 
-            # Update the lookup table with detailed time info
-            db.run_sql(
-                """
-                UPDATE lookup_units_new SET
-                    age = :age,
-                    age_id = :age_id,
-                    epoch = :epoch,
-                    epoch_id = :epoch_id,
-                    period = :period,
-                    period_id = :period_id,
-                    era = :era,
-                    era_id = :era_id,
-                    eon = :eon,
-                    eon_id = :eon_id
-                WHERE unit_id = :unit_id
-                """,
-                {
-                    "age": age["name"],
-                    "age_id": age["id"],
-                    "epoch": epoch["name"],
-                    "epoch_id": epoch["id"],
-                    "period": period["name"],
-                    "period_id": period["id"],
-                    "era": era["name"],
-                    "era_id": era["id"],
-                    "eon": eon["name"],
-                    "eon_id": eon["id"],
-                    "unit_id": unit["unit_id"],
-                },
-                # NOTE: this is a hack to avoid writing to the console on each update.
-                # We need to add a setting to Macrostrat.database to turn this off
-                output_file=outfile,
-            )
+        # Update the lookup table with detailed time info
+        db.run_sql(
+            """
+            UPDATE lookup_units_new SET
+                age = :age,
+                age_id = :age_id,
+                epoch = :epoch,
+                epoch_id = :epoch_id,
+                period = :period,
+                period_id = :period_id,
+                era = :era,
+                era_id = :era_id,
+                eon = :eon,
+                eon_id = :eon_id
+            WHERE unit_id = :unit_id
+            """,
+            {
+                "age": age["name"],
+                "age_id": age["id"],
+                "epoch": epoch["name"],
+                "epoch_id": epoch["id"],
+                "period": period["name"],
+                "period_id": period["id"],
+                "era": era["name"],
+                "era_id": era["id"],
+                "eon": eon["name"],
+                "eon_id": eon["id"],
+                "unit_id": unit["unit_id"],
+            },
+            # NOTE: this is a hack to avoid writing to the console on each update.
+            # We need to add a setting to Macrostrat.database to turn this off
+            output_file=outfile,
+        )
+
+        # t_prop and b_prop adjustments
+        # Note: these happen often; we might want to revise so they happen in SQL.
 
         # Check if t_prop == 0, and if so get the next oldest interval of the same scale
         if unit["t_prop"] == 0:
@@ -131,6 +134,7 @@ def _refresh_lookup_units():
                         "t_int_age": data["age_top"],
                         "unit_id": unit["unit_id"],
                     },
+                    outfile=outfile,
                 )
 
         # Check if b_prop == 1, if so get the next younger time interval
@@ -170,6 +174,7 @@ def _refresh_lookup_units():
                         "b_int_age": data["age_bottom"],
                         "unit_id": unit["unit_id"],
                     },
+                    outfile=outfile,
                 )
 
     db.run_sql(here / "sql" / "lookup-units-02.sql")

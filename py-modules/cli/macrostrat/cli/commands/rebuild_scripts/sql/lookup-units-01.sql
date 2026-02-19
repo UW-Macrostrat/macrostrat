@@ -5,6 +5,36 @@ DROP TABLE IF EXISTS lookup_units_old;
 
 CREATE TABLE lookup_units_new (LIKE lookup_units);
 
+WITH top_bound AS (
+  SELECT DISTINCT ON (unit_id) unit_id, t1, t1_age, t1_prop, paleo_lat, paleo_lng
+  FROM unit_boundaries
+  WHERE t1 IS NOT NULL
+  ORDER BY unit_id, t1_age ASC
+),
+bottom_bound AS (
+  SELECT DISTINCT ON (unit_id_2) unit_id_2, t1, t1_age, t1_prop, paleo_lat, paleo_lng
+  FROM unit_boundaries
+  WHERE t1 IS NOT NULL
+  ORDER BY unit_id_2, t1_age DESC
+),
+units_ext AS (
+  SELECT
+    units.id,
+    tb.t1 t_int,
+    tb.t1_age t_age,
+    tb.t1_prop t_prop,
+    tb.paleo_lat t_plat,
+    tb.paleo_lng t_plng,
+    bb.t1 b_int,
+    bb.t1_age b_age,
+    bb.t1_prop b_prop,
+    bb.paleo_lat b_plat,
+    bb.paleo_lng b_plng,
+    units.color
+  FROM units
+  LEFT JOIN top_bound tb ON tb.unit_id = units.id
+  LEFT JOIN bottom_bound bb ON bb.unit_id_2 = units.id
+)
 INSERT INTO lookup_units_new (unit_id, col_area, project_id, t_int, t_int_name, t_int_age, t_age, t_prop, t_plat, t_plng, b_int, b_int_name, b_int_age, b_age, b_prop, b_plat, b_plng, clat,  clng, color, text_color, units_above, units_below, pbdb_collections, pbdb_occurrences)
 SELECT
   units.id AS unit_id,
@@ -38,84 +68,7 @@ SELECT
   string_agg(distinct ubb.unit_id::text, '|') AS units_below,
   COUNT(DISTINCT pbdb_matches.collection_no) AS pbdb_collections,
   coalesce(SUM(pbdb_matches.occs), 0) AS pbdb_occurrences
-FROM (
-  SELECT
-    units.id,
-    (
-      SELECT t1
-      FROM unit_boundaries
-      WHERE unit_id = units.id
-      ORDER BY t1_age asc
-      LIMIT 1
-    ) t_int,
-    (
-      SELECT t1_age
-      FROM unit_boundaries
-      WHERE unit_id = units.id
-      ORDER BY t1_age asc
-      LIMIT 1
-    ) t_age,
-    (
-      SELECT t1_prop
-      FROM unit_boundaries
-      WHERE unit_id = units.id
-      ORDER BY t1_age asc
-      LIMIT 1
-    ) t_prop,
-    (
-      SELECT paleo_lat
-      FROM unit_boundaries
-      WHERE unit_id = units.id
-      ORDER BY t1_age asc
-      LIMIT 1
-    ) t_plat,
-    (
-      SELECT paleo_lng
-      FROM unit_boundaries
-      WHERE unit_id = units.id
-      ORDER BY t1_age asc
-      LIMIT 1
-    ) t_plng,
-    (
-      SELECT t1
-      FROM unit_boundaries
-      WHERE unit_id_2 = units.id
-      ORDER BY t1_age desc
-      LIMIT 1
-    ) b_int,
-    (
-      SELECT t1_age
-      FROM unit_boundaries
-      WHERE unit_id_2 = units.id
-      ORDER BY t1_age desc
-      LIMIT 1
-    ) b_age,
-    (
-      SELECT t1_prop
-      FROM unit_boundaries
-      WHERE unit_id_2 = units.id
-      ORDER BY t1_age desc
-      LIMIT 1
-    ) b_prop,
-    (
-      SELECT paleo_lat
-      FROM unit_boundaries
-      WHERE unit_id_2 = units.id
-      ORDER BY t1_age desc
-      LIMIT 1
-    ) b_plat,
-    (
-      SELECT paleo_lng
-      FROM unit_boundaries
-      WHERE unit_id_2 = units.id
-      ORDER BY t1_age desc
-      LIMIT 1
-    ) b_plng,
-    units.color
-  FROM units
-  GROUP BY
-    units.id
-) units
+FROM units_ext units
 LEFT JOIN intervals tint ON tint.id = units.t_int
 LEFT JOIN intervals bint ON bint.id = units.b_int
 LEFT JOIN colors ON units.color::text = colors.color::text
