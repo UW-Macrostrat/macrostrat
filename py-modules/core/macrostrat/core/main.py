@@ -4,9 +4,6 @@ from sys import argv, exit
 
 import toml
 from dynaconf import Dynaconf
-from rich.console import Console
-from typer import Context, Option, get_app_dir
-
 from macrostrat.app_frame import (
     Application,
     ControlCommand,
@@ -15,6 +12,8 @@ from macrostrat.app_frame import (
 )
 from macrostrat.app_frame.control_command import CommandBase
 from macrostrat.utils import get_logger
+from rich.console import Console
+from typer import Context, Option, get_app_dir
 
 from .console import console_theme
 from .exc import MacrostratError
@@ -137,11 +136,19 @@ class Macrostrat(Application):
             env_file = root_dir / ".env"
             compose_files.append(compose_file)
 
+        # Modules to log when the --verbose flag is set.
+        # This is set to macrostrat.* by default, but can be overridden in the config file.
+        # For example, you might want to log SQLAlchemy sql queries, in which case you could set this to "macrostrat.*,sqlalchemy.engine".
+        log_modules = self.settings.get("log_modules")
+        # HACK: we need to actually load each log module here to ensure the loggers are initialized.
+        for module in log_modules:
+            get_logger(module)
+
         super().__init__(
             "Macrostrat",
             root_dir=root_dir,
             project_prefix=self.settings.project_name,
-            log_modules=["macrostrat"],
+            log_modules=log_modules,
             compose_files=compose_files,
             load_dotenv=env_file,
             # This only applies to Docker Compose
