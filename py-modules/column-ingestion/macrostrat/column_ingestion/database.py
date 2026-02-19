@@ -16,19 +16,32 @@ class ProjectIdentifier(BaseModel):
         if not (self.id or self.slug or self.name):
             raise ValueError("At least one of id, slug, or name must be provided")
 
+
 class ProjectData(ProjectIdentifier):
     id: int
     slug: str
     name: str
 
+
 def get_macrostrat_model(db, table_name: str):
     """Get the SQLAlchemy model for a given table name."""
-    name = "macrostrat_"+table_name
+    name = "macrostrat_" + table_name
     if not hasattr(db.model, name):
         db.automap(schemas=["macrostrat"])
     return getattr(db.model, name)
 
-def get_or_create_project(db, project: ProjectIdentifier, create_if_not_exists: bool = True) -> ProjectData:
+
+def get_macrostrat_table(db, table_name: str):
+    """Get the SQLAlchemy table for a given table name."""
+    name = "macrostrat_" + table_name
+    if not hasattr(db.table, name):
+        db.automap(schemas=["macrostrat"])
+    return getattr(db.table, name)
+
+
+def get_or_create_project(
+    db, project: ProjectIdentifier, create_if_not_exists: bool = True
+) -> ProjectData:
     """Get or create a project in the database."""
     # map the project table
     Project = get_macrostrat_model(db, table_name="projects")
@@ -78,10 +91,12 @@ def get_or_create_project(db, project: ProjectIdentifier, create_if_not_exists: 
 
     return None
 
+
 def get_all_liths():
     """Get all lithologies from the database."""
     db = get_database()
     return db.run_query("SELECT id, lith name FROM macrostrat.liths").fetchall()
+
 
 def get_all_lith_attributes():
     """Get all lithology attributes from the database."""

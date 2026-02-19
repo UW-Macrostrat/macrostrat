@@ -1,15 +1,18 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import polars as pl
 from macrostrat.database import Database
+from sqlalchemy.dialects.postgresql import insert
 
-from .database import get_macrostrat_model
+from .database import get_macrostrat_table
 from .units import Unit
 
 
 @dataclass
 class Column:
     id: int = -1
+    group_id: int = -1
     local_id: str | None = None
     name: str | None = None
     description: str | None = None
@@ -21,29 +24,110 @@ class Column:
     units: list[Unit] = field(default_factory=list)
 
 
-def get_or_create_column(db: Database, col: Column) -> Column:
-    """Get or create a column in the database."""
-    Cols = get_macrostrat_model(db, "cols")
+def get_or_create_column_group(db: Database, project_id: int, name="Default") -> int:
+    """Get or create a column group for a given project ID."""
+    col_groups_tbl = get_macrostrat_table(db, "col_groups")
 
-    # Use insert-on-conflict to get or create the column
+    # TODO: need to add an index on project_id to the col_groups table for this to work properly
+
+    # Find a pre-existing column group for the project, if it exists
+    existing_group_id = (
+        db.session.query(col_groups_tbl.c.id)
+        .filter(col_groups_tbl.c.project_id == project_id)
+        .filter(col_groups_tbl.c.col_group == name)
+        .scalar()
+    )
+    if existing_group_id is not None:
+        return existing_group_id
 
     insert_stmt = (
-        Cols.__table__.insert()
+        insert(col_groups_tbl)
         .values(
-            name=col.name,
-            description=col.description,
-            project_id=col.project_id,
-            status_code=col.status_code,
-            col_type=col.col_type,
-            geom=col.geom,
+            project_id=project_id,
+            col_group="Default",
+            col_group_long="Default column group",
         )
-        .on_conflict_do_update(index_elements=["name", "project_id"])
-        .returning(Cols.col_id)
+        .returning(col_groups_tbl.c.id)
+    )
+    return db.session.execute(insert_stmt).scalar()
+
+
+def get_or_create_column(db: Database, col: Column) -> int:
+    """Get or create a column in the database."""
+    cols_tbl = get_macrostrat_table(db, "cols")
+
+    # TODO: Use insert-on-conflict to get or create the column
+    # Requires an index on (col_name, project_id) to work properly
+
+    vals = dict(
+        status_code=col.status_code,
+        col_type=col.col_type,
+        col_group_id=col.group_id,
     )
 
-    col_id = db.session.execute(insert_stmt).scalar()
-    col.id = col_id
-    return col
+    default_vals = dict(
+        # TODO: figure out how to handle these fields
+        col_position="",
+        col_area=0,
+        created=datetime.now(),
+        col=0,
+        lat=0,
+        lng=0,
+    )
+
+    # Get an existing column by name and project_id, if it exists
+    col_id = (
+        db.session.query(cols_tbl.c.id)
+        .filter(cols_tbl.c.col_name == col.name)
+        .filter(cols_tbl.c.project_id == col.project_id)
+        .scalar()
+    )
+    stmt = None
+    if col_id is not None:
+        # Update the existing column with any new values
+        print("Updating existing column with ID", col_id)
+        stmt = (
+            cols_tbl.update()
+            .where(cols_tbl.c.id == col_id)
+            .values(**vals)
+            .returning(cols_tbl.c.id)
+        )
+    else:
+        stmt = (
+            insert(cols_tbl)
+            .values(
+                col_name=col.name,
+                project_id=col.project_id,
+                **default_vals,
+                **vals,
+            )
+            .returning(cols_tbl.c.id)
+        )
+    return db.session.execute(stmt).scalar()
+
+
+def get_or_create_section(db: Database, col_id: int) -> int:
+    """Get a single section in the database for a given column ID, creating it if it doesn't exist.
+    Note: multiple sections are not supported as yet.
+    """
+    sections_tbl = get_macrostrat_table(db, "sections")
+
+    # Get an existing section for the column, if it exists
+    section_id = (
+        db.session.query(sections_tbl.c.id)
+        .filter(sections_tbl.c.col_id == col_id)
+        .scalar()
+    )
+    if section_id is not None:
+        return section_id
+
+    insert_stmt = (
+        insert(sections_tbl)
+        .values(col_id=col_id, fo=-1, fo_h=-1, lo=-1, lo_h=-1)
+        .returning(sections_tbl.c.id)
+    )
+
+    return db.session.execute(insert_stmt).scalar()
 
 
 def get_column_data(data_file, meta) -> list[Column]:
