@@ -24,9 +24,13 @@ def _refresh_lookup_units():
     db.run_sql(here / "sql" / "lookup-units-01.sql")
 
     # Gather basic info about all units just inserted so that we can loop through them
-    units = db.run_query(
-        "SELECT unit_id, t_age, t_int, t_prop, b_age, b_int, b_prop FROM lookup_units_new"
-    ).fetchall()
+    units = (
+        db.run_query(
+            "SELECT unit_id, t_age, t_int, t_prop, b_age, b_int, b_prop FROM lookup_units_new"
+        )
+        .mappings()
+        .fetchall()
+    )
 
     for idx, unit in enumerate(units):
         # Give some feedback
@@ -84,8 +88,9 @@ def _refresh_lookup_units():
 
         # Check if t_prop == 0, and if so get the next oldest interval of the same scale
         if unit["t_prop"] == 0:
-            data = db.run_query(
-                """
+            data = (
+                db.run_query(
+                    """
                 SELECT intervals.interval_name, intervals.id, intervals.age_top
                 FROM intervals
                 JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
@@ -95,8 +100,11 @@ def _refresh_lookup_units():
                     SELECT age_bottom FROM intervals WHERE id = %(int_id)s
                 )
                 """,
-                {"int_id": unit["t_int"]},
-            ).fetchone()
+                    {"int_id": unit["t_int"]},
+                )
+                .mappings()
+                .fetchone()
+            )
 
             if data is not None:
                 # print "Should update top interval ", unit["unit_id"]
@@ -119,8 +127,9 @@ def _refresh_lookup_units():
 
         # Check if b_prop == 1, if so get the next younger time interval
         if unit["b_prop"] == 1:
-            data = db.run_query(
-                """
+            data = (
+                db.run_query(
+                    """
                 SELECT intervals.interval_name, intervals.id, intervals.age_bottom
                 FROM intervals
                 JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
@@ -130,8 +139,11 @@ def _refresh_lookup_units():
                     SELECT age_top FROM intervals WHERE id = %(int_id)s
                 )
             """,
-                {"int_id": unit["b_int"]},
-            ).fetchone()
+                    {"int_id": unit["b_int"]},
+                )
+                .mappings()
+                .fetchone()
+            )
 
             if data is not None:
                 # print "Should update bottom interval ", unit["unit_id"]
@@ -156,24 +168,23 @@ def _refresh_lookup_units():
 
     # Validate results
     data = db.run_query(
-        """
-        SELECT COUNT(*) N, (SELECT COUNT(*) FROM lookup_units) nn FROM units
-        """
+        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_units) lookup_units_count FROM units"
     ).fetchone()
-    if data["N"] != data["nn"]:
+    if data.units_count != data.lookup_units_count:
         print(
             "ERROR: inconsistent unit count in lookup_unit_intervals_new table. ",
-            data["nn"],
+            data.lookup_units_count,
             " datas in `lookup_units` and ",
-            data["N"],
+            data.units_count,
             " datas in `units`.",
         )
 
 
 def get_time(db, qtype, params):
     params["type"] = qtype
-    data = db.run_query(
-        """
+    data = (
+        db.run_query(
+            """
         SELECT interval_name, intervals.id FROM intervals
         JOIN timescales_intervals ON intervals.id = interval_id
         JOIN timescales on timescale_id = timescales.id
@@ -183,10 +194,13 @@ def get_time(db, qtype, params):
           AND :t_age < age_bottom
           AND :t_age >= age_top
         """,
-        params,
-    ).one_or_none()
+            params,
+        )
+        .mappings()
+        .one_or_none()
+    )
 
     if data is not None:
         return {"name": data["interval_name"], "id": data["id"]}
     else:
-        return {"name": "", "id": ""}
+        return {"name": "", "id": None}
