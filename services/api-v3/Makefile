@@ -1,7 +1,6 @@
 all:
-	poetry lock
-	poetry install
-	poetry run uvicorn api.app:app \
+	uv sync
+	uv run uvicorn api.app:app \
 	    --reload \
 	    --log-level debug \
 	    --reload-dir ../..
@@ -15,7 +14,22 @@ VERSION = $(shell grep -E '^[[:space:]]*version[[:space:]]*=' pyproject.toml | h
 TAG = $(NAME)-v$(VERSION)
 
 release:
-	# Ensure that the repository is clean
-	git diff-index --quiet HEAD --
+	uv sync
+	git add .
+	git commit -m "deploying"
 	git tag -a $(TAG) -m "Version $(TAG)"
-	git push origin $(TAG)
+	git push origin main --follow-tags
+
+
+test-fieldsite:
+	uv run pytest -q \
+  	--confcutdir=api/tests \
+  	api/tests/test_fieldsite.py
+
+test-object:
+	uv run pytest -q \
+  	--confcutdir=api/tests \
+  	api/tests/test_object.py
+
+
+

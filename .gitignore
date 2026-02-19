@@ -3,3 +3,8 @@ __pycache__
 macrostrat.toml
 *.egg-info
 *.pyc
+.DS_Store
+
+# For now, ignore all JetBrains IDE project files, but we may want to add some of these back in the future
+.idea
+.idea/data_source_mapping.xml

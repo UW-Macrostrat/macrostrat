@@ -1,9 +1,9 @@
 [project]
 name = "api"
-version = "2.3.3"
+version = "2.3.5-beta.1"
 description = ""
 authors = [{ name = "Cannon Lock", email = "clock@wisc.edu" }]
-requires-python = ">=3.11,<4"
+requires-python = ">=3.11,<3.13"
 readme = "README.md"
 dependencies = [
     "sqlalchemy[asyncio]>=2.0.22,<3",
@@ -25,6 +25,9 @@ dependencies = [
     "python-slugify>=8.0.4,<9",
     "macrostrat.database>=3.0.0,<4",
     "macrostrat.match-utils",
+    "morecantile>=7.0.2",
+    "pydantic-settings>2"
+
 ]
 
 [dependency-groups]
@@ -34,6 +37,7 @@ dev = [
     "pylint>=3.0,<3.1",
     "safety>=2.3,<2.4",
     "pytest>=8.3.5,<9",
+    "docker>=7.1.0",
 ]
 
 [build-system]

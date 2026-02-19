@@ -26,7 +26,7 @@ jobs:
       - name: Get the version from the tag, if it exists
         run: |
           TAG=${{ github.ref_name }}
-          VERSION=$(echo "${TAG}" | sed -E 's/tileserver-v//')
+          VERSION=$(echo "${TAG}" | sed -E 's/api-v3-v//')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Docker meta
         id: meta

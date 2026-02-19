@@ -13,21 +13,28 @@
             }
         }
 
-        reverse_proxy @auth_cookie postgrest:3000   {
-            header_up Accept-Profile {args[1]}
-            header_up Content-Profile {args[1]}
-            header_up Authorization {http.request.cookie.access_token}
-            header_down -Access-Control-Allow-Origin
-            header_down -Access-Control-Allow-Credentials
-            header_down -Access-Control-Allow-Methods
-        }
+        request_header @auth_cookie Authorization {http.request.cookie.access_token}
 
-        reverse_proxy postgrest:3000   {
+        reverse_proxy postgrest:3000 {
             header_up Accept-Profile {args[1]}
             header_up Content-Profile {args[1]}
             header_down -Access-Control-Allow-Origin
             header_down -Access-Control-Allow-Credentials
             header_down -Access-Control-Allow-Methods
+            # Remove cookie header to prevent leaking cookies to PostgREST and cache
+            header_up -Cookie
+
+            @has_content_range {
+              header Content-Range *
+            }
+
+            handle_response @has_content_range {
+              # Rename PostgREST content-range header to avoid conflicts with varnish
+              copy_response
+              header X-Data-Range {rp.header.Content-Range}
+              # Make content-range header compatible with RFC 7233 (we need to monitor PostgREST to see if it updates its behavior)
+              header >Content-Range (.*) "items $1"
+            }
         }
     }
 }
@@ -100,6 +107,7 @@ localhost, macrostrat.local {
     # APIs for macrostrat and map-ingestion
     # These use PostgREST as a proxy to the database and
     # have headers set to default to a specific schema
+    # TODO: strip cookies from non-auth requests to improve cache performance
     import schema-proxy /api/v3/macrostrat/pg macrostrat_api
     import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
 
