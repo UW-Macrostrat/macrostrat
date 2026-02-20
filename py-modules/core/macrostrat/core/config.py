@@ -84,6 +84,7 @@ settings.validators.register(
     Validator("sources", cast=cast_sources, default=None),
     # Settings to control the location of arbitrary named databases
     Validator("databases", default={}),
+    Validator("log_modules", cast=list, default=["macrostrat"]),
 )
 
 macrostrat_env = getattr(settings, "env", "default")

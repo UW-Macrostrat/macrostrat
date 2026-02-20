@@ -273,6 +273,18 @@ try:
 except ImportError as err:
     pass
 
+try:
+    from macrostrat.column_ingestion import app as column_app
+
+    main.add_typer(
+        column_app,
+        name="columns",
+        rich_help_panel="Subsystems",
+        short_help="Column data ingestion subsystem",
+    )
+except ImportError as err:
+    pass
+
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})

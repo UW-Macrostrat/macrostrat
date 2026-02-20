@@ -27,6 +27,7 @@ dependencies = [
     "macrostrat.match-utils",
     "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "mapboard.topology-manager",
+    "macrostrat.column-ingestion",
     "htpheno.radosgw-admin-client",
     "numpy>=1.23.4,<2",
     "psycopg2-binary>=2.9.4,<3",
@@ -39,7 +40,7 @@ dependencies = [
     "spectra>=0.0.11,<0.0.12",
     "tiletanic>=1.1.0,<2",
     "tqdm>=4.65.0,<5",
-    "typer>=0.12,<0.13",
+    "typer>=0.12,<0.24.0",
     "click>=8.1.0,<8.2.0",
     "docker>=7,<8",
     "toml>=0.10.2,<0.11",
@@ -77,6 +78,7 @@ default-groups = [
 "mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../../submodules/storage-admin", editable = true }
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
+"macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

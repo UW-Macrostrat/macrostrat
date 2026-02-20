@@ -1,0 +1,29 @@
+[project]
+name = "macrostrat.column-ingestion"
+version = "0.1.0"
+description = "Ingestion utilities for Macrostrat columns"
+authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
+requires-python = ">=3.9,<4.0"
+readme = "README.md"
+dependencies = [
+    "fastexcel>=0.16.0",
+    "openpyxl>=3.1.5",
+    "polars>=1.36.1",
+    "pydantic>=2.12.5",
+    "typer>=0.12.0,<0.24.0",
+    "macrostrat.utils>=1.3.1,<2.0.0",
+    "macrostrat.core"
+]
+
+[tool.uv.sources]
+"macrostrat.core" = { editable = true, path = "../core" }
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
