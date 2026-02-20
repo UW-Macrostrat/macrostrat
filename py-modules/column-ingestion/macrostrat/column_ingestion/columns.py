@@ -2,8 +2,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 import polars as pl
-from macrostrat.database import Database
 from sqlalchemy.dialects.postgresql import insert
+
+from macrostrat.database import Database
 
 from .database import get_macrostrat_table
 from .units import Unit

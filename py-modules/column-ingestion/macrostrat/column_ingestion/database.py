@@ -1,8 +1,9 @@
 import re
 from typing import Optional
 
-from macrostrat.core.database import get_database
 from pydantic import BaseModel
+
+from macrostrat.core.database import get_database
 
 
 class ProjectIdentifier(BaseModel):
