@@ -27,7 +27,4 @@ SET period = concat_WS('-', (
     ))
 WHERE period = '';
 
-TRUNCATE TABLE macrostrat.lookup_units;
-INSERT INTO macrostrat.lookup_units SELECT * FROM macrostrat.lookup_units_new;
-DROP TABLE macrostrat.lookup_units_new;
 
