@@ -5,11 +5,19 @@ from pathlib import Path
 here = Path(__file__).parent
 
 
+def _lookup_unit_intervals():
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-unit-intervals.sql")
+
+
 class LookupUnitIntervals(Base):
     def __init__(self, *args):
         Base.__init__(self, {}, *args)
 
     def run(self):
+        _lookup_unit_intervals()
+
+    def run_old(self):
         second_connection = self.mariadb["raw_connection"]()
         second_cursor = second_connection.cursor()
 
@@ -18,9 +26,19 @@ class LookupUnitIntervals(Base):
         db.run_sql(here / "sql" / "lookup-unit-intervals.sql")
 
         # initial query
-        db.run_query(
-            """
-            SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age
+        units = (
+            db.run_query(
+                """
+            SELECT units.id,
+                FO,
+                LO,
+                f.age_bottom,
+                f.interval_name fname,
+                f.age_top FATOP,
+                l.age_top,
+                l.interval_name lname,
+                min(u1.t1_age) AS t_age,
+                max(u2.t1_age) AS b_age
             FROM units
             JOIN intervals f on FO = f.id
             JOIN intervals l ON LO = l.id
@@ -28,6 +46,9 @@ class LookupUnitIntervals(Base):
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id
             GROUP BY units.id
             """
+            )
+            .mappings()
+            .fetchall()
         )
 
         # initialize arrays
@@ -40,7 +61,7 @@ class LookupUnitIntervals(Base):
         rFO = {}
 
         row = self.mariadb["cursor"].fetchone()
-        while row is not None:
+        for row in units:
             # Use this as the parameters for most of the queries
             params = {"age_bottom": row["age_bottom"], "age_top": row["age_top"]}
 
@@ -126,6 +147,7 @@ class LookupUnitIntervals(Base):
             else:
                 rLO["interval_name"] = row_period_LO["interval_name"]
 
+            # International ages
             second_cursor.execute(
                 """
                 SELECT interval_name, intervals.id from intervals
@@ -148,6 +170,7 @@ class LookupUnitIntervals(Base):
                 r4["interval_name"] = row4["interval_name"]
                 r4["id"] = row4["id"]
 
+            # Any eon, no matter the timescale
             second_cursor.execute(
                 """
                 SELECT interval_name,intervals.id from intervals
@@ -168,6 +191,7 @@ class LookupUnitIntervals(Base):
                 r5["interval_name"] = row5["interval_name"]
                 r5["id"] = row5["id"]
 
+            # Any era, no matter the timescale
             second_cursor.execute(
                 """
                 SELECT interval_name, intervals.id from intervals
@@ -190,7 +214,27 @@ class LookupUnitIntervals(Base):
 
             second_cursor.execute(
                 """
-                INSERT INTO lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period)
+                INSERT INTO lookup_unit_intervals_new (
+                    unit_id,
+                    fo_age,
+                    b_age,
+                    fo_interval,
+                    lo_age,
+                    t_age,
+                    lo_interval,
+                    epoch,
+                    epoch_id,
+                    period,
+                    period_id,
+                    age,
+                    age_id,
+                    era,
+                    era_id,
+                    eon,
+                    eon_id,
+                    fo_period,
+                    lo_period
+                )
                 VALUES (%(rx_id)s, %(rx_age_bottom)s, %(rx_b_age)s, %(rx_fname)s, %(rx_age_top)s, %(rx_t_age)s, %(rx_lname)s, %(r2_interval_name)s, %(r2_id)s, %(r3_interval_name)s, %(r3_id)s, %(r4_interval_name)s, %(r4_id)s, %(r6_interval_name)s, %(r6_id)s, %(r5_interval_name)s, %(r5_id)s, %(rFO)s, %(rLO)s )
             """,
                 {
@@ -241,28 +285,3 @@ class LookupUnitIntervals(Base):
         row = self.mariadb["cursor"].fetchone()
         if row["N"] != row["nn"]:
             print("ERROR: inconsistent unit count in lookup_unit_intervals_new table")
-
-        # Out with the old, in with the new
-        self.mariadb["cursor"].execute(
-            """
-            ALTER TABLE lookup_unit_intervals RENAME TO lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].execute(
-            """
-            ALTER TABLE lookup_unit_intervals_new RENAME TO lookup_unit_intervals;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].close()
-        self.mariadb["connection"].close()

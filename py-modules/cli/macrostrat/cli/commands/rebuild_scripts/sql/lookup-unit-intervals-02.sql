@@ -1,0 +1,3 @@
+ALTER TABLE lookup_unit_intervals RENAME TO lookup_unit_intervals_old;
+ALTER TABLE lookup_unit_intervals_new RENAME TO lookup_unit_intervals;
+DROP TABLE lookup_unit_intervals_old;
