@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 
 import polars as pl
+from sqlalchemy import and_
+from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
 from .lithologies import Lithology, process_liths_text
@@ -17,6 +19,9 @@ class Unit:
     description: str | None = None
     name: str | None = None
     color: str | None = None
+
+
+log = get_logger(__name__)
 
 
 def get_units(data_file) -> {str: list[Unit]}:
@@ -119,7 +124,7 @@ def write_units(db, units: list[Unit]):
     units_tbl = get_macrostrat_table(db, "units")
     unit_liths = get_macrostrat_table(db, "unit_liths")
     unit_liths_atts = get_macrostrat_table(db, "unit_liths_atts")
-    unit_sections = get_macrostrat_table(db, "units_sections")
+    units_sections = get_macrostrat_table(db, "units_sections")
 
     # Get the set of sections and columns for which units should be overwrittem
     col_ids = set(unit.col_id for unit in units)
@@ -129,8 +134,9 @@ def write_units(db, units: list[Unit]):
     db.session.execute(
         units_tbl.delete()
         .where(
-            (units_tbl.c.col_id.in_(col_ids))
-            & (units_tbl.c.section_id.in_(section_ids))
+            and_(
+                units_tbl.c.col_id.in_(col_ids), units_tbl.c.section_id.in_(section_ids)
+            ),
         )
         .returning(units_tbl.c.id)
     )
@@ -165,13 +171,19 @@ def write_units(db, units: list[Unit]):
         unit.id = db.session.execute(insert_stmt).scalar()
 
         # Insert into unit_sections table to link the unit to its section
-        db.session.execute(
-            unit_sections.insert().values(
+        log.info("unit:", unit.id, "col:", unit.col_id, "section:", unit.section_id)
+
+        units_sections_insert = (
+            units_sections.insert()
+            .values(
                 unit_id=unit.id,
                 col_id=unit.col_id,
                 section_id=unit.section_id,
             )
+            .returning(units_sections.c.id)
         )
+
+        db.session.execute(units_sections_insert)
 
         # Insert lithology associations for the unit
         n_liths = len(unit.lithology)

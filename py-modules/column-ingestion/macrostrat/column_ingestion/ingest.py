@@ -1,4 +1,5 @@
 from macrostrat.core.database import get_database
+from macrostrat.database import on_conflict
 from openpyxl import load_workbook
 
 from .columns import (
@@ -32,6 +33,7 @@ def ingest_columns_from_file(data_file):
         columns = get_column_data(data_file, meta)
 
     units = get_units(data_file)
+
     for col in columns:
         col.units = units.get(col.local_id, [])
         if len(col.units) == 0:
@@ -42,7 +44,7 @@ def ingest_columns_from_file(data_file):
         raise ValueError("Project not found in the data file")
 
     # Start ingesting the data into the database, using the project information if available
-    with db.transaction():
+    with db.transaction(), on_conflict("restrict"):
         print(f"Ingesting data into project: {project.name}")
         _project = get_or_create_project(db, project)
         col_group_id = get_or_create_column_group(db, _project.id)

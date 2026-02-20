@@ -1,9 +1,7 @@
-import sys
-
 from ..base import Base
 from ...database import get_db
 from pathlib import Path
-from os import devnull
+from psycopg2.sql import Identifier
 
 here = Path(__file__).parent
 
@@ -27,199 +25,113 @@ def _refresh_lookup_units():
     db = get_db()
     db.run_sql(here / "sql" / "lookup-units-01.sql")
 
-    # Gather basic info about all units just inserted so that we can loop through them
-    units = (
-        db.run_query(
-            "SELECT unit_id, t_age, t_int, t_prop, b_age, b_int, b_prop FROM lookup_units_new"
-        )
-        .mappings()
-        .fetchall()
-    )
+    for time_range in ("age", "epoch", "period", "era", "eon"):
+        update_timescale(db, time_range)
 
-    with open(devnull, "w") as outfile:
-        for idx, unit in enumerate(units):
-            # Give some feedback
-            sys.stdout.write("%s of %s  \r" % (idx, len(units)))
-            sys.stdout.flush()
-
-            # Used to get times
-            params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
-
-            # Get age
-            age = get_time(db, "international ages", params)
-
-            # Get epoch
-            epoch = get_time(db, "international epochs", params)
-
-            # Get period
-            period = get_time(db, "international periods", params)
-
-            # Get era
-            era = get_time(db, "international eras", params)
-
-            # Get eon
-            eon = get_time(db, "international eons", params)
-
-            # Update the lookup table with detailed time info
-            db.run_sql(
-                """
-                UPDATE lookup_units_new SET
-                    age = :age,
-                    age_id = :age_id,
-                    epoch = :epoch,
-                    epoch_id = :epoch_id,
-                    period = :period,
-                    period_id = :period_id,
-                    era = :era,
-                    era_id = :era_id,
-                    eon = :eon,
-                    eon_id = :eon_id
-                WHERE unit_id = :unit_id
-                """,
-                {
-                    "age": age["name"],
-                    "age_id": age["id"],
-                    "epoch": epoch["name"],
-                    "epoch_id": epoch["id"],
-                    "period": period["name"],
-                    "period_id": period["id"],
-                    "era": era["name"],
-                    "era_id": era["id"],
-                    "eon": eon["name"],
-                    "eon_id": eon["id"],
-                    "unit_id": unit["unit_id"],
-                },
-                # NOTE: this is a hack to avoid writing to the console on each update.
-                # We need to add a setting to Macrostrat.database to turn this off
-                output_file=outfile,
-            )
-
-        # Check if t_prop == 0, and if so get the next oldest interval of the same scale
-        if unit["t_prop"] == 0:
-            data = (
-                db.run_query(
-                    """
-                SELECT intervals.interval_name, intervals.id, intervals.age_top
-                FROM intervals
-                JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
-                WHERE timescales_intervals.timescale_id IN (
-                    SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-                ) AND age_top = (
-                    SELECT age_bottom FROM intervals WHERE id = %(int_id)s
-                )
-                """,
-                    {"int_id": unit["t_int"]},
-                )
-                .mappings()
-                .fetchone()
-            )
-
-            if data is not None:
-                # print "Should update top interval ", unit["unit_id"]
-                db.run_sql(
-                    """
-                    UPDATE lookup_units_new SET
-                        t_int = %(t_int)s,
-                        t_int_name = %(t_int_name)s,
-                        t_int_age = %(t_int_age)s,
-                        t_prop = 1
-                    WHERE unit_id = %(unit_id)s
-                    """,
-                    {
-                        "t_int": data["id"],
-                        "t_int_name": data["interval_name"],
-                        "t_int_age": data["age_top"],
-                        "unit_id": unit["unit_id"],
-                    },
-                )
-
-        # Check if b_prop == 1, if so get the next younger time interval
-        if unit["b_prop"] == 1:
-            data = (
-                db.run_query(
-                    """
-                SELECT intervals.interval_name, intervals.id, intervals.age_bottom
-                FROM intervals
-                JOIN timescales_intervals ON intervals.id = timescales_intervals.interval_id
-                WHERE timescales_intervals.timescale_id IN (
-                    SELECT timescale_id FROM timescales_intervals WHERE interval_id = %(int_id)s
-                ) AND age_bottom = (
-                    SELECT age_top FROM intervals WHERE id = %(int_id)s
-                )
-            """,
-                    {"int_id": unit["b_int"]},
-                )
-                .mappings()
-                .fetchone()
-            )
-
-            if data is not None:
-                # print "Should update bottom interval ", unit["unit_id"]
-                db.run_sql(
-                    """
-                    UPDATE lookup_units_new SET
-                        b_int = %(b_int)s,
-                        b_int_name = %(b_int_name)s,
-                        b_int_age = %(b_int_age)s,
-                        b_prop = 0
-                    WHERE unit_id = %(unit_id)s
-                    """,
-                    {
-                        "b_int": data["id"],
-                        "b_int_name": data["interval_name"],
-                        "b_int_age": data["age_bottom"],
-                        "unit_id": unit["unit_id"],
-                    },
-                )
+    # We used to do a loop through all unts here to set age information and update intervals for each unit,
+    # but now we are doing it in bulk with the above queries. This presents a quick way to evolve to allow
+    # incremental updates on column changes, etc. if we want to do that in the future.
 
     db.run_sql(here / "sql" / "lookup-units-02.sql")
 
     # Validate results
     data = db.run_query(
-        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_units) lookup_units_count FROM units"
+        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_units_new) lookup_units_count FROM units"
     ).fetchone()
     if data.units_count != data.lookup_units_count:
-        print(
-            "ERROR: inconsistent unit count in lookup_unit_intervals_new table. ",
-            data.lookup_units_count,
-            " datas in `lookup_units` and ",
-            data.units_count,
-            " datas in `units`.",
-        )
+        raise ValueError("Inconsistent units count in lookup_units_new table", data)
+
+    copy_table_into_place(db, "lookup_units")
 
 
-def get_timescale(db, qtype):
-    if qtype in timescale_cache:
-        return timescale_cache[qtype]
+def copy_table_into_place(
+    db, table_name, *, new_table_name=None, old_table_name=None, schema="macrostrat"
+):
+    if new_table_name is None:
+        new_table_name = table_name + "_new"
+    if old_table_name is None:
+        old_table_name = table_name + "_old"
 
-    res = db.run_query(
+    db.run_sql(
         """
-            SELECT interval_name, intervals.id FROM intervals
-            JOIN timescales_intervals ON intervals.id = interval_id
-            JOIN timescales on timescale_id = timescales.id
-            WHERE timescale = :type
-            -- Keep age range filtering just in case we want to take advantage of it in the future.
-              AND :b_age > age_top
-              AND :b_age <= age_bottom
-              AND :t_age < age_bottom
-              AND :t_age >= age_top
-            """,
-        dict(type=qtype, t_age=-1, b_age=99999),
-    ).fetchall()
-
-    timescale_cache[qtype] = res
-    return res
+        TRUNCATE TABLE {table};
+        INSERT INTO {table} SELECT * FROM {new_table};
+        DROP TABLE IF EXISTS {new_table};
+        DROP TABLE IF EXISTS {old_table};
+        """,
+        dict(
+            table=Identifier(schema, table_name),
+            new_table=Identifier(schema, new_table_name),
+            old_table=Identifier(schema, old_table_name),
+        ),
+    )
 
 
-def get_time(db, qtype, params):
-    intervals = get_timescale(db, qtype)
+def update_timescale(db, qtype="age"):
+    field_prefix = qtype
+    timescale_name = f"international {qtype}s"
 
-    for interval in intervals:
-        if (
-            params["b_age"] > interval.age_top
-            and params["b_age"] <= interval.age_bottom
-            and params["t_age"] < interval.age_bottom
-            and params["t_age"] >= interval.age_top
-        ):
-            return {"name": interval.interval_name, "id": interval.id}
-    return {"name": "", "id": None}
+    print(f"Updating {qtype}s...")
+
+    age_fields = dict(
+        interval_name_field=Identifier(field_prefix),
+        interval_id_field=Identifier(field_prefix + "_id"),
+        table=Identifier("lookup_units_new"),
+    )
+
+    update_intervals(db, timescale=timescale_name, **age_fields)
+
+    # Coalesce IDs to mimic structure of fields in V1.
+    # Not ideal, but works
+    db.run_sql(
+        """
+        UPDATE {table} SET
+            {interval_id_field} = 0,
+            {interval_name_field} = ''
+        WHERE {interval_id_field} IS NULL
+        """,
+        age_fields,
+    )
+
+
+def update_intervals(db, *, where_clauses: list[str] = None, **params):
+    """Internal version of interval update method which allows more flexible integration
+    with different timescales and fields. This is primarily used to allow the lookup_intervals
+    update to proceed along similar lines to lookup_units.
+    """
+    if where_clauses is None:
+        where_clauses = [
+            "t.b_age > i.age_top",
+            "t.b_age <= i.age_bottom",
+            "t.t_age < i.age_bottom",
+            "t.t_age >= i.age_top",
+        ]
+
+    fields = []
+    if "interval_name_field" in params:
+        fields.append("{interval_name_field} = i.interval_name")
+    if "interval_id_field" in params:
+        fields.append("{interval_id_field} = i.id")
+
+    sql = """
+          WITH ints AS (
+              SELECT i.id,
+                  interval_name,
+                  age_bottom,
+                  age_top
+              FROM macrostrat.intervals i
+              JOIN macrostrat.timescales_intervals ON i.id = interval_id
+              JOIN macrostrat.timescales ON timescale_id = macrostrat.timescales.id
+              WHERE timescale = :timescale
+          )
+          UPDATE {table} t SET
+              ::fields
+          FROM ints i
+          """
+
+    sql = sql.replace("::fields", ",\n".join(fields))
+
+    if len(where_clauses) > 0:
+        sql += "WHERE " + " AND ".join(where_clauses)
+
+    db.run_sql(sql, params)
