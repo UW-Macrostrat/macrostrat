@@ -74,7 +74,7 @@ WHERE s.unit_id = ul.unit_id
 
 WITH
   a AS (
-    SELECT unit_id,
+    SELECT unit_liths.unit_id,
       json_build_object(
         'lith_id', lith_id,
         'name', lith,
@@ -83,20 +83,21 @@ WITH
         'prop', comp_prop,
         'atts', to_json(array_remove(array_agg(lith_atts.lith_att), NULL))
       ) AS lith
-    FROM unit_liths
+    FROM units
+    LEFT JOIN unit_liths ON units.id = unit_liths.unit_id
     LEFT JOIN liths ON lith_id = liths.id
     LEFT JOIN unit_liths_atts ON unit_liths.id = unit_liths_atts.unit_lith_id
     LEFT JOIN lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
     GROUP BY unit_liths.id, liths.id, liths.lith, lith_type, lith_class, comp_prop
   )
 INSERT
-INTO macrostrat.lookup_unit_attrs_api_new (unit_id,
-                                           lith)
+INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith)
 -- We keep this in text format for now for parallelism with v1, but we should consider
 -- changing this to JSONB in the future
 SELECT unit_id, json_agg(lith)::text::bytea
 FROM a
 GROUP BY unit_id;
+
 
 /** Environments */
 WITH
@@ -120,3 +121,40 @@ UPDATE macrostrat.lookup_unit_attrs_api_new lu
 SET environ = agg_envs.envs::text::bytea
 FROM agg_envs
 WHERE lu.unit_id = agg_envs.unit_id;
+
+-- Set rows with null environments to empty arrays for consistency with v1 structure.
+UPDATE macrostrat.lookup_unit_attrs_api_new
+SET environ = '[]'::bytea
+WHERE environ IS NULL;
+
+/** Econs */
+SELECT unit_id, econ_id, econ, econ_type, econ_class
+FROM unit_econs
+LEFT JOIN econs ON econ_id = econs.id;
+
+WITH
+  unit_econs1 AS (
+    SELECT unit_id,
+      json_build_object(
+        'econ_id', econ_id,
+        'name', econ,
+        'type', econ_type,
+        'class', econ_class
+      ) AS econ
+      FROM unit_econs
+      LEFT JOIN econs ON econ_id = econs.id
+  ),
+  agg_econs AS (
+    SELECT unit_id, json_agg(econ) AS econs
+    FROM unit_econs1
+    GROUP BY unit_id
+  )
+UPDATE macrostrat.lookup_unit_attrs_api_new lu
+SET econ = agg_econs.econs::text::bytea
+FROM agg_econs
+WHERE lu.unit_id = agg_econs.unit_id;
+
+-- Set rows with null econs to empty arrays for consistency with v1 structure.
+UPDATE macrostrat.lookup_unit_attrs_api_new
+SET econ = '[]'::bytea
+WHERE econ IS NULL;
