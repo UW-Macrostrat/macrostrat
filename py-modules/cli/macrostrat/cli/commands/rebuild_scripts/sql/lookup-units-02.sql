@@ -6,7 +6,8 @@ UPDATE lookup_units_new
 SET period = 'Precambrian'
 WHERE period = '' AND t_age >= 541;
 
-UPDATE lookup_units
+/** Set periods in special cases where the unit spans several periods */
+UPDATE lookup_units_new
 SET period = concat_WS('-', (
         SELECT intervals.interval_name
         FROM intervals
@@ -26,7 +27,7 @@ SET period = concat_WS('-', (
     ))
 WHERE period = '';
 
-TRUNCATE TABLE lookup_units;
-INSERT INTO lookup_units SELECT * FROM lookup_units_new;
-DROP TABLE lookup_units_new;
+TRUNCATE TABLE macrostrat.lookup_units;
+INSERT INTO macrostrat.lookup_units SELECT * FROM macrostrat.lookup_units_new;
+DROP TABLE macrostrat.lookup_units_new;
 

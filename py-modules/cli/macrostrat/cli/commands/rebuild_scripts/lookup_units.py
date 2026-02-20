@@ -4,6 +4,7 @@ from ..base import Base
 from ...database import get_db
 from pathlib import Path
 from os import devnull
+from psycopg2.sql import Identifier
 
 here = Path(__file__).parent
 
@@ -13,14 +14,13 @@ class LookupUnits(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        with open(devnull, "w") as outfile:
-            _refresh_lookup_units(outfile)
+        _refresh_lookup_units()
 
 
 timescale_cache = {}
 
 
-def _refresh_lookup_units(outfile):
+def _refresh_lookup_units():
     """Bulk refresh method for lookup units table. This is required for the units to show
     up in the API, and is also used to update the lookup table with more detailed time info
     """
@@ -28,74 +28,12 @@ def _refresh_lookup_units(outfile):
     db = get_db()
     db.run_sql(here / "sql" / "lookup-units-01.sql")
 
-    # Gather basic info about all units just inserted so that we can loop through them
-    units = (
-        db.run_query(
-            "SELECT unit_id, t_age, t_int, t_prop, b_age, b_int, b_prop FROM lookup_units_new"
-        )
-        .mappings()
-        .fetchall()
-    )
+    for time_range in ("age", "epoch", "period", "era", "eon"):
+        update_timescale(db, time_range)
 
-    for idx, unit in enumerate(units):
-        # Give some feedback
-        sys.stdout.write("%s of %s  \r" % (idx, len(units)))
-        sys.stdout.flush()
-
-        # Used to get times
-        params = {"t_age": unit["t_age"], "b_age": unit["b_age"]}
-
-        # Get age
-        age = get_time(db, "international ages", params)
-
-        # Get epoch
-        epoch = get_time(db, "international epochs", params)
-
-        # Get period
-        period = get_time(db, "international periods", params)
-
-        # Get era
-        era = get_time(db, "international eras", params)
-
-        # Get eon
-        eon = get_time(db, "international eons", params)
-
-        # Update the lookup table with detailed time info
-        db.run_sql(
-            """
-            UPDATE lookup_units_new SET
-                age = :age,
-                age_id = :age_id,
-                epoch = :epoch,
-                epoch_id = :epoch_id,
-                period = :period,
-                period_id = :period_id,
-                era = :era,
-                era_id = :era_id,
-                eon = :eon,
-                eon_id = :eon_id
-            WHERE unit_id = :unit_id
-            """,
-            {
-                "age": age["name"],
-                "age_id": age["id"],
-                "epoch": epoch["name"],
-                "epoch_id": epoch["id"],
-                "period": period["name"],
-                "period_id": period["id"],
-                "era": era["name"],
-                "era_id": era["id"],
-                "eon": eon["name"],
-                "eon_id": eon["id"],
-                "unit_id": unit["unit_id"],
-            },
-            # NOTE: this is a hack to avoid writing to the console on each update.
-            # We need to add a setting to Macrostrat.database to turn this off
-            output_file=outfile,
-        )
-
-        # t_prop and b_prop adjustments used to be here, but we have converted them to a bulk process.
-        # Note: these happen often; we might want to revise so they happen in SQL.
+    # We used to do a loop through all unts here to set age information and update intervals for each unit,
+    # but now we are doing it in bulk with the above queries. This presents a quick way to evolve to allow
+    # incremental updates on column changes, etc. if we want to do that in the future.
 
     db.run_sql(here / "sql" / "lookup-units-02.sql")
 
@@ -113,38 +51,51 @@ def _refresh_lookup_units(outfile):
         )
 
 
-def get_timescale(db, qtype):
-    if qtype in timescale_cache:
-        return timescale_cache[qtype]
+def update_timescale(db, qtype="age"):
+    field_prefix = qtype
+    timescale_name = f"international {qtype}s"
 
-    res = db.run_query(
+    print(f"Updating {qtype}s...")
+
+    age_fields = dict(
+        age_field=Identifier(field_prefix),
+        age_id_field=Identifier(field_prefix + "_id"),
+    )
+    db.run_sql(
         """
-            SELECT interval_name, intervals.id FROM intervals
-            JOIN timescales_intervals ON intervals.id = interval_id
-            JOIN timescales on timescale_id = timescales.id
-            WHERE timescale = :type
-            -- Keep age range filtering just in case we want to take advantage of it in the future.
-              AND :b_age > age_top
-              AND :b_age <= age_bottom
-              AND :t_age < age_bottom
-              AND :t_age >= age_top
-            """,
-        dict(type=qtype, t_age=-1, b_age=99999),
-    ).fetchall()
+        WITH ints AS (
+           SELECT i.id,
+               interval_name,
+               age_bottom,
+               age_top
+           FROM intervals i
+           JOIN timescales_intervals ON i.id = interval_id
+           JOIN timescales ON timescale_id = timescales.id
+           WHERE timescale = :timescale
+       )
+       UPDATE lookup_units_new SET
+           {age_field} = ints.interval_name,
+           {age_id_field} = ints.id
+       FROM ints
+       WHERE b_age > age_top
+         AND b_age <= age_bottom
+         AND t_age < age_bottom
+         AND t_age >= age_top;
+       """,
+        dict(
+            **age_fields,
+            timescale=timescale_name,
+        ),
+    )
 
-    timescale_cache[qtype] = res
-    return res
-
-
-def get_time(db, qtype, params):
-    intervals = get_timescale(db, qtype)
-
-    for interval in intervals:
-        if (
-            params["b_age"] > interval.age_top
-            and params["b_age"] <= interval.age_bottom
-            and params["t_age"] < interval.age_bottom
-            and params["t_age"] >= interval.age_top
-        ):
-            return {"name": interval.interval_name, "id": interval.id}
-    return {"name": "", "id": None}
+    # Coalesce IDs to mimic structure of fields in V1.
+    # Not ideal, but works
+    db.run_sql(
+        """
+        UPDATE lookup_units_new SET
+            {age_id_field} = 0,
+            {age_field} = ''
+        WHERE {age_id_field} IS NULL
+        """,
+        age_fields,
+    )

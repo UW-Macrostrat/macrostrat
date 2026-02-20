@@ -1,4 +1,4 @@
-SET search_path = macrostrat, public;
+SET search_path = macrostrat;
 
 DROP TABLE IF EXISTS lookup_units_new;
 DROP TABLE IF EXISTS lookup_units_old;
