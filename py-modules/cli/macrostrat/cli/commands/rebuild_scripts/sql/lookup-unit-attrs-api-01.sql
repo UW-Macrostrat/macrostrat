@@ -6,7 +6,10 @@ CREATE TABLE macrostrat.lookup_unit_attrs_api_new (
   LIKE lookup_unit_attrs_api
 );
 
-/** Note: these comp_prop calculations are as follows:
+/**
+  Calculate comp_prop for dominant and subordinate liths.
+
+  Note: these comp_prop calculations are as follows:
   - For dominant liths, the comp_prop is 5 / (5 * number of dominant liths + number of subordinate liths)
   - For subordinate liths, the comp_prop is 1 / (5 * number of dominant liths + number of subordinate liths)
   - If there are no dominant liths, then the comp_prop for all liths is 1 / number of subordinate liths
@@ -19,7 +22,7 @@ CREATE TABLE macrostrat.lookup_unit_attrs_api_new (
 WITH
   a AS (
     SELECT unit_id,
-      count(id) adom,
+      count(id) n_dom,
       'dom' AS dom
     FROM unit_liths
     WHERE dom = 'dom'
@@ -27,54 +30,42 @@ WITH
   ),
   b AS (
     SELECT unit_id,
-      count(id) bdom,
+      count(id) n_sub,
       'sub' AS dom
     FROM unit_liths
     WHERE dom = 'sub'
     GROUP BY unit_id
   ),
-  d AS (
+  aggregated AS (
     SELECT a.unit_id,
-      (5 / (coalesce(bdom, 0) + (adom * 5))) AS dom_p
+      -- v2 addition: in Postgres, need to cast to float to avoid integer division
+      coalesce(n_dom, 0) n_dom, -- number of dominant liths
+      coalesce(n_sub, 0) n_sub, -- number of subordinate liths
+      (5 / (coalesce(n_sub, 0) + (n_dom * 5))::float) AS dom_p,
+      (1 / (coalesce(n_sub, 0) + (n_dom * 5))::float) AS sub_p
     FROM a
     LEFT JOIN b ON b.unit_id = a.unit_id
+  ),
+  total AS (
+    SELECT
+      unit_id,
+      n_dom,
+      n_sub,
+      dom_p,
+      sub_p,
+      (n_dom * dom_p) + (n_sub * sub_p) AS total -- for verification, should equal 1
+    FROM aggregated
   )
 UPDATE unit_liths ul
-SET comp_prop = d.dom_p
-FROM d
+SET comp_prop = CASE
+  WHEN 'dom' = ul.dom THEN d.dom_p
+  WHEN 'sub' = ul.dom THEN d.sub_p
+  ELSE comp_prop END
+FROM total d
 WHERE d.unit_id = ul.unit_id
-  AND 'dom' = ul.dom;
+  AND ul.dom IN ('dom', 'sub');
 
-/** Lithologies */
-
-WITH
-  a AS (
-    SELECT unit_id,
-      count(id) adom,
-      'dom' AS dom
-    FROM unit_liths
-    WHERE dom = 'dom'
-    GROUP BY unit_id
-  ),
-  b AS (
-    SELECT unit_id,
-      count(id) bdom,
-      'sub' AS dom
-    FROM unit_liths
-    WHERE dom = 'sub'
-    GROUP BY unit_id
-  ),
-  s AS (
-    SELECT a.unit_id,
-      (1 / (coalesce(bdom, 0) + (adom * 5))) AS sub_p
-    FROM a
-    LEFT JOIN b ON b.unit_id = a.unit_id
-  )
-UPDATE unit_liths ul
-SET comp_prop = s.sub_p
-FROM s
-WHERE s.unit_id = ul.unit_id
-  AND 'sub' = ul.dom;
+/** Lithologies and attributes */
 
 WITH
   a AS (
