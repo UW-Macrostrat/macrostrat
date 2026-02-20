@@ -1,4 +1,8 @@
 from ..base import Base
+from macrostrat.core.database import get_database
+from pathlib import Path
+
+here = Path(__file__).parent
 
 
 class LookupUnitIntervals(Base):
@@ -9,28 +13,12 @@ class LookupUnitIntervals(Base):
         second_connection = self.mariadb["raw_connection"]()
         second_cursor = second_connection.cursor()
 
-        # Clean up
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_intervals_new;
-        """
-        )
-        self.mariadb["connection"].commit()
+        db = get_database()
 
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        # Copy structure into new table
-        self.mariadb["cursor"].execute(
-            "CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals"
-        )
+        db.run_sql(here / "sql" / "lookup-unit-intervals.sql")
 
         # initial query
-        self.mariadb["cursor"].execute(
+        db.run_query(
             """
             SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age
             FROM units
@@ -39,7 +27,7 @@ class LookupUnitIntervals(Base):
             LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id
             LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id
             GROUP BY units.id
-        """
+            """
         )
 
         # initialize arrays

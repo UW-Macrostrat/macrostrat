@@ -73,9 +73,11 @@ LEFT JOIN intervals tint ON tint.id = units.t_int
 LEFT JOIN intervals bint ON bint.id = units.b_int
 LEFT JOIN colors ON units.color::text = colors.color::text
 LEFT JOIN pbdb_matches ON pbdb_matches.unit_id = units.id
--- Had to convert units_sections and cols joins from left joins
-JOIN units_sections ON units.id = units_sections.unit_id
-JOIN cols ON cols.id = units_sections.col_id
+-- units_sections and cols should really not be left joins.
+-- they only need to be because we have a few units that are without
+-- a project ID or col_id
+LEFT JOIN units_sections ON units.id = units_sections.unit_id
+LEFT JOIN cols ON cols.id = units_sections.col_id
 LEFT JOIN unit_boundaries ubb ON ubb.unit_id_2 = units.id
 LEFT JOIN unit_boundaries ubt ON ubt.unit_id = units.id
 GROUP BY units.id,
