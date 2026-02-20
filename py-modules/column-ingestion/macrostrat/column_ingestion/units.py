@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import polars as pl
 from sqlalchemy import and_
+from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
 from .lithologies import Lithology, process_liths_text
@@ -18,6 +19,9 @@ class Unit:
     description: str | None = None
     name: str | None = None
     color: str | None = None
+
+
+log = get_logger(__name__)
 
 
 def get_units(data_file) -> {str: list[Unit]}:
@@ -167,7 +171,8 @@ def write_units(db, units: list[Unit]):
         unit.id = db.session.execute(insert_stmt).scalar()
 
         # Insert into unit_sections table to link the unit to its section
-        print("unit:", unit.id, "col:", unit.col_id, "section:", unit.section_id)
+        log.info("unit:", unit.id, "col:", unit.col_id, "section:", unit.section_id)
+
         units_sections_insert = (
             units_sections.insert()
             .values(
@@ -178,8 +183,7 @@ def write_units(db, units: list[Unit]):
             .returning(units_sections.c.id)
         )
 
-        res = db.session.execute(units_sections_insert).scalar()
-        print("units_section id:", res)
+        db.session.execute(units_sections_insert)
 
         # Insert lithology associations for the unit
         n_liths = len(unit.lithology)

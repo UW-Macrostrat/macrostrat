@@ -57,7 +57,6 @@ def ingest_columns_from_file(data_file):
             col.id = col_id
             # Create a section for the column (if it doesn't already exist)
             section_id = get_or_create_section(db, col_id)
-            print(f"Section ID: {section_id}")
 
             # Sync the units with the column ID
             for unit in col.units:
