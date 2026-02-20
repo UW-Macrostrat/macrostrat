@@ -1,5 +1,4 @@
 from macrostrat.core.database import get_database
-from macrostrat.database import on_conflict
 from openpyxl import load_workbook
 
 from .columns import (

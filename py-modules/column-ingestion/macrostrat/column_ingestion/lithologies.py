@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from .database import get_all_liths, get_all_lith_attributes
+from .database import get_all_lith_attributes, get_all_liths
 
 
 @dataclass
@@ -11,6 +11,7 @@ class LithAtt:
     def __hash__(self):
         return hash(self.id)
 
+
 @dataclass
 class Lithology:
     name: str
@@ -20,6 +21,7 @@ class Lithology:
     def __hash__(self):
         """Hash the lithology based on its id and attributes. This allows us to compare lithologies in tests without worrying about object identity."""
         return hash((self.id, frozenset(self.attributes) if self.attributes else None))
+
 
 class LithsProcessor:
     liths = []
@@ -37,19 +39,26 @@ class LithsProcessor:
 
     def find_lith_attribute(self, text) -> tuple[LithAtt | None, str]:
         """Start consuming text word by word, and check for matches at each step.
-        This allows us to match multi-word attributes like "cross-bedded" or "brownish gray"""
+        This allows us to match multi-word attributes like "cross-bedded" or "brownish gray
+        """
         res, remaining_text = _find_target(text, self.atts)
         if res is not None:
-            res = LithAtt(name=res.name, id=res.id)  # create a new LithAtt object without attributes for now
+            res = LithAtt(
+                name=res.name, id=res.id
+            )  # create a new LithAtt object without attributes for now
         return res, remaining_text
 
     def find_lith(self, text) -> tuple[Lithology | None, str]:
         """Start consuming text word by word, and check for matches at each step.
-        This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic"."""
+        This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic".
+        """
         res, remaining_text = _find_target(text, self.liths)
         if res is not None:
-            res = Lithology(name=res.name, id=res.id)  # create a new Lithology object without attributes for now
+            res = Lithology(
+                name=res.name, id=res.id
+            )  # create a new Lithology object without attributes for now
         return res, remaining_text
+
 
 def _match_target(name, liths):
     for lith in liths:
@@ -57,10 +66,12 @@ def _match_target(name, liths):
             return lith
     return None
 
+
 def _find_target(text, target_list) -> tuple[Lithology | LithAtt | None, str]:
     """Start consuming text word by word, and check for matches at each step.
     Return the first match found, along with remaining text that was not part of the match.
-    This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic" or attributes like "brownish gray"."""
+    This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic" or attributes like "brownish gray".
+    """
     remaining_words = text.split()
     text_to_match = []
     while len(remaining_words) > 0:
@@ -72,15 +83,18 @@ def _find_target(text, target_list) -> tuple[Lithology | LithAtt | None, str]:
     # Return None if no match was found, along with an empty string for remaining text
     return None, text
 
+
 liths_processor = LithsProcessor()
 
 split_words = {"and", "or"}
+
 
 def split_domains(text) -> list[str]:
     """Splits text into parts within which we will search for lithologies and attributes."""
     for split_word in split_words:
         text = text.replace(f" {split_word} ", ";")
     return text.split(";")
+
 
 def process_liths_text(lith) -> set[Lithology]:
     # Process the lithology string to extract information about the rock type, grainsize, color, etc.
@@ -91,7 +105,8 @@ def process_liths_text(lith) -> set[Lithology]:
         output.update(res)
     return output
 
-def process_lith_domain(lith_text) -> set[Lithology] :
+
+def process_lith_domain(lith_text) -> set[Lithology]:
     """
     This function processes a single lithology block that doesn't have a strong separator (semicolon) from other lithologies.
     It looks for a single lithology and any attributes that are associated with it.
