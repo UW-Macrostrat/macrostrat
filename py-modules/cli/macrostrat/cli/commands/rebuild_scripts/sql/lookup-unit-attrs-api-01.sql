@@ -17,25 +17,27 @@ CREATE TABLE macrostrat.lookup_unit_attrs_api_new (
 */
 
 WITH
+  a AS (
+    SELECT unit_id,
+      count(id) adom,
+      'dom' AS dom
+    FROM unit_liths
+    WHERE dom = 'dom'
+    GROUP BY unit_id
+  ),
+  b AS (
+    SELECT unit_id,
+      count(id) bdom,
+      'sub' AS dom
+    FROM unit_liths
+    WHERE dom = 'sub'
+    GROUP BY unit_id
+  ),
   d AS (
     SELECT a.unit_id,
       (5 / (coalesce(bdom, 0) + (adom * 5))) AS dom_p
-    FROM (
-      SELECT unit_id,
-        count(id) adom,
-        'dom' AS dom
-      FROM unit_liths
-      WHERE dom = 'dom'
-      GROUP BY unit_id
-    ) a
-    LEFT JOIN (
-      SELECT unit_id,
-        count(id) bdom,
-        'sub' AS dom
-      FROM unit_liths
-      WHERE dom = 'sub'
-      GROUP BY unit_id
-    ) b ON b.unit_id = a.unit_id
+    FROM a
+    LEFT JOIN b ON b.unit_id = a.unit_id
   )
 UPDATE unit_liths ul
 SET comp_prop = d.dom_p
@@ -46,25 +48,27 @@ WHERE d.unit_id = ul.unit_id
 /** Lithologies */
 
 WITH
+  a AS (
+    SELECT unit_id,
+      count(id) adom,
+      'dom' AS dom
+    FROM unit_liths
+    WHERE dom = 'dom'
+    GROUP BY unit_id
+  ),
+  b AS (
+    SELECT unit_id,
+      count(id) bdom,
+      'sub' AS dom
+    FROM unit_liths
+    WHERE dom = 'sub'
+    GROUP BY unit_id
+  ),
   s AS (
     SELECT a.unit_id,
       (1 / (coalesce(bdom, 0) + (adom * 5))) AS sub_p
-    FROM (
-      SELECT unit_id,
-        count(id) adom,
-        'dom' AS dom
-      FROM unit_liths
-      WHERE dom = 'dom'
-      GROUP BY unit_id
-    ) a
-    LEFT JOIN (
-      SELECT unit_id,
-        count(id) bdom,
-        'sub' AS dom
-      FROM unit_liths
-      WHERE dom = 'sub'
-      GROUP BY unit_id
-    ) b ON b.unit_id = a.unit_id
+    FROM a
+    LEFT JOIN b ON b.unit_id = a.unit_id
   )
 UPDATE unit_liths ul
 SET comp_prop = s.sub_p
