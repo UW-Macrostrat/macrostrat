@@ -158,3 +158,80 @@ WHERE lu.unit_id = agg_econs.unit_id;
 UPDATE macrostrat.lookup_unit_attrs_api_new
 SET econ = '[]'::bytea
 WHERE econ IS NULL;
+
+/** Measurements short */
+WITH a AS (
+  SELECT
+    unit_id,
+    json_build_object(
+      'measure_class', measurement_class,
+      'measure_type', measurement_type
+    ) measure_short
+  FROM measurements
+  JOIN measures ON measures.measurement_id = measurements.id
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
+  JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
+),
+agg_measures AS (
+  SELECT unit_id, json_agg(measure_short) AS measure_short
+  FROM a
+  GROUP BY unit_id
+)
+UPDATE macrostrat.lookup_unit_attrs_api_new lu
+SET measure_short = a.measure_short::text::bytea
+FROM agg_measures a
+WHERE lu.unit_id = a.unit_id;
+
+UPDATE macrostrat.lookup_unit_attrs_api_new
+SET measure_short = '[]'::bytea
+WHERE measure_short IS NULL;
+
+/** Measurements long */
+
+WITH a AS (
+  SELECT
+    unit_measures.unit_id,
+    measurements.id AS measure_id,
+    measurement_class AS measure_class,
+    measurement_type AS measure_type,
+    measurement AS measure,
+    round(avg(measure_value), 5) AS mean,
+    round(stddev(measure_value), 5) AS stddev,
+    count(unit_measures.id) AS n,
+    units
+  FROM measures
+  JOIN measurements ON measures.measurement_id = measurements.id
+  JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
+  JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
+  -- Apparently there are unit measures with unit_id = 0. We filter those out here (new in v2)
+  WHERE unit_measures.unit_id != 0
+  GROUP BY unit_measures.unit_id, measurements.id, measurement_class, measurement_type, measurement, units
+),
+b AS (
+  SELECT unit_id,
+    json_build_object(
+      'measure_id', measure_id,
+      -- These class/type fields aren't included in v1 even though they could be (to extend measure_short effectively)
+      -- 'measure_class', measure_class,
+      -- 'measure_type', measure_type,
+      'measure', measure,
+      'mean', mean,
+      'stddev', stddev,
+      'n', n,
+      'unit', units
+    ) AS measure_long
+  FROM a
+),
+agg_measures AS (
+  SELECT unit_id, json_agg(measure_long) AS measure_long
+  FROM b
+  GROUP BY unit_id
+)
+UPDATE macrostrat.lookup_unit_attrs_api_new lu
+SET measure_long = agg_measures.measure_long::text::bytea
+FROM agg_measures
+WHERE lu.unit_id = agg_measures.unit_id;
+
+UPDATE macrostrat.lookup_unit_attrs_api_new
+SET measure_long = '[]'::bytea
+WHERE measure_long IS NULL;
