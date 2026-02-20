@@ -1,11 +1,12 @@
-from macrostrat.core.database import get_database
 from openpyxl import load_workbook
+
+from macrostrat.core.database import get_database
 
 from .columns import (
     get_column_data,
     get_or_create_column,
-    get_or_create_section,
     get_or_create_column_group,
+    get_or_create_section,
 )
 from .database import get_or_create_project
 from .metadata import get_metadata

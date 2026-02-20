@@ -1,8 +1,11 @@
-from ..base import Base
-from macrostrat.core.database import get_database
 from pathlib import Path
-from .lookup_units import update_intervals, copy_table_into_place
+
 from psycopg2.sql import Identifier
+
+from macrostrat.core.database import get_database
+
+from ..base import Base
+from .lookup_units import copy_table_into_place, update_intervals
 
 here = Path(__file__).parent
 

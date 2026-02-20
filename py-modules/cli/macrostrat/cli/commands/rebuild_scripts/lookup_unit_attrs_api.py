@@ -1,8 +1,9 @@
-from .lookup_units import copy_table_into_place
-from ..base import Base
+from pathlib import Path
 
 from macrostrat.core.database import get_database
-from pathlib import Path
+
+from ..base import Base
+from .lookup_units import copy_table_into_place
 
 here = Path(__file__).parent
 
