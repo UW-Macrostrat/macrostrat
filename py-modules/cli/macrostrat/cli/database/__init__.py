@@ -7,6 +7,7 @@ import typer
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
+from psycopg2.sql import Identifier
 from typer import Argument, Option
 
 from macrostrat.core import MacrostratSubsystem, app
@@ -22,6 +23,7 @@ from ._legacy import get_db
 
 # NOTE: right now, this is quite implicit.
 from .utils import engine_for_db_name, setup_postgrest_access
+from .sequences import reset_sequences
 
 log = get_logger(__name__)
 
@@ -197,6 +199,18 @@ def dump(
         custom_format=custom_format,
     )
     asyncio.run(task)
+
+
+@db_app.command()
+def reset_sequence(
+    table: str = Argument(..., help="Table to fix the identity sequence for"),
+    database: str = Option(None, help="Database to connect to"),
+    column: str = Option(None, help="Identity column to fix"),
+):
+    """Fix an identity sequence for a given table and column"""
+    engine = engine_for_db_name(database)
+    db = Database(engine)
+    reset_sequences(db, table, column)
 
 
 @db_app.command()
