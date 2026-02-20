@@ -1,6 +1,8 @@
 import decimal
 import json
 
+from macrostrat.database import on_conflict
+
 from ..base import Base
 
 from macrostrat.core.database import get_database
@@ -9,8 +11,7 @@ from pathlib import Path
 here = Path(__file__).parent
 
 
-def _lookup_unit_attrs_api():
-    db = get_database()
+def _lookup_unit_attrs_api(db):
     db.run_sql(here / "sql" / "lookup-unit-attrs-api-01.sql")
 
     units = db.run_query(
@@ -32,26 +33,26 @@ def _lookup_unit_attrs_api():
         """
     ).mappings()
 
-    unit_attrs = []
-
     current_unit_id = None
     insert_list = []
 
     tbl = db.reflect_table("lookup_unit_attrs_api_new", schema="macrostrat")
 
+    # NOTE: this just makes JSON. we could do this in a much easier way probably.
+    unit_attrs = []
     for unit in units:
         # Accumulate attributes for the current unit until we hit a new unit_id, at which point we insert the accumulated attributes into the database
-        if unit["unit_id"] != current_unit_id:
-            db.run_sql(
-                "INSERT INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith) VALUES (:unit_id, :lith)",
+        if current_unit_id is not None and unit["unit_id"] != current_unit_id:
+            insert_list.append(
                 {
                     "unit_id": current_unit_id,
-                    "lith": json.dumps(unit_attrs, default=str),
+                    "lith": json.dumps(unit_attrs, default=decimal_serializer).encode(
+                        "utf-8"
+                    ),
                 },
             )
             unit_attrs = []
-            current_unit_id = unit["unit_id"]
-
+        current_unit_id = unit["unit_id"]
         atts = []
         if unit["lith_atts"] is not None:
             atts = unit["lith_atts"].split("|")
@@ -64,6 +65,26 @@ def _lookup_unit_attrs_api():
             "prop": unit["comp_prop"],
         }
         unit_attrs.append(entry)
+    insert_list.append(
+        {
+            "unit_id": current_unit_id,
+            "lith": json.dumps(unit_attrs, default=decimal_serializer).encode("utf-8"),
+        },
+    )
+    print(f"Inserting {len(insert_list)} records into lookup_unit_attrs_api_new...")
+    # Do this in chunks of 10000 rows
+    chunk_size = 1000
+    for i in range(0, len(insert_list), chunk_size):
+        print(f"Inserting records {i} to {i+chunk_size}...")
+        records = insert_list[i : i + chunk_size]
+        db.session.execute(tbl.insert().values(records))
+        db.session.commit()
+
+
+def decimal_serializer(obj):
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    raise TypeError
 
 
 class LookupUnitsAttrsAPI(Base):
@@ -71,7 +92,9 @@ class LookupUnitsAttrsAPI(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        _lookup_unit_attrs_api()
+        db = get_database()
+        with on_conflict("restrict"):
+            _lookup_unit_attrs_api(db)
 
     def run_old(self):
         def check_for_decimals(obj):
