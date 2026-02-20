@@ -1,8 +1,69 @@
 import decimal
 import json
-from collections import defaultdict
 
 from ..base import Base
+
+from macrostrat.core.database import get_database
+from pathlib import Path
+
+here = Path(__file__).parent
+
+
+def _lookup_unit_attrs_api():
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-unit-attrs-api-01.sql")
+
+    units = db.run_query(
+        """
+        SELECT
+            unit_id,
+            lith_id,
+            lith,
+            lith_type,
+            lith_class,
+            comp_prop,
+            string_agg(lith_atts.lith_att,  '|') AS lith_atts
+        FROM unit_liths
+        LEFT JOIN liths ON lith_id = liths.id
+        LEFT JOIN unit_liths_atts ON unit_liths.id = unit_liths_atts.unit_lith_id
+        LEFT JOIN lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
+        GROUP BY unit_liths.id, liths.id, liths.lith, lith_type, lith_class, comp_prop
+        ORDER BY unit_id ASC
+        """
+    ).mappings()
+
+    unit_attrs = []
+
+    current_unit_id = None
+    insert_list = []
+
+    tbl = db.reflect_table("lookup_unit_attrs_api_new", schema="macrostrat")
+
+    for unit in units:
+        # Accumulate attributes for the current unit until we hit a new unit_id, at which point we insert the accumulated attributes into the database
+        if unit["unit_id"] != current_unit_id:
+            db.run_sql(
+                "INSERT INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith) VALUES (:unit_id, :lith)",
+                {
+                    "unit_id": current_unit_id,
+                    "lith": json.dumps(unit_attrs, default=str),
+                },
+            )
+            unit_attrs = []
+            current_unit_id = unit["unit_id"]
+
+        atts = []
+        if unit["lith_atts"] is not None:
+            atts = unit["lith_atts"].split("|")
+        entry = {
+            "lith_id": unit["lith_id"],
+            "atts": atts,
+            "name": unit["lith"],
+            "type": unit["lith_type"],
+            "class": unit["lith_class"],
+            "prop": unit["comp_prop"],
+        }
+        unit_attrs.append(entry)
 
 
 class LookupUnitsAttrsAPI(Base):
@@ -10,103 +71,13 @@ class LookupUnitsAttrsAPI(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
+        _lookup_unit_attrs_api()
+
+    def run_old(self):
         def check_for_decimals(obj):
             if isinstance(obj, decimal.Decimal):
                 return float(obj)
             raise TypeError
-
-        update_conn = self.mariadb["raw_connection"]()
-        update_cur = update_conn.cursor()
-
-        # Create room for the new data
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_attrs_api_new;
-        """
-        )
-        self.mariadb["cursor"].close()
-        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
-
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_attrs_api_old;
-        """
-        )
-        self.mariadb["cursor"].close()
-        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
-
-        self.mariadb["cursor"].execute(
-            """
-            CREATE TABLE lookup_unit_attrs_api_new LIKE lookup_unit_attrs_api;
-        """
-        )
-        self.mariadb["cursor"].close()
-        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
-
-        # First recompute and populate comp_prop
-        self.mariadb["cursor"].execute(
-            """
-            UPDATE unit_liths
-            JOIN (
-                SELECT
-                  a.unit_id,
-                  (5 / (COALESCE(bdom, 0) + (adom * 5))) AS dom_p
-                  FROM (
-                      SELECT
-                          unit_id,
-                          count(id) adom,
-                          'dom' AS dom
-                      FROM unit_liths
-                      WHERE dom = 'dom'
-                      GROUP BY unit_id
-                  ) a
-                  LEFT JOIN (
-                      SELECT
-                          unit_id,
-                          count(id) bdom,
-                          'sub' AS dom
-                      FROM unit_liths
-                      WHERE dom = 'sub'
-                      GROUP BY unit_id
-                  ) b ON b.unit_id = a.unit_id
-            ) d ON d.unit_id = unit_liths.unit_id AND 'dom' = unit_liths.dom
-            SET unit_liths.comp_prop = d.dom_p;
-        """
-        )
-        self.mariadb["cursor"].close()
-        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
-
-        self.mariadb["cursor"].execute(
-            """
-            UPDATE unit_liths
-            JOIN (
-                SELECT
-                  a.unit_id,
-                  (1 / (COALESCE(bdom, 0) + (adom * 5))) AS sub_p
-                  FROM (
-                      SELECT
-                          unit_id,
-                          count(id) adom,
-                          'dom' AS dom
-                      FROM unit_liths
-                      WHERE dom = 'dom'
-                      GROUP BY unit_id
-                  ) a
-                  LEFT JOIN (
-                      SELECT
-                          unit_id,
-                          count(id) bdom,
-                          'sub' AS dom
-                      FROM unit_liths
-                      WHERE dom = 'sub'
-                      GROUP BY unit_id
-                  ) b ON b.unit_id = a.unit_id
-            ) s ON s.unit_id = unit_liths.unit_id AND 'sub' = unit_liths.dom
-            SET unit_liths.comp_prop = s.sub_p;
-        """
-        )
-        self.mariadb["cursor"].close()
-        self.mariadb["cursor"] = self.mariadb["connection"].cursor()
 
         ### Next handle lithologies ###
         self.mariadb["cursor"].execute(
