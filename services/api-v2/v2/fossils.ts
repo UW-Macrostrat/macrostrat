@@ -196,7 +196,7 @@ async function buildAndExecuteFossilsQuery(req, data, geo) {
 
   if (req.query.strat_name_concept_id) {
     where +=
-      " AND lookup_strat_names.strat_name_id = ANY(SELECT strat_name_id FROM lookup_strat_names WHERE concept_id = ANY(:concept_id))";
+      " AND lookup_strat_names.strat_name_id = ANY(SELECT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id = ANY(:concept_id))";
     params["concept_id"] = larkin.parseMultipleIds(
       req.query.strat_name_concept_id,
     );
@@ -225,9 +225,12 @@ async function buildAndExecuteFossilsQuery(req, data, geo) {
     JOIN macrostrat.units ON pbdb_matches.unit_id = units.id
     JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
     JOIN macrostrat.cols ON cols.id = units_sections.col_id
-    JOIN macrostrat.lookup_unit_intervals ON units_sections.unit_id=lookup_unit_intervals.unit_id
-    LEFT JOIN macrostrat.unit_strat_names ON unit_strat_names.unit_id = units.id
-    LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
+    JOIN macrostrat.lookup_unit_intervals
+      ON units_sections.unit_id=lookup_unit_intervals.unit_id
+    LEFT JOIN macrostrat.unit_strat_names
+      ON unit_strat_names.unit_id = units.id
+    LEFT JOIN macrostrat.lookup_strat_names
+      ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
     WHERE macrostrat.pbdb_matches.release_date < now() AND
     macrostrat.cols.status_code = 'active' ${where}
     GROUP BY pbdb_matches.collection_no, pbdb_matches.collection_name, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, pbdb_matches.occs, pbdb_matches.unit_id, cols.id, pbdb_matches.ref_id, pbdb_matches.coordinate, lookup_strat_names.concept_id

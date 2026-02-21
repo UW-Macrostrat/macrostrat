@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.1-beta.2] - 2026-02-21
+
+- Fix SQL error with fossil route filtering by concept IDs
+
 ## [2.3.1-beta.1] - 2026-02-16
 
 - Fix behavior where columns that lack matching units are retained in results
