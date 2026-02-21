@@ -130,7 +130,8 @@ SET
   t_int_name = prev_interval.interval_name,
   t_prop = 1
 FROM prev_interval
-WHERE lookup_units_new.t_prop = 0;
+WHERE lookup_units_new.t_prop = 0
+  AND lookup_units_new.t_int = prev_interval.next_id;
 
 /** Update for boundaries with b_prop = 1
   Note: switched from an iterative to a bulk update in v2
@@ -159,4 +160,5 @@ SET
   b_int_name = next_interval.interval_name,
   b_prop = 0
 FROM next_interval
-WHERE lookup_units_new.b_prop = 1;
+WHERE lookup_units_new.b_prop = 1
+  AND lookup_units_new.b_int = next_interval.prev_id
