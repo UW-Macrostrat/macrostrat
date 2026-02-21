@@ -84,6 +84,29 @@ test_cases = [
             ),
         },
     ),
+    LithologyTestCase(
+        "calcareous sandstone",
+        {
+            calcareous_sandstone := Lithology(
+                name="sandstone", id=10, attributes={LithAtt(name="calcareous", id=80)}
+            )
+        },
+    ),
+    LithologyTestCase(
+        "calcareous ooze",
+        {calcareous_ooze := Lithology(name="calcareous ooze", id=104)},
+    ),
+    # Synonyms
+    LithologyTestCase(
+        "cross-stratified grainstone",
+        {
+            cross_bedded_grainstone := Lithology(
+                name="grainstone",
+                id=23,
+                attributes={LithAtt(name="cross-bedded", id=17)},
+            )
+        },
+    ),
 ]
 
 
