@@ -27,6 +27,13 @@ class LithsProcessor:
     liths = []
     atts = []
 
+    # TODO: make this more explicit and comprehensive. Consider adding to database.
+    lith_synonyms = {}
+
+    lith_attribute_synonyms = {
+        "cross-bedded": ["cross-stratified", "cross bedded", "cross laminated"],
+    }
+
     def __init__(self):
         self.liths = get_all_liths()
         self.atts = get_all_lith_attributes()
@@ -37,10 +44,14 @@ class LithsProcessor:
     def match_lith_attribute(self, name) -> LithAtt | None:
         return _match_target(name, self.atts)
 
-    def find_lith_attribute(self, text) -> tuple[LithAtt | None, str]:
+    def find_lith_attribute(
+        self, text, use_synonyms: bool = True
+    ) -> tuple[LithAtt | None, str]:
         """Start consuming text word by word, and check for matches at each step.
         This allows us to match multi-word attributes like "cross-bedded" or "brownish gray
         """
+        if use_synonyms:
+            text = _replace_synonyms(text, self.lith_attribute_synonyms)
         res, remaining_text = _find_target(text, self.atts)
         if res is not None:
             res = LithAtt(
@@ -48,16 +59,29 @@ class LithsProcessor:
             )  # create a new LithAtt object without attributes for now
         return res, remaining_text
 
-    def find_lith(self, text) -> tuple[Lithology | None, str]:
+    def find_lith(
+        self, text, use_synonyms: bool = True
+    ) -> tuple[Lithology | None, str]:
         """Start consuming text word by word, and check for matches at each step.
         This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic".
         """
+        if use_synonyms:
+            text = _replace_synonyms(text, self.lith_synonyms)
         res, remaining_text = _find_target(text, self.liths)
         if res is not None:
             res = Lithology(
                 name=res.name, id=res.id
             )  # create a new Lithology object without attributes for now
         return res, remaining_text
+
+
+def _replace_synonyms(text, synonyms_dict):
+    for key, synonyms in synonyms_dict.items():
+        for synonym in synonyms:
+            if text.startswith(synonym):
+                # Replace the synonym with the key, but keep the rest of the text after the synonym
+                return key + text[len(synonym) :]
+    return text
 
 
 def _match_target(name, liths):
@@ -122,9 +146,21 @@ def process_lith_domain(lith_text) -> set[Lithology]:
         # Start searching for attributes first, then lithologies
         remaining_text = entity
         while len(remaining_text) > 0:
-            att, remaining_text = liths_processor.find_lith_attribute(remaining_text)
-            if att is not None:
-                atts.add(att)
+            lith0, remaining_text1 = liths_processor.find_lith(remaining_text)
+            if lith0 is not None:
+                # If we find a lithology that consumes the entire remaining text, we can stop searching for attributes and just add the lithology.
+                # This handles special cases like "calcareous ooze" which is its own lithology, despite having the word "calcareous" which is also an attribute.
+                liths.add(lith0)
+                remaining_text = remaining_text1
+            else:
+                # Otherwise, we search for attributes.
+                att, remaining_text0 = liths_processor.find_lith_attribute(
+                    remaining_text
+                )
+
+                remaining_text = remaining_text0
+                if att is not None:
+                    atts.add(att)
             # Now search for lithologies. If we find one, we reset the attribute list.
             lith, remaining_text = liths_processor.find_lith(remaining_text)
             if lith is None:
@@ -135,6 +171,7 @@ def process_lith_domain(lith_text) -> set[Lithology]:
                     lith.attributes = atts
                     atts = set()  # reset attributes after applying to a lithology
                 liths.add(lith)
+
         # Once we've consumed all text in this entity, we can move to the next entity
 
     return liths
@@ -142,9 +179,3 @@ def process_lith_domain(lith_text) -> set[Lithology]:
 
 class MultipleLithologiesError(ValueError):
     pass
-
-
-# TODO: make this more explicit and comprehensive.
-lith_att_synonyms = {
-    "cross-bedded": ["cross-stratified", "cross bedded", "cross laminated"],
-}
