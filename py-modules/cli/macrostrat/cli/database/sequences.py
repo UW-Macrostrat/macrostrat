@@ -1,6 +1,8 @@
-from rich import print
-from psycopg2.sql import Identifier
 import re
+
+from psycopg2.sql import Identifier
+from rich import print
+
 from macrostrat.database import Database
 
 

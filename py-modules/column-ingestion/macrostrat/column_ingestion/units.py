@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import polars as pl
 from sqlalchemy import and_
+
 from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table

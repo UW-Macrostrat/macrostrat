@@ -2,7 +2,7 @@ from pathlib import Path
 
 from psycopg2.sql import Identifier
 from rich.console import Console
-from rich.progress import track, Progress
+from rich.progress import Progress, track
 
 from macrostrat.core.exc import MacrostratError
 

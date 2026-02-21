@@ -1,7 +1,9 @@
-from ..base import Base
-from ...database import get_db
 from pathlib import Path
+
 from psycopg2.sql import Identifier
+
+from ...database import get_db
+from ..base import Base
 
 here = Path(__file__).parent
 
