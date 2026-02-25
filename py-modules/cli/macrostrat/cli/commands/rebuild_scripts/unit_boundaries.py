@@ -1,47 +1,14 @@
+from pathlib import Path
+
+from ...database import get_db
 from ..base import Base
 
+here = Path(__file__).parent
 
 class UnitBoundaries(Base):
     def __init__(self, *args):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        self.mariadb["cursor"].execute(
-            """
-          UPDATE unit_boundaries ub
-          JOIN intervals i ON ub.t1 = i.id
-          SET ub.t1_age = age_bottom - ((age_bottom - age_top) * t1_prop)
-          WHERE boundary_status != 'absolute'
-        """
-        )
-
-        self.mariadb["cursor"].execute(
-            """
-          UPDATE unit_boundaries_scratch ub
-          JOIN intervals i ON ub.t1 = i.id
-          SET ub.t1_age = age_bottom - ((age_bottom - age_top) * t1_prop)
-          WHERE boundary_status != 'absolute'
-        """
-        )
-
-        self.mariadb["cursor"].execute(
-            """
-          UPDATE unit_boundaries ub
-          JOIN intervals i ON ub.t1 = i.id
-          SET ub.t1_prop = (age_bottom - t1_age)/(age_bottom - age_top)
-          WHERE boundary_status = 'absolute'
-        """
-        )
-
-        self.mariadb["cursor"].execute(
-            """
-          UPDATE unit_boundaries_scratch ub
-          JOIN intervals i ON ub.t1 = i.id
-          SET ub.t1_prop = (age_bottom - t1_age)/(age_bottom - age_top)
-          WHERE boundary_status = 'absolute'
-        """
-        )
-
-        self.mariadb["connection"].commit()
-        self.mariadb["cursor"].close()
-        self.mariadb["connection"].close()
+        db = get_db()
+        db.run_sql(here / "sql" / "unit-boundaries.sql")
