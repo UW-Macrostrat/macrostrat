@@ -6,22 +6,34 @@ console = Console()
 
 
 def _get_scripts() -> dict:
-    from .scripts import Autocomplete, LookupStratNames, LookupUnitAttrsApi, LookupUnitIntervals, LookupUnits, Stats, StratNameFootprints, UnitBoundaries
+    from .scripts import (
+        Autocomplete,
+        LookupStratNames,
+        LookupUnitAttrsApi,
+        LookupUnitIntervals,
+        LookupUnits,
+        Stats,
+        StratNameFootprints,
+        UnitBoundaries,
+    )
+
     return {
-        "autocomplete":         Autocomplete,
-        "lookup-strat-names":   LookupStratNames,
+        "autocomplete": Autocomplete,
+        "lookup-strat-names": LookupStratNames,
         "lookup-unit-attrs-api": LookupUnitAttrsApi,
         "lookup-unit-intervals": LookupUnitIntervals,
-        "lookup-units":         LookupUnits,
-        "stats":                Stats,
+        "lookup-units": LookupUnits,
+        "stats": Stats,
         "strat-name-footprints": StratNameFootprints,
-        "unit-boundaries":      UnitBoundaries,
+        "unit-boundaries": UnitBoundaries,
     }
 
 
 @cli.command()
 def scripts(
-    name: str | None = Option(None, "--name", "-n", help="Run a specific script by name"),
+    name: str | None = Option(
+        None, "--name", "-n", help="Run a specific script by name"
+    ),
     list_: bool = Option(False, "--list", "-l", help="List available scripts"),
 ):
     """Run rebuild scripts."""
@@ -35,7 +47,9 @@ def scripts(
     to_run = {name: all_scripts[name]} if name else all_scripts
 
     if name and name not in all_scripts:
-        raise RuntimeError(f"No script named '{name}'. Available: {', '.join(all_scripts)}")
+        raise RuntimeError(
+            f"No script named '{name}'. Available: {', '.join(all_scripts)}"
+        )
 
     for script_name, cls in to_run.items():
         console.print(f"[bold cyan]→ {script_name}[/]")

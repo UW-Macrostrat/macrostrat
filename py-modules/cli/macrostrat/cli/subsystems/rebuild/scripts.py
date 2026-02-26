@@ -4,8 +4,8 @@ from psycopg2.sql import Identifier
 from rich.console import Console
 from rich.progress import Progress, track
 
-from macrostrat.core.exc import MacrostratError
 from macrostrat.core.database import get_database
+from macrostrat.core.exc import MacrostratError
 
 here = Path(__file__).parent
 console = Console()
@@ -14,6 +14,7 @@ console = Console()
 # ---------------------------------------------------------------------------
 # Shared helpers (from lookup_units.py)
 # ---------------------------------------------------------------------------
+
 
 def validate_counts(db):
     data = db.run_query(
@@ -30,6 +31,7 @@ units:                 {data.units_count} rows
 lookup_unit_attrs_api: {data.lookup_units_count} rows
 """
         )
+
 
 def copy_table_into_place(
     db, table_name, *, new_table_name=None, old_table_name=None, schema="macrostrat"
@@ -52,6 +54,7 @@ def copy_table_into_place(
             old_table=Identifier(schema, old_table_name),
         ),
     )
+
 
 def update_intervals_lookup_units(db, *, where_clauses: list[str] = None, **params):
     """Internal version of interval update method which allows more flexible integration
@@ -96,9 +99,7 @@ def update_intervals_lookup_units(db, *, where_clauses: list[str] = None, **para
     db.run_sql(sql, params)
 
 
-
-
-#from lookup_unit_intervals
+# from lookup_unit_intervals
 def update_timescale_unit_intervals(db, qtype="age", where_clauses: list[str] = None):
     field_prefix = qtype
     timescale_name = f"international {qtype}s"
@@ -155,6 +156,7 @@ def update_timescale_lookup_units(db, qtype="age"):
 # Scripts (unchanged logic, just consolidated)
 # ---------------------------------------------------------------------------
 
+
 class Autocomplete:
     def run(self):
         db = get_database()
@@ -200,9 +202,6 @@ class LookupUnits:
         copy_table_into_place(db, "lookup_units")
 
 
-
-
-
 class LookupUnitIntervals:
     def run(self):
         db = get_database()
@@ -244,18 +243,12 @@ class LookupUnitIntervals:
         copy_table_into_place(db, "lookup_unit_intervals", schema="macrostrat")
 
 
-
-
-
-
-
 class LookupUnitAttrsApi:
     def run(self):
         db = get_database()
         db.run_sql(here / "sql" / "lookup-unit-attrs-api-01.sql")
         validate_counts(db)
         copy_table_into_place(db, "lookup_unit_attrs_api")
-
 
 
 class LookupStratNames:

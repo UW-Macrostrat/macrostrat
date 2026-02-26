@@ -20,10 +20,10 @@ from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
 )
+from .subsystems.rebuild import cli as rebuild_cli
 from .subsystems.rockd import cli as rockd_cli
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
-from .subsystems.rebuild import cli as rebuild_cli
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
