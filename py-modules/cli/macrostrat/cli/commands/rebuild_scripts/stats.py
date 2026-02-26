@@ -6,7 +6,6 @@ from ..base import Base
 here = Path(__file__).parent
 
 
-
 class Stats(Base):
     def __init__(self, *args):
         Base.__init__(self, {}, *args)
