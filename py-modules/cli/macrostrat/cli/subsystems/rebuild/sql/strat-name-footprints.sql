@@ -69,6 +69,8 @@ LEFT JOIN second ON first.concept_id = second.concept_id
 LEFT JOIN macrostrat.strat_names_meta ON second.concept_id = strat_names_meta.concept_id
 LEFT JOIN macrostrat.intervals ti ON strat_names_meta.t_int = ti.id
 LEFT JOIN macrostrat.intervals tb ON strat_names_meta.b_int = tb.id
+WHERE second.concept_id IS NOT NULL
+
 ;
 
 UPDATE macrostrat.strat_name_footprints_new SET geom = 'POLYGON EMPTY' WHERE ST_GeometryType(geom) = 'ST_Point';
