@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 from psycopg2.extras import NamedTupleCursor
 
-from ..database import mariaConnection, pgConnection
+from ..database._legacy import pgConnection
 
 
 class Base(object):

@@ -1,4 +1,57 @@
+from pathlib import Path
+
+from psycopg2.sql import Identifier
+
+from macrostrat.core.database import get_database
+
 from ..base import Base
+from .lookup_units import copy_table_into_place, update_intervals
+
+here = Path(__file__).parent
+
+
+def _lookup_unit_intervals():
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-unit-intervals-01.sql")
+
+    for time_range in ("age", "epoch", "period", "era", "eon"):
+        update_timescale(db, time_range)
+
+    shared = dict(
+        timescale="international ages",
+        table=Identifier("lookup_unit_intervals_new"),
+    )
+
+    # Uses fo_age and lo_age instead of t_age and b_age, to work at the interval level
+    # first overlap period (name only)
+    update_intervals(
+        db,
+        interval_name_field=Identifier("fo_period"),
+        where_clauses=["i.age_bottom >= t.fo_age", "i.age_top < t.fo_age"],
+        **shared,
+    )
+
+    # last overlap period (name only)
+    update_intervals(
+        db,
+        interval_name_field=Identifier("lo_period"),
+        where_clauses=["i.age_bottom > t.lo_age", "i.age_top <= t.lo_age"],
+        **shared,
+    )
+
+    db.run_sql(here / "sql" / "lookup-unit-intervals-02.sql")
+
+    ## validate results
+    res = db.run_query(
+        "SELECT count(*) units_count, (SELECT count(*) from lookup_unit_intervals_new) units_intervals_count from units"
+    ).one()
+
+    if res.units_count != res.units_intervals_count:
+        raise ValueError(
+            "Inconsistent unit count in lookup_unit_intervals_new table", res
+        )
+
+    copy_table_into_place(db, "lookup_unit_intervals", schema="macrostrat")
 
 
 class LookupUnitIntervals(Base):
@@ -6,275 +59,29 @@ class LookupUnitIntervals(Base):
         Base.__init__(self, {}, *args)
 
     def run(self):
-        second_connection = self.mariadb["raw_connection"]()
-        second_cursor = second_connection.cursor()
+        _lookup_unit_intervals()
 
-        # Clean up
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_intervals_new;
-        """
-        )
-        self.mariadb["connection"].commit()
 
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE IF EXISTS lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
+def update_timescale(db, qtype="age", where_clauses: list[str] = None):
+    field_prefix = qtype
+    timescale_name = f"international {qtype}s"
 
-        # Copy structure into new table
-        self.mariadb["cursor"].execute(
-            "CREATE TABLE lookup_unit_intervals_new LIKE lookup_unit_intervals"
-        )
+    print(f"Updating {qtype}s...")
 
-        # initial query
-        self.mariadb["cursor"].execute(
-            """
-            SELECT units.id, FO, LO, f.age_bottom, f.interval_name fname, f.age_top FATOP, l.age_top, l.interval_name lname, min(u1.t1_age) AS t_age, max(u2.t1_age) AS b_age
-            FROM units
-            JOIN intervals f on FO = f.id
-            JOIN intervals l ON LO = l.id
-            LEFT JOIN unit_boundaries u1 ON u1.unit_id = units.id
-            LEFT JOIN unit_boundaries u2 ON u2.unit_id_2 = units.id
-            GROUP BY units.id
-        """
-        )
+    where_clauses = [
+        # t = unit, i = matched interval
+        "t.fo_age > i.age_top",
+        "t.fo_age <= i.age_bottom",
+        "t.lo_age < i.age_bottom",
+        "t.lo_age >= i.age_top",
+    ]
 
-        # initialize arrays
-        r2 = {}
-        r3 = {}
-        r4 = {}
-        r5 = {}
-        r6 = {}
-        rLO = {}
-        rFO = {}
+    age_fields = dict(
+        interval_name_field=Identifier(field_prefix),
+        interval_id_field=Identifier(field_prefix + "_id"),
+        table=Identifier("lookup_unit_intervals_new"),
+    )
 
-        row = self.mariadb["cursor"].fetchone()
-        while row is not None:
-            # Use this as the parameters for most of the queries
-            params = {"age_bottom": row["age_bottom"], "age_top": row["age_top"]}
-
-            second_cursor.execute(
-                """
-                SELECT interval_name,intervals.id from intervals
-                JOIN timescales_intervals ON intervals.id = interval_id
-                JOIN timescales on timescale_id = timescales.id
-                WHERE timescale = 'international epochs'
-                    AND %(age_bottom)s > age_top
-                    AND %(age_bottom)s <= age_bottom
-                    AND %(age_top)s < age_bottom
-                    AND %(age_top)s >= age_top
-            """,
-                params,
-            )
-            row2 = second_cursor.fetchone()
-
-            if row2 is None:
-                r2["interval_name"] = ""
-                r2["id"] = 0
-            else:
-                r2["interval_name"] = row2["interval_name"]
-                r2["id"] = row2["id"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name, intervals.id from intervals
-                JOIN timescales_intervals ON intervals.id = interval_id
-                JOIN timescales on timescale_id = timescales.id
-                WHERE timescale='international periods'
-                    AND %(age_bottom)s > age_top
-                    AND %(age_bottom)s <= age_bottom
-                    AND %(age_top)s < age_bottom
-                    AND %(age_top)s >= age_top
-            """,
-                params,
-            )
-            row3 = second_cursor.fetchone()
-
-            if row3 is None:
-                r3["interval_name"] = ""
-                r3["id"] = 0
-            else:
-                r3["interval_name"] = row3["interval_name"]
-                r3["id"] = row3["id"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name FROM intervals
-                JOIN timescales_intervals ON intervals.id = interval_id
-                JOIN timescales on timescale_id = timescales.id
-                WHERE timescale = 'international periods'
-                    AND age_bottom >= %(age_bottom)s
-                    AND age_top < %(age_bottom)s
-            """,
-                params,
-            )
-            row_period_FO = second_cursor.fetchone()
-
-            if row_period_FO is None:
-                rFO["interval_name"] = ""
-                rFO["id"] = 0
-            else:
-                rFO["interval_name"] = row_period_FO["interval_name"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name FROM intervals
-                JOIN timescales_intervals ON intervals.id = interval_id
-                JOIN timescales on timescale_id = timescales.id
-                WHERE timescale = 'international periods'
-                    AND age_bottom > %(age_top)s
-                    AND age_top <= %(age_top)s
-            """,
-                params,
-            )
-            row_period_LO = second_cursor.fetchone()
-
-            if row_period_LO is None:
-                rLO["interval_name"] = ""
-                rLO["id"] = 0
-            else:
-                rLO["interval_name"] = row_period_LO["interval_name"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name, intervals.id from intervals
-                JOIN timescales_intervals ON intervals.id = interval_id
-                JOIN timescales on timescale_id = timescales.id
-                WHERE timescale = 'international ages'
-                    AND %(age_bottom)s > age_top
-                    AND %(age_bottom)s <= age_bottom
-                    AND %(age_top)s < age_bottom
-                    AND %(age_top)s >= age_top
-            """,
-                params,
-            )
-            row4 = second_cursor.fetchone()
-
-            if row4 is None:
-                r4["interval_name"] = ""
-                r4["id"] = 0
-            else:
-                r4["interval_name"] = row4["interval_name"]
-                r4["id"] = row4["id"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name,intervals.id from intervals
-                WHERE interval_type = 'eon'
-                    AND %(age_bottom)s > age_top
-                    AND %(age_bottom)s <= age_bottom
-                    AND %(age_top)s < age_bottom
-                    AND %(age_top)s >= age_top
-            """,
-                params,
-            )
-            row5 = second_cursor.fetchone()
-
-            if row5 is None:
-                r5["interval_name"] = ""
-                r5["id"] = 0
-            else:
-                r5["interval_name"] = row5["interval_name"]
-                r5["id"] = row5["id"]
-
-            second_cursor.execute(
-                """
-                SELECT interval_name, intervals.id from intervals
-                WHERE interval_type = 'era'
-                    AND %(age_bottom)s > age_top
-                    AND %(age_bottom)s <= age_bottom
-                    AND %(age_top)s < age_bottom
-                    AND %(age_top)s >= age_top
-            """,
-                params,
-            )
-            row6 = second_cursor.fetchone()
-
-            if row6 is None:
-                r6["interval_name"] = ""
-                r6["id"] = 0
-            else:
-                r6["interval_name"] = row6["interval_name"]
-                r6["id"] = row6["id"]
-
-            second_cursor.execute(
-                """
-                INSERT INTO lookup_unit_intervals_new (unit_id, FO_age, b_age, FO_interval, LO_age, t_age, LO_interval, epoch, epoch_id, period, period_id, age,age_id, era, era_id, eon, eon_id, FO_period, LO_period)
-                VALUES (%(rx_id)s, %(rx_age_bottom)s, %(rx_b_age)s, %(rx_fname)s, %(rx_age_top)s, %(rx_t_age)s, %(rx_lname)s, %(r2_interval_name)s, %(r2_id)s, %(r3_interval_name)s, %(r3_id)s, %(r4_interval_name)s, %(r4_id)s, %(r6_interval_name)s, %(r6_id)s, %(r5_interval_name)s, %(r5_id)s, %(rFO)s, %(rLO)s )
-            """,
-                {
-                    "rx_id": row["id"],
-                    "rx_age_bottom": row["age_bottom"],
-                    "rx_age_top": row["age_top"],
-                    "rx_b_age": row["b_age"],
-                    "rx_t_age": row["t_age"],
-                    "rx_fname": row["fname"],
-                    "rx_lname": row["lname"],
-                    "r2_interval_name": r2["interval_name"],
-                    "r2_id": r2["id"],
-                    "r3_interval_name": r3["interval_name"],
-                    "r3_id": r3["id"],
-                    "r4_interval_name": r4["interval_name"],
-                    "r4_id": r4["id"],
-                    "r5_interval_name": r5["interval_name"],
-                    "r5_id": r5["id"],
-                    "r6_interval_name": r6["interval_name"],
-                    "r6_id": r6["id"],
-                    "rFO": rFO["interval_name"],
-                    "rLO": rLO["interval_name"],
-                },
-            )
-
-            second_connection.commit()
-
-            row = self.mariadb["cursor"].fetchone()
-
-        # modifiy results for long-ranging units
-        self.mariadb["cursor"].execute(
-            "UPDATE lookup_unit_intervals_new set period = concat_WS('-',FO_period,LO_period) where period = '' and FO_period not like ''"
-        )
-        self.mariadb["cursor"].execute(
-            "UPDATE lookup_unit_intervals_new set period = eon where period = '' and eon = 'Archean'"
-        )
-        self.mariadb["cursor"].execute(
-            "UPDATE lookup_unit_intervals_new set period = concat_WS('-', FO_interval, LO_period) where FO_interval = 'Archean'"
-        )
-        self.mariadb["cursor"].execute(
-            "UPDATE lookup_unit_intervals_new set period = 'Precambrian' where period = '' and t_age >= 541"
-        )
-
-        ## validate results
-        self.mariadb["cursor"].execute(
-            "SELECT count(*) N, (SELECT count(*) from lookup_unit_intervals_new) nn from units"
-        )
-        row = self.mariadb["cursor"].fetchone()
-        if row["N"] != row["nn"]:
-            print("ERROR: inconsistent unit count in lookup_unit_intervals_new table")
-
-        # Out with the old, in with the new
-        self.mariadb["cursor"].execute(
-            """
-            ALTER TABLE lookup_unit_intervals RENAME TO lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].execute(
-            """
-            ALTER TABLE lookup_unit_intervals_new RENAME TO lookup_unit_intervals;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].execute(
-            """
-            DROP TABLE lookup_unit_intervals_old;
-        """
-        )
-        self.mariadb["connection"].commit()
-
-        self.mariadb["cursor"].close()
-        self.mariadb["connection"].close()
+    update_intervals(
+        db, timescale=timescale_name, where_clauses=where_clauses, **age_fields
+    )

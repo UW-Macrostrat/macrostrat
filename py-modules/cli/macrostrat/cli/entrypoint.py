@@ -20,6 +20,7 @@ from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
 )
+from .subsystems.rebuild import cli as rebuild_cli
 from .subsystems.rockd import cli as rockd_cli
 from .utils import run_user_command_if_provided
 from .v1_entrypoint import v1_cli
@@ -109,6 +110,13 @@ main.add_typer(
     rockd_cli,
     name="rockd-db",  # command group name
     short_help="Rockd database",  # shows in --help
+    rich_help_panel="Subsystems",
+)
+
+main.add_typer(
+    rebuild_cli,
+    name="rebuild",  # command group name
+    short_help="Rebuild scripts",  # shows in --help
     rich_help_panel="Subsystems",
 )
 
