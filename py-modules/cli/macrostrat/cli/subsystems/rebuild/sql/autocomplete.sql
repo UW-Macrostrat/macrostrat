@@ -75,7 +75,7 @@ SELECT * FROM (
          'strat_name_orphans'          AS type,
          'strat_name'                  AS category
   FROM strat_names
-  WHERE concept_id = 0)
+  WHERE concept_id is null)
   UNION
   SELECT id, col_name AS name, 'columns' AS type, 'column' AS category
   FROM cols
