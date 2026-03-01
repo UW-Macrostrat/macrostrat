@@ -583,7 +583,7 @@ enum APICapability {
                 ref,
                 doi,
                 url,
-                COUNT(DISTINCT units_sections.unit_id) AS t_units
+                COUNT(DISTINCT units_sections.unit_id)::integer AS t_units
          FROM macrostrat.refs
                 LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id
                 LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id
@@ -678,7 +678,7 @@ enum APICapability {
       await Promise.all([
         larkin.queryPgAsync(
           "macrostrat",
-          `SELECT COUNT(*) FROM macrostrat.projects_tree`,
+          `SELECT COUNT(*)::integer FROM macrostrat.projects_tree`,
         ),
         larkin.queryPgAsync(
           "macrostrat",

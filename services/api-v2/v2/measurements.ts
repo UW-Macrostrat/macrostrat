@@ -140,7 +140,7 @@ module.exports = function (req, res, next) {
     units as measure_units,
     measure_phase,
     method,
-    count(measurements.id) as n,
+    count(measurements.id)::integer as n,
     measuremeta.ref_id`;
 
   if (req.query.response === "long") {
@@ -155,7 +155,7 @@ module.exports = function (req, res, next) {
       measuremeta.lng as lng,
       unit_measures.unit_id,
       rel_position as unit_rel_pos,
-      CASE 
+      CASE
       WHEN unit_measures.unit_id IS NOT NULL THEN units_sections.col_id
       ELSE measuremeta_cols.col_id
       END AS col_id,
@@ -170,7 +170,7 @@ module.exports = function (req, res, next) {
       measurements.id as measurement_id,
       measuremeta.id as measuremeta_id,
       units as measure_units,
-      count(measurements.id) as n,
+      count(measurements.id)::integer as n,
       unit_measures.unit_id,
       measuremeta.ref_id`;
   }

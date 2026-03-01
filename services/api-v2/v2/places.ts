@@ -71,7 +71,7 @@ module.exports = (req, res, next, callback) => {
               THEN ( locality = ANY( SELECT wof_id  FROM places WHERE name = ANY($1) AND placetype = $2) )
             ELSE ( wof_id = -9999)
           END
-          
+
           AND placetype = $3
       )`);
       params.push(
@@ -109,7 +109,7 @@ module.exports = (req, res, next, callback) => {
     "wof",
     `
     SELECT
-      COUNT(*) AS n_rows
+      COUNT(*)::integer AS n_rows
     FROM places a
     LEFT JOIN places l ON l.wof_id = a.locality
     LEFT JOIN places c ON c.wof_id = a.county

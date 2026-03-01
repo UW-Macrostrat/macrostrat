@@ -34,8 +34,8 @@ module.exports = function (req, res, next, cb) {
   let sql = `SELECT col_groups.id AS col_group_id,
        col_group,
        col_group_long AS name,
-       COUNT(DISTINCT cols.id) AS t_cols,
-       COUNT(DISTINCT units_sections.unit_id) AS t_units,
+       COUNT(DISTINCT cols.id)::integer AS t_cols,
+       COUNT(DISTINCT units_sections.unit_id)::integer AS t_units,
        cols.project_id
     FROM macrostrat.col_groups
     LEFT JOIN macrostrat.cols ON cols.col_group_id = col_groups.id

@@ -375,7 +375,7 @@ module.exports = (req, res, next) => {
         larkin.queryPg(
           "burwell",
           `
-        SELECT count(*) AS total_columns
+        SELECT count(*)::integer AS total_columns
         FROM macrostrat.cols
         WHERE poly_geom IS NOT NULL AND status_code = 'active' AND ST_Intersects(poly_geom, $1)
       `,

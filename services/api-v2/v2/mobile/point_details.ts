@@ -136,7 +136,7 @@ module.exports = function (req, res, next) {
               },
 
               function (column, callbackB) {
-                var sql = `SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
+                var sql = `SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no)::integer pbdb_cltns, lith_short AS lith
                 FROM macrostrat.units
                 JOIN macrostrat.colors ON colors.color::text = units.color::text
                 JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
@@ -263,7 +263,7 @@ module.exports = function (req, res, next) {
                 larkin.queryPg(
                   "burwell",
                   `
-                SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no) pbdb_cltns, lith_short AS lith
+                SELECT units.id AS unit_id, units.strat_name, period, max_thick, min_thick, colors.unit_class, count(distinct collection_no)::integer pbdb_cltns, lith_short AS lith
                 FROM macrostrat.units
                 JOIN macrostrat.colors ON colors.color::text = units.color::text
                 JOIN macrostrat.units_sections ON units_sections.unit_id = units.id
