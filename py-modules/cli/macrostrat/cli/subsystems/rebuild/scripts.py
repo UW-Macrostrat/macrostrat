@@ -335,7 +335,8 @@ class LookupStratNames:
             db.session.commit()
 
         # Build full ancestor chain in one recursive query
-        db.run_sql("""
+        db.run_sql(
+            """
             CREATE TEMP TABLE _ancestors AS
             WITH RECURSIVE tree AS (
                 SELECT child AS strat_name_id, parent AS ancestor_id
@@ -355,7 +356,8 @@ class LookupStratNames:
 
             CREATE INDEX ON _ancestors (strat_name_id);
             CREATE INDEX ON _ancestors (ancestor_rank);
-        """)
+        """
+        )
 
         # Bulk update each rank column from the ancestor table
         for rank_lower in ["sgp", "gp", "subgp", "fm", "mbr", "bed"]:
