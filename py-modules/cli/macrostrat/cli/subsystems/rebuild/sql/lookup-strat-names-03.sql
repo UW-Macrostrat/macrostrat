@@ -31,9 +31,9 @@ SET c_interval = (
   LIMIT 1
 );
 
+ALTER TABLE macrostrat.lookup_strat_names
+  RENAME TO lookup_strat_names_old;
+ALTER TABLE macrostrat.lookup_strat_names_new
+  RENAME TO lookup_strat_names;
+--DROP TABLE IF EXISTS macrostrat.lookup_strat_names_old;
 
--- TODO: verify that all rows have been populated correctly before running the final swa
--- Out with the old, in with the new
---TRUNCATE macrostrat.lookup_strat_names;
--- INSERT INTO macrostrat.lookup_strat_names SELECT * FROM macrostrat.lookup_strat_names_new;
--- DROP TABLE macrostrat.lookup_strat_names_new;
