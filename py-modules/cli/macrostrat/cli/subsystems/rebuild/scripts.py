@@ -334,106 +334,86 @@ class LookupStratNames:
 
             db.session.commit()
 
-            for i, strat_name in enumerate(
-                progress.track(
-                    strat_names,
-                    description="Linking parent strat names...",
-                    total=n_strat_names,
-                )
-            ):
-                has_parent = True
-                name_id = strat_name.id
+        # Build full ancestor chain in one recursive query
+        db.run_sql("""
+            CREATE TEMP TABLE _ancestors AS
+            WITH RECURSIVE tree AS (
+                SELECT child AS strat_name_id, parent AS ancestor_id
+                FROM macrostrat.strat_tree
+                WHERE rel = 'parent'
+                UNION ALL
+                SELECT t.strat_name_id, st.parent
+                FROM tree t
+                JOIN macrostrat.strat_tree st ON st.child = t.ancestor_id AND st.rel = 'parent'
+            )
+            SELECT DISTINCT t.strat_name_id,
+                sn.id AS ancestor_id,
+                lower(sn.rank::text) AS ancestor_rank,
+                sn.strat_name AS ancestor_name
+            FROM tree t
+            JOIN macrostrat.strat_names sn ON sn.id = t.ancestor_id AND sn.rank != '';
 
-                while has_parent:
-                    # Get the parent of this unit
+            CREATE INDEX ON _ancestors (strat_name_id);
+            CREATE INDEX ON _ancestors (ancestor_rank);
+        """)
 
-                    # Note: in PostgreSQL, the column `this_name` has been renamed to `parent`,
-                    # and `that_name` has been renamed to `child`.
-                    # Another note: there are only 3 entries in strat_tree where rel != 'parent', on 2025-12-17
-                    res = db.run_query(
-                        """
-                        SELECT
-                            parent, -- this_name has been renamed to parent
-                            child,
-                            strat_name,
-                            strat_names.id,
-                            rank
-                        FROM macrostrat.strat_tree
-                        JOIN macrostrat.strat_names
-                          ON parent = strat_names.id
-                        WHERE child = :child
-                          AND rel = 'parent' and rank != ''
-                        """,
-                        dict(child=name_id),
-                    ).all()
+        # Bulk update each rank column from the ancestor table
+        for rank_lower in ["sgp", "gp", "subgp", "fm", "mbr", "bed"]:
+            db.run_query(
+                """
+                UPDATE macrostrat.lookup_strat_names_new lsn
+                SET {id_col} = a.ancestor_id, {name_col} = a.ancestor_name
+                FROM _ancestors a
+                WHERE a.strat_name_id = lsn.strat_name_id
+                  AND a.ancestor_rank = :rank_lower
+                """,
+                dict(
+                    rank_lower=rank_lower,
+                    id_col=Identifier(rank_lower + "_id"),
+                    name_col=Identifier(rank_lower + "_name"),
+                ),
+            )
+            db.session.commit()
 
-                    parent = None
-                    if len(res) > 1:
-                        # Warning: multiple parents found
-                        snr = ",".join([str(r.parent) for r in res])
-                        child = res[0].child
-                        progress.console.print(
-                            f"[yellow]Warning: multiple parents found; this may not be allowed. "
-                            f"{child} > {snr}[/yellow]"
-                        )
-                    if len(res) > 0:
-                        parent = res[0]
+        # Bulk update t_units for all ranks at once
+        rank_display = {
+            "sgp": "SGp",
+            "gp": "Gp",
+            "subgp": "SubGp",
+            "fm": "Fm",
+            "mbr": "Mbr",
+            "bed": "Bed",
+        }
 
-                    name_id = 0
-                    parent_rank_id = None
-                    parent_rank_name = None
-                    if parent is not None:
-                        name_id = parent.id
-                        parent_rank_id = parent.rank.lower() + "_id"
-                        parent_rank_name = parent.rank.lower() + "_name"
+        for rank_lower, child_ranks in lookup_rank_children.items():
+            db.run_query(
+                """
+                UPDATE macrostrat.lookup_strat_names_new lsn
+                SET t_units = sub.cnt
+                FROM (
+                    SELECT lsn2.strat_name_id, COUNT(*) AS cnt
+                    FROM macrostrat.lookup_strat_names_new lsn2
+                    JOIN macrostrat.lookup_strat_names lsn_ref
+                      ON lsn_ref.{rank_id_col} = lsn2.strat_name_id
+                     AND lsn_ref.rank::text = ANY(:child_ranks)
+                    JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn_ref.strat_name_id
+                    LEFT JOIN macrostrat.units_sections us ON us.unit_id = usn.unit_id  
+                    LEFT JOIN macrostrat.cols c ON c.id = us.col_id                     
+                    WHERE lsn2.rank::text = :rank
+                      AND (c.status_code = 'active')           
+                    GROUP BY lsn2.strat_name_id
+                ) sub
+                WHERE lsn.strat_name_id = sub.strat_name_id
+                """,
+                dict(
+                    rank_id_col=Identifier(rank_lower + "_id"),
+                    child_ranks=child_ranks,
+                    rank=rank_display[rank_lower],
+                ),
+            )
+            db.session.commit()
 
-                    if name_id > 0:
-                        db.run_query(
-                            """
-                            UPDATE macrostrat.lookup_strat_names_new
-                            SET {parent_rank_id_col} = :parent_id, {parent_rank_name_col} = :parent_name
-                            WHERE strat_name_id = :strat_name_id
-                            """,
-                            dict(
-                                parent_rank_id_col=Identifier(parent_rank_id),
-                                parent_rank_name_col=Identifier(parent_rank_name),
-                                parent_id=parent.id,
-                                parent_name=parent.strat_name,
-                                strat_name_id=strat_name.id,
-                            ),
-                        )
-                    else:
-                        has_parent = False
-
-                    _rank = strat_name.rank.lower()
-
-                    sql = """
-                    UPDATE macrostrat.lookup_strat_names_new SET t_units = (
-                      SELECT COUNT(*)
-                      FROM unit_strat_names
-                      LEFT JOIN units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-                      LEFT JOIN cols ON units_sections.col_id = cols.id
-                      WHERE unit_strat_names.strat_name_id IN (
-                        SELECT strat_name_id
-                        FROM lookup_strat_names
-                        WHERE {rank_col} = :strat_name_id
-                        AND rank::text = ANY(:strat_name_ranks)
-                      )
-                      AND cols.status_code = 'active'
-                    )
-                    WHERE strat_name_id = :strat_name_id
-                    """
-
-                    params = dict(
-                        rank_col=Identifier(_rank + "_id"),
-                        strat_name_id=strat_name.id,
-                        strat_name_ranks=lookup_rank_children[_rank],
-                    )
-
-                    db.run_query(sql, params)
-                    if i % 1000 == 0:
-                        db.session.commit()
-
+        db.run_sql("DROP TABLE IF EXISTS _ancestors;")
         db.session.commit()
 
     def part_2(self):
@@ -523,36 +503,17 @@ class LookupStratNames:
 
         lithologies = lithologies + plural_lithologies + other_terms
 
-        # Fetch all strat names
-        strat_names = db.run_query(
-            "SELECT strat_name_id, strat_name FROM lookup_strat_names_new"
-        ).all()
-        i = 0
-        for strat_name in track(
-            strat_names,
-            description="Removing lithological terms...",
-            total=len(strat_names),
-        ):
-            split_name = strat_name.strat_name.split(" ")
-
-            name_no_lith = " ".join(
-                [name for name in split_name if name.lower() not in lithologies]
+        db.run_query(
+            """
+            UPDATE macrostrat.lookup_strat_names_new
+            SET name_no_lith = (
+                SELECT string_agg(word, ' ' ORDER BY ord)
+                FROM unnest(string_to_array(strat_name, ' ')) WITH ORDINALITY AS t(word, ord)
+                WHERE lower(word) != ALL(:lithologies)
             )
-            db.run_query(
-                """
-                UPDATE macrostrat.lookup_strat_names_new
-                SET name_no_lith = :name_no_lith
-                WHERE strat_name_id = :strat_name_id
-                """,
-                dict(
-                    name_no_lith=name_no_lith,
-                    strat_name_id=strat_name.strat_name_id,
-                ),
-            )
-            i += 1
-            if i % 1000 == 0:
-                db.session.commit()
-
+            """,
+            dict(lithologies=lithologies),
+        )
         db.session.commit()
 
         db.run_sql(here / "sql" / "lookup-strat-names-03.sql")
