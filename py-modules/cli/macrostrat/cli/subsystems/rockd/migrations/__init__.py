@@ -1,5 +1,7 @@
 from pathlib import Path
-
+from sqlalchemy.engine import make_url
+from sqlalchemy import text
+import os
 from macrostrat.core.migrations import (
     ApplicationStatus,
     Migration,
@@ -8,6 +10,7 @@ from macrostrat.core.migrations import (
     schema_exists,
 )
 from macrostrat.database import Database
+from macrostrat.core import app as app_
 
 migrations_dir = Path(__file__).parent
 
@@ -119,3 +122,33 @@ class IntegrationTokens(RockdMigration):
     fixtures = [
         migrations_dir / "0020-integration-tokens.sql",  # adds tokens for integrations
     ]
+
+class CreateForeignTables(RockdMigration):
+    name = "foreign-tables"
+    readiness_state = "ga"
+    description = "Creates foreign macrostrat tables for the Rockd api to query."
+
+    def apply(self, database: Database) -> None:
+        url_str = app_.settings.get("pg_database")
+        if not url_str:
+            raise RuntimeError("Set pg_database in your environment")
+
+        url = make_url(url_str)
+        fdw_host     = url.host     or ""
+        fdw_user     = url.username or ""
+        fdw_password = url.password or ""
+        print(f"Creating foreign tables from target: host={fdw_host}, user={fdw_user}")
+
+        sql_template = (migrations_dir / "0060-create-foreign-tables.sql").read_text()
+
+        #inject variables!
+        sql = sql_template \
+            .replace("{fdw_host}", fdw_host) \
+            .replace("{fdw_user}", fdw_user) \
+            .replace("{fdw_password}", fdw_password)
+
+        with database.engine.connect() as conn:
+            conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+            print("Dropping existing foreign tables and server...")
+            conn.exec_driver_sql(sql)
+            print("Foreign tables created successfully!")
