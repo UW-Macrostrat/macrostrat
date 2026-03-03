@@ -239,14 +239,15 @@ def run_exporter(
             COALESCE(array_to_string(concept_ids, '|'), '') AS concept_ids,
             COALESCE(array_to_string(lith_ids, '|'), '') AS lith_ids,
             %s AS geom
-            FROM carto_new.%s c
+            FROM carto.polygons c
             JOIN maps.map_legend ON map_legend.map_id = c.map_id
             JOIN maps.legend l ON l.legend_id = map_legend.legend_id
             WHERE ST_Intersects(c.geom, %s)
+              AND scale = '%s'
         """ % (
             geom_field,
-            scale,
             env,
+            scale,
         )
 
         write_layer(
@@ -290,7 +291,7 @@ def run_exporter(
                 ll.new_type,
                 ll.new_direction,
                 %s AS geom
-            FROM carto_new.lines_%s c
+            FROM carto.lines c
             JOIN (
                 SELECT * FROM lines.tiny
                 UNION ALL
@@ -301,10 +302,11 @@ def run_exporter(
                 SELECT * FROM lines.large
             ) ll ON c.line_id = ll.line_id
             WHERE ST_Intersects(c.geom, %s)
+              AND scale = '%s'
         """ % (
             geom_field,
-            scale,
             env,
+            scale,
         )
 
         write_layer(
