@@ -1,22 +1,16 @@
-import datetime
 import os
 import sys
 from dataclasses import dataclass
-from subprocess import call
 
 import fiona
-from psycopg2.extensions import AsIs
-from shapely.geometry import MultiPolygon, mapping
+from shapely.geometry import mapping
 from shapely.wkb import loads
 from pathlib import Path
 
-from .base import Base
 from ..database import get_database
 from ..database._legacy import pgConnection
 from typer import Option
 
-
-cwd = os.getcwd()
 import sqlite3
 
 from psycopg2.extras import RealDictCursor, NamedTupleCursor
@@ -32,9 +26,9 @@ class ExportArg:
 def export_map(
     filename: Path,
     spec: str,
-    force_scale: str = Option(
+    scale: str = Option(
         None,
-        "--force_scale",
+        "--scale",
         help="Force export at a given scale (tiny, small, medium, large)",
     ),
     trim: bool = False,
@@ -86,7 +80,7 @@ def export_map(
                 f"File {filename} already exists. Please specify the --overwrite flag if you want to overwrite it."
             )
 
-    run_exporter(pth, extract_spec(spec), trim=trim)
+    run_exporter(pth, extract_spec(spec), trim=trim, scale=scale)
 
 
 def run_exporter(
@@ -94,6 +88,7 @@ def run_exporter(
     arg: ExportArg,
     *,
     trim: bool = False,
+    scale: str | None = None,
 ):
     conn = pgConnection()
 
@@ -126,14 +121,6 @@ def run_exporter(
         if source_info is None:
             print("Source %s was not found or is invalid" % (source_id,))
             sys.exit()
-
-        filename = (
-            source_info["name"]
-            .replace(" ", "_")
-            .replace(",", "")
-            .replace("1:", "")
-            .lower()
-        )
 
         # Write homogenized units
         select = maps_select % (
@@ -187,28 +174,29 @@ def run_exporter(
             )
             sys.exit(1)
 
-        # Get appropriate scale for carto purposes
-        pg["cursor"].execute(
-            """
-            SELECT ST_Area(ST_MakeEnvelope(%(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s)::geography)/1000000 as area
-        """,
-            {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
-        )
-        area = int(pg["cursor"].fetchone()["area"])
-        # scale = "large"
-        if area < 1000000:
-            scale = "large"
-        elif area < 15000000:
-            scale = "medium"
-        elif area < 80000000:
-            scale = "small"
-        else:
-            scale = "tiny"
+        # Get appropriate scale if not provided
+        if scale is None:
+            pg["cursor"].execute(
+                """
+                SELECT ST_Area(ST_MakeEnvelope(%(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s)::geography)/1000000 as area
+            """,
+                {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
+            )
+            area = int(pg["cursor"].fetchone()["area"])
+            # scale = "large"
+            if area < 1_000_000:
+                scale = "large"
+            elif area < 15000000:
+                scale = "medium"
+            elif area < 80000000:
+                scale = "small"
+            else:
+                scale = "tiny"
 
-        print(
-            "Exporting carto data at scale %s based on area of bounding box: %s sq km"
-            % (scale, area)
-        )
+            print(
+                "Exporting carto data at scale %s based on area of bounding box: %s sq km"
+                % (scale, area)
+            )
 
         env = "ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)" % (
             xmin,
