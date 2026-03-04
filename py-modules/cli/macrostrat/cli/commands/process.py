@@ -3,7 +3,6 @@ import sys
 
 from psycopg2.extensions import AsIs
 
-from . import process_scripts
 from .base import Base
 
 
@@ -38,6 +37,8 @@ class Process(Base):
         Base.__init__(self, connections, *args)
 
     def run(self):
+        from . import process_scripts
+
         # Check if a table was provided
         if len(self.args) == 1:
             print("Please specify a command")
