@@ -35,5 +35,5 @@ ALTER TABLE macrostrat.lookup_strat_names
   RENAME TO lookup_strat_names_old;
 ALTER TABLE macrostrat.lookup_strat_names_new
   RENAME TO lookup_strat_names;
---DROP TABLE IF EXISTS macrostrat.lookup_strat_names_old;
+DROP TABLE IF EXISTS macrostrat.lookup_strat_names_old;
 
