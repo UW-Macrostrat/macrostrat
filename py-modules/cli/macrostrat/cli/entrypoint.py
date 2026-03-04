@@ -231,6 +231,7 @@ def _run(
 # This organization is a bit awkward, and we may change it eventually.
 try:
     from macrostrat.map_integration import cli as map_app
+
     from .commands.export import export_map
 
     map_app.command("export", short_help="Export map data")(export_map)

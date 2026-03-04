@@ -1,19 +1,17 @@
+import sqlite3
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import fiona
-from shapely.geometry import mapping
+from psycopg2.extras import RealDictCursor
 from shapely import from_wkt, make_valid
+from shapely.geometry import mapping
 from shapely.wkb import loads
-from pathlib import Path
+from typer import Option
 
 from ..database import get_database
 from ..database._legacy import pgConnection
-from typer import Option
-
-import sqlite3
-
-from psycopg2.extras import RealDictCursor
 
 
 @dataclass
