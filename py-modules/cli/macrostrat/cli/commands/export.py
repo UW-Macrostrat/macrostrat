@@ -1,9 +1,9 @@
-import os
 import sys
 from dataclasses import dataclass
 
 import fiona
 from shapely.geometry import mapping
+from shapely import from_wkt, make_valid
 from shapely.wkb import loads
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from typer import Option
 
 import sqlite3
 
-from psycopg2.extras import RealDictCursor, NamedTupleCursor
+from psycopg2.extras import RealDictCursor
 
 
 @dataclass
@@ -148,18 +148,13 @@ def run_exporter(
         # Write the metadata
         write_sources(pg, filename, [int(source_id)])
 
-        print(
-            "     Wrote source_id %s to %s.gpkg"
-            % (
-                source_id,
-                filename,
-            )
-        )
+        print(f"Wrote source_id {source_id} to {filename}")
+        return
 
     # bbox mode
-    elif bbox is not None:
+    geom = None
+    if bbox is not None:
         # Validate vertices
-        print(bbox)
         try:
             xmin, ymin, xmax, ymax = bbox
         except:
@@ -174,113 +169,194 @@ def run_exporter(
             )
             sys.exit(1)
 
-        # Get appropriate scale if not provided
-        if scale is None:
-            pg["cursor"].execute(
-                """
-                SELECT ST_Area(ST_MakeEnvelope(%(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s)::geography)/1000000 as area
-            """,
-                {"xmin": xmin, "ymin": ymin, "xmax": xmax, "ymax": ymax},
-            )
-            area = int(pg["cursor"].fetchone()["area"])
-            # scale = "large"
-            if area < 1_000_000:
-                scale = "large"
-            elif area < 15000000:
-                scale = "medium"
-            elif area < 80000000:
-                scale = "small"
-            else:
-                scale = "tiny"
-
-            print(
-                "Exporting carto data at scale %s based on area of bounding box: %s sq km"
-                % (scale, area)
-            )
-
-        env = "ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)" % (
+        geom = "ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)" % (
             xmin,
             ymin,
             xmax,
             ymax,
         )
 
-        geom_field = "ST_Multi(c.geom)"
-        if trim:
-            geom_field = "ST_Multi(ST_Intersection(c.geom, %s))" % (env,)
+    if wkt is not None:
+        geom = "ST_GeomFromText('%s', 4326)" % (wkt,)
 
-        # Write carto units
-        select = """
-            SELECT c.map_id, l.legend_id, l.source_id, name,
-            strat_name,
-            age,
-            lith,
-            descrip,
-            comments,
-            b_interval,
-            t_interval,
-            best_age_bottom,
-            best_age_top,
-            color,
-            COALESCE(array_to_string(unit_ids, '|'), '') AS unit_ids,
-            COALESCE(array_to_string(strat_name_ids, '|'), '') AS strat_name_ids,
-            COALESCE(array_to_string(concept_ids, '|'), '') AS concept_ids,
-            COALESCE(array_to_string(lith_ids, '|'), '') AS lith_ids,
-            %s AS geom
-            FROM carto.polygons c
-            JOIN maps.map_legend ON map_legend.map_id = c.map_id
-            JOIN maps.legend l ON l.legend_id = map_legend.legend_id
-            WHERE ST_Intersects(c.geom, %s)
-              AND scale = '%s'
-        """ % (
-            geom_field,
-            env,
+    if geom is None:
+        raise ValueError(
+            "No valid geometry provided. Please provide either a bounding box or a WKT geometry."
+        )
+
+    # Get appropriate scale if not provided
+    if scale is None:
+        pg["cursor"].execute(
+            f"""
+            SELECT ST_Area({geom}::geography)/1000000 as area
+            """,
+        )
+        area = int(pg["cursor"].fetchone()["area"])
+        # scale = "large"
+        if area < 1_000_000:
+            scale = "large"
+        elif area < 15000000:
+            scale = "medium"
+        elif area < 80000000:
+            scale = "small"
+        else:
+            scale = "tiny"
+
+        print(
+            "Exporting carto data at scale %s based on area of bounding box: %s sq km"
+            % (scale, area)
+        )
+
+    geom_field = "c.geom"
+    if trim:
+        geom_field = "ST_Intersection(c.geom, %s)" % (geom,)
+
+    # Write carto units
+    select = """
+        SELECT c.map_id, l.legend_id, l.source_id, name,
+        strat_name,
+        age,
+        lith,
+        descrip,
+        comments,
+        b_interval,
+        t_interval,
+        best_age_bottom,
+        best_age_top,
+        color,
+        COALESCE(array_to_string(unit_ids, '|'), '') AS unit_ids,
+        COALESCE(array_to_string(strat_name_ids, '|'), '') AS strat_name_ids,
+        COALESCE(array_to_string(concept_ids, '|'), '') AS concept_ids,
+        COALESCE(array_to_string(lith_ids, '|'), '') AS lith_ids,
+        ST_Multi(ST_CollectionExtract(%s, 3)) AS geom
+        FROM carto.polygons c
+        JOIN maps.map_legend ON map_legend.map_id = c.map_id
+        JOIN maps.legend l ON l.legend_id = map_legend.legend_id
+        WHERE ST_Intersects(c.geom, %s)
+          AND scale = '%s'
+    """ % (
+        geom_field,
+        geom,
+        scale,
+    )
+
+    write_layer(
+        pg,
+        filename,
+        "units",
+        "MultiPolygon",
+        select,
+        {},
+        {
+            "map_id": "int",
+            "legend_id": "int",
+            "source_id": "int",
+            "name": "str",
+            "strat_name": "str",
+            "age": "str",
+            "lith": "str",
+            "descrip": "str",
+            "comments": "str",
+            "b_interval": "int",
+            "t_interval": "int",
+            "best_age_bottom": "str",
+            "best_age_top": "str",
+            "color": "str",
+            "unit_ids": "str",
+            "strat_name_ids": "str",
+            "concept_ids": "str",
+            "lith_ids": "str",
+        },
+    )
+
+    # Write carto lines
+    select = """
+        SELECT
+            c.line_id,
+            ll.source_id,
+            ll.name,
+            ll.type,
+            ll.direction,
+            ll.descrip,
+            ll.new_type,
+            ll.new_direction,
+            ST_Multi(ST_CollectionExtract(%s, 2)) AS geom
+        FROM carto.lines c
+        JOIN (
+            SELECT * FROM lines.tiny
+            UNION ALL
+            SELECT * FROM lines.small
+            UNION ALL
+            SELECT * FROM lines.medium
+            UNION ALL
+            SELECT * FROM lines.large
+        ) ll ON c.line_id = ll.line_id
+        WHERE ST_Intersects(c.geom, %s)
+          AND scale = '%s'
+    """ % (
+        geom_field,
+        geom,
+        scale,
+    )
+
+    write_layer(
+        pg,
+        filename,
+        "lines",
+        "MultiLineString",
+        select,
+        {},
+        {
+            "line_id": "int",
+            "source_id": "int",
+            "name": "str",
+            "type": "str",
+            "direction": "str",
+            "descrip": "str",
+            "new_type": "str",
+            "new_direction": "str",
+        },
+    )
+
+    # Write legend
+    connection = sqlite3.connect(filename)
+    connection.text_factory = str
+    cursor = connection.cursor()
+
+    # Write sources
+    cursor.execute(
+        """
+        CREATE TABLE sources (
+            source_id integer PRIMARY KEY AUTOINCREMENT,
+            name text,
+            url text,
+            ref_title text,
+            authors text,
+            ref_year text,
+            ref_source text,
+            isbn_doi text,
+            scale text,
+            license text
+        )
+        """
+    )
+
+    select = """
+        SELECT
+            source_id,
+            name,
+            url,
+            ref_title,
+            authors,
+            ref_year,
+            ref_source,
+            isbn_doi,
             scale,
-        )
-
-        write_layer(
-            pg,
-            filename,
-            "units",
-            "MultiPolygon",
-            select,
-            {},
-            {
-                "map_id": "int",
-                "legend_id": "int",
-                "source_id": "int",
-                "name": "str",
-                "strat_name": "str",
-                "age": "str",
-                "lith": "str",
-                "descrip": "str",
-                "comments": "str",
-                "b_interval": "int",
-                "t_interval": "int",
-                "best_age_bottom": "str",
-                "best_age_top": "str",
-                "color": "str",
-                "unit_ids": "str",
-                "strat_name_ids": "str",
-                "concept_ids": "str",
-                "lith_ids": "str",
-            },
-        )
-
-        # Write carto lines
-        select = """
-            SELECT
-                c.line_id,
-                ll.source_id,
-                ll.name,
-                ll.type,
-                ll.direction,
-                ll.descrip,
-                ll.new_type,
-                ll.new_direction,
-                %s AS geom
-            FROM carto.lines c
-            JOIN (
+            license
+        FROM maps.sources
+        WHERE source_id IN (
+            SELECT DISTINCT ll.source_id
+            FROM (
                 SELECT * FROM lines.tiny
                 UNION ALL
                 SELECT * FROM lines.small
@@ -288,112 +364,37 @@ def run_exporter(
                 SELECT * FROM lines.medium
                 UNION ALL
                 SELECT * FROM lines.large
-            ) ll ON c.line_id = ll.line_id
-            WHERE ST_Intersects(c.geom, %s)
-              AND scale = '%s'
-        """ % (
-            geom_field,
-            env,
-            scale,
+            ) ll
+            WHERE ST_Intersects(ll.geom, %s)
         )
-
-        write_layer(
-            pg,
-            filename,
-            "lines",
-            "MultiLineString",
-            select,
-            {},
-            {
-                "line_id": "int",
-                "source_id": "int",
-                "name": "str",
-                "type": "str",
-                "direction": "str",
-                "descrip": "str",
-                "new_type": "str",
-                "new_direction": "str",
-            },
-        )
-
-        # Write legend
-        connection = sqlite3.connect(filename)
-        connection.text_factory = str
-        cursor = connection.cursor()
-
-        # Write sources
+    """ % (
+        geom
+    )
+    pg["cursor"].execute(select)
+    for row in pg["cursor"]:
         cursor.execute(
             """
-            CREATE TABLE sources (
-                source_id integer PRIMARY KEY AUTOINCREMENT,
-                name text,
-                url text,
-                ref_title text,
-                authors text,
-                ref_year text,
-                ref_source text,
-                isbn_doi text,
-                scale text,
-                license text
-            )
-            """
+            INSERT INTO sources
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                row["source_id"],
+                row["name"],
+                row["url"],
+                row["ref_title"],
+                row["authors"],
+                row["ref_year"],
+                row["ref_source"],
+                row["isbn_doi"],
+                row["scale"],
+                row["license"],
+            ],
         )
 
-        select = """
-            SELECT
-                source_id,
-                name,
-                url,
-                ref_title,
-                authors,
-                ref_year,
-                ref_source,
-                isbn_doi,
-                scale,
-                license
-            FROM maps.sources
-            WHERE source_id IN (
-                SELECT DISTINCT ll.source_id
-                FROM (
-                    SELECT * FROM lines.tiny
-                    UNION ALL
-                    SELECT * FROM lines.small
-                    UNION ALL
-                    SELECT * FROM lines.medium
-                    UNION ALL
-                    SELECT * FROM lines.large
-                ) ll
-                WHERE ST_Intersects(ll.geom, %s)
-            )
-        """ % (
-            "ST_SetSRID(ST_MakeEnvelope(%s, %s, %s, %s), 4326)"
-            % (xmin, ymin, xmax, ymax),
-        )
-        pg["cursor"].execute(select)
-        for row in pg["cursor"]:
-            cursor.execute(
-                """
-                INSERT INTO sources
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    row["source_id"],
-                    row["name"],
-                    row["url"],
-                    row["ref_title"],
-                    row["authors"],
-                    row["ref_year"],
-                    row["ref_source"],
-                    row["isbn_doi"],
-                    row["scale"],
-                    row["license"],
-                ],
-            )
+    connection.commit()
+    connection.close()
 
-        connection.commit()
-        connection.close()
-
-        # Write the metadata
+    # Write the metadata
 
 
 def extract_spec(spec: str) -> ExportArg:
@@ -416,10 +417,18 @@ def extract_spec(spec: str) -> ExportArg:
 
     # Try to parse as WKT
     try:
-        geom = loads(spec)
-        if geom.is_valid and geom.geom_type in ["Polygon", "MultiPolygon"]:
-            return ExportArg(wkt=spec)
-    except Exception:
+        print("Trying to parse as WKT geometry...")
+        geom = from_wkt(spec)
+        print(geom.geom_type, geom.is_valid)
+        if geom.geom_type not in ["Polygon", "MultiPolygon"]:
+            raise ValueError("Only Polygon and MultiPolygon geometries are supported")
+        # Doesn't work for polar caps
+        if not geom.is_valid:
+            geom = make_valid(geom)
+        if not geom.is_valid:
+            raise ValueError("Invalid geometry provided", geom)
+        return ExportArg(wkt=spec)
+    except ValueError:
         pass
 
     raise ValueError(
@@ -523,7 +532,7 @@ lines_select = """
 
 
 def write_sources(pg, filename, sources):
-    connection = sqlite3.connect("%s.gpkg" % filename)
+    connection = sqlite3.connect(filename)
     cursor = connection.cursor()
 
     cursor.execute(
