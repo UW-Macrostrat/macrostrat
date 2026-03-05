@@ -900,7 +900,7 @@ CREATE TABLE macrostrat.cols (
   col_type macrostrat.cols_col_type NOT NULL,
   col_position macrostrat.cols_col_position NOT NULL,
   col numeric(6,2) NOT NULL,
-  col_name character varying(75) NOT NULL,
+  col_name text NOT NULL,
   lat numeric(8,5) NOT NULL,
   lng numeric(8,5) NOT NULL,
   col_area double precision NOT NULL,
