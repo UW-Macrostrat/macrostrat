@@ -8,7 +8,7 @@ What this script does (in order):
   1) Reads macrostrat_import.xlsx (tabs: metadata, refs, columns); ALL string values read from Excel are trimmed (leading/trailing whitespace removed)
   immediately upon reading the workbook into row dictionaries.
   2) Extracts project_id from metadata and verifies it via Macrostrat API \\ this step is not needed, added for flair, remove verify_project_id_via_api call to kill
-  3) Connects to local Postgres database "macrostrat" and verifies project exists 
+  3) Connects to local Postgres database "macrostrat" and verifies project exists
   4) In ONE transaction:
        - ingests refs -> macrostrat.refs (idempotent on (pub_year, author, ref))
        - validates columns tab (including uniqueness checks)
@@ -60,6 +60,7 @@ from openpyxl import load_workbook
 # Engine utilities
 # -----------------------------
 
+
 def die(msg: str, code: int = 1) -> None:
     print(msg)
     sys.exit(code)
@@ -104,9 +105,14 @@ def read_sheet_as_dicts(ws) -> Tuple[List[str], List[Dict[str, Any]]]:
         if r is None:
             continue
         cleaned_row = [clean_cell_value(v) for v in r]
-        if all(v is None or (isinstance(v, str) and v.strip() == "") for v in cleaned_row):
+        if all(
+            v is None or (isinstance(v, str) and v.strip() == "") for v in cleaned_row
+        ):
             continue
-        d = {headers[j]: (cleaned_row[j] if j < len(cleaned_row) else None) for j in range(len(headers))}
+        d = {
+            headers[j]: (cleaned_row[j] if j < len(cleaned_row) else None)
+            for j in range(len(headers))
+        }
         d["_excel_row"] = i
         out.append(d)
 
@@ -142,9 +148,11 @@ def load_mapping(mapping_path: str) -> Dict[str, Any]:
 
     return mapping
 
+
 # -----------------------------
 # Audit artifacts (Phase 2.5 add-on; Phase 3-ready)
 # -----------------------------
+
 
 def utc_runstamp() -> Tuple[str, str]:
     """
@@ -170,7 +178,9 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def write_tsv_map(path: str, header_a: str, header_b: str, mapping: Dict[str, int]) -> None:
+def write_tsv_map(
+    path: str, header_a: str, header_b: str, mapping: Dict[str, int]
+) -> None:
     """
     Writes a 2-column TSV with a header row. Keys sorted for deterministic output.
     """
@@ -202,10 +212,18 @@ def write_audit_artifacts(
     ensure_dir(audit_dir)
     runstamp_compact, runstamp_iso = utc_runstamp()
 
-    manifest_path = os.path.join(audit_dir, f"macrostrat_import_audit_{project_id}_{runstamp_compact}.json")
-    refs_path = os.path.join(audit_dir, f"ref_id_map_{project_id}_{runstamp_compact}.tsv")
-    cols_path = os.path.join(audit_dir, f"col_id_map_{project_id}_{runstamp_compact}.tsv")
-    units_path = os.path.join(audit_dir, f"unit_id_map_{project_id}_{runstamp_compact}.tsv")
+    manifest_path = os.path.join(
+        audit_dir, f"macrostrat_import_audit_{project_id}_{runstamp_compact}.json"
+    )
+    refs_path = os.path.join(
+        audit_dir, f"ref_id_map_{project_id}_{runstamp_compact}.tsv"
+    )
+    cols_path = os.path.join(
+        audit_dir, f"col_id_map_{project_id}_{runstamp_compact}.tsv"
+    )
+    units_path = os.path.join(
+        audit_dir, f"unit_id_map_{project_id}_{runstamp_compact}.tsv"
+    )
 
     # TSVs
     write_tsv_map(refs_path, "excel_ref_id", "macrostrat_ref_id", ref_map)
@@ -240,9 +258,11 @@ def write_audit_artifacts(
     print(f"  {os.path.basename(cols_path)}")
     print(f"  {os.path.basename(units_path)}")
 
+
 # -----------------------------
 # Engine: API + DB
 # -----------------------------
+
 
 def verify_project_id_via_api(project_id: int) -> str:
     api_url = f"https://macrostrat.org/api/defs/projects?project_id={project_id}"
@@ -264,13 +284,17 @@ def verify_project_id_via_api(project_id: int) -> str:
         die(f"ERROR: Unexpected API response structure: {e}")
 
     if returned_project_id != project_id:
-        die(f"ERROR: API returned project_id {returned_project_id}, expected {project_id}.")
+        die(
+            f"ERROR: API returned project_id {returned_project_id}, expected {project_id}."
+        )
 
     print(f"API OK: project_id {project_id} ('{returned_project_name}')")
     return returned_project_name
 
 
-def connect_db(dbname="macrostrat", user="postgres", password="", host="localhost", port="5432"):
+def connect_db(
+    dbname="macrostrat", user="postgres", password="", host="localhost", port="5432"
+):
     try:
         conn = psycopg2.connect(
             dbname=dbname,
@@ -289,13 +313,16 @@ def verify_project_id_in_db(conn, project_id: int) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM macrostrat.projects WHERE id = %s;", (project_id,))
         if cur.fetchone() is None:
-            die(f"ERROR: project_id {project_id} not found in macrostrat.projects.id (local DB).")
+            die(
+                f"ERROR: project_id {project_id} not found in macrostrat.projects.id (local DB)."
+            )
     print(f"DB OK: project_id {project_id} exists in macrostrat.projects")
 
 
 # -----------------------------
 # Phase 2.5: schema introspection
 # -----------------------------
+
 
 @dataclass(frozen=True)
 class ColumnInfo:
@@ -342,10 +369,12 @@ class SchemaInspector:
             rows = cur.fetchall()
 
         if not rows:
-            die(f"ERROR: Could not introspect columns for table {schema}.{table} (not found?).")
+            die(
+                f"ERROR: Could not introspect columns for table {schema}.{table} (not found?)."
+            )
 
         cols: Dict[str, ColumnInfo] = {}
-        for (name, dtype, is_nullable, has_default, default_expr) in rows:
+        for name, dtype, is_nullable, has_default, default_expr in rows:
             cols[name] = ColumnInfo(
                 name=name,
                 data_type=dtype,
@@ -358,7 +387,9 @@ class SchemaInspector:
         return cols
 
 
-def validate_mapping_against_schema(schema: SchemaInspector, mapping: Dict[str, Any]) -> None:
+def validate_mapping_against_schema(
+    schema: SchemaInspector, mapping: Dict[str, Any]
+) -> None:
     """
     Validation:
       - all mapped DB columns exist
@@ -374,12 +405,17 @@ def validate_mapping_against_schema(schema: SchemaInspector, mapping: Dict[str, 
 
         for db_col in fields.keys():
             if db_col not in db_cols:
-                die(f"ERROR: Mapping entity '{ent_name}' refers to missing column '{db_col}' on {fqtn}.")
+                die(
+                    f"ERROR: Mapping entity '{ent_name}' refers to missing column '{db_col}' on {fqtn}."
+                )
 
         for db_col, spec in fields.items():
             cinfo = db_cols[db_col]
             if not cinfo.is_nullable and not cinfo.has_default:
-                has_source = any(k in spec for k in ("const", "sql", "expr", "from", "from_any", "handler"))
+                has_source = any(
+                    k in spec
+                    for k in ("const", "sql", "expr", "from", "from_any", "handler")
+                )
                 has_default = "default" in spec
                 if not (has_source or has_default):
                     die(
@@ -388,7 +424,9 @@ def validate_mapping_against_schema(schema: SchemaInspector, mapping: Dict[str, 
                     )
 
 
-def validate_cols_not_null_coverage(schema: SchemaInspector, cols_entity: Dict[str, Any]) -> None:
+def validate_cols_not_null_coverage(
+    schema: SchemaInspector, cols_entity: Dict[str, Any]
+) -> None:
     """
     Phase 2.5 safety guard:
       For macrostrat.cols specifically, ensure every NOT NULL column with no default
@@ -419,6 +457,7 @@ def validate_cols_not_null_coverage(schema: SchemaInspector, cols_entity: Dict[s
 # Mapping functions
 # -----------------------------
 
+
 def concat_ws_dot_space(title: Optional[str], publication: Optional[str]) -> str:
     parts = [p for p in [title, publication] if p is not None and str(p).strip() != ""]
     return ". ".join([str(p).strip() for p in parts])
@@ -439,7 +478,9 @@ def eval_field_spec(
     spec: Dict[str, Any],
     excel_row: Dict[str, Any],
     context: Dict[str, Any],
-    handlers: Optional[Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]] = None,
+    handlers: Optional[
+        Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]
+    ] = None,
 ) -> Any:
     """
     Evaluate a mapping field spec to produce a value (python scalar OR SQL token/fragment dict).
@@ -515,7 +556,9 @@ def eval_entity_row_values(
     entity: Dict[str, Any],
     excel_row: Dict[str, Any],
     context: Dict[str, Any],
-    handlers: Optional[Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]] = None,
+    handlers: Optional[
+        Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]
+    ] = None,
 ) -> Dict[str, Any]:
     fields = entity["fields"]
     row_values: Dict[str, Any] = {}
@@ -558,6 +601,7 @@ def build_insert_sql(table: str, row_values: Dict[str, Any]) -> Tuple[str, List[
 # Entity: refs (mapping-driven)
 # -----------------------------
 
+
 def validate_refs_required(excel_row: Dict[str, Any]) -> None:
     r = excel_row
     excel_rownum = r["_excel_row"]
@@ -565,14 +609,23 @@ def validate_refs_required(excel_row: Dict[str, Any]) -> None:
         die(f"ERROR (refs row {excel_rownum}): missing required 'ref_id'.")
     date = r.get("date")
     if not isinstance(date, int) and not (isinstance(date, str) and date.isdigit()):
-        die(f"ERROR (refs row {excel_rownum}): 'date' must be an integer year; got {date!r}")
+        die(
+            f"ERROR (refs row {excel_rownum}): 'date' must be an integer year; got {date!r}"
+        )
     if normalize_str(r.get("title")) is None:
         die(f"ERROR (refs row {excel_rownum}): 'title' must be non-empty.")
-    if normalize_str(r.get("authors")) is None and normalize_str(r.get("author")) is None:
-        die(f"ERROR (refs row {excel_rownum}): 'authors' (or 'author') must be non-empty.")
+    if (
+        normalize_str(r.get("authors")) is None
+        and normalize_str(r.get("author")) is None
+    ):
+        die(
+            f"ERROR (refs row {excel_rownum}): 'authors' (or 'author') must be non-empty."
+        )
 
 
-def ingest_refs_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str]) -> Tuple[Dict[str, int], Dict[str, int]]:
+def ingest_refs_mapping_driven(
+    conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str]
+) -> Tuple[Dict[str, int], Dict[str, int]]:
     sheet_name = sheets[mapping_entity["sheet"]]
     ws = wb[sheet_name]
     _, rows = read_sheet_as_dicts(ws)
@@ -584,7 +637,9 @@ def ingest_refs_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets:
         validate_refs_required(r)
         rid = str(r.get("ref_id")).strip()
         if rid in seen:
-            die(f"ERROR (refs row {r['_excel_row']}): duplicate 'ref_id' in refs tab: {rid}")
+            die(
+                f"ERROR (refs row {r['_excel_row']}): duplicate 'ref_id' in refs tab: {rid}"
+            )
         seen.add(rid)
 
     table = mapping_entity["table"]
@@ -599,7 +654,9 @@ def ingest_refs_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets:
             excel_ref_id = str(r["ref_id"]).strip()
 
             context = {}
-            row_values = eval_entity_row_values(mapping_entity, r, context, handlers=None)
+            row_values = eval_entity_row_values(
+                mapping_entity, r, context, handlers=None
+            )
 
             where_cols = natural_key
             where_vals = [row_values[c] for c in where_cols]
@@ -626,12 +683,19 @@ def ingest_refs_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets:
 # Entity: col_groups (mapping-driven)
 # -----------------------------
 
-def ingest_col_groups_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str], project_id: int) -> Dict[str, int]:
+
+def ingest_col_groups_mapping_driven(
+    conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str], project_id: int
+) -> Dict[str, int]:
     """
     Returns mapping col_group_long (string) -> col_groups.id
     Uses SELECT/INSERT idempotently (no unique constraints assumed).
     """
-def ingest_col_groups_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str], project_id: int) -> Tuple[Dict[str, int], Dict[str, int]]:
+
+
+def ingest_col_groups_mapping_driven(
+    conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str], project_id: int
+) -> Tuple[Dict[str, int], Dict[str, int]]:
     sheet_name = sheets[mapping_entity["sheet"]]
     ws = wb[sheet_name]
     _, rows = read_sheet_as_dicts(ws)
@@ -639,7 +703,13 @@ def ingest_col_groups_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], s
         die(f"ERROR: '{sheet_name}' tab has no data rows.")
 
     distinct_field = mapping_entity["distinct_from_sheet_field"]
-    distinct_vals = sorted({normalize_str(r.get(distinct_field)) for r in rows if normalize_str(r.get(distinct_field))})
+    distinct_vals = sorted(
+        {
+            normalize_str(r.get(distinct_field))
+            for r in rows
+            if normalize_str(r.get(distinct_field))
+        }
+    )
     if not distinct_vals:
         die(f"ERROR: '{sheet_name}' has no non-empty '{distinct_field}' values.")
 
@@ -655,7 +725,9 @@ def ingest_col_groups_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], s
             faux_excel_row = {"col_group": g}
 
             context = {"project_id": project_id}
-            row_values = eval_entity_row_values(mapping_entity, faux_excel_row, context, handlers=None)
+            row_values = eval_entity_row_values(
+                mapping_entity, faux_excel_row, context, handlers=None
+            )
 
             where_cols = natural_key
             where_vals = [row_values[c] for c in where_cols]
@@ -674,13 +746,20 @@ def ingest_col_groups_mapping_driven(conn, wb, mapping_entity: Dict[str, Any], s
 
             out[g] = db_id
 
-    print(f"col_groups: {len(distinct_vals)} groups ({inserted} inserted, {reused} reused).")
-    return out, {"processed": len(distinct_vals), "inserted": inserted, "reused": reused}
+    print(
+        f"col_groups: {len(distinct_vals)} groups ({inserted} inserted, {reused} reused)."
+    )
+    return out, {
+        "processed": len(distinct_vals),
+        "inserted": inserted,
+        "reused": reused,
+    }
 
 
 # -----------------------------
 # Columns plugin (custom logic + mapping-driven insert for cols)
 # -----------------------------
+
 
 class CleanColRow:
     def __init__(
@@ -709,11 +788,15 @@ class CleanColRow:
 def parse_decimal(x: Any, field_name: str, sheet: str, excel_row: int) -> Decimal:
     x = clean_cell_value(x)
     if x is None or (isinstance(x, str) and x.strip() == ""):
-        raise ValueError(f"ERROR ({sheet} row {excel_row}): missing required decimal '{field_name}'.")
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): missing required decimal '{field_name}'."
+        )
     try:
         return Decimal(str(x).strip())
     except (InvalidOperation, ValueError):
-        raise ValueError(f"ERROR ({sheet} row {excel_row}): '{field_name}' must be a decimal; got {x!r}.")
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): '{field_name}' must be a decimal; got {x!r}."
+        )
 
 
 def quantize_lat_lng(d: Decimal) -> Decimal:
@@ -725,14 +808,18 @@ def quantize_lat_lng(d: Decimal) -> Decimal:
 def parse_ref_ids(cell: Any, sheet: str, excel_row: int) -> List[str]:
     cell = clean_cell_value(cell)
     if cell is None:
-        raise ValueError(f"ERROR ({sheet} row {excel_row}): missing required 'ref_ids'.")
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): missing required 'ref_ids'."
+        )
     if isinstance(cell, (int, float)):
         tokens = [str(int(cell))]
     else:
         tokens = [t.strip() for t in str(cell).split(",")]
     tokens = [t for t in tokens if t]
     if not tokens:
-        raise ValueError(f"ERROR ({sheet} row {excel_row}): 'ref_ids' must include one or more comma-separated ids.")
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): 'ref_ids' must include one or more comma-separated ids."
+        )
     return tokens
 
 
@@ -760,11 +847,15 @@ def validate_columns_rows(
         excel_row = r["_excel_row"]
 
         col_id_raw = r.get("col_id")
-        if col_id_raw is None or (isinstance(col_id_raw, str) and col_id_raw.strip() == ""):
+        if col_id_raw is None or (
+            isinstance(col_id_raw, str) and col_id_raw.strip() == ""
+        ):
             die(f"ERROR (columns row {excel_row}): missing required 'col_id'.")
         excel_col_id = str(col_id_raw).strip()
         if excel_col_id in seen_col_ids:
-            die(f"ERROR (columns row {excel_row}): duplicate 'col_id' in columns tab: {excel_col_id}")
+            die(
+                f"ERROR (columns row {excel_row}): duplicate 'col_id' in columns tab: {excel_col_id}"
+            )
         seen_col_ids.add(excel_col_id)
 
         col_name = normalize_str(r.get("col_name"))
@@ -777,7 +868,9 @@ def validate_columns_rows(
 
         ng_key = (col_name, col_group)
         if ng_key in seen_name_group:
-            die(f"ERROR (columns row {excel_row}): duplicate (col_name, col_group) = {ng_key}")
+            die(
+                f"ERROR (columns row {excel_row}): duplicate (col_name, col_group) = {ng_key}"
+            )
         seen_name_group.add(ng_key)
 
         col_type_raw = normalize_str(r.get("col_type"))
@@ -785,18 +878,24 @@ def validate_columns_rows(
             die(f"ERROR (columns row {excel_row}): 'col_type' must be non-empty.")
         col_type = col_type_raw.lower()
         if col_type not in {"column", "section"}:
-            die(f"ERROR (columns row {excel_row}): 'col_type' must be 'column' or 'section'; got {col_type_raw!r}")
+            die(
+                f"ERROR (columns row {excel_row}): 'col_type' must be 'column' or 'section'; got {col_type_raw!r}"
+            )
 
         ref_excel_ids = parse_ref_ids(r.get("ref_ids"), "columns", excel_row)
         missing_refs = [rid for rid in ref_excel_ids if rid not in ref_map]
         if missing_refs:
-            die(f"ERROR (columns row {excel_row}): ref_ids not found in refs tab: {missing_refs}")
+            die(
+                f"ERROR (columns row {excel_row}): ref_ids not found in refs tab: {missing_refs}"
+            )
 
         lat_val = r.get("lat")
         lng_val = r.get("lng")
         geom_val = normalize_str(r.get("geom"))
 
-        has_lat_or_lng = (lat_val is not None and str(lat_val).strip() != "") or (lng_val is not None and str(lng_val).strip() != "")
+        has_lat_or_lng = (lat_val is not None and str(lat_val).strip() != "") or (
+            lng_val is not None and str(lng_val).strip() != ""
+        )
         has_geom = geom_val is not None
         # We allow geom plus optional lat/lng. If geom is present, lat/lng (if provided)
         # will be validated for numeric sanity here and consistency with the geometry later.
@@ -808,22 +907,32 @@ def validate_columns_rows(
         if has_geom:
             wkt = normalize_wkt(geom_val)
             if wkt in seen_geom:
-                die(f"ERROR (columns row {excel_row}): duplicate geom WKT in columns tab.")
+                die(
+                    f"ERROR (columns row {excel_row}): duplicate geom WKT in columns tab."
+                )
             seen_geom.add(wkt)
             # If lat/lng are provided along with geom, require both and parse them.
             if has_lat_or_lng:
-                lat = quantize_lat_lng(parse_decimal(lat_val, "lat", "columns", excel_row))
-                lng = quantize_lat_lng(parse_decimal(lng_val, "lng", "columns", excel_row))
+                lat = quantize_lat_lng(
+                    parse_decimal(lat_val, "lat", "columns", excel_row)
+                )
+                lng = quantize_lat_lng(
+                    parse_decimal(lng_val, "lng", "columns", excel_row)
+                )
 
         else:
             # No geom: must have lat/lng
             if not has_lat_or_lng:
-                die(f"ERROR (columns row {excel_row}): must provide geom (WKT polygon) or lat/lng.")
+                die(
+                    f"ERROR (columns row {excel_row}): must provide geom (WKT polygon) or lat/lng."
+                )
             lat = quantize_lat_lng(parse_decimal(lat_val, "lat", "columns", excel_row))
             lng = quantize_lat_lng(parse_decimal(lng_val, "lng", "columns", excel_row))
             ll_key = (lat, lng)
             if ll_key in seen_latlng:
-                die(f"ERROR (columns row {excel_row}): duplicate (lat,lng)=({lat},{lng}) in columns tab.")
+                die(
+                    f"ERROR (columns row {excel_row}): duplicate (lat,lng)=({lat},{lng}) in columns tab."
+                )
             seen_latlng.add(ll_key)
         if has_col_column:
             col_column_values_raw[excel_col_id] = r.get("col")
@@ -857,9 +966,14 @@ def validate_wkt_polygon_in_db(cur, wkt: str, sheet_row: int) -> None:
     if not is_valid:
         die(f"ERROR (columns row {sheet_row}): geom WKT is not a valid geometry.")
     if gtype not in ("POLYGON", "MULTIPOLYGON"):
-        die(f"ERROR (columns row {sheet_row}): geom must be POLYGON or MULTIPOLYGON; got {gtype}.")
+        die(
+            f"ERROR (columns row {sheet_row}): geom must be POLYGON or MULTIPOLYGON; got {gtype}."
+        )
 
-def validate_geom_matches_latlng_in_db(cur, wkt: str, lat: Decimal, lng: Decimal, sheet_row: int) -> None:
+
+def validate_geom_matches_latlng_in_db(
+    cur, wkt: str, lat: Decimal, lng: Decimal, sheet_row: int
+) -> None:
     """
     If user supplies geom + lat/lng, ensure the lat/lng match the point-on-surface of the geom
     at the same precision as macrostrat.cols lat/lng (numeric(8,5)).
@@ -884,17 +998,28 @@ def validate_geom_matches_latlng_in_db(cur, wkt: str, lat: Decimal, lng: Decimal
             "  Fix the spreadsheet so they match (or omit lat/lng when geom is present)."
         )
 
-def compute_cols_col_values(cleaned_rows: List[CleanColRow], has_col_column: bool, col_column_values_raw: Dict[str, Any]) -> Dict[str, Decimal]:
+
+def compute_cols_col_values(
+    cleaned_rows: List[CleanColRow],
+    has_col_column: bool,
+    col_column_values_raw: Dict[str, Any],
+) -> Dict[str, Decimal]:
     out: Dict[str, Decimal] = {}
     if has_col_column:
         for cr in cleaned_rows:
             raw = clean_cell_value(col_column_values_raw.get(cr.excel_col_id))
             if raw is None or (isinstance(raw, str) and raw.strip() == ""):
-                die(f"ERROR (columns row {cr.excel_row}): 'col' column exists but value is empty.")
+                die(
+                    f"ERROR (columns row {cr.excel_row}): 'col' column exists but value is empty."
+                )
             try:
-                d = Decimal(str(raw).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                d = Decimal(str(raw).strip()).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
             except (InvalidOperation, ValueError):
-                die(f"ERROR (columns row {cr.excel_row}): 'col' must be numeric; got {raw!r}.")
+                die(
+                    f"ERROR (columns row {cr.excel_row}): 'col' must be numeric; got {raw!r}."
+                )
             out[cr.excel_col_id] = d
         return out
 
@@ -902,7 +1027,9 @@ def compute_cols_col_values(cleaned_rows: List[CleanColRow], has_col_column: boo
     tmp: Dict[str, Decimal] = {}
     for cr in cleaned_rows:
         try:
-            d = Decimal(str(cr.excel_col_id)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            d = Decimal(str(cr.excel_col_id)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             if abs(d) > Decimal("9999.99"):
                 raise InvalidOperation()
             tmp[cr.excel_col_id] = d
@@ -912,14 +1039,26 @@ def compute_cols_col_values(cleaned_rows: List[CleanColRow], has_col_column: boo
     if all_ok:
         return tmp
 
-    sorted_rows = sorted(cleaned_rows, key=lambda x: (x.col_group, x.col_name, x.col_type, x.excel_col_id))
+    sorted_rows = sorted(
+        cleaned_rows,
+        key=lambda x: (x.col_group, x.col_name, x.col_type, x.excel_col_id),
+    )
     for i, cr in enumerate(sorted_rows, start=1):
         out[cr.excel_col_id] = Decimal(i).quantize(Decimal("0.01"))
     return out
 
 
-def select_existing_col_id(cur, project_id: int, col_group_id: int, col_name: str, col_type: str, status_code: str,
-                          lat: Optional[Decimal], lng: Optional[Decimal], wkt: Optional[str]) -> Optional[int]:
+def select_existing_col_id(
+    cur,
+    project_id: int,
+    col_group_id: int,
+    col_name: str,
+    col_type: str,
+    status_code: str,
+    lat: Optional[Decimal],
+    lng: Optional[Decimal],
+    wkt: Optional[str],
+) -> Optional[int]:
     if wkt is not None:
         cur.execute(
             """
@@ -943,20 +1082,28 @@ def select_existing_col_id(cur, project_id: int, col_group_id: int, col_name: st
     return int(row[0]) if row else None
 
 
-def make_cols_handlers(col_groups_map: Dict[str, int]) -> Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]:
+def make_cols_handlers(
+    col_groups_map: Dict[str, int]
+) -> Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]:
     def h_col_group_id(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         cg = normalize_str(excel_row.get("col_group"))
         if not cg:
-            die(f"ERROR (columns row {excel_row['_excel_row']}): missing 'col_group' for col_group_id resolution.")
+            die(
+                f"ERROR (columns row {excel_row['_excel_row']}): missing 'col_group' for col_group_id resolution."
+            )
         if cg not in col_groups_map:
-            die(f"ERROR (columns row {excel_row['_excel_row']}): col_group '{cg}' not present in resolved col_groups_map.")
+            die(
+                f"ERROR (columns row {excel_row['_excel_row']}): col_group '{cg}' not present in resolved col_groups_map."
+            )
         return col_groups_map[cg]
 
     def h_col_value(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         col_value_map = context.get("col_value_map", {})
         excel_col_id = str(excel_row.get("col_id")).strip()
         if excel_col_id not in col_value_map:
-            die(f"ERROR (columns row {excel_row['_excel_row']}): unable to resolve cols.col value for col_id={excel_col_id}.")
+            die(
+                f"ERROR (columns row {excel_row['_excel_row']}): unable to resolve cols.col value for col_id={excel_col_id}."
+            )
         return float(col_value_map[excel_col_id])
 
     def h_lat(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
@@ -964,16 +1111,26 @@ def make_cols_handlers(col_groups_map: Dict[str, int]) -> Dict[str, Callable[[Di
         lat_val = excel_row.get("lat")
         if wkt:
             wktn = normalize_wkt(wkt)
-            return {"__sql__": "ST_Y(ST_PointOnSurface(ST_GeomFromText(%s,4326)))", "__params__": [wktn]}
-        return quantize_lat_lng(parse_decimal(lat_val, "lat", "columns", excel_row["_excel_row"]))
+            return {
+                "__sql__": "ST_Y(ST_PointOnSurface(ST_GeomFromText(%s,4326)))",
+                "__params__": [wktn],
+            }
+        return quantize_lat_lng(
+            parse_decimal(lat_val, "lat", "columns", excel_row["_excel_row"])
+        )
 
     def h_lng(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         wkt = normalize_str(excel_row.get("geom"))
         lng_val = excel_row.get("lng")
         if wkt:
             wktn = normalize_wkt(wkt)
-            return {"__sql__": "ST_X(ST_PointOnSurface(ST_GeomFromText(%s,4326)))", "__params__": [wktn]}
-        return quantize_lat_lng(parse_decimal(lng_val, "lng", "columns", excel_row["_excel_row"]))
+            return {
+                "__sql__": "ST_X(ST_PointOnSurface(ST_GeomFromText(%s,4326)))",
+                "__params__": [wktn],
+            }
+        return quantize_lat_lng(
+            parse_decimal(lng_val, "lng", "columns", excel_row["_excel_row"])
+        )
 
     def h_coordinate(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         wkt = normalize_str(excel_row.get("geom"))
@@ -983,9 +1140,20 @@ def make_cols_handlers(col_groups_map: Dict[str, int]) -> Dict[str, Callable[[Di
                 "__sql__": "ST_SetSRID(ST_MakePoint(ST_X(ST_PointOnSurface(ST_GeomFromText(%s,4326))), ST_Y(ST_PointOnSurface(ST_GeomFromText(%s,4326)))),4326)",
                 "__params__": [wktn, wktn],
             }
-        lat = quantize_lat_lng(parse_decimal(excel_row.get("lat"), "lat", "columns", excel_row["_excel_row"]))
-        lng = quantize_lat_lng(parse_decimal(excel_row.get("lng"), "lng", "columns", excel_row["_excel_row"]))
-        return {"__sql__": "ST_SetSRID(ST_MakePoint(%s,%s),4326)", "__params__": [lng, lat]}
+        lat = quantize_lat_lng(
+            parse_decimal(
+                excel_row.get("lat"), "lat", "columns", excel_row["_excel_row"]
+            )
+        )
+        lng = quantize_lat_lng(
+            parse_decimal(
+                excel_row.get("lng"), "lng", "columns", excel_row["_excel_row"]
+            )
+        )
+        return {
+            "__sql__": "ST_SetSRID(ST_MakePoint(%s,%s),4326)",
+            "__params__": [lng, lat],
+        }
 
     def h_poly_geom(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         wkt = normalize_str(excel_row.get("geom"))
@@ -999,7 +1167,10 @@ def make_cols_handlers(col_groups_map: Dict[str, int]) -> Dict[str, Callable[[Di
         if not wkt:
             return 0.0
         wktn = normalize_wkt(wkt)
-        return {"__sql__": "(ST_Area(ST_GeomFromText(%s,4326)::geography)/1000000.0)", "__params__": [wktn]}
+        return {
+            "__sql__": "(ST_Area(ST_GeomFromText(%s,4326)::geography)/1000000.0)",
+            "__params__": [wktn],
+        }
 
     return {
         "cols_col_group_id_v1": h_col_group_id,
@@ -1027,13 +1198,24 @@ def ingest_columns_plugin(
     if not rows:
         die(f"ERROR: '{sheet_name}' tab has no data rows.")
 
-    cleaned_rows, has_col_column, col_column_values_raw = validate_columns_rows(headers, rows, ref_map)
-    col_value_map = compute_cols_col_values(cleaned_rows, has_col_column, col_column_values_raw)
+    cleaned_rows, has_col_column, col_column_values_raw = validate_columns_rows(
+        headers, rows, ref_map
+    )
+    col_value_map = compute_cols_col_values(
+        cleaned_rows, has_col_column, col_column_values_raw
+    )
 
     col_map: Dict[str, int] = {}
     status_code = "in process"
 
-    counts = {"processed": len(cleaned_rows), "inserted": 0, "reused": 0, "col_refs_attempted": 0, "col_areas_inserted": 0, "col_areas_skipped": 0}
+    counts = {
+        "processed": len(cleaned_rows),
+        "inserted": 0,
+        "reused": 0,
+        "col_refs_attempted": 0,
+        "col_areas_inserted": 0,
+        "col_areas_skipped": 0,
+    }
 
     with conn.cursor() as cur:
         for cr in cleaned_rows:
@@ -1041,13 +1223,23 @@ def ingest_columns_plugin(
                 validate_wkt_polygon_in_db(cur, cr.wkt, cr.excel_row)
                 # If lat/lng were also provided, ensure they match the geometry at numeric(8,5) precision.
                 if cr.lat is not None and cr.lng is not None:
-                    validate_geom_matches_latlng_in_db(cur, cr.wkt, cr.lat, cr.lng, cr.excel_row)
+                    validate_geom_matches_latlng_in_db(
+                        cur, cr.wkt, cr.lat, cr.lng, cr.excel_row
+                    )
 
         for cr in cleaned_rows:
             col_group_id = col_groups_map[cr.col_group]
 
             existing_id = select_existing_col_id(
-                cur, project_id, col_group_id, cr.col_name, cr.col_type, status_code, cr.lat, cr.lng, cr.wkt
+                cur,
+                project_id,
+                col_group_id,
+                cr.col_name,
+                cr.col_type,
+                status_code,
+                cr.lat,
+                cr.lng,
+                cr.wkt,
             )
             if existing_id is not None:
                 col_db_id = existing_id
@@ -1064,7 +1256,9 @@ def ingest_columns_plugin(
                     "geom": cr.wkt,
                 }
                 context = {"project_id": project_id, "col_value_map": col_value_map}
-                row_values = eval_entity_row_values(cols_entity, faux_excel_row, context, handlers=cols_handlers)
+                row_values = eval_entity_row_values(
+                    cols_entity, faux_excel_row, context, handlers=cols_handlers
+                )
                 sql, params = build_insert_sql(cols_entity["table"], row_values)
                 cur.execute(sql, params)
                 col_db_id = int(cur.fetchone()[0])
@@ -1081,7 +1275,10 @@ def ingest_columns_plugin(
                 counts["col_refs_attempted"] += 1
 
             if cr.wkt is not None:
-                cur.execute("SELECT 1 FROM macrostrat.col_areas WHERE col_id=%s LIMIT 1", (col_db_id,))
+                cur.execute(
+                    "SELECT 1 FROM macrostrat.col_areas WHERE col_id=%s LIMIT 1",
+                    (col_db_id,),
+                )
                 if cur.fetchone() is None:
                     cur.execute(
                         "INSERT INTO macrostrat.col_areas (col_id,wkt,col_area,gmap) VALUES (%s,%s,ST_GeomFromText(%s,4326),%s)",
@@ -1104,6 +1301,7 @@ def ingest_columns_plugin(
 # Main
 # -----------------------------
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mapping", required=True, help="Path to mapping JSON file")
@@ -1113,15 +1311,21 @@ def main():
     parser.add_argument("--db-password", default="")
     parser.add_argument("--db-host", default="localhost")
     parser.add_argument("--db-port", default="5432")
-    parser.add_argument("--audit-dir", default="./audit", help="Directory for audit artifacts")
-    parser.add_argument("--no-audit", action="store_true", help="Disable writing audit artifacts")
+    parser.add_argument(
+        "--audit-dir", default="./audit", help="Directory for audit artifacts"
+    )
+    parser.add_argument(
+        "--no-audit", action="store_true", help="Disable writing audit artifacts"
+    )
     args = parser.parse_args()
 
     mapping = load_mapping(args.mapping)
     sheets_map = mapping["sheets"]
     mapping_version = str(mapping["mapping_version"]).strip()
 
-    excel_file = args.excel or mapping.get("excel_file_default") or "macrostrat_import.xlsx"
+    excel_file = (
+        args.excel or mapping.get("excel_file_default") or "macrostrat_import.xlsx"
+    )
     excel_sha256 = sha256_file(excel_file)
 
     try:
@@ -1134,7 +1338,9 @@ def main():
     meta_sheet = sheets_map["metadata"]
     excel_mapping_version = get_metadata_value(wb, meta_sheet, "mapping_version")
     if excel_mapping_version is None:
-        die(f"ERROR: Excel metadata missing 'mapping_version'. Expected {mapping_version}")
+        die(
+            f"ERROR: Excel metadata missing 'mapping_version'. Expected {mapping_version}"
+        )
     if str(excel_mapping_version).strip() != mapping_version:
         die(
             "ERROR: mapping_version mismatch.\n"
@@ -1185,13 +1391,24 @@ def main():
         cols_counts: Dict[str, Any] = {}
 
         with conn:
-            ref_map, refs_counts = ingest_refs_mapping_driven(conn, wb, refs_ent, sheets_map)
-            col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(conn, wb, col_groups_ent, sheets_map, project_id)
+            ref_map, refs_counts = ingest_refs_mapping_driven(
+                conn, wb, refs_ent, sheets_map
+            )
+            col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(
+                conn, wb, col_groups_ent, sheets_map, project_id
+            )
             cols_handlers = make_cols_handlers(col_groups_map)
 
             columns_sheet = sheets_map["columns"]
             col_map, cols_counts = ingest_columns_plugin(
-                conn, wb, columns_sheet, project_id, ref_map, col_groups_map, cols_ent, cols_handlers
+                conn,
+                wb,
+                columns_sheet,
+                project_id,
+                ref_map,
+                col_groups_map,
+                cols_ent,
+                cols_handlers,
             )
 
         print("SUCCESS: Phase 2.5 ingestion completed (transaction committed).")
@@ -1202,7 +1419,7 @@ def main():
                 "col_groups": col_groups_counts,
                 "cols": cols_counts,
                 "units": {"processed": 0, "inserted": 0, "reused": 0, "skipped": True},
-        }
+            }
         write_audit_artifacts(
             audit_dir=args.audit_dir,
             project_id=project_id,
@@ -1214,7 +1431,6 @@ def main():
             counts=counts_manifest,
             unit_map=None,  # Phase 2.5: no units yet
         )
-
 
     except Exception as e:
         conn.rollback()
