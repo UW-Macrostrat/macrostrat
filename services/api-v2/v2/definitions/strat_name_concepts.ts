@@ -47,7 +47,7 @@ module.exports = function (req, res, next, cb) {
     params["concept_name"] = req.query.name;
   } else if (req.query.strat_name_id) {
     where.push(
-      "concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_ids))",
+      "concept_id IN (SELECT concept_id FROM macrostrat.lookup_strat_names WHERE strat_name_id = ANY(:strat_name_ids))",
     );
     params["strat_name_ids"] = larkin.parseMultipleIds(req.query.strat_name_id);
   }
