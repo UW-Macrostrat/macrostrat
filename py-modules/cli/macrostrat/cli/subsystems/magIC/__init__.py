@@ -41,20 +41,20 @@ def map_site(site: dict, fetched_at: datetime) -> dict:
     """Map a raw magIC site record to the paleomag_sites schema."""
     lat = site.get("lat")
     lng = site.get("lon")
-
+    #update citations to use this format http://dx.doi.org/10.7288/V4/MAGIC/{contribution_id}}
     return {
         "external_id": site.get("contribution_id"),
         "site_name": site.get("site"),
         "lat": _float(site.get("lat")),
         "lng": _float(site.get("lon")),
-        "age_low": _float(site.get("age_low")),
-        "age_high": _float(site.get("age_high")),
-        "age_unit": site.get("age_unit"),
+        "age_low": _float(site.get("age_low")), #add age and uncertainty fields. Only 3.6k sites have this populated.
+        "age_high": _float(site.get("age_high")),#add age and uncertainty field. Only 3.6k sites have this populated.
+        "age_unit": site.get("age_unit"), #can have mapped units by strat name, or just map standalone ages alongside the column
         "lithologies": site.get("lithologies"),
         "formation": site.get("formation") or "",
-        "dir_polarity": site.get("dir_polarity"),
-        "dir_inc": _float(site.get("dir_inc")),
-        "dir_dec": _float(site.get("dir_dec")),
+        "dir_polarity": site.get("dir_polarity"), #can calc from inc and dec. Can get it from vgp_lat 45 to 90: normal, -45 to -90 reversed
+        "dir_inc": _float(site.get("dir_inc")), #main fields inputted
+        "dir_dec": _float(site.get("dir_dec")), #main fields inputted
         "dir_alpha95": _float(site.get("dir_alpha95")),
         "dir_k": _float(site.get("dir_k")),
         "dir_n_specimens_lines": _float(site.get("dir_n_specimens_lines")),
