@@ -2520,7 +2520,7 @@ CREATE TABLE macrostrat.units (
   position_top numeric(7,3) NOT NULL,
   max_thick numeric(7,2),
   min_thick numeric(7,2),
-  section_id integer DEFAULT 0 NOT NULL,
+  section_id integer, -- TODO: re-add this NOT NULL constraint, but without a default value
   col_id integer NOT NULL,
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157375_primary PRIMARY KEY (id),
