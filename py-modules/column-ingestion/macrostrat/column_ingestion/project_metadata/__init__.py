@@ -54,6 +54,7 @@ from typing import Any, Dict, List, Optional, Tuple, Callable
 
 import requests
 import psycopg2
+from macrostrat.core.database import get_database
 from openpyxl import load_workbook
 
 
@@ -296,16 +297,15 @@ def verify_project_id_via_api(project_id: int) -> str:
     return returned_project_name
 
 
-def connect_db(
-    dbname="macrostrat", user="postgres", password="", host="localhost", port="5432"
-):
+def connect_db(engine):
+    url = engine.url
     try:
         conn = psycopg2.connect(
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
+            dbname=url.database,
+            user=url.username,
+            password=url.password,
+            host=url.host,
+            port=url.port,
         )
         conn.autocommit = False
         return conn
@@ -2494,32 +2494,48 @@ def write_strat_name_audit_files(
 # Main
 # -----------------------------
 
+from pathlib import Path
+from typer import Argument, Option
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mapping", required=True, help="Path to mapping JSON file")
-    parser.add_argument("--excel", default=None, help="Override Excel filename")
-    parser.add_argument("--db-name", default="macrostrat")
-    parser.add_argument("--db-user", default="postgres")
-    parser.add_argument("--db-password", default="")
-    parser.add_argument("--db-host", default="localhost")
-    parser.add_argument("--db-port", default="5432")
-    parser.add_argument(
-        "--audit-dir", default="./audit", help="Directory for audit artifacts"
-    )
-    parser.add_argument(
-        "--no-audit", action="store_true", help="Disable writing audit artifacts"
-    )
-    args = parser.parse_args()
+__here__ = Path(__file__).parent
 
-    mapping = load_mapping(args.mapping)
+
+def shanan_column_importer(
+    excel_file: Path = Argument(None, exists=True),
+    *,
+    audit_dir: Path = Option(None, exists=False),
+    verify_project: bool = Option(False),
+    do_audit: bool = Option(True, "--audit/--no-audit"),
+):
+    """
+    Importer to ingest columns based on Shanan's code
+    """
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--db-name", default="macrostrat")
+    # parser.add_argument("--db-user", default="postgres")
+    # parser.add_argument("--db-password", default="")
+    # parser.add_argument("--db-host", default="localhost")
+    # parser.add_argument("--db-port", default="5432")
+    # parser.add_argument(
+    #     "--audit-dir", default="./audit", help="Directory for audit artifacts"
+    # )
+    # parser.add_argument(
+    #     "--no-audit", action="store_true", help="Disable writing audit artifacts"
+    # )
+    # args = parser.parse_args()
+
+    mapping_filename = str(__here__ / "macrostrat_mapping_v3.json")
+    mapping = load_mapping(mapping_filename)
     sheets_map = mapping["sheets"]
     mapping_version = str(mapping["mapping_version"]).strip()
 
-    excel_file = (
-        args.excel or mapping.get("excel_file_default") or "macrostrat_import.xlsx"
-    )
-    excel_sha256 = sha256_file(excel_file)
+    if excel_file is not None:
+        excel_file = str(excel_file)
+        excel_sha256 = sha256_file(excel_file)
+
+    if audit_dir is None:
+        audit_dir = Path.cwd()
+    audit_dir = str(audit_dir)
 
     try:
         wb = load_workbook(excel_file, data_only=True)
@@ -2551,15 +2567,11 @@ def main():
     else:
         die("ERROR: 'project_id' must be an integer.")
 
-    verify_project_id_via_api(project_id)
+    if verify_project:
+        verify_project_id_via_api(project_id)
 
-    conn = connect_db(
-        dbname=args.db_name,
-        user=args.db_user,
-        password=args.db_password,
-        host=args.db_host,
-        port=args.db_port,
-    )
+    db = get_database()
+    conn = connect_db(db.engine)
 
     try:
         verify_project_id_in_db(conn, project_id)
@@ -2694,7 +2706,7 @@ def main():
 
         print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
 
-        if not args.no_audit:
+        if do_audit:
             runstamp_compact, runstamp_iso = utc_runstamp()
 
             counts_manifest = {
@@ -2712,7 +2724,7 @@ def main():
         strat_name_lexicon_filename = None
         unit_strat_name_map_filename = None
         strat_name_audit_counts = write_strat_name_audit_files(
-            audit_dir=args.audit_dir,
+            audit_dir=audit_dir,
             runstamp_compact=runstamp_compact,
             project_id=project_id,
             cleaned_units=cleaned_units if units_ent is not None else [],
@@ -2728,7 +2740,7 @@ def main():
         # Write manifest so strat-name audit counts are included.
         counts_manifest["strat_name_audit"] = strat_name_audit_counts
         write_audit_artifacts(
-            audit_dir=args.audit_dir,
+            audit_dir=audit_dir,
             runstamp_compact=runstamp_compact,
             runstamp_iso=runstamp_iso,
             script_name=os.path.basename(__file__),
@@ -2750,7 +2762,3 @@ def main():
         die(f"ERROR: ingestion failed; rolled back transaction. Details: {e}")
     finally:
         conn.close()
-
-
-if __name__ == "__main__":
-    main()
