@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS user_features.linked_strabo_account (
 );
 
 ALTER TABLE public.checkins
-ADD COLUMN spot_id bigint DEFAULT NULL;
+ADD COLUMN IF NOT EXISTS spot_id bigint DEFAULT NULL;
 
 
 alter schema user_features OWNER TO "rockd";

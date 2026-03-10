@@ -100,6 +100,20 @@ class StraboIntegration(RockdMigration):
     ]
 
 
+
+class StraboAddSpot(RockdMigration):
+    name = "strabo-add-spot"
+    readiness_state = "ga"
+    description = "Add Strabo spot_id to checkins table"
+    postconditions = [
+        has_columns("public", "checkins", "spot_id"),
+    ]
+
+    fixtures = [
+        migrations_dir / "0051-strabo_add_spot.sql",
+    ]
+
+
 class UserPrivileges(RockdMigration):
     name = "user-privileges"
     readiness_state = "ga"
