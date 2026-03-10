@@ -1,35 +1,36 @@
 #!/usr/bin/env python3
 """
-Macrostrat ingestion: metadata/project validation + refs + columns
+Macrostrat ingestion: metadata/project validation + refs + columns + units
 Assumption is that project exists in Macrostrat; project must be defined by valid existing project_id in metadata tab
 There is currently no check that supplied project_id is correct.
 
-What this script does (in order):
-  1) Reads macrostrat_import.xlsx (tabs: metadata, refs, columns); ALL string values read from Excel are trimmed (leading/trailing whitespace removed)
-  immediately upon reading the workbook into row dictionaries.
-  2) Extracts project_id from metadata and verifies it via Macrostrat API \\ this step is not needed, added for flair, remove verify_project_id_via_api call to kill
-  3) Connects to local Postgres database "macrostrat" and verifies project exists
-  4) In ONE transaction:
-       - ingests refs -> macrostrat.refs (idempotent on (pub_year, author, ref))
-       - validates columns tab (including uniqueness checks)
-       - ingests col_groups -> macrostrat.col_groups (idempotent on (project_id, col_group_long))
-       - ingests cols -> macrostrat.cols (idempotent "get-or-create" using:
-             project_id, col_group_id, col_name, col_type, status_code, plus geom (polygon) or lat/lng when geom absent
-         )
-       - ingests col_refs -> macrostrat.col_refs (idempotent DO NOTHING)
-       - ingests col_areas -> macrostrat.col_areas (one row per col_id; idempotent via SELECT)
+Phase 3.0: schema introspection + declarative mapping extended through macrostrat.units,
+while keeping entity-specific logic (identity, geometry semantics, joins, recomputed groupings) in plugins.
+
+ - Mapping-driven SQL generation for:
+   * macrostrat.refs
+   * macrostrat.col_groups
+   * macrostrat.cols
+   * macrostrat.units
+ - Schema guardrails for mapped entities and critical NOT NULL/no-default coverage
+ - Plugin-driven logic for:
+   * columns, refs, units
+   * unit joins
+   * sections / units_sections recompute
 
 Requires:
-- metadata tab of Excel file must have field "mapping_version" matching "mapping_version" in file macrostrat_mapping.json (contains declarative field mappings)
+- metadata tab of Excel template must have field "mapping_version" matching "mapping_version" in file macrostrat_mapping.json (contains declarative field mappings)
 
 Notes:
 - All target tables are schema-qualified under macrostrat.<table>.
 
 Audit:
-- Writes four files providing Excel-macrostrat key pairs and a metadata/action summary to ./audit:
+- Writes six files providing Excel-macrostrat key pairs and a metadata/action summary to ./audit:
   col_id_map_<project_id>_<timestamp>.tsv
   ref_id_map_<project_id>_<timestamp>.tsv
-  unit_id_map_<project_id>_<timestamp>.tsv (empty, units not handled in this version)
+  unit_id_map_<project_id>_<timestamp>.tsv
+  unit_strat_name_map_<project_id>_<timestamp>.tsv
+  strat_name_lexicon_<project_id>_<timestamp>.tsv
   macrostrat_import_audit_<project_id>_<timestamp>.json
 
 Postgres connection:
@@ -37,7 +38,7 @@ Postgres connection:
 	defaults set: dbname="macrostrat", user="postgres", password="", host="localhost", port="5432"
 
 Usage:
-  python macrostrat_import_2.5.py --mapping macrostrat_mapping_v2.5.json
+  python macrostrat_import_3.py --mapping macrostrat_mapping_v3.json
 """
 
 import sys
@@ -48,7 +49,7 @@ import os
 import hashlib
 from datetime import datetime, timezone
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, ROUND_FLOOR
 from typing import Any, Dict, List, Optional, Tuple, Callable
 
 import requests
@@ -150,7 +151,7 @@ def load_mapping(mapping_path: str) -> Dict[str, Any]:
 
 
 # -----------------------------
-# Audit artifacts (Phase 2.5 add-on; Phase 3-ready)
+# Audit artifacts
 # -----------------------------
 
 
@@ -197,6 +198,9 @@ def write_units_tsv_header_only(path: str, header_a: str, header_b: str) -> None
 
 def write_audit_artifacts(
     audit_dir: str,
+    runstamp_compact: str,
+    runstamp_iso: str,
+    script_name: str,
     project_id: int,
     mapping_version: str,
     excel_file: str,
@@ -204,13 +208,13 @@ def write_audit_artifacts(
     ref_map: Dict[str, int],
     col_map: Dict[str, int],
     counts: Dict[str, Any],
-    # Phase 3 forward-compat: allow caller to pass a units map later
     unit_map: Optional[Dict[str, int]] = None,
     units_excel_key_name: str = "excel_unit_id",
-    units_db_key_name: str = "db_unit_id",
+    units_db_key_name: str = "macrostrat_unit_id",
+    strat_name_lexicon_filename: Optional[str] = None,
+    unit_strat_name_map_filename: Optional[str] = None,
 ) -> None:
     ensure_dir(audit_dir)
-    runstamp_compact, runstamp_iso = utc_runstamp()
 
     manifest_path = os.path.join(
         audit_dir, f"macrostrat_import_audit_{project_id}_{runstamp_compact}.json"
@@ -239,6 +243,8 @@ def write_audit_artifacts(
         "runstamp_utc": runstamp_iso,
         "project_id": project_id,
         "mapping_version": str(mapping_version).strip(),
+        "script_name": script_name,
+        "audit_dir": audit_dir,
         "excel_file": excel_file,
         "excel_sha256": excel_sha256,
         "counts": counts,
@@ -247,16 +253,14 @@ def write_audit_artifacts(
             "refs_tsv": os.path.basename(refs_path),
             "cols_tsv": os.path.basename(cols_path),
             "units_tsv": os.path.basename(units_path),
+            "strat_name_lexicon_tsv": strat_name_lexicon_filename,
+            "unit_strat_name_map_tsv": unit_strat_name_map_filename,
         },
     }
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, sort_keys=True)
 
-    print(f"AUDIT: wrote artifacts to {audit_dir}")
-    print(f"  {os.path.basename(manifest_path)}")
-    print(f"  {os.path.basename(refs_path)}")
-    print(f"  {os.path.basename(cols_path)}")
-    print(f"  {os.path.basename(units_path)}")
+    print(f"audit: wrote core artifacts to {audit_dir}")
 
 
 # -----------------------------
@@ -320,7 +324,7 @@ def verify_project_id_in_db(conn, project_id: int) -> None:
 
 
 # -----------------------------
-# Phase 2.5: schema introspection
+# Schema introspection
 # -----------------------------
 
 
@@ -450,6 +454,35 @@ def validate_cols_not_null_coverage(
             "ERROR: macrostrat.cols has NOT NULL columns with no defaults that are not mapped.\n"
             f"Missing in mapping: {missing_required}\n"
             "Update macrostrat_mapping.json (entity 'cols') to provide values/defaults."
+        )
+
+
+def validate_units_not_null_coverage(
+    schema: SchemaInspector, units_entity: Dict[str, Any]
+) -> None:
+    """
+    Phase 3 safety guard:
+      For macrostrat.units specifically, ensure every NOT NULL column with no default
+      is covered by the mapping (or is a DB default).
+    """
+    fqtn = units_entity["table"]
+    db_cols = schema.columns(fqtn)
+    mapped = set(units_entity.get("fields", {}).keys())
+
+    missing_required: List[str] = []
+    for name, info in db_cols.items():
+        if info.is_nullable:
+            continue
+        if info.has_default:
+            continue
+        if name not in mapped:
+            missing_required.append(name)
+
+    if missing_required:
+        die(
+            "ERROR: macrostrat.units has NOT NULL columns with no defaults that are not mapped.\n"
+            f"Missing in mapping: {missing_required}\n"
+            "Update macrostrat_mapping_v3.0.json (entity 'units') to provide values/defaults."
         )
 
 
@@ -675,22 +708,13 @@ def ingest_refs_mapping_driven(
 
             ref_map[excel_ref_id] = db_id
 
-    print(f"refs: {len(rows)} rows processed ({inserted} inserted, {reused} reused).")
+    print(f"refs: processed={len(rows)} inserted={inserted} reused={reused}")
     return ref_map, {"processed": len(rows), "inserted": inserted, "reused": reused}
 
 
 # -----------------------------
 # Entity: col_groups (mapping-driven)
 # -----------------------------
-
-
-def ingest_col_groups_mapping_driven(
-    conn, wb, mapping_entity: Dict[str, Any], sheets: Dict[str, str], project_id: int
-) -> Dict[str, int]:
-    """
-    Returns mapping col_group_long (string) -> col_groups.id
-    Uses SELECT/INSERT idempotently (no unique constraints assumed).
-    """
 
 
 def ingest_col_groups_mapping_driven(
@@ -747,7 +771,7 @@ def ingest_col_groups_mapping_driven(
             out[g] = db_id
 
     print(
-        f"col_groups: {len(distinct_vals)} groups ({inserted} inserted, {reused} reused)."
+        f"col_groups: processed={len(distinct_vals)} inserted={inserted} reused={reused}"
     )
     return out, {
         "processed": len(distinct_vals),
@@ -1289,12 +1313,1181 @@ def ingest_columns_plugin(
                     counts["col_areas_skipped"] += 1
 
     print(
-        "columns:\n"
-        f"  cols:      {counts['inserted']} inserted, {counts['reused']} reused\n"
-        f"  col_refs:  {counts['col_refs_attempted']} link inserts attempted\n"
-        f"  col_areas: {counts['col_areas_inserted']} inserted, {counts['col_areas_skipped']} skipped\n"
+        "columns: "
+        f"processed={counts['processed']} "
+        f"inserted={counts['inserted']} reused={counts['reused']} "
+        f"col_refs_attempted={counts['col_refs_attempted']} "
+        f"col_areas_inserted={counts['col_areas_inserted']} col_areas_skipped={counts['col_areas_skipped']}"
     )
     return col_map, counts
+
+
+# -----------------------------
+# Units plugin: dataclasses, lookups, parsing, validation, and ingest helpers
+# -----------------------------
+
+
+@dataclass
+class ParsedLithEntry:
+    source_kind: str  # "dom" for lithology, "sub" for minor_lith
+    raw_entry: str
+    lith_id: int
+    lith_name: str
+    lith_att_ids: List[int]
+    lith_att_names: List[str]
+
+
+@dataclass
+class ParsedStratPath:
+    raw_entry: str
+    names: List[str]  # applied name first, then parents upward
+
+
+@dataclass
+class CleanUnitRow:
+    excel_row: int
+    excel_unit_id: str
+    excel_col_id: str
+    excel_section_id: int
+
+    db_col_id: int
+    db_b_int_id: int
+    db_t_int_id: int
+
+    b_int_name: str
+    t_int_name: str
+    b_int_age_bottom: Decimal
+    b_int_age_top: Decimal
+    t_int_age_bottom: Decimal
+    t_int_age_top: Decimal
+
+    position_bottom: Decimal
+    position_top: Decimal
+
+    b_prop: Optional[Decimal]
+    t_prop: Optional[Decimal]
+
+    unit_name: str
+    min_thickness: Optional[Decimal]
+    max_thickness: Optional[Decimal]
+
+    environments: List[Tuple[int, str]]
+    lith_entries: List[ParsedLithEntry]
+    minor_lith_entries: List[ParsedLithEntry]
+    strat_paths: List[ParsedStratPath]
+
+    notes_text: Optional[str]
+
+
+def quantize_position(d: Decimal) -> Decimal:
+    return d.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+
+
+def quantize_thickness(d: Decimal) -> Decimal:
+    return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def normalize_name_key(x: Any) -> Optional[str]:
+    s = normalize_str(x)
+    return s.lower() if s is not None else None
+
+
+def parse_optional_decimal(
+    x: Any,
+    field_name: str,
+    sheet: str,
+    excel_row: int,
+    quantizer: Optional[Callable[[Decimal], Decimal]] = None,
+) -> Optional[Decimal]:
+    x = clean_cell_value(x)
+    if x is None or (isinstance(x, str) and x.strip() == ""):
+        return None
+    try:
+        d = Decimal(str(x).strip())
+    except (InvalidOperation, ValueError):
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): '{field_name}' must be numeric; got {x!r}."
+        )
+    return quantizer(d) if quantizer else d
+
+
+def parse_required_int(x: Any, field_name: str, sheet: str, excel_row: int) -> int:
+    x = clean_cell_value(x)
+    if x is None or (isinstance(x, str) and x.strip() == ""):
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): missing required integer '{field_name}'."
+        )
+    if isinstance(x, int):
+        return x
+    if isinstance(x, str) and x.strip().isdigit():
+        return int(x.strip())
+    raise ValueError(
+        f"ERROR ({sheet} row {excel_row}): '{field_name}' must be an integer; got {x!r}."
+    )
+
+
+def split_semicolon_list(value: Any) -> List[str]:
+    s = normalize_str(value)
+    if s is None:
+        return []
+    return [tok.strip() for tok in s.split(";") if tok.strip()]
+
+
+def split_comma_list(value: str) -> List[str]:
+    return [tok.strip() for tok in value.split(",") if tok.strip()]
+
+
+def parse_lookup_token_id_or_name(
+    token: str,
+    by_id: Dict[int, Dict[str, Any]],
+    by_name: Dict[str, Dict[str, Any]],
+    field_name: str,
+    sheet: str,
+    excel_row: int,
+) -> Dict[str, Any]:
+    if token.isdigit():
+        obj = by_id.get(int(token))
+        if obj is None:
+            raise ValueError(
+                f"ERROR ({sheet} row {excel_row}): {field_name} token id '{token}' not found in lookup table."
+            )
+        return obj
+    obj = by_name.get(token.lower())
+    if obj is None:
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): {field_name} token name '{token}' not found in lookup table."
+        )
+    return obj
+
+
+def parse_environment_field(
+    value: Any, lookups: Dict[str, Any], sheet: str, excel_row: int
+) -> List[Tuple[int, str]]:
+    out: List[Tuple[int, str]] = []
+    seen = set()
+    for tok in split_semicolon_list(value):
+        obj = parse_lookup_token_id_or_name(
+            tok,
+            lookups["environs_by_id"],
+            lookups["environs_by_name"],
+            "environment",
+            sheet,
+            excel_row,
+        )
+        key = int(obj["id"])
+        if key not in seen:
+            out.append((int(obj["id"]), str(obj["name"])))
+            seen.add(key)
+    return out
+
+
+def parse_lith_field(
+    value: Any,
+    source_kind: str,
+    lookups: Dict[str, Any],
+    sheet: str,
+    excel_row: int,
+) -> List[ParsedLithEntry]:
+    out: List[ParsedLithEntry] = []
+    for raw_entry in split_semicolon_list(value):
+        toks = split_comma_list(raw_entry)
+        if not toks:
+            continue
+        lith_tok = toks[-1]
+        att_toks = toks[:-1]
+
+        lith_obj = parse_lookup_token_id_or_name(
+            lith_tok,
+            lookups["liths_by_id"],
+            lookups["liths_by_name"],
+            "lithology",
+            sheet,
+            excel_row,
+        )
+
+        att_ids: List[int] = []
+        att_names: List[str] = []
+        seen_att_ids = set()
+        for att_tok in att_toks:
+            att_obj = parse_lookup_token_id_or_name(
+                att_tok,
+                lookups["lith_atts_by_id"],
+                lookups["lith_atts_by_name"],
+                "lithology attribute",
+                sheet,
+                excel_row,
+            )
+            att_id = int(att_obj["id"])
+            if att_id not in seen_att_ids:
+                att_ids.append(att_id)
+                att_names.append(str(att_obj["name"]))
+                seen_att_ids.add(att_id)
+
+        out.append(
+            ParsedLithEntry(
+                source_kind=source_kind,
+                raw_entry=raw_entry,
+                lith_id=int(lith_obj["id"]),
+                lith_name=str(lith_obj["name"]),
+                lith_att_ids=att_ids,
+                lith_att_names=att_names,
+            )
+        )
+    return out
+
+
+def parse_strat_name_field(
+    value: Any, sheet: str, excel_row: int
+) -> List[ParsedStratPath]:
+    out: List[ParsedStratPath] = []
+    for raw_entry in split_semicolon_list(value):
+        names = split_comma_list(raw_entry)
+        if not names:
+            continue
+        if len(names) > 8:
+            raise ValueError(
+                f"ERROR ({sheet} row {excel_row}): strat_name hierarchy path exceeds 8 names: {raw_entry!r}"
+            )
+        out.append(ParsedStratPath(raw_entry=raw_entry, names=names))
+    return out
+
+
+def build_notes_text(unit_description: Any, comments: Any) -> Optional[str]:
+    desc = normalize_str(unit_description)
+    comm = normalize_str(comments)
+    if desc is None and comm is None:
+        return None
+    if desc is None:
+        return comm
+    if comm is None:
+        return desc
+    return f"{desc}; {comm}"
+
+
+def resolve_interval(
+    token_val: Any,
+    field_name: str,
+    lookups: Dict[str, Any],
+    sheet: str,
+    excel_row: int,
+) -> Dict[str, Any]:
+    tok = normalize_str(token_val)
+    if tok is None:
+        raise ValueError(
+            f"ERROR ({sheet} row {excel_row}): missing required '{field_name}'."
+        )
+    return parse_lookup_token_id_or_name(
+        tok,
+        lookups["intervals_by_id"],
+        lookups["intervals_by_name"],
+        field_name,
+        sheet,
+        excel_row,
+    )
+
+
+def resolve_unit_positions(
+    row: Dict[str, Any], excel_row: int
+) -> Tuple[Decimal, Decimal]:
+    pos = parse_optional_decimal(
+        row.get("position"), "position", "units", excel_row, quantize_position
+    )
+    t_pos = parse_optional_decimal(
+        row.get("t_pos"), "t_pos", "units", excel_row, quantize_position
+    )
+    b_pos = parse_optional_decimal(
+        row.get("b_pos"), "b_pos", "units", excel_row, quantize_position
+    )
+
+    if pos is not None:
+        return pos, pos
+
+    if t_pos is None or b_pos is None:
+        die(
+            f"ERROR (units row {excel_row}): must provide either 'position' or both 't_pos' and 'b_pos'."
+        )
+
+    if b_pos < t_pos:
+        die(
+            f"ERROR (units row {excel_row}): require b_pos >= t_pos; got b_pos={b_pos}, t_pos={t_pos}."
+        )
+
+    return b_pos, t_pos
+
+
+def prop_to_smallint(prop: Optional[Decimal]) -> Optional[int]:
+    if prop is None:
+        return None
+    return int((prop * Decimal("10000")).to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def load_units_lookups(conn) -> Dict[str, Any]:
+    out: Dict[str, Any] = {
+        "intervals_by_id": {},
+        "intervals_by_name": {},
+        "liths_by_id": {},
+        "liths_by_name": {},
+        "lith_atts_by_id": {},
+        "lith_atts_by_name": {},
+        "environs_by_id": {},
+        "environs_by_name": {},
+    }
+
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
+        )
+        for iid, interval_name, age_bottom, age_top in cur.fetchall():
+            obj = {
+                "id": int(iid),
+                "name": str(interval_name),
+                "age_bottom": Decimal(str(age_bottom)),
+                "age_top": Decimal(str(age_top)),
+            }
+            out["intervals_by_id"][obj["id"]] = obj
+            out["intervals_by_name"][str(interval_name).strip().lower()] = obj
+
+        cur.execute("SELECT id, lith FROM macrostrat.liths")
+        for lid, lith in cur.fetchall():
+            obj = {"id": int(lid), "name": str(lith)}
+            out["liths_by_id"][obj["id"]] = obj
+            out["liths_by_name"][str(lith).strip().lower()] = obj
+
+        cur.execute("SELECT id, lith_att FROM macrostrat.lith_atts")
+        for aid, att in cur.fetchall():
+            obj = {"id": int(aid), "name": str(att)}
+            out["lith_atts_by_id"][obj["id"]] = obj
+            out["lith_atts_by_name"][str(att).strip().lower()] = obj
+
+        cur.execute("SELECT id, environ FROM macrostrat.environs")
+        for eid, environ in cur.fetchall():
+            obj = {"id": int(eid), "name": str(environ)}
+            out["environs_by_id"][obj["id"]] = obj
+            out["environs_by_name"][str(environ).strip().lower()] = obj
+
+    return out
+
+
+def parse_validate_units_rows(
+    wb,
+    sheet_name: str,
+    col_map: Dict[str, int],
+    lookups: Dict[str, Any],
+) -> List[CleanUnitRow]:
+    ws = wb[sheet_name]
+    headers, rows = read_sheet_as_dicts(ws)
+
+    required_cols = {
+        "unit_id",
+        "col_id",
+        "section_id",
+        "b_int",
+        "t_int",
+        "unit_name",
+        "lithology",
+    }
+    missing = [c for c in sorted(required_cols) if c not in headers]
+    if missing:
+        die(f"ERROR (units): missing required columns in header row: {missing}")
+
+    if not rows:
+        return []
+
+    seen_unit_ids = set()
+    seen_unit_identity = set()
+    cleaned: List[CleanUnitRow] = []
+
+    for r in rows:
+        excel_row = r["_excel_row"]
+
+        excel_unit_id = normalize_str(r.get("unit_id"))
+        if excel_unit_id is None:
+            die(f"ERROR (units row {excel_row}): missing required 'unit_id'.")
+        if excel_unit_id in seen_unit_ids:
+            die(
+                f"ERROR (units row {excel_row}): duplicate 'unit_id' in units tab: {excel_unit_id}"
+            )
+        seen_unit_ids.add(excel_unit_id)
+
+        excel_col_id = normalize_str(r.get("col_id"))
+        if excel_col_id is None:
+            die(f"ERROR (units row {excel_row}): missing required 'col_id'.")
+        if excel_col_id not in col_map:
+            die(
+                f"ERROR (units row {excel_row}): col_id '{excel_col_id}' not found in resolved columns map."
+            )
+        db_col_id = col_map[excel_col_id]
+
+        excel_section_id = parse_required_int(
+            r.get("section_id"), "section_id", "units", excel_row
+        )
+
+        unit_name = normalize_str(r.get("unit_name"))
+        if unit_name is None:
+            die(f"ERROR (units row {excel_row}): 'unit_name' must be non-empty.")
+
+        b_int_obj = resolve_interval(
+            r.get("b_int"), "b_int", lookups, "units", excel_row
+        )
+        t_int_obj = resolve_interval(
+            r.get("t_int"), "t_int", lookups, "units", excel_row
+        )
+
+        if b_int_obj["age_bottom"] < t_int_obj["age_bottom"]:
+            die(
+                f"ERROR (units row {excel_row}): age_bottom(b_int) must be >= age_bottom(t_int); "
+                f"got b_int={b_int_obj['name']} ({b_int_obj['age_bottom']}), "
+                f"t_int={t_int_obj['name']} ({t_int_obj['age_bottom']})."
+            )
+
+        position_bottom, position_top = resolve_unit_positions(r, excel_row)
+
+        b_prop = parse_optional_decimal(r.get("b_prop"), "b_prop", "units", excel_row)
+        t_prop = parse_optional_decimal(r.get("t_prop"), "t_prop", "units", excel_row)
+
+        if b_prop is not None and not (Decimal("0") <= b_prop <= Decimal("1")):
+            die(
+                f"ERROR (units row {excel_row}): b_prop must be between 0 and 1; got {b_prop}."
+            )
+        if t_prop is not None and not (Decimal("0") <= t_prop <= Decimal("1")):
+            die(
+                f"ERROR (units row {excel_row}): t_prop must be between 0 and 1; got {t_prop}."
+            )
+        if (
+            int(b_int_obj["id"]) == int(t_int_obj["id"])
+            and b_prop is not None
+            and t_prop is not None
+        ):
+            if not (b_prop < t_prop):
+                die(
+                    f"ERROR (units row {excel_row}): when b_int == t_int, require b_prop < t_prop; "
+                    f"got b_prop={b_prop}, t_prop={t_prop}."
+                )
+
+        min_thickness = parse_optional_decimal(
+            r.get("min_thickness"),
+            "min_thickness",
+            "units",
+            excel_row,
+            quantize_thickness,
+        )
+        max_thickness = parse_optional_decimal(
+            r.get("max_thickness"),
+            "max_thickness",
+            "units",
+            excel_row,
+            quantize_thickness,
+        )
+        if (
+            min_thickness is not None
+            and max_thickness is not None
+            and max_thickness < min_thickness
+        ):
+            die(
+                f"ERROR (units row {excel_row}): require max_thickness >= min_thickness; "
+                f"got max_thickness={max_thickness}, min_thickness={min_thickness}."
+            )
+
+        lith_entries = parse_lith_field(
+            r.get("lithology"), "dom", lookups, "units", excel_row
+        )
+        if not lith_entries:
+            die(
+                f"ERROR (units row {excel_row}): 'lithology' must resolve to one or more entries."
+            )
+
+        minor_lith_entries = parse_lith_field(
+            r.get("minor_lith"), "sub", lookups, "units", excel_row
+        )
+        environments = parse_environment_field(
+            r.get("environment"), lookups, "units", excel_row
+        )
+        strat_paths = parse_strat_name_field(r.get("strat_name"), "units", excel_row)
+        notes_text = build_notes_text(r.get("unit_description"), r.get("comments"))
+
+        identity_key = (
+            db_col_id,
+            unit_name,
+            position_bottom,
+            position_top,
+            int(b_int_obj["id"]),
+            int(t_int_obj["id"]),
+        )
+        if identity_key in seen_unit_identity:
+            die(
+                f"ERROR (units row {excel_row}): duplicate normalized unit identity in units tab: "
+                f"{identity_key}"
+            )
+        seen_unit_identity.add(identity_key)
+
+        cleaned.append(
+            CleanUnitRow(
+                excel_row=excel_row,
+                excel_unit_id=excel_unit_id,
+                excel_col_id=excel_col_id,
+                excel_section_id=excel_section_id,
+                db_col_id=db_col_id,
+                db_b_int_id=int(b_int_obj["id"]),
+                db_t_int_id=int(t_int_obj["id"]),
+                b_int_name=str(b_int_obj["name"]),
+                t_int_name=str(t_int_obj["name"]),
+                b_int_age_bottom=b_int_obj["age_bottom"],
+                b_int_age_top=b_int_obj["age_top"],
+                t_int_age_bottom=t_int_obj["age_bottom"],
+                t_int_age_top=t_int_obj["age_top"],
+                position_bottom=position_bottom,
+                position_top=position_top,
+                b_prop=b_prop,
+                t_prop=t_prop,
+                unit_name=unit_name,
+                min_thickness=min_thickness,
+                max_thickness=max_thickness,
+                environments=environments,
+                lith_entries=lith_entries,
+                minor_lith_entries=minor_lith_entries,
+                strat_paths=strat_paths,
+                notes_text=notes_text,
+            )
+        )
+
+    return cleaned
+
+
+def make_units_handlers() -> Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]]:
+    def h_units_col_id(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row["db_col_id"]
+
+    def h_units_fo(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row["db_b_int_id"]
+
+    def h_units_lo(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row["db_t_int_id"]
+
+    def h_units_position_bottom(
+        excel_row: Dict[str, Any], context: Dict[str, Any]
+    ) -> Any:
+        return excel_row["position_bottom"]
+
+    def h_units_position_top(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row["position_top"]
+
+    def h_units_max_thick(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row.get("max_thickness")
+
+    def h_units_min_thick(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return excel_row.get("min_thickness")
+
+    def h_units_fo_h(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return prop_to_smallint(excel_row.get("b_prop"))
+
+    def h_units_lo_h(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        return prop_to_smallint(excel_row.get("t_prop"))
+
+    return {
+        "units_col_id_v1": h_units_col_id,
+        "units_fo_v1": h_units_fo,
+        "units_lo_v1": h_units_lo,
+        "units_position_bottom_v1": h_units_position_bottom,
+        "units_position_top_v1": h_units_position_top,
+        "units_max_thick_v1": h_units_max_thick,
+        "units_min_thick_v1": h_units_min_thick,
+        "units_fo_h_v1": h_units_fo_h,
+        "units_lo_h_v1": h_units_lo_h,
+    }
+
+
+def ingest_units_main(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    units_entity: Dict[str, Any],
+    units_handlers: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Any]],
+) -> Tuple[Dict[str, int], Dict[str, int]]:
+    unit_map: Dict[str, int] = {}
+    inserted = 0
+    reused = 0
+
+    table = units_entity["table"]
+    natural_key = units_entity["natural_key"]
+
+    with conn.cursor() as cur:
+        for cu in cleaned_units:
+            faux_excel_row = {
+                "_excel_row": cu.excel_row,
+                "unit_id": cu.excel_unit_id,
+                "col_id": cu.excel_col_id,
+                "section_id": cu.excel_section_id,
+                "unit_name": cu.unit_name,
+                "db_col_id": cu.db_col_id,
+                "db_b_int_id": cu.db_b_int_id,
+                "db_t_int_id": cu.db_t_int_id,
+                "position_bottom": cu.position_bottom,
+                "position_top": cu.position_top,
+                "min_thickness": cu.min_thickness,
+                "max_thickness": cu.max_thickness,
+                "b_prop": cu.b_prop,
+                "t_prop": cu.t_prop,
+            }
+            row_values = eval_entity_row_values(
+                units_entity, faux_excel_row, {}, handlers=units_handlers
+            )
+
+            where_vals = [row_values[c] for c in natural_key]
+            where_sql = " AND ".join([f"{c} = %s" for c in natural_key])
+            cur.execute(f"SELECT id FROM {table} WHERE {where_sql}", where_vals)
+            found = cur.fetchone()
+            if found:
+                db_id = int(found[0])
+                reused += 1
+            else:
+                sql, params = build_insert_sql(table, row_values)
+                cur.execute(sql, params)
+                db_id = int(cur.fetchone()[0])
+                inserted += 1
+
+            unit_map[cu.excel_unit_id] = db_id
+
+    print(
+        f"units: processed={len(cleaned_units)} inserted={inserted} reused={reused} skipped=False"
+    )
+    return unit_map, {
+        "processed": len(cleaned_units),
+        "inserted": inserted,
+        "reused": reused,
+        "skipped": False,
+    }
+
+
+def ingest_unit_liths(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+) -> Tuple[Dict[Tuple[str, str, int], int], Dict[str, int]]:
+    """
+    Returns:
+      unit_lith_map[(excel_unit_id, source_kind, lith_id)] = unit_liths.id
+    where source_kind is "dom" or "sub".
+    Identity rule:
+      (unit_id, lith_id, dom)
+    """
+    inserted = 0
+    reused = 0
+    processed = 0
+    unit_lith_map: Dict[Tuple[str, str, int], int] = {}
+
+    with conn.cursor() as cur:
+        for cu in cleaned_units:
+            unit_id = unit_map[cu.excel_unit_id]
+            all_entries = list(cu.lith_entries) + list(cu.minor_lith_entries)
+            for le in all_entries:
+                processed += 1
+                dom = le.source_kind
+                key = (cu.excel_unit_id, dom, le.lith_id)
+
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM macrostrat.unit_liths
+                    WHERE unit_id = %s AND lith_id = %s AND dom = %s
+                    """,
+                    (unit_id, le.lith_id, dom),
+                )
+                found = cur.fetchone()
+                if found:
+                    unit_lith_id = int(found[0])
+                    reused += 1
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO macrostrat.unit_liths
+                          (lith_id, unit_id, dom, prop, date_mod, comp_prop, mod_prop, toc, ref_id)
+                        VALUES
+                          (%s, %s, %s, %s, now(), 0, 0, 0, 0)
+                        RETURNING id
+                        """,
+                        (le.lith_id, unit_id, dom, dom),
+                    )
+                    unit_lith_id = int(cur.fetchone()[0])
+                    inserted += 1
+
+                unit_lith_map[key] = unit_lith_id
+
+    print(
+        f"unit_liths: {processed} rows processed ({inserted} inserted, {reused} reused)."
+    )
+    return unit_lith_map, {
+        "processed": processed,
+        "inserted": inserted,
+        "reused": reused,
+    }
+
+
+def ingest_unit_liths_atts(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+    unit_lith_map: Dict[Tuple[str, str, int], int],
+) -> Dict[str, int]:
+    """
+    Identity rule:
+      (unit_lith_id, lith_att_id)
+    """
+    inserted = 0
+    reused = 0
+    processed = 0
+
+    with conn.cursor() as cur:
+        for cu in cleaned_units:
+            all_entries = list(cu.lith_entries) + list(cu.minor_lith_entries)
+            for le in all_entries:
+                unit_lith_id = unit_lith_map[
+                    (cu.excel_unit_id, le.source_kind, le.lith_id)
+                ]
+                for lith_att_id in le.lith_att_ids:
+                    processed += 1
+                    cur.execute(
+                        """
+                        SELECT id
+                        FROM macrostrat.unit_liths_atts
+                        WHERE unit_lith_id = %s AND lith_att_id = %s
+                        """,
+                        (unit_lith_id, lith_att_id),
+                    )
+                    found = cur.fetchone()
+                    if found:
+                        reused += 1
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO macrostrat.unit_liths_atts
+                              (unit_lith_id, lith_att_id, ref_id, date_mod)
+                            VALUES
+                              (%s, %s, 0, now())
+                            RETURNING id
+                            """,
+                            (unit_lith_id, lith_att_id),
+                        )
+                        _ = cur.fetchone()[0]
+                        inserted += 1
+
+    print(f"unit_liths_atts: processed={processed} inserted={inserted} reused={reused}")
+    return {"processed": processed, "inserted": inserted, "reused": reused}
+
+
+def ingest_unit_environs(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+) -> Dict[str, int]:
+    """
+    Identity rule:
+      (unit_id, environ_id)
+    """
+    inserted = 0
+    reused = 0
+    processed = 0
+
+    with conn.cursor() as cur:
+        for cu in cleaned_units:
+            unit_id = unit_map[cu.excel_unit_id]
+            for environ_id, _environ_name in cu.environments:
+                processed += 1
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM macrostrat.unit_environs
+                    WHERE unit_id = %s AND environ_id = %s
+                    """,
+                    (unit_id, environ_id),
+                )
+                found = cur.fetchone()
+                if found:
+                    reused += 1
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO macrostrat.unit_environs
+                          (unit_id, environ_id, ref_id, date_mod)
+                        VALUES
+                          (%s, %s, NULL, now())
+                        RETURNING id
+                        """,
+                        (unit_id, environ_id),
+                    )
+                    _ = cur.fetchone()[0]
+                    inserted += 1
+
+    print(f"unit_environs: processed={processed} inserted={inserted} reused={reused}")
+    return {"processed": processed, "inserted": inserted, "reused": reused}
+
+
+def ingest_unit_notes(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+) -> Dict[str, int]:
+    """
+    Identity rule:
+      (unit_id)
+    Operational rule:
+      insert if absent; update if present and notes changed; reuse if unchanged.
+    """
+    inserted = 0
+    reused = 0
+    updated = 0
+    processed = 0
+
+    with conn.cursor() as cur:
+        for cu in cleaned_units:
+            if cu.notes_text is None:
+                continue
+            processed += 1
+            unit_id = unit_map[cu.excel_unit_id]
+
+            cur.execute(
+                """
+                SELECT id, notes
+                FROM macrostrat.unit_notes
+                WHERE unit_id = %s
+                """,
+                (unit_id,),
+            )
+            found = cur.fetchone()
+            if found is None:
+                cur.execute(
+                    """
+                    INSERT INTO macrostrat.unit_notes
+                      (unit_id, notes, date_mod)
+                    VALUES
+                      (%s, %s, now())
+                    RETURNING id
+                    """,
+                    (unit_id, cu.notes_text),
+                )
+                _ = cur.fetchone()[0]
+                inserted += 1
+            else:
+                note_id, existing_notes = found
+                existing_notes_norm = normalize_str(existing_notes) or ""
+                incoming_notes_norm = normalize_str(cu.notes_text) or ""
+                if existing_notes_norm == incoming_notes_norm:
+                    reused += 1
+                else:
+                    cur.execute(
+                        """
+                        UPDATE macrostrat.unit_notes
+                        SET notes = %s, date_mod = now()
+                        WHERE id = %s
+                        """,
+                        (cu.notes_text, note_id),
+                    )
+                    updated += 1
+
+    print(
+        f"unit_notes: processed={processed} inserted={inserted} "
+        f"reused={reused} updated={updated}"
+    )
+    return {
+        "processed": processed,
+        "inserted": inserted,
+        "reused": reused,
+        "updated": updated,
+    }
+
+
+def rebuild_sections_and_units_sections(
+    conn,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+) -> Tuple[Dict[Tuple[str, int], int], Dict[str, int]]:
+    """
+    Recompute macrostrat.sections and macrostrat.units_sections for the columns
+    represented in the current workbook run.
+
+    Section identity in Excel is:
+      (excel_col_id, excel_section_id)
+
+    Section bounds rule:
+      fo = oldest b_int among units in the section  -> max(age_bottom of b_int)
+      lo = youngest t_int among units in the section -> min(age_top of t_int)
+    """
+    if not cleaned_units:
+        return {}, {
+            "affected_cols": 0,
+            "units_sections_deleted": 0,
+            "sections_deleted": 0,
+            "sections_inserted": 0,
+            "units_sections_inserted": 0,
+            "units_section_id_updated": 0,
+        }
+
+    affected_col_ids = sorted({cu.db_col_id for cu in cleaned_units})
+    section_groups: Dict[Tuple[str, int], List[CleanUnitRow]] = {}
+    for cu in cleaned_units:
+        key = (cu.excel_col_id, cu.excel_section_id)
+        section_groups.setdefault(key, []).append(cu)
+
+    section_map: Dict[Tuple[str, int], int] = {}
+    counts = {
+        "affected_cols": len(affected_col_ids),
+        "units_sections_deleted": 0,
+        "sections_deleted": 0,
+        "sections_inserted": 0,
+        "units_sections_inserted": 0,
+        "units_section_id_updated": 0,
+    }
+
+    with conn.cursor() as cur:
+        # Delete recomputable join rows first
+        cur.execute(
+            """
+            DELETE FROM macrostrat.units_sections
+            WHERE col_id = ANY(%s)
+            """,
+            (affected_col_ids,),
+        )
+        counts["units_sections_deleted"] = cur.rowcount
+
+        # Delete existing sections for the affected columns
+        cur.execute(
+            """
+            DELETE FROM macrostrat.sections
+            WHERE col_id = ANY(%s)
+            """,
+            (affected_col_ids,),
+        )
+        counts["sections_deleted"] = cur.rowcount
+
+        # Rebuild sections
+        for (excel_col_id, excel_section_id), rows_in_section in sorted(
+            section_groups.items(), key=lambda kv: (kv[0][0], kv[0][1])
+        ):
+            db_col_id = rows_in_section[0].db_col_id
+
+            # fo = oldest b_int among rows in section => max(b_int_age_bottom)
+            fo_row = max(
+                rows_in_section, key=lambda r: (r.b_int_age_bottom, r.db_b_int_id)
+            )
+            fo_id = fo_row.db_b_int_id
+
+            # lo = youngest t_int among rows in section => min(t_int_age_top)
+            lo_row = min(
+                rows_in_section, key=lambda r: (r.t_int_age_top, r.db_t_int_id)
+            )
+            lo_id = lo_row.db_t_int_id
+
+            cur.execute(
+                """
+                INSERT INTO macrostrat.sections (col_id, fo, lo)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (db_col_id, fo_id, lo_id),
+            )
+            db_section_id = int(cur.fetchone()[0])
+            section_map[(excel_col_id, excel_section_id)] = db_section_id
+            counts["sections_inserted"] += 1
+
+        # Rebuild units_sections
+        for cu in cleaned_units:
+            db_section_id = section_map[(cu.excel_col_id, cu.excel_section_id)]
+            db_unit_id = unit_map[cu.excel_unit_id]
+            cur.execute(
+                """
+                INSERT INTO macrostrat.units_sections (col_id, section_id, unit_id)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (cu.db_col_id, db_section_id, db_unit_id),
+            )
+            _ = cur.fetchone()[0]
+            counts["units_sections_inserted"] += 1
+
+        # Update redundant units.section_id
+        for cu in cleaned_units:
+            db_section_id = section_map[(cu.excel_col_id, cu.excel_section_id)]
+            db_unit_id = unit_map[cu.excel_unit_id]
+            cur.execute(
+                """
+                UPDATE macrostrat.units
+                SET section_id = %s
+                WHERE id = %s
+                """,
+                (db_section_id, db_unit_id),
+            )
+            counts["units_section_id_updated"] += cur.rowcount
+
+    print(
+        "sections_rebuild: "
+        f"affected_cols={counts['affected_cols']} "
+        f"units_sections_deleted={counts['units_sections_deleted']} "
+        f"sections_deleted={counts['sections_deleted']} "
+        f"sections_inserted={counts['sections_inserted']} "
+        f"units_sections_inserted={counts['units_sections_inserted']} "
+        f"units_section_id_updated={counts['units_section_id_updated']} skipped=False"
+    )
+    return section_map, counts
+
+
+def write_strat_name_audit_files(
+    audit_dir: str,
+    runstamp_compact: str,
+    project_id: int,
+    cleaned_units: List[CleanUnitRow],
+    unit_map: Dict[str, int],
+) -> Dict[str, Any]:
+    """
+    Writes two preliminary strat-name audit TSVs:
+      1) strat_name_lexicon_<project_id>_<runstamp>.tsv
+         one row per unique normalized hierarchy path
+      2) unit_strat_name_map_<project_id>_<runstamp>.tsv
+         one row per unit x hierarchy-path assignment
+    """
+    ensure_dir(audit_dir)
+
+    lexicon_path = os.path.join(
+        audit_dir, f"strat_name_lexicon_{project_id}_{runstamp_compact}.tsv"
+    )
+    unit_map_path = os.path.join(
+        audit_dir, f"unit_strat_name_map_{project_id}_{runstamp_compact}.tsv"
+    )
+
+    # Aggregate unique normalized paths
+    lexicon: Dict[str, Dict[str, Any]] = {}
+    assignment_rows: List[Dict[str, Any]] = []
+
+    for cu in cleaned_units:
+        db_unit_id = unit_map.get(cu.excel_unit_id)
+        for sp in cu.strat_paths:
+            names = list(sp.names)
+            full_name_path = " | ".join(names)
+            applied_name = names[0]
+            path_depth = len(names)
+
+            if full_name_path not in lexicon:
+                lexicon[full_name_path] = {
+                    "applied_name": applied_name,
+                    "names": names,
+                    "raw_examples": set(),
+                    "excel_unit_ids": set(),
+                    "excel_col_ids": set(),
+                }
+
+            lexicon[full_name_path]["raw_examples"].add(sp.raw_entry)
+            lexicon[full_name_path]["excel_unit_ids"].add(cu.excel_unit_id)
+            lexicon[full_name_path]["excel_col_ids"].add(cu.excel_col_id)
+
+            assignment_rows.append(
+                {
+                    "excel_unit_id": cu.excel_unit_id,
+                    "db_unit_id": db_unit_id,
+                    "excel_col_id": cu.excel_col_id,
+                    "applied_name": applied_name,
+                    "full_name_path": full_name_path,
+                    "path_depth": path_depth,
+                    "raw_strat_name_entry": sp.raw_entry,
+                    "names": names,
+                }
+            )
+
+    sorted_paths = sorted(
+        lexicon.keys(),
+        key=lambda p: (
+            lexicon[p]["applied_name"].lower(),
+            len(lexicon[p]["names"]),
+            p.lower(),
+        ),
+    )
+    path_id_map = {p: f"path_{i:06d}" for i, p in enumerate(sorted_paths, start=1)}
+
+    # Write lexicon TSV
+    with open(lexicon_path, "w", encoding="utf-8", newline="") as f:
+        headers = [
+            "path_id",
+            "applied_name",
+            "full_name_path",
+            "path_depth",
+            "raw_examples",
+            "unit_count",
+            "excel_unit_ids",
+            "excel_col_ids",
+            "name_1",
+            "name_2",
+            "name_3",
+            "name_4",
+            "name_5",
+            "name_6",
+            "name_7",
+            "name_8",
+        ]
+        f.write("\t".join(headers) + "\n")
+        for full_name_path in sorted_paths:
+            obj = lexicon[full_name_path]
+            names = list(obj["names"])
+            exploded = names + [""] * (8 - len(names))
+            row = [
+                path_id_map[full_name_path],
+                obj["applied_name"],
+                full_name_path,
+                str(len(names)),
+                "; ".join(sorted(obj["raw_examples"])),
+                str(len(obj["excel_unit_ids"])),
+                "; ".join(sorted(obj["excel_unit_ids"])),
+                "; ".join(sorted(obj["excel_col_ids"])),
+                *exploded[:8],
+            ]
+            f.write("\t".join(row) + "\n")
+
+    # Write unit -> strat-name map TSV
+    with open(unit_map_path, "w", encoding="utf-8", newline="") as f:
+        headers = [
+            "excel_unit_id",
+            "macrostrat_unit_id",
+            "excel_col_id",
+            "path_id",
+            "applied_name",
+            "full_name_path",
+            "path_depth",
+            "raw_strat_name_entry",
+            "name_1",
+            "name_2",
+            "name_3",
+            "name_4",
+            "name_5",
+            "name_6",
+            "name_7",
+            "name_8",
+        ]
+        f.write("\t".join(headers) + "\n")
+        for row in sorted(
+            assignment_rows,
+            key=lambda r: (
+                r["excel_col_id"],
+                r["excel_unit_id"],
+                r["full_name_path"].lower(),
+            ),
+        ):
+            names = list(row["names"])
+            exploded = names + [""] * (8 - len(names))
+            out = [
+                row["excel_unit_id"],
+                "" if row["db_unit_id"] is None else str(row["db_unit_id"]),
+                row["excel_col_id"],
+                path_id_map[row["full_name_path"]],
+                row["applied_name"],
+                row["full_name_path"],
+                str(row["path_depth"]),
+                row["raw_strat_name_entry"],
+                *exploded[:8],
+            ]
+            f.write("\t".join(out) + "\n")
+
+    print(f"audit: wrote strat-name artifacts to {audit_dir}")
+    return {
+        "unique_paths": len(sorted_paths),
+        "unit_path_assignments": len(assignment_rows),
+        "strat_name_lexicon_tsv": os.path.basename(lexicon_path),
+        "unit_strat_name_map_tsv": os.path.basename(unit_map_path),
+    }
 
 
 # -----------------------------
@@ -1377,18 +2570,59 @@ def main():
         ents = mapping["entities"]
         refs_ent = ents["refs"]
         col_groups_ent = ents["col_groups"]
+        units_ent = ents.get("units")
         cols_ent = ents.get("cols")
         if cols_ent is None:
             die("ERROR: Mapping missing required entity 'cols' for Phase 2.5.")
 
         validate_cols_not_null_coverage(schema, cols_ent)
+        if units_ent is not None:
+            validate_units_not_null_coverage(schema, units_ent)
 
         # These will be populated inside the committed transaction and then used for audit writing.
         ref_map: Dict[str, int] = {}
         col_map: Dict[str, int] = {}
+        unit_map: Dict[str, int] = {}
         refs_counts: Dict[str, int] = {}
         col_groups_counts: Dict[str, int] = {}
         cols_counts: Dict[str, Any] = {}
+        units_counts: Dict[str, Any] = {
+            "processed": 0,
+            "inserted": 0,
+            "reused": 0,
+            "skipped": True,
+        }
+        unit_liths_counts: Dict[str, Any] = {"processed": 0, "inserted": 0, "reused": 0}
+        unit_liths_atts_counts: Dict[str, Any] = {
+            "processed": 0,
+            "inserted": 0,
+            "reused": 0,
+        }
+        unit_environs_counts: Dict[str, Any] = {
+            "processed": 0,
+            "inserted": 0,
+            "reused": 0,
+        }
+        unit_notes_counts: Dict[str, Any] = {
+            "processed": 0,
+            "inserted": 0,
+            "reused": 0,
+            "updated": 0,
+        }
+        sections_rebuild_counts: Dict[str, Any] = {
+            "affected_cols": 0,
+            "units_sections_deleted": 0,
+            "sections_deleted": 0,
+            "sections_inserted": 0,
+            "units_sections_inserted": 0,
+            "units_section_id_updated": 0,
+            "skipped": False,
+        }
+        strat_name_audit_counts: Dict[str, Any] = {
+            "unique_paths": 0,
+            "unit_path_assignments": 0,
+        }
+        cleaned_units: List[CleanUnitRow] = []
 
         with conn:
             ref_map, refs_counts = ingest_refs_mapping_driven(
@@ -1411,17 +2645,93 @@ def main():
                 cols_handlers,
             )
 
-        print("SUCCESS: Phase 2.5 ingestion completed (transaction committed).")
+            if units_ent is not None:
+                units_sheet = sheets_map["units"]
+                units_lookups = load_units_lookups(conn)
+                cleaned_units = parse_validate_units_rows(
+                    wb=wb,
+                    sheet_name=units_sheet,
+                    col_map=col_map,
+                    lookups=units_lookups,
+                )
+                if cleaned_units:
+                    units_handlers = make_units_handlers()
+                    unit_map, units_counts = ingest_units_main(
+                        conn, cleaned_units, units_ent, units_handlers
+                    )
+                    unit_lith_map, unit_liths_counts = ingest_unit_liths(
+                        conn, cleaned_units, unit_map
+                    )
+                    unit_liths_atts_counts = ingest_unit_liths_atts(
+                        conn, cleaned_units, unit_map, unit_lith_map
+                    )
+                    unit_environs_counts = ingest_unit_environs(
+                        conn, cleaned_units, unit_map
+                    )
+                    unit_notes_counts = ingest_unit_notes(conn, cleaned_units, unit_map)
+                    if cols_counts["inserted"] == 0 and units_counts["inserted"] == 0:
+                        print(
+                            "sections_rebuild: skipping delete/rebuild because "
+                            "cols.inserted == 0 and units.inserted == 0."
+                        )
+                        sections_rebuild_counts = {
+                            "affected_cols": 0,
+                            "units_sections_deleted": 0,
+                            "sections_deleted": 0,
+                            "sections_inserted": 0,
+                            "units_sections_inserted": 0,
+                            "units_section_id_updated": 0,
+                            "skipped": True,
+                        }
+                    else:
+                        _section_map, sections_rebuild_counts = (
+                            rebuild_sections_and_units_sections(
+                                conn, cleaned_units, unit_map
+                            )
+                        )
+                else:
+                    print("units: processed=0 inserted=0 reused=0 skipped=True")
+
+        print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
 
         if not args.no_audit:
+            runstamp_compact, runstamp_iso = utc_runstamp()
+
             counts_manifest = {
                 "refs": refs_counts,
                 "col_groups": col_groups_counts,
                 "cols": cols_counts,
-                "units": {"processed": 0, "inserted": 0, "reused": 0, "skipped": True},
+                "units": units_counts,
+                "unit_liths": unit_liths_counts,
+                "unit_liths_atts": unit_liths_atts_counts,
+                "unit_environs": unit_environs_counts,
+                "unit_notes": unit_notes_counts,
+                "sections_rebuild": sections_rebuild_counts,
+                "strat_name_audit": {"unique_paths": 0, "unit_path_assignments": 0},
             }
+        strat_name_lexicon_filename = None
+        unit_strat_name_map_filename = None
+        strat_name_audit_counts = write_strat_name_audit_files(
+            audit_dir=args.audit_dir,
+            runstamp_compact=runstamp_compact,
+            project_id=project_id,
+            cleaned_units=cleaned_units if units_ent is not None else [],
+            unit_map=unit_map,
+        )
+        strat_name_lexicon_filename = strat_name_audit_counts.get(
+            "strat_name_lexicon_tsv"
+        )
+        unit_strat_name_map_filename = strat_name_audit_counts.get(
+            "unit_strat_name_map_tsv"
+        )
+
+        # Write manifest so strat-name audit counts are included.
+        counts_manifest["strat_name_audit"] = strat_name_audit_counts
         write_audit_artifacts(
             audit_dir=args.audit_dir,
+            runstamp_compact=runstamp_compact,
+            runstamp_iso=runstamp_iso,
+            script_name=os.path.basename(__file__),
             project_id=project_id,
             mapping_version=mapping_version,
             excel_file=os.path.basename(excel_file),
@@ -1429,8 +2739,11 @@ def main():
             ref_map=ref_map,
             col_map=col_map,
             counts=counts_manifest,
-            unit_map=None,  # Phase 2.5: no units yet
+            unit_map=unit_map,
+            strat_name_lexicon_filename=strat_name_lexicon_filename,
+            unit_strat_name_map_filename=unit_strat_name_map_filename,
         )
+        print("SUCCESS: Phase 3 audit artifacts written.")
 
     except Exception as e:
         conn.rollback()
