@@ -117,7 +117,8 @@ module.exports = function (req, res, next, cb) {
                 ? req.query.format
                 : "json",
               bare: api.acceptedFormats.bare[req.query.format] ? true : false,
-              refs: "ref_id",
+              // Don't send refs with GeoJSON and TopoJSON
+              //refs: "ref_id",
             },
             {
               data: geoResult,
