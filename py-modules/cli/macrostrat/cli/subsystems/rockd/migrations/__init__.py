@@ -100,7 +100,6 @@ class StraboIntegration(RockdMigration):
     ]
 
 
-
 class StraboAddSpot(RockdMigration):
     name = "strabo-add-spot"
     readiness_state = "ga"
