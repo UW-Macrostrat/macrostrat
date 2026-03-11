@@ -36,6 +36,20 @@ CREATE TABLE macrostrat_xdd.lookup_extraction_type (
 );
 ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO macrostrat_admin;
 
+-- Global Macrostrat entity mapping
+CREATE TABLE macrostrat_xdd.global_entity (
+    global_entity_id BIGSERIAL PRIMARY KEY,
+    entity_table TEXT NOT NULL,
+    entity_id INTEGER NOT NULL,
+
+    CONSTRAINT unique_entity UNIQUE (entity_table, entity_id)
+);
+
+-- TODO: populate table with 
+-- TODO: auto sync with populated tables
+
+ALTER TABLE macrostrat_xdd.global_entity OWNER TO xdd_writer;
+
 CREATE TABLE macrostrat_xdd.all_runs (
     user_id uuid,
     "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -47,6 +61,14 @@ CREATE TABLE macrostrat_xdd.all_runs (
     source_text_id integer NOT NULL,
     supersedes integer
 );
+
+-- Add root_id 
+ALTER TABLE macrostrat_xdd.all_runs
+ADD COLUMN root_id BIGINT
+FOREIGN KEY (root_id)
+REFERENCES macrostrat_xdd.global_entity(global_entity_id)
+ON DELETE SET NULL;
+
 ALTER TABLE macrostrat_xdd.all_runs OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity (
