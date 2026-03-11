@@ -50,16 +50,21 @@ SELECT
     because the column type is numeric. If we want to have the old handling
     (empty strings instead of nulls) we will have to make the column type text,
     however, using nulls specifically is better anyway.
+
+    EDIT March 11, 2026. Turns out using nulls breaks the API v2, specifically
+    the ?geom_age=top/bottom parameter, because of bad unwrapping of integer
+    conversions in the dbgeo module. Eventually, we can get rid of these coalesce
+    statements if we fix the null handling.
    */
-  t_plat,
-  t_plng,
+  coalesce(t_plat, 0) t_plat,
+  coalesce(t_plng, 0) t_plng,
   b_int,
   bint.interval_name AS b_int_name,
   bint.age_bottom AS b_int_age,
   b_age,
   b_prop,
-  b_plat,
-  b_plng,
+  coalesce(b_plat, 0) b_plat,
+  coalesce(b_plng, 0) b_plng,
   cols.lat AS clat,
   cols.lng AS clng,
   coalesce(colors.unit_hex, '#888888') AS color,
