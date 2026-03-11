@@ -87,10 +87,13 @@ localhost, macrostrat.local {
         # We could change this to a reverse proxy if we wanted to do an internal redirect
 
         # Change the path to match tile server format
-        uri replace /api/v2/maps/burwell/emphasized/ /carto/
+        uri replace /api/v2/maps/burwell/emphasized/ /tiles/legacy/carto/
         uri replace /tile.png .png
 
-        reverse_proxy tileserver_legacy:8000
+        reverse_proxy localhost:80 {
+          # Reverse proxy back to this domain
+          header_up Host macrostrat.local
+        }
     }
 
     handle_path /api/v2/* {
