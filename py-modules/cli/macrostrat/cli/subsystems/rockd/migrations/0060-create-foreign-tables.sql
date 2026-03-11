@@ -112,3 +112,12 @@ CREATE FOREIGN TABLE public.lookup_large (
 )
 SERVER macrostrat
 OPTIONS (schema_name 'public', table_name 'lookup_large');
+
+GRANT CONNECT ON DATABASE macrostrat TO rockd_reader;
+GRANT USAGE ON SCHEMA macrostrat TO rockd_reader;
+GRANT USAGE ON SCHEMA public TO rockd_reader;
+GRANT USAGE ON SCHEMA topology TO rockd_reader;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO rockd_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO rockd_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA topology TO rockd_reader;
