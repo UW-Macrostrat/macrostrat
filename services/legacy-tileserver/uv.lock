@@ -373,7 +373,7 @@ requires-dist = [
     { name = "macrostrat-utils", specifier = ">=1.2.0,<2" },
     { name = "morecantile", specifier = ">=6.2.0,<7" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
-    { name = "typer", specifier = ">=0.12.3,<0.13" },
+    { name = "typer", specifier = ">=0.12,<0.25" },
     { name = "uvicorn", specifier = "==0.16.0" },
 ]
 
