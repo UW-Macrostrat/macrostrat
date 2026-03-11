@@ -76,8 +76,7 @@ $$;
 
 --tileserver permissions
 GRANT USAGE ON SCHEMA tile_cache TO macrostrat;
-GRANT SELECT ON TABLE tile_cache.tile TO macrostrat;
+GRANT SELECT ON ALL TABLES IN SCHEMA tile_cache TO macrostrat;
 GRANT INSERT, UPDATE ON TABLE tile_cache.tile TO macrostrat;
-ALTER DEFAULT PRIVILEGES IN SCHEMA tile_cache
-GRANT SELECT ON TABLES TO macrostrat;
+ALTER DEFAULT PRIVILEGES IN SCHEMA tile_cache GRANT SELECT ON TABLES TO macrostrat;
 
