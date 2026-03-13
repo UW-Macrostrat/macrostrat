@@ -11,10 +11,10 @@ run:
 	docker run --env-file .env --rm -it -p 5000:5000 macrostrat-api
 
 release:
-	# Ensure that the repository is clean
-	git diff-index --quiet HEAD --
-	git tag -a v$(VERSION) -m "Version $(VERSION)"
-	git push origin tag v$(VERSION)
+	-git add .
+	-git commit -m "deploying"
+	git tag -a v$(VERSION) -m "Macrostrat API version $(VERSION)"
+	git push origin main --follow-tags
 
 format:
 	# Format the code using Prettier
