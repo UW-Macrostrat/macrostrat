@@ -535,7 +535,7 @@ export default {
         all: "return all interval definitions",
         t_age: "number, a late age in Ma",
         b_age: "number, an early age in Ma",
-        name: "string, interval name",
+        interval_name: "string, interval name",
         true_colors:
           "boolean, returns original international time scale colors",
         rule: "used with t_age and b_age to determine how intersecting intervals are identified: 'contains' returns intervals that fall entirely within t_age and b_age, 'exact' returns intervals with boundaries equal to t_age,b_age. Default is 'loose', returns any interval touching the range of t_age and b_age",

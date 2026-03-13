@@ -17,6 +17,9 @@ module.exports = function (req, res, next, cb) {
   let limit = "";
   let color = "";
 
+  if (req.query.name && !req.query.interval_name) {
+  req.query.interval_name = req.query.name;
+  }
   if (req.query.timescale) {
     where.push("timescale ILIKE :timescale");
     params["timescale"] = req.query.timescale;

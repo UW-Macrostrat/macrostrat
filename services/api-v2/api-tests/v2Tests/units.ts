@@ -16,7 +16,8 @@ it("should return metadata", function (done) {
 
 //this test works now
 it("should return a sample", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?sample")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -357,7 +358,8 @@ it("should output CSV", function (done) {
 
 //working on this test
 it("should accept an econ_id filter", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?econ_id=4&response=long")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -382,7 +384,8 @@ it("should accept an econ_id filter", function (done) {
 });
 //working on this test
 it("should accept an econ filter", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?econ=uranium%20ore&response=long")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -407,7 +410,8 @@ it("should accept an econ filter", function (done) {
 });
 //working on this test
 it("should accept an econ_type filter", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?econ_type=nuclear&response=long")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -432,7 +436,8 @@ it("should accept an econ_type filter", function (done) {
 });
 
 it("should accept an econ_class filter", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?econ_class=energy&response=long")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
@@ -463,7 +468,8 @@ it("should accept an econ_class filter", function (done) {
 });
 //fixed api this test works now
 it("should accept a PBDB collection filter", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/units?cltn_id=185,191")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)

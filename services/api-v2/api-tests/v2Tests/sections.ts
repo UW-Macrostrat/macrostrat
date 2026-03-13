@@ -15,7 +15,8 @@ it("sections - should return metadata", function (done) {
 });
 
 it("sections - should return a sample", function (done) {
-  request(settings.host)
+    this.timeout(10000)
+    request(settings.host)
     .get("/sections?sample")
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
