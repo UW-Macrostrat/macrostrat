@@ -9,18 +9,17 @@ from typer import Typer
 
 from macrostrat.database import Database
 from macrostrat.utils import relative_path
+from macrostrat.core.config import settings
 
 load_dotenv()
 
-app = Typer(no_args_is_help=True)
-
-app.command()
+app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
 
 
 @app.command()
 def run(truncate: bool = False):
     """Run the update procedure."""
-    tileserver_db = environ.get("TILESERVER_STATS_DATABASE")
+    tileserver_db = settings.databases.get("tileserver_stats")
     db = Database(tileserver_db)
 
     # Run update
@@ -50,7 +49,7 @@ def run(truncate: bool = False):
 @app.command()
 def reset(drop: bool = False):
     """Empty the stats schema and re-run the schema creation scripts."""
-    tileserver_db = environ.get("TILESERVER_STATS_DATABASE")
+    tileserver_db = settings.databases.get("tileserver_stats")
     db = Database(tileserver_db)
 
     if drop:
@@ -67,7 +66,7 @@ def reset(drop: bool = False):
 @app.command()
 def truncate():
     """Create the stats schema."""
-    tileserver_db = environ.get("TILESERVER_STATS_DATABASE")
+    tileserver_db = settings.databases.get("tileserver_stats")
     db = Database(tileserver_db)
 
     files = Path(relative_path(__file__, "schema")).glob("*.sql")
@@ -76,3 +75,10 @@ def truncate():
 
     for file in files:
         list(db.run_sql(file))
+
+
+@app.command()
+def show_database():
+    """Show the database connection string."""
+    tileserver_db = settings.databases.get("tileserver_stats")
+    print(tileserver_db)

@@ -16,6 +16,9 @@ dependencies = [
 [project.scripts]
 tileserver-stats = "tileserver_stats:app"
 
+[project.entry-points."macrostrat.subsystems"]
+tileserver-stats = "tileserver_stats:app"
+
 [dependency-groups]
 dev = ["black>=24.8.0,<25"]
 

@@ -29,6 +29,7 @@ dependencies = [
     "macrostrat.match-utils",
     # "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "macrostrat.column-ingestion",
+    "tileserver_stats",
     "htpheno.radosgw-admin-client",
     "numpy>=2.0.0,<3",
     "pyproj>=3.4.0,<4",
@@ -80,6 +81,7 @@ default-groups = [
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
 "macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
 "macrostrat.map-topology" = { path = "../map-topology", editable = true }
+"tileserver_stats" = { path = "../../py-modules/tileserver-stats", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]
