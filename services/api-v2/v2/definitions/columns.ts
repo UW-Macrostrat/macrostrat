@@ -58,8 +58,8 @@ module.exports = function (req, res, next, cb) {
   if (req.query.status_code || req.query.status) {
     // `status` parameter still works but has been superseded by `status_code`
     // multiple status codes can be provided
-    params["status_code"] = larkin.parseMultipleIds(
-      req.query.status_code ?? req.query.status,
+    params["status_code"] = larkin.parseMultipleStrings(
+      decodeURI(req.query.status_code ?? req.query.status),
     );
   } else {
     params["status_code"] = ["active"];

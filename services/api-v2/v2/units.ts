@@ -75,9 +75,9 @@ export function getColumnFilters(
   const groupByClauses = [];
 
   // Handle status code
-  if (req.query.status_code) {
+  if (req.query.status_code || req.query.status) {
     params["status_code"] = larkin.parseMultipleStrings(
-      decodeURI(req.query.status_code),
+      decodeURI(req.query.status_code ?? req.query.status),
     );
   } else {
     params["status_code"] = ["active"];
