@@ -125,7 +125,7 @@ class PostgresSettings(BaseSettings):
     db_min_conn_size: int = 1
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
-    db_max_inactive_conn_lifetime: float = 300
+    db_max_inactive_conn_lifetime: float = 60
 
     db_schemas: List[str] = ["public"]
     db_tables: Optional[List[str]] = None

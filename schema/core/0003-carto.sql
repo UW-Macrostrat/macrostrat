@@ -362,19 +362,7 @@ ALTER TABLE carto.lines
 ALTER TABLE carto.polygons
     ADD CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);
 
-GRANT SELECT ON TABLE carto.flat_large TO macrostrat;
-
-GRANT SELECT ON TABLE carto.flat_medium TO macrostrat;
-
-GRANT SELECT ON TABLE carto.large TO macrostrat;
-
-GRANT SELECT ON TABLE carto.medium TO macrostrat;
-
-GRANT SELECT ON TABLE carto.small TO macrostrat;
-
-GRANT SELECT ON TABLE carto.tiny TO macrostrat;
-
+GRANT SELECT ON ALL TABLES IN SCHEMA carto TO macrostrat;
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
-
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT ON TABLES  TO macrostrat;
 
