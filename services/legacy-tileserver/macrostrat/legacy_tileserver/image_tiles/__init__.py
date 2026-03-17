@@ -4,19 +4,15 @@ from fastapi import Request
 from mapnik import Box2d, Image, render
 from morecantile import tms
 
-from macrostrat.database import Database
 from macrostrat.tileserver_utils import CachedTileArgs
 from macrostrat.utils import get_logger
 
-from .config import scale_for_zoom, scales
-from .mapnik_styles import make_mapnik_xml
+from .config import scale_for_zoom
 from .pool import MapnikMapPool
 
 log = get_logger(__name__)
 
 db_url = environ.get("DATABASE_URL")
-
-db = Database(db_url)
 
 
 async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
