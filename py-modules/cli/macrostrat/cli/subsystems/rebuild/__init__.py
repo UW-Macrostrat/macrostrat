@@ -1,6 +1,8 @@
 from rich.console import Console
 from typer import Option, Typer
+
 from macrostrat.core.database import get_database
+
 from .scripts import grant_permissions
 
 cli = Typer(help="Rebuild database tools")
