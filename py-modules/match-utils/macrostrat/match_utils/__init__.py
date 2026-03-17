@@ -275,3 +275,58 @@ def format_names(strat_names, **kwargs):
 
 def deduplicate_strat_names(samples):
     return list(set(samples))
+
+# In match_utils/__init__.py, add alongside get_all_matched_units:
+
+def get_units_without_col(db, names, t_age: float | None = None, b_age: float | None = None):
+    """
+    Match units by name and age globally across all of macrostrat,
+    reusing the same match_row logic as get_all_matched_units but without a col_id.
+    """
+    if not names:
+        return None
+
+    params = {}
+    age_filter = ""
+    if t_age is not None and b_age is not None:
+        age_filter = "AND lu.t_age <= :b_age AND lu.b_age >= :t_age"
+        params["t_age"] = t_age
+        params["b_age"] = b_age
+
+    with db.engine.connect() as conn:
+        units_df = read_sql(
+            text(f"""
+                SELECT
+                    sn.id strat_name_id,
+                    sn.strat_name,
+                    sn.rank strat_rank,
+                    u.id unit_id,
+                    u.col_id,
+                    lu.t_age,
+                    lu.b_age
+                FROM macrostrat.strat_names sn
+                JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = sn.id
+                JOIN macrostrat.units u ON u.id = usn.unit_id
+                JOIN macrostrat.lookup_units lu ON lu.unit_id = u.id
+                JOIN macrostrat.cols c ON c.id = u.col_id
+                WHERE c.status_code = 'active'
+                  AND sn.strat_name IS NOT NULL
+                  {age_filter}
+            """),
+            conn,
+            params=params,
+        )
+
+    if units_df.empty:
+        return None
+
+    ix = units_df.columns.get_loc("strat_name")
+    units_df.insert(ix + 1, "strat_name_clean", units_df["strat_name"].apply(clean_strat_name_text))
+    units_df = units_df[units_df.strat_name_clean.notnull()]
+
+    for _, row in units_df.iterrows():
+        matches, _ = match_row(row, names, MatchComparison.Included)
+        if matches:
+            return row
+
+    return None
