@@ -209,11 +209,9 @@ def write_units(db, units: list[Unit]):
                 )
             att_values = lith.attributes or set()
             for att in att_values:
-                vals = {
-                    "unit_lith_id": ulid,
-                    "lith_att_id": att.id,
-                }
-                insert_att_stmt = unit_liths_atts.insert().values(vals)
+                insert_att_stmt = unit_liths_atts.insert().values(
+                    unit_lith_id=ulid, lith_att_id=att.id, ref_id=0
+                )
                 db.session.execute(insert_att_stmt)
 
 

@@ -69,9 +69,8 @@ def get_or_create_project(
     if create_if_not_exists:
         # Create a new project
         # Remove parentheticals from the project name for the slug
-        slug = None
-        if project.name is not None:
-
+        slug = project.slug
+        if project.name is not None and slug is None:
             simple_name = re.sub(r"\s*\(.*?\)\s*", "", project.name)
             simple_name = re.sub(r"\s+", " ", simple_name).strip()
             slug = simple_name.lower().replace(" ", "-")
@@ -84,6 +83,11 @@ def get_or_create_project(
             timescale_id=1,  # TODO: this should be set to a valid timescale ID
         )
         db.session.add(new_project)
+        # Get the ID of the newly created project
+        db.session.commit()
+        db.session.refresh(new_project)
+
+        print(f"Created project {new_project.id} ({new_project.slug})")
         return ProjectData(
             id=new_project.id,
             slug=new_project.slug,

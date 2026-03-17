@@ -1,6 +1,7 @@
 from openpyxl import load_workbook
 
 from macrostrat.core.database import get_database
+from macrostrat.database import on_conflict
 
 from .columns import (
     get_column_data,
