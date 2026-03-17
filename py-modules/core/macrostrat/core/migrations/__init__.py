@@ -349,7 +349,7 @@ def _dry_run_migrations(legacy=False):
     port = 54884
     with database_cluster(client, img_tag, port=port) as container:
         print(container)
-        url = f"postgresql://postgres@localhost:{port}/postgres"
+        url = f"postgresql://postgres@0.0.0.0:{port}/postgres"
         db = Database(url)
         return _run_migrations_in_database(db, legacy=legacy)
 

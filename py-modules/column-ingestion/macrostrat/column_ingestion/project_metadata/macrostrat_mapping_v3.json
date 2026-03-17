@@ -1,0 +1,80 @@
+{
+  "mapping_version": "3.0",
+  "excel_file_default": "macrostrat_import.xlsx",
+  "sheets": {
+    "metadata": "metadata",
+    "refs": "refs",
+    "columns": "columns",
+    "units": "units"
+  },
+  "entities": {
+    "refs": {
+      "sheet": "refs",
+      "table": "macrostrat.refs",
+      "excel_key": "ref_id",
+      "natural_key": ["pub_year", "author", "ref"],
+      "fields": {
+        "pub_year": { "from": "date" },
+        "author": { "from_any": ["authors", "author"] },
+        "ref": { "expr": "concat_ws_dot_space", "args": ["title", "publication"] },
+        "doi": { "from": "doi", "default": null },
+        "compilation_code": { "from": "compilation", "default": "" },
+        "url": { "from": "url", "default": null }
+      }
+    },
+    "col_groups": {
+      "sheet": "columns",
+      "table": "macrostrat.col_groups",
+      "distinct_from_sheet_field": "col_group",
+      "natural_key": ["project_id", "col_group_long"],
+      "fields": {
+        "project_id": { "const": "$project_id" },
+        "col_group_long": { "from": "col_group" },
+        "col_group": { "from": "col_group" }
+      }
+    },
+    "cols": {
+      "sheet": "columns",
+      "table": "macrostrat.cols",
+      "excel_key": "col_id",
+      "status_code": "in process",
+      "fields": {
+        "project_id": { "const": "$project_id" },
+        "col_group_id": { "handler": "cols_col_group_id_v1" },
+        "status_code": { "const": "in process" },
+        "col_type": { "from": "col_type", "transform": "lower" },
+        "col_name": { "from": "col_name" },
+        "created": { "sql": "now()" },
+        "col": { "handler": "cols_col_value_v1" },
+        "col_position": { "const": "" },
+        "lat": { "handler": "cols_lat_v1" },
+        "lng": { "handler": "cols_lng_v1" },
+        "coordinate": { "handler": "cols_coordinate_v1" },
+        "poly_geom": { "handler": "cols_poly_geom_v1", "omit_if_none": true },
+        "col_area": { "handler": "cols_area_km2_v1" }
+      }
+    },
+    "units": {
+      "sheet": "units",
+      "table": "macrostrat.units",
+      "excel_key": "unit_id",
+      "natural_key": ["col_id", "strat_name", "position_bottom", "position_top", "fo", "lo"],
+      "fields": {
+        "col_id": { "handler": "units_col_id_v1" },
+        "fo": { "handler": "units_fo_v1" },
+        "lo": { "handler": "units_lo_v1" },
+        "position_bottom": { "handler": "units_position_bottom_v1" },
+        "position_top": { "handler": "units_position_top_v1" },
+        "max_thick": { "handler": "units_max_thick_v1", "omit_if_none": true },
+        "min_thick": { "handler": "units_min_thick_v1", "omit_if_none": true },
+        "strat_name": { "from": "unit_name" },
+        "fo_h": { "handler": "units_fo_h_v1", "omit_if_none": true },
+        "lo_h": { "handler": "units_lo_h_v1", "omit_if_none": true },
+        "date_mod": { "sql": "now()" },
+        "color": { "const": "" },
+        "outcrop": { "const": "" },
+        "section_id": { "const": 0 }
+      }
+    }
+  }
+}
