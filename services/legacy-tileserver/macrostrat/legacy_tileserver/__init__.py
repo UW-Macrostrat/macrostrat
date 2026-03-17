@@ -47,6 +47,8 @@ async def startup_event():
     app.state.pool = await create_pool_b(
         url,
         max_inactive_connection_lifetime=60,
+        min_size=1,
+        max_size=10,
         server_settings={"application_name": "image-tileserver-cache"},
     )
     app.state.map_pool = MapnikMapPool(mapnik_pool_size)
