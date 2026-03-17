@@ -7,11 +7,11 @@ from buildpg import render
 from buildpg.asyncpg import create_pool_b
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
 from morecantile import Tile
+from sqlalchemy import make_url
+from sqlalchemy.engine import URL
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
-from sqlalchemy.engine import URL
-from sqlalchemy import make_url
 
 from macrostrat.tileserver_utils import (
     CachedTileArgs,

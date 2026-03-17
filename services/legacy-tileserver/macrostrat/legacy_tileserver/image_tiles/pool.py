@@ -3,9 +3,9 @@ from asyncio import Queue
 from contextlib import asynccontextmanager
 
 from mapnik import Map, load_map_from_string
+from sqlalchemy.engine import URL
 
 from macrostrat.utils import get_logger
-from sqlalchemy.engine import URL
 
 from .config import scales
 from .mapnik_styles import (
