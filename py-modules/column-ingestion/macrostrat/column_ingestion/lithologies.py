@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 
 from .database import get_all_lith_attributes, get_all_liths
 
@@ -12,11 +13,29 @@ class LithAtt:
         return hash(self.id)
 
 
+class LithAbundance(Enum):
+    """Enum for lithology abundance types."""
+
+    DOMINANT = "dom"
+    SUBSIDIARY = "sub"
+
+    @classmethod
+    def from_str(cls, value: str):
+        # Handle synonyms
+        if value == "major":
+            return LithAbundance.DOMINANT
+        elif value == "minor":
+            return LithAbundance.SUBSIDIARY
+        return cls[value]
+
+
 @dataclass
 class Lithology:
     name: str
     id: int
     attributes: set[LithAtt] | None = None
+    dom: LithAbundance | None = None
+    prop: float | None = None
 
     def __hash__(self):
         """Hash the lithology based on its id and attributes. This allows us to compare lithologies in tests without worrying about object identity."""
@@ -32,6 +51,7 @@ class LithsProcessor:
 
     lith_attribute_synonyms = {
         "cross-bedded": ["cross-stratified", "cross bedded", "cross laminated"],
+        "regularly bedded": ["bedded"],
     }
 
     def __init__(self):
@@ -120,13 +140,21 @@ def split_domains(text) -> list[str]:
     return text.split(";")
 
 
-def process_liths_text(lith) -> set[Lithology]:
+def process_liths_text(lith: str | None, type=LithAbundance.DOMINANT) -> set[Lithology]:
     # Process the lithology string to extract information about the rock type, grainsize, color, etc.
-    split_lith = split_domains(lith)
     output = set()
+
+    if lith is None:
+        return output
+
+    split_lith = split_domains(lith)
     for lith in split_lith:
         res = process_lith_domain(lith.strip().lower())
         output.update(res)
+    for lith in output:
+        if lith.dom is None:
+            lith.dom = type
+
     return output
 
 

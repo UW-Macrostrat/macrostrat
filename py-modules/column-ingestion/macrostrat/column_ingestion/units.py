@@ -6,7 +6,7 @@ from sqlalchemy import and_
 from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
-from .lithologies import Lithology, process_liths_text
+from .lithologies import Lithology, process_liths_text, LithAbundance
 
 
 @dataclass
@@ -101,21 +101,39 @@ def prepare_column_units(df) -> list[Unit]:
     # Allow for one null at the top and one at the bottom
     assert n_rows_2 >= (n_rows - 2)
 
-    fill_specs = ["lithology", "color", "grainsize", "strat_name", "facies", "name"]
-    cols = [
-        pl.col(spec).fill_null(strategy="backward").alias(spec)
-        for spec in fill_specs
-        if spec in df.columns
+    fill_specs = [
+        "lithology",
+        "minor_lith",
+        "color",
+        "grainsize",
+        "strat_name",
+        "facies",
+        "name",
     ]
-
-    # Fill lithology info upwards
-    df = df.with_columns(*cols)
+    for spec in fill_specs:
+        if spec not in df.columns:
+            continue
+        new_col = df[spec].fill_null(strategy="forward").alias(spec)
+        # Cast the new column to a string
+        new_col = new_col.cast(pl.Utf8)
+        df = df.with_columns(new_col)
+        # Fill 'none' values in the new column with nulls
+        df = df.with_columns(
+            pl.when(pl.col(spec) == "none")
+            .then(pl.lit(None))
+            .otherwise(pl.col(spec))
+            .alias(spec)
+        )
 
     print(df)
 
     # Get unique lithologies in the column
     lithologies = df["lithology"].unique().to_list()
     print_list("Lithologies", lithologies)
+
+    minor_lithologies = df["minor_lith"].unique().to_list()
+    if len(minor_lithologies) > 0:
+        print_list("Minor lithologies", minor_lithologies)
 
     # Get strat names
     strat_names = df["strat_name"].unique().to_list()
@@ -124,9 +142,9 @@ def prepare_column_units(df) -> list[Unit]:
     res = []
     for row in df.iter_rows(named=True):
         lith = row.get("lithology")
-        liths = set()
-        if lith is not None:
-            liths = process_liths_text(lith)
+        liths = process_liths_text(lith, LithAbundance.DOMINANT)
+        # Process minor lithologies if they are present
+        liths |= process_liths_text(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
 
         unit = Unit(
             section_id=row.get("section_id"),
@@ -217,12 +235,16 @@ def write_units(db, units: list[Unit]):
         # Insert lithology associations for the unit
         n_liths = len(unit.lithology)
         for lith in unit.lithology:
+            dom = ""
+            if lith.dom is not None:
+                dom = lith.dom.value
+
             insert_lith_stmt = (
                 unit_liths.insert()
                 .values(
                     unit_id=unit.id,
                     lith_id=lith.id,
-                    dom="",
+                    dom=dom,
                     comp_prop=1 / n_liths,
                     mod_prop=1 / n_liths,
                     toc=0.0,
