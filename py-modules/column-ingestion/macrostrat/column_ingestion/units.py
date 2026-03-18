@@ -25,20 +25,38 @@ class Unit:
 log = get_logger(__name__)
 
 
+def rename_aliases(df, aliases):
+    """Rename or alias columns in a data frame"""
+    warnings = set()
+    for old_name, new_name in aliases.items():
+        if old_name in df.columns:
+            if new_name not in df.columns:
+                df = df.rename({old_name: new_name})
+            else:
+                warnings.add(
+                    f"Both '{old_name}' and '{new_name}' are present in the data frame."
+                )
+    return df, warnings
+
+
 def get_units(data_file) -> {str: list[Unit]}:
     df = pl.read_excel(data_file, sheet_name="units")
 
     # Rename some columns
-    df = df.rename(
+    df, warnings = rename_aliases(
+        df,
         {
             "position": "b_pos",
             "bottom_position": "b_pos",
             "height": "b_pos",
             "column": "col_id",
             "column_id": "col_id",
+            "unit_name": "name",
         },
-        strict=False,
     )
+
+    for warning in warnings:
+        log.warning(warning)
 
     # Ensure b_pos is numeric
     df = df.with_columns(pl.col("b_pos").cast(pl.Float64, strict=False))
@@ -83,7 +101,7 @@ def prepare_column_units(df) -> list[Unit]:
     # Allow for one null at the top and one at the bottom
     assert n_rows_2 >= (n_rows - 2)
 
-    fill_specs = ["lithology", "color", "grainsize", "strat_name", "facies"]
+    fill_specs = ["lithology", "color", "grainsize", "strat_name", "facies", "name"]
     cols = [
         pl.col(spec).fill_null(strategy="backward").alias(spec)
         for spec in fill_specs
@@ -92,6 +110,8 @@ def prepare_column_units(df) -> list[Unit]:
 
     # Fill lithology info upwards
     df = df.with_columns(*cols)
+
+    print(df)
 
     # Get unique lithologies in the column
     lithologies = df["lithology"].unique().to_list()
@@ -130,6 +150,7 @@ def write_units(db, units: list[Unit]):
     # Get the set of sections and columns for which units should be overwrittem
     col_ids = set(unit.col_id for unit in units)
     section_ids = set(unit.section_id for unit in units)
+    # TODO: multiple sections per column are not handled yet
 
     # Delete existing units for the relevant sections and columns
     db.session.execute(
@@ -148,6 +169,13 @@ def write_units(db, units: list[Unit]):
             if (unit.t_pos is not None and unit.b_pos is not None)
             else None
         )
+
+        # TODO: Unit fields that could be added
+        # - covered
+        # - schematic (?) to handle cases where unit is not fully described, or age model should not be trusted.
+        #   Could render ages or heights with a tilde, for instance
+        # - hypothetical (?) to cover cases where the presence of a unit is inferred (e.g., possibly eroded material of a certain age)
+        # - descrip: similar to map polygon description, more specific than notes
 
         insert_stmt = (
             units_tbl.insert()
