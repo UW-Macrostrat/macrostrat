@@ -1,7 +1,7 @@
 """Test cases for intervals matching"""
 
 from dataclasses import dataclass
-
+from pytest import mark
 from .database import get_all_intervals
 
 
@@ -41,12 +41,34 @@ class Interval:
 test_text = "Early Cambrian, Series 2, Stage 3"
 
 
-def test_most_specific_interval():
+@dataclass
+class IntervalTestCase:
+    text: str
+    expected: IntervalID
+
+
+test_cases = [
+    IntervalTestCase(
+        "Early Cambrian, Series 2, Stage 3", IntervalID(id=254, name="Stage 3")
+    ),
+    IntervalTestCase(
+        "Early Cambrian, Series 2, Stage 4", IntervalID(id=253, name="Stage 4")
+    ),
+    IntervalTestCase(
+        "Early Cambrian, Tommotian", IntervalID(id=1690, name="Tommotian")
+    ),
+    IntervalTestCase("Early Cambrian", IntervalID(id=130, name="Early Cambrian")),
+    IntervalTestCase("Series 2", IntervalID(id=501, name="Series 2")),
+    IntervalTestCase("Olenellus", IntervalID(id=520, name="Olenellus")),
+]
+
+
+@mark.parametrize("test_case", test_cases)
+def test_get_interval(test_case: IntervalTestCase):
     # Test that all intervals are matched and return the most specific
-    res = IntervalID(name="Stage 3", id=254)
     all_intervals = get_intervals()
 
-    split_text = test_text.split(",")
+    split_text = test_case.text.split(",")
     ints = []
     for _int in split_text:
         a = _int.strip()
@@ -60,10 +82,8 @@ def test_most_specific_interval():
     # Order by age range descending
     ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
     # Ensure that intervals all overlap
-    age_bottom = 4500
-    age_top = 0
     last_int = ints[-1]
     for _int in ints[:-1]:
         assert _int.age_bottom >= last_int.age_top
         assert _int.age_top <= last_int.age_bottom
-    assert last_int == res
+    assert last_int == test_case.expected
