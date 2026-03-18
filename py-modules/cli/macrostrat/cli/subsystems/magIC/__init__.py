@@ -5,12 +5,15 @@ from macrostrat.match_utils import (
     get_columns_for_location,
     get_all_matched_units,
     standardize_names,
-    get_units_without_col,
+    clean_strat_name_text,
+    match_row
 )
 from macrostrat.match_utils import ColumnInfo
 from macrostrat.match_utils.strat_names import create_ignore_list
 from macrostrat.database import Database
 from macrostrat.cli.database.utils import engine_for_db_name
+from macrostrat.match_utils.models import MatchComparison
+from pandas import read_sql
 
 API_DOMAIN = "https://api.earthref.org/v1/MagIC/search/sites"
 
@@ -150,57 +153,101 @@ def run(published_since: str = None):
     print(f"Updated and inserted {len(rows)} rows into geomag_sites")
 
 
-def get_formations_by_age_col(db, col_id: int | None, t_age: float | None, b_age: float | None) -> tuple:
+
+def normalize_lithologies(known_liths, lithologies: str) -> list[str]:
     """
-    Query macrostrat strat names associated with units in a given column
-    that overlap the provided age range. Returns a standardized names tuple
-    suitable for passing into get_matched_unit.
+    Parse a geomag colon-separated lithology string and return only the
+    lith names that exist in macrostrat.liths, normalized to lowercase.
 
-    Falls back to all units in the column if no age is provided.
+    e.g. "Mudstone: Siltstone: Basalt" -> ["mudstone", "siltstone", "basalt"]
     """
-    params = {}
-    age_filter = "AND lu.t_age <= :b_age AND lu.b_age >= :t_age"
-    params["t_age"] = t_age
-    params["b_age"] = b_age
-
-    if col_id is not None:
-        params = {"col_id": col_id}
-        rows = db.run_query(
-            f"""
-            SELECT DISTINCT sn.strat_name
-            FROM macrostrat.strat_names sn
-            JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = sn.id
-            JOIN macrostrat.units u ON u.id = usn.unit_id
-            JOIN macrostrat.lookup_units lu ON lu.unit_id = u.id
-            WHERE u.col_id = :col_id
-              AND sn.strat_name IS NOT NULL
-              AND sn.strat_name != ''
-              {age_filter}
-            """,
-            params,
-        ).all()
-    else:
-        rows = db.run_query(
-            f"""
-            SELECT DISTINCT sn.strat_name
-            FROM macrostrat.strat_names sn
-            JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = sn.id
-            JOIN macrostrat.units u ON u.id = usn.unit_id
-            JOIN macrostrat.lookup_units lu ON lu.unit_id = u.id
-            WHERE sn.strat_name IS NOT NULL
-              AND sn.strat_name != ''
-              {age_filter}
-            """,
-            params,
-        ).all()
-
-    if not rows:
+    if not lithologies:
         return None
+    input_liths = [l.strip().lower() for l in lithologies.split(":") if l.strip()]
+    return [l for l in input_liths if l in known_liths]
 
-    # Join all names and run through the same cleaning pipeline
-    # that get_matched_unit expects on the input side
-    combined = "; ".join(row.strat_name for row in rows)
-    return standardize_names(combined)
+def get_units_by_age_liths_names_col(
+    db,
+    col_id: int | None,
+    t_age: float | None,
+    b_age: float | None,
+    lithologies: str | None = None,
+    formation_names: tuple | None = None,  # add this
+):
+    def _query(lith_filter: str | None):
+        params = {}
+        filters = ["sn.strat_name IS NOT NULL", "sn.strat_name != ''", "c.status_code = 'active'"]
+
+        if t_age is not None and b_age is not None:
+            filters.append("lu.t_age <= :t_age AND lu.b_age >= :b_age")
+            params["t_age"] = t_age
+            params["b_age"] = b_age
+
+        if col_id is not None:
+            filters.append("u.col_id = :col_id")
+            params["col_id"] = col_id
+
+        # Filter by normalized formation names if provided
+        if formation_names:
+            name_strings = [n.name for n in formation_names]
+            params["formation_names"] = name_strings
+            filters.append("lower(sn.strat_name) = ANY(:formation_names)")
+
+        lith_join = ""
+        if lith_filter:
+            lith_names = [l.strip().lower() for l in lith_filter.split(":") if l.strip()]
+            if lith_names:
+                params["lith_names"] = lith_names
+                lith_join = """
+                    JOIN macrostrat.unit_liths ul ON ul.unit_id = u.id
+                    JOIN macrostrat.liths l ON l.id = ul.lith_id
+                """
+                filters.append("lower(l.lith) = ANY(:lith_names)")
+
+        where_clause = " AND ".join(filters)
+        sql = f"""
+            SELECT DISTINCT
+                sn.id strat_name_id,
+                sn.strat_name,
+                sn.rank strat_rank,
+                u.id unit_id,
+                u.col_id,
+                lu.t_age,
+                lu.b_age
+            FROM macrostrat.strat_names sn
+            JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = sn.id
+            JOIN macrostrat.units u ON u.id = usn.unit_id
+            JOIN macrostrat.lookup_units lu ON lu.unit_id = u.id
+            JOIN macrostrat.cols c ON c.id = u.col_id
+            {lith_join}
+            WHERE {where_clause}
+        """
+        with db.engine.connect() as conn:
+            return read_sql(text(sql), conn, params=params)
+
+    units_df = _query(lithologies)
+    if units_df.empty and lithologies:
+        print("No results with lith filter, falling back to age-only")
+        units_df = _query(None)
+
+    if units_df.empty:
+        return None, None
+
+    combined = "; ".join(units_df["strat_name"].dropna().unique())
+    names = standardize_names(combined) if combined else None
+
+    unit = None
+    if names:
+        ix = units_df.columns.get_loc("strat_name")
+        units_df.insert(ix + 1, "strat_name_clean", units_df["strat_name"].apply(clean_strat_name_text))
+        units_df = units_df[units_df.strat_name_clean.notnull()]
+        for _, row in units_df.iterrows():
+            matches, _ = match_row(row, names, MatchComparison.Included)
+            if matches:
+                unit = row
+                break
+
+    return names, unit
 
 
 def get_nearest_column(db, lng: float, lat: float, max_distance_degrees: float = 1.0):
@@ -238,9 +285,9 @@ def match_geomag_sites():
     #initialize ignore list once before matching
     lith_names = db.run_query("SELECT lith FROM macrostrat.liths").scalars().all()
     create_ignore_list(lith_names)
-
+    known_liths = {l.lower() for l in lith_names}
     sites = db.run_query(
-        "SELECT id, site_name, lat, lng, formation, age, age_low, age_high FROM integrations.geomag_sites LIMIT 1000"
+        "SELECT id, site_name, lat, lng, formation, age, age_low, age_high, lithologies FROM integrations.geomag_sites LIMIT 1000"
     ).all()
 
     print(f"Matching {len(sites)} geomag sites...")
@@ -262,8 +309,9 @@ def match_geomag_sites():
         age_high = _float(site.age_high)
 
         if age_low is not None and age_high is not None:
-            t_age = age_high
-            b_age = age_low
+            #TODO check to see if this is mapped correctly
+            t_age = age_low #younger age
+            b_age = age_high #older age
         else:
             t_age = age
             b_age = age
@@ -276,38 +324,71 @@ def match_geomag_sites():
         else:
             col = cols[0]
 
-        # standardize formation name
-        if not site.formation:
-            names = get_formations_by_age_col(db, col.col_id if col else None, t_age, b_age)
-            print(f"No formation name provided. Found formations by age: {names}")
-            if names is None:
-                print(f"Skipping because no macrostrat strat_names are found. {site.id}, {site.site_name}")
-                continue
-        else:
+        normalized_liths = normalize_lithologies(known_liths, site.lithologies)
+        lith_string = ": ".join(normalized_liths) if normalized_liths else None
+
+        if site.formation and col is not None:
             names = standardize_names(site.formation)
-
-        if col is None:
-            print(f"No columns found for site_={site.site_name}. Finding units by age and formations.")
-            unit = get_units_without_col(db, names, t_age, b_age)
-
-        else:
-        # Match unit
             with db.engine.connect() as conn:
-                rows = get_all_matched_units(
-                    conn,
-                    col.col_id,
-                    names,
-                    t_age=t_age,
-                    b_age=b_age,
-                    n_results=1
-                )
+                rows = get_all_matched_units(conn, col.col_id, names, t_age=t_age, b_age=b_age, n_results=1)
+
             unit = rows[0] if rows else None
-        unit_id = unit.unit_id if unit is not None else None
+
+        elif site.formation and col is None:
+            formation_names = standardize_names(site.formation)
+            names, unit = get_units_by_age_liths_names_col(db, None, t_age, b_age, lith_string, formation_names)
+
+        elif not site.formation and col is not None:
+            names, unit = get_units_by_age_liths_names_col(db, col.col_id, t_age, b_age, lith_string)
+
+        else:  # no formation, no col
+            names, unit = get_units_by_age_liths_names_col(db, None, t_age, b_age, lith_string)
         #TODO add age_span accuracy function to pick the "most correct" unit formation
         #TODO add units within the integrations.geomag_units table
-        print(f"site_id={site.id} | col_id={col.col_id if col else None} | unit_id={unit_id} | strat_names='{names}' "
-              f"| b_age={b_age} | t_age={t_age}")
-        print("FINAL UNIT", unit)
+
+
+
+        # Fetch matched unit's lithologies for comparison
+        unit_liths = None
+        if unit is not None:
+            lith_rows = db.run_query(
+                """
+                SELECT l.lith
+                FROM macrostrat.unit_liths ul
+                JOIN macrostrat.liths l ON l.id = ul.lith_id
+                WHERE ul.unit_id = :unit_id
+                """,
+                dict(unit_id=int(unit.unit_id)),
+            ).all()
+            unit_liths = ", ".join(r.lith for r in lith_rows) or "(none)"
+
+        print("\n─── MATCH SUMMARY ───────────────────────────────────────")
+        print(f"  site_id       : {site.id} | {site.site_name}")
+        print(f"  --- INPUT ---")
+        print(f"  formation     : {site.formation or '(none)'}")
+        print(f"  lithologies   : {site.lithologies or '(none)'} → normalized: {lith_string or '(none)'}")
+        print(f"  ages          : t_age={t_age} | b_age={b_age}")
+        print(f"  lat/lng       : {site.lat}, {site.lng} → col_id={col.col_id if col else '(none)'}")
+        print(f"  --- MATCH ---")
+        if unit is not None:
+            print(f"  strat_name    : {unit.strat_name}")
+            print(f"  unit_id       : {unit.unit_id}")
+            print(f"  col_id        : {unit.col_id}")
+            print(f"  lithologies   : {unit_liths}")
+            print(f"  ages          : t_age={unit.t_age} | b_age={unit.b_age}")
+            # Age overlap quality
+            if t_age is not None and b_age is not None:
+                if t_age == b_age:
+                    # Single point age — 100% if it falls within the unit range, 0% otherwise
+                    score = 1.0 if unit.t_age <= t_age <= unit.b_age else 0.0
+                else:
+                    overlap = min(unit.b_age, b_age) - max(unit.t_age, t_age)
+                    site_range = b_age - t_age
+                    score = max(0.0, overlap / site_range)
+                print(f"  age overlap   : {score:.0%}")
+        else:
+            print(f"  (no unit matched)")
+        print("─────────────────────────────────────────────────────────\n")
 
 
 if __name__ == "__main__":
