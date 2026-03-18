@@ -140,7 +140,7 @@ def split_domains(text) -> list[str]:
     return text.split(";")
 
 
-def process_liths_text(lith: str | None, type=LithAbundance.DOMINANT) -> set[Lithology]:
+def process_liths_text(lith: str | None, type=None) -> set[Lithology]:
     # Process the lithology string to extract information about the rock type, grainsize, color, etc.
     output = set()
 
@@ -174,11 +174,12 @@ def process_lith_domain(lith_text) -> set[Lithology]:
         # Start searching for attributes first, then lithologies
         remaining_text = entity
         while len(remaining_text) > 0:
-            lith0, remaining_text1 = liths_processor.find_lith(remaining_text)
-            if lith0 is not None:
+            att = None
+            lith, remaining_text1 = liths_processor.find_lith(remaining_text)
+            if lith is not None:
                 # If we find a lithology that consumes the entire remaining text, we can stop searching for attributes and just add the lithology.
                 # This handles special cases like "calcareous ooze" which is its own lithology, despite having the word "calcareous" which is also an attribute.
-                liths.add(lith0)
+                liths.add(lith)
                 remaining_text = remaining_text1
             else:
                 # Otherwise, we search for attributes.
@@ -191,10 +192,10 @@ def process_lith_domain(lith_text) -> set[Lithology]:
                     atts.add(att)
             # Now search for lithologies. If we find one, we reset the attribute list.
             lith, remaining_text = liths_processor.find_lith(remaining_text)
-            if lith is None:
+            if lith is None and att is None:
                 # If we can't find a lithology or attribute, we advance to the next word to continue the search
                 remaining_text = " ".join(remaining_text.split()[1:])
-            else:
+            elif lith is not None:
                 if len(atts) > 0:
                     lith.attributes = atts
                     atts = set()  # reset attributes after applying to a lithology

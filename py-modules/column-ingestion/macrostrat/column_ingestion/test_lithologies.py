@@ -30,6 +30,24 @@ chert = Lithology(name="chert", id=45)
 sand = Lithology(name="sand", id=3)
 mixed_carbonate = Lithology(name="mixed carbonate-siliciclastic", id=17)
 
+carbonate_test_case = {
+    Lithology(name="carbonate", id=18, attributes={LithAtt(name="lenticular", id=1)}),
+    Lithology(
+        name="carbonate",
+        id=18,
+        attributes={
+            LithAtt(name="bioclastic", id=145),
+            LithAtt(name="lenticular", id=1),
+        },
+    ),
+    Lithology(
+        name="carbonate",
+        id=18,
+        attributes={LithAtt(name="regularly bedded", id=6)},
+    ),
+}
+
+
 test_cases = [
     LithologyTestCase("sandstone", {sandstone}),
     LithologyTestCase("limestone; sandstone", {sandstone, limestone}),
@@ -106,6 +124,14 @@ test_cases = [
                 attributes={LithAtt(name="cross-bedded", id=17)},
             )
         },
+    ),
+    LithologyTestCase(
+        "lenticular carbonate; bioclastic lenticular carbonate; bedded carbonate",
+        carbonate_test_case,
+    ),
+    LithologyTestCase(
+        "lenticular carbonate; bioclastic, lenticular carbonate; regularly bedded carbonate",
+        carbonate_test_case,
     ),
 ]
 
