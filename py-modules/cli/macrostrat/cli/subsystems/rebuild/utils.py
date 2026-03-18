@@ -29,7 +29,7 @@ def grant_permissions(db):
 
 def validate_counts(db):
     data = db.run_query(
-        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_unit_attrs_api_new) lookup_units_count FROM units"
+        f"SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_unit_attrs_api_new) lookup_units_count FROM units"
     ).fetchone()
     if data.units_count != data.lookup_units_count:
         raise ValueError(
