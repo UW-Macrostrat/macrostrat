@@ -7,11 +7,12 @@ from buildpg import render
 from buildpg.asyncpg import create_pool_b
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
 from morecantile import Tile
+from sqlalchemy import make_url
+from sqlalchemy.engine import URL
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
-from macrostrat.database import Database
 from macrostrat.tileserver_utils import (
     CachedTileArgs,
     CacheMode,
@@ -35,6 +36,7 @@ async def startup_event():
     setup_stderr_logs("macrostrat.legacy_tileserver")
 
     url = environ["DATABASE_URL"]
+    db_url = make_url(url)
 
     # Tile rendering map pool size
     # This controls how many image tiles can be concurrently rendered.
@@ -42,10 +44,15 @@ async def startup_event():
     mapnik_pool_size = int(environ.get("MAPNIK_POOL_SIZE", "8"))
     log.info(f"Setting up Mapnik map pool with size {mapnik_pool_size}")
 
-    app.state.pool = await create_pool_b(url)
-    db = Database(url)
+    app.state.pool = await create_pool_b(
+        url,
+        max_inactive_connection_lifetime=60,
+        min_size=1,
+        max_size=10,
+        server_settings={"application_name": "image-tileserver-cache"},
+    )
     app.state.map_pool = MapnikMapPool(mapnik_pool_size)
-    await app.state.map_pool.setup(db)
+    await app.state.map_pool.setup(db_url)
 
 
 class MapCompilation(Enum):

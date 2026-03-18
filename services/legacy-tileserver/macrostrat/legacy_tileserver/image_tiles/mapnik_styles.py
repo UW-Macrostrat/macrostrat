@@ -18,6 +18,13 @@ __here__ = Path(__file__).parent
 def make_datasource(db_url, **kwargs):
     pg_credentials = get_credentials(db_url)
     return Datasource(
+        type="postgis",
+        # Don't allow connections to remain idle
+        persist_connection=False,
+        estimate_extent=True,
+        # Connection pool size parameters (these should be globally shared)
+        initial_size=1,
+        max_size=10,
         **pg_credentials,
         **kwargs,
     )
@@ -25,16 +32,14 @@ def make_datasource(db_url, **kwargs):
 
 def make_line_datasource(db_url, scale):
     line_query = create_line_query(scale)
-    pg_credentials = get_credentials(db_url)
-    return Datasource(
-        type="postgis",
+    return make_datasource(
+        db_url,
         table=f"({line_query}) subset",
         key_field="line_id",
         geometry_field="geom",
         extent_cache="auto",
         extent="-180,-90,180,90",
         srid="4326",
-        **pg_credentials,
     )
 
 
@@ -54,14 +59,9 @@ def make_polygon_datasource(db_url, scale):
 
 
 def make_carto_stylesheet(scale, db_url):
-    pg_credentials = get_credentials(db_url)
-
     cartoCSS = (__here__ / "style.mss").read_text()
 
     webmercator_srs = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0.0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs +over"
-
-    polygon_query = create_polygon_query(scale)
-    line_query = create_line_query(scale)
 
     return {
         "bounds": [-89, -179, 89, 179],
@@ -75,16 +75,17 @@ def make_carto_stylesheet(scale, db_url):
         "Layer": [
             {
                 "geometry": "polygon",
-                "Datasource": {
-                    "type": "postgis",
-                    "table": f"({polygon_query}) subset",
-                    "key_field": "map_id",
-                    "geometry_field": "geom",
-                    "extent_cache": "auto",
-                    "extent": "-179,-89,179,89",
-                    **pg_credentials,
-                    "srid": "4326",
-                },
+                # "Datasource": {
+                #     # Placeholder
+                #     "type": "postgis",
+                #     "table": f"PLACEHOLDER",
+                #     "key_field": "map_id",
+                #     "geometry_field": "geom",
+                #     "extent_cache": "auto",
+                #     "extent": "-179,-89,179,89",
+                #     **pg_credentials,
+                #     "srid": "4326",
+                # },
                 "id": f"units_{scale}",
                 "class": "units",
                 "srs-name": "WGS84",
@@ -96,16 +97,10 @@ def make_carto_stylesheet(scale, db_url):
             },
             {
                 "geometry": "linestring",
-                "Datasource": {
-                    "type": "postgis",
-                    "table": f"({line_query}) subset",
-                    "key_field": "line_id",
-                    "geometry_field": "geom",
-                    "extent_cache": "auto",
-                    "extent": "-179,-89,179,89",
-                    **pg_credentials,
-                    "srid": "4326",
-                },
+                # "Datasource": {
+                #     # Placeholder
+                #     "type": "postgis",
+                # },
                 "id": f"lines_{scale}",
                 "class": "lines",
                 "srs-name": "WGS84",
@@ -150,8 +145,14 @@ def get_credentials(db_url=None):
             "dbname": "DATABASE_NAME",
         }
 
+    host = db_url.host
+    # We can set the application ID in the host field for now,
+    # revisit how this is set with Mapnik 4.0
+    # https://get-map.org/mapnik-lost-manual/book/_core_data_sources.html
+    host = host + " application_name=image-tileserver"
+
     return {
-        "host": db_url.host,
+        "host": host,
         "port": db_url.port,
         "user": db_url.username,
         "password": db_url.password,

@@ -67,7 +67,11 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat_tileserver", "timvt")
-    await connect_to_db(app, db_settings)
+    await connect_to_db(
+        app,
+        db_settings,
+        server_settings={"application_name": "tileserver"},
+    )
 
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)

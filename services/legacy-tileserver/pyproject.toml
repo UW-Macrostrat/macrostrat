@@ -1,6 +1,6 @@
 [project]
 name = "macrostrat.legacy-tileserver"
-version = "2.3.2"
+version = "2.3.4"
 description = "Macrostrat legacy tile server"
 authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
 requires-python = ">=3.9,<3.10"
@@ -13,8 +13,8 @@ dependencies = [
     "buildpg>=0.4,<0.5",
     "morecantile>=6.2.0,<7",
     "macrostrat.utils>=1.2.0,<2",
-    "macrostrat.database>=3.0.0,<4",
-    "macrostrat.tileserver-utils"
+    "macrostrat.tileserver-utils",
+    "sqlalchemy>=2.0.43",
 ]
 
 [tool.uv.sources]
