@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from contextvars import ContextVar
 
@@ -53,14 +54,14 @@ class Interval:
 
     @property
     def age_span(self) -> float:
-        return self.age_bottom - self.age_top
+        return float(self.age_bottom - self.age_top)
 
     def contains(self, age: float) -> bool:
         return self.age_top <= age <= self.age_bottom
 
     def relative_position(self, age):
         """Get the proportion of an age relative to an interval (not clamped)"""
-        age_rel_to_bottom = self.age_bottom - age
+        age_rel_to_bottom = float(self.age_bottom) - float(age)
         return age_rel_to_bottom / self.age_span
 
     def __hash__(self):
@@ -78,4 +79,45 @@ class RelativeAge:
     def model_age(self) -> float:
         if self.proportion == 1:
             return self.interval.age_top
-        return self.interval.age_bottom + self.proportion * self.interval.age_span
+        return float(self.interval.age_bottom) - float(self.proportion) * float(
+            self.interval.age_span
+        )
+
+
+def split_text(text: str):
+    """Split text by commas and/or >"""
+    res = re.split(r"[,>]", text)
+    return [x.strip() for x in res if x.strip()]
+
+
+def get_interval_from_text(text: str | None):
+    """Get the interval for a given text"""
+    if text is None:
+        return None
+
+    all_intervals = get_intervals()
+
+    ints = []
+    for _int in split_text(text):
+        a = _int.strip()
+        # Check if the interval is an integer:
+        match = next((i for i in all_intervals if match_predicate(i, a)), None)
+        if match:
+            ints.append(match)
+        else:
+            print(f"No match for {a}")
+
+    # Order by age width descending
+    ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
+    # Ensure that intervals all overlap
+    last_int = ints[-1]
+    for _int in ints[:-1]:
+        assert _int.age_bottom >= last_int.age_top
+        assert _int.age_top <= last_int.age_bottom
+    return last_int
+
+
+def match_predicate(interval: Interval, text: str):
+    if text.isdigit():
+        return int(text) == interval.id
+    return interval.name == text

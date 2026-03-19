@@ -7,7 +7,13 @@ from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
 from .lithologies import Lithology, process_liths_text, LithAbundance
-from .intervals import Interval, get_intervals, RelativeAge
+from .intervals import (
+    Interval,
+    get_intervals,
+    RelativeAge,
+    get_interval_by_id,
+    get_interval_from_text,
+)
 
 
 @dataclass
@@ -157,20 +163,21 @@ def prepare_column_units(df) -> list[Unit]:
             name=row.get("name"),
             lithology=liths,
             color=row.get("color"),
-            b_age=b_age,
-            t_age=t_age,
         )
 
         # Only relative age positioning is supported for now
-        b_int = get_interval_by_id(row.get("b_int"))
+        b_int = get_interval_from_text(row.get("b_int"))
         if b_int is not None:
-            unit.b_age = RelativeAge(interval=b_int, proportion=row.get("b_prop", 0))
+            unit.b_age = RelativeAge(interval=b_int, proportion=row.get("b_prop") or 0)
+            print(f"b_age: {unit.b_age}")
 
-        t_int = get_interval_by_id(row.get("t_int"))
+        t_int = get_interval_from_text(row.get("t_int"))
         if t_int is not None:
-            unit.t_age = RelativeAge(interval=t_int, proportion=row.get("t_prop", 1))
+            unit.t_age = RelativeAge(interval=t_int, proportion=row.get("t_prop") or 1)
+            print(f"t_age: {unit.t_age}")
 
         res.append(unit)
+
     return res
 
 

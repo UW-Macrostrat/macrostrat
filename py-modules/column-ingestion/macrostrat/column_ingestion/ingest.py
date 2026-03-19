@@ -12,6 +12,7 @@ from .columns import (
 from .database import get_or_create_project
 from .metadata import get_metadata
 from .units import get_units, write_units
+from .age_model import build_age_model
 
 
 def ingest_columns_from_file(data_file):

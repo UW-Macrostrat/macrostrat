@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
 from collections import defaultdict
-from .intervals import Interval, RelativeAge
+import numpy as N
+
+from .intervals import Interval, RelativeAge, get_intervals
 from .units import Unit
 
 
@@ -35,6 +37,14 @@ class AgeModelSurface:
     position: float
     units: list[Unit]
     boundary_status: BoundaryStatus
+    relative_age: RelativeAge | None = None
+
+    def __post_init__(self):
+        # Set relative age if not provided
+        if self.relative_age is None:
+            self.relative_age = self.build_relative_age()
+        if self.relative_age is not None:
+            self.boundary_statusp = BoundaryStatus.RELATIVE
 
     @property
     def units_above(self):
@@ -54,9 +64,8 @@ class AgeModelSurface:
                 continue
             yield u.t_age
 
-    @property
-    def relative_age(self) -> RelativeAge | None:
-        ages = list(self._age_estimates())
+    def build_relative_age(self) -> RelativeAge | None:
+        ages = list(self.age_estimates())
         if len(ages) == 0:
             return None
         model_ages = [a.model_age() for a in ages]
@@ -70,6 +79,11 @@ class AgeModelSurface:
     def model_age(self) -> float:
         return self.relative_age.model_age()
 
+    def __str__(self):
+        units_above = ",".join([str(u.id) for u in self.units_above])
+        units_below = ",".join([str(u.id) for u in self.units_below])
+        return f"AgeModelSurface(position={self.position}, relative_age={self.relative_age}, above={units_above}, below={units_below})"
+
 
 def timescale_intervals(timescale_id: int):
     intervals = get_intervals()
@@ -80,14 +94,16 @@ class AgeModel:
     surfaces: list[AgeModelSurface]
 
     # Intervals that can be used for linking new relative surfaces
-    _match_intervals: set[Interval]
+    _match_intervals: list[Interval]
 
     def __init__(self, surfaces: list[AgeModelSurface], timescale=11):
         self.surfaces = sorted(surfaces, key=lambda s: s.position)
+
         # Get all intervals defined in surfaces
+        self._match_intervals = list()
         for surface in self.constrained_surfaces:
             for est in surface.age_estimates():
-                self._match_intervals.add(est.interval)
+                self._match_intervals.append(est.interval)
         # Sort intervals by age span (smallest first)
         self._match_intervals = sorted(self._match_intervals, key=lambda i: i.age_span)
         self._match_intervals += sorted(
@@ -114,7 +130,7 @@ class AgeModel:
         # A one-degree b-spline is a piecewise linear interpolator
         # Natural boundary conditions arbitrarily extend the domain
         # in either direction
-        return make_interp_spline(x, y, k=1, bc_type="natural")
+        return make_interp_spline(x, y, k=1, bc_type=None)
 
     def _containing_interval(self, age: float):
         # Find the first _match_interval that contains the age
@@ -139,7 +155,8 @@ class AgeModel:
             else:
                 surface.boundary_status = BoundaryStatus.RELATIVE
             # Sanity check
-            assert surface.relative_age.model_age() == model_age
+            if surface.relative_age is not None:
+                assert N.allclose(surface.relative_age.model_age(), model_age)
 
         return self.surfaces
 
@@ -169,7 +186,10 @@ def build_section_age_model(db, units: list[Unit]) -> list[UnitBoundary]:
         surfaces[unit.b_pos].append(unit)
         surfaces[unit.t_pos].append(unit)
 
-    surfaces = [AgeModelSurface(pos, units) for pos, units in surfaces.items()]
+    surfaces = [
+        AgeModelSurface(pos, units, BoundaryStatus.MODELED)
+        for pos, units in surfaces.items()
+    ]
 
     model = AgeModel(surfaces)
     return list(create_unit_boundaries(model.apply()))
