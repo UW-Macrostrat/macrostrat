@@ -113,5 +113,18 @@ def get_all_intervals():
     """Get all intervals from the database."""
     db = get_database()
     return db.run_query(
-        "SELECT id, age_bottom, age_top, interval_name FROM macrostrat.intervals"
+        """
+        SELECT
+            i.id,
+            i.age_bottom,
+            i.age_top,
+            i.interval_name,
+            i.rank,
+            i.interval_type,
+            array_agg(ti.timescale_id) timescales
+        FROM macrostrat.intervals i
+        LEFT JOIN macrostrat.timescales_intervals ti
+        ON i.id = ti.interval_id
+        GROUP BY i.id, ti.timescale_id;
+    """
     ).fetchall()

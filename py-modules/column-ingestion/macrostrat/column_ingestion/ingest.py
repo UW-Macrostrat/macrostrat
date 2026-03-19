@@ -63,5 +63,8 @@ def ingest_columns_from_file(data_file):
             for unit in col.units:
                 unit.col_id = col_id
                 unit.section_id = section_id
-            write_units(db, col.units)
+            units = write_units(db, col.units)
+
+            build_age_model(db, units)
+
         db.session.commit()

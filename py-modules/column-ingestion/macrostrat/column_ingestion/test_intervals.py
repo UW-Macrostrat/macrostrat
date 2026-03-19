@@ -4,43 +4,13 @@ from dataclasses import dataclass
 from pytest import mark
 import re
 
-from .database import get_all_intervals
-
-
-def get_intervals():
-    return [
-        Interval(row.id, row.interval_name, row.age_bottom, row.age_top)
-        for row in get_all_intervals()
-    ]
+from .intervals import Interval, IntervalID, get_intervals
 
 
 def test_get_intervals():
     """Test that get_all_intervals returns the correct intervals"""
     intervals = get_intervals()
     assert len(intervals) > 0
-
-
-@dataclass
-class IntervalID:
-    id: int
-    name: str
-
-    def __hash__(self):
-        return hash(self.id, self.name)
-
-
-@dataclass
-class Interval:
-    id: int
-    name: str
-    age_bottom: float
-    age_top: float
-
-    def __eq__(self, other):
-        return self.id == other.id and self.name == other.name
-
-
-test_text = "Early Cambrian, Series 2, Stage 3"
 
 
 @dataclass
@@ -99,7 +69,6 @@ def test_get_interval(test_case: IntervalTestCase):
 
     # Order by age width descending
     ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
-    print(ints)
     # Ensure that intervals all overlap
     last_int = ints[-1]
     for _int in ints[:-1]:
@@ -111,4 +80,4 @@ def test_get_interval(test_case: IntervalTestCase):
 def match_predicate(interval: Interval, text: str):
     if text.isdigit():
         return int(text) == interval.id
-    return interval.name in text
+    return interval.name == text

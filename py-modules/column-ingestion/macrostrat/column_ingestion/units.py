@@ -7,6 +7,7 @@ from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
 from .lithologies import Lithology, process_liths_text, LithAbundance
+from .intervals import Interval, get_intervals, RelativeAge
 
 
 @dataclass
@@ -20,6 +21,10 @@ class Unit:
     description: str | None = None
     name: str | None = None
     color: str | None = None
+
+    # Relative age positioning
+    b_age: RelativeAge | None = None
+    t_age: RelativeAge | None = None
 
 
 log = get_logger(__name__)
@@ -125,8 +130,6 @@ def prepare_column_units(df) -> list[Unit]:
             .alias(spec)
         )
 
-    print(df)
-
     # Get unique lithologies in the column
     lithologies = df["lithology"].unique().to_list()
     print_list("Lithologies", lithologies)
@@ -154,7 +157,19 @@ def prepare_column_units(df) -> list[Unit]:
             name=row.get("name"),
             lithology=liths,
             color=row.get("color"),
+            b_age=b_age,
+            t_age=t_age,
         )
+
+        # Only relative age positioning is supported for now
+        b_int = get_interval_by_id(row.get("b_int"))
+        if b_int is not None:
+            unit.b_age = RelativeAge(interval=b_int, proportion=row.get("b_prop", 0))
+
+        t_int = get_interval_by_id(row.get("t_int"))
+        if t_int is not None:
+            unit.t_age = RelativeAge(interval=t_int, proportion=row.get("t_prop", 1))
+
         res.append(unit)
     return res
 
@@ -263,6 +278,8 @@ def write_units(db, units: list[Unit]):
                     unit_lith_id=ulid, lith_att_id=att.id, ref_id=0
                 )
                 db.session.execute(insert_att_stmt)
+    # Units with IDs set
+    return units
 
 
 def print_list(title, lst):
