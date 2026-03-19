@@ -87,20 +87,27 @@ def get_units(data_file) -> {str: list[Unit]}:
 def prepare_column_units(df) -> list[Unit]:
     # Sort by b_pos (descending if height)
     df = df.sort("b_pos", descending=True)
-    # If the t_pos column does not exist, create it (empty for now)
-    if "t_pos" not in df.columns:
-        df = df.with_columns(pl.lit(None, float).alias("t_pos"))
-
-    # Create a column with default values for the top position of each unit
-    t_col = df["b_pos"].shift(1)
 
     # Fill in t_pos with the next b_pos value, unless it already exists
-    df = df.with_columns(
-        pl.when(pl.col("t_pos").is_null())
-        .then(t_col)
-        .otherwise(pl.col("t_pos"))
-        .alias("t_pos")
-    )
+    # Do the same for intervals and proportions
+    for suffix in ["pos", "prop", "int"]:
+        b_col = "b_" + suffix
+        t_col = "t_" + suffix
+        # If the t_pos column does not exist, create it (empty for now)
+        for col in [b_col, t_col]:
+            if col in df.columns:
+                continue
+            df = df.with_columns(pl.lit(None, float).alias(col))
+
+        # Create a column with default values for the top position of each unit
+        _t_col = df[b_col].shift(1)
+
+        df = df.with_columns(
+            pl.when(pl.col(t_col).is_null())
+            .then(_t_col)
+            .otherwise(pl.col(t_col))
+            .alias(t_col)
+        )
 
     n_rows = df.shape[0]
 
@@ -137,16 +144,12 @@ def prepare_column_units(df) -> list[Unit]:
         )
 
     # Get unique lithologies in the column
-    lithologies = df["lithology"].unique().to_list()
-    print_list("Lithologies", lithologies)
-
-    minor_lithologies = df["minor_lith"].unique().to_list()
-    if len(minor_lithologies) > 0:
-        print_list("Minor lithologies", minor_lithologies)
-
-    # Get strat names
-    strat_names = df["strat_name"].unique().to_list()
-    print_list("Strat_names", strat_names)
+    for col in ["lithology", "minor_lith", "strat_name"]:
+        if col not in df.columns:
+            continue
+        lithologies = df[col].unique().to_list()
+        if len(lithologies) > 0:
+            print_list(col, lithologies)
 
     res = []
     for row in df.iter_rows(named=True):
@@ -226,7 +229,7 @@ def write_units(db, units: list[Unit]):
                 position_top=unit.t_pos,
                 max_thick=thickness or 0,
                 min_thick=thickness or 0,
-                outcrop="subsurface",
+                outcrop="surface",
                 # description=unit.description,
                 strat_name=unit.name or "default",
                 color="blue",

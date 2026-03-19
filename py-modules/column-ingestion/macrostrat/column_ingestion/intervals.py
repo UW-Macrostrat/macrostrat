@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass, field
 from contextvars import ContextVar
+from rich import print
 
 from .database import get_all_intervals
 
@@ -105,7 +106,10 @@ def get_interval_from_text(text: str | None):
         if match:
             ints.append(match)
         else:
-            print(f"No match for {a}")
+            print(f"[red]No match for {a}")
+
+    if len(ints) == 0:
+        return None
 
     # Order by age width descending
     ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
@@ -120,4 +124,4 @@ def get_interval_from_text(text: str | None):
 def match_predicate(interval: Interval, text: str):
     if text.isdigit():
         return int(text) == interval.id
-    return interval.name == text
+    return interval.name.lower() == text.lower()

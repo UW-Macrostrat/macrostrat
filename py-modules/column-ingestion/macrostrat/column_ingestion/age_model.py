@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from collections import defaultdict
 import numpy as N
+from rich import print
 
 from .intervals import Interval, RelativeAge, get_intervals
 from .units import Unit
@@ -28,6 +29,19 @@ class UnitBoundary:
     def __post_init__(self):
         if self.unit_above is None and self.unit_below is None:
             raise ValueError("Either unit_above or unit_below must be set")
+
+    # allow conversion to dict
+    def to_dict(self):
+        return {
+            "t1": self.age.interval.id,
+            "t1_prop": self.age.proportion,
+            "t1_age": self.model_age,
+            "unit_id": self.unit_below,
+            "unit_id_2": self.unit_above,
+            "boundary_status": self.boundary_status.value,
+            "boundary_position": self.position,
+            "section_id": self.section_id,
+        }
 
 
 @dataclass
@@ -111,6 +125,10 @@ class AgeModel:
         )
 
     @property
+    def has_valid_age_model(self):
+        return len(self.constrained_surfaces) >= 2
+
+    @property
     def constrained_surfaces(self):
         return [s for s in self.surfaces if s.relative_age is not None]
 
@@ -156,7 +174,9 @@ class AgeModel:
                 surface.boundary_status = BoundaryStatus.RELATIVE
             # Sanity check
             if surface.relative_age is not None:
-                assert N.allclose(surface.relative_age.model_age(), model_age)
+                assert N.allclose(
+                    float(surface.relative_age.model_age()), float(model_age)
+                )
 
         return self.surfaces
 
@@ -192,7 +212,13 @@ def build_section_age_model(db, units: list[Unit]) -> list[UnitBoundary]:
     ]
 
     model = AgeModel(surfaces)
-    return list(create_unit_boundaries(model.apply()))
+    if not model.has_valid_age_model:
+        print("[red bold]Invalid age model, skipping unit_boundaries")
+        return []
+
+    boundaries = list(create_unit_boundaries(model.apply()))
+
+    write_unit_boundaries(db, boundaries)
 
 
 def create_unit_boundaries(surfaces: list[AgeModelSurface]):
@@ -216,3 +242,9 @@ def create_unit_boundaries(surfaces: list[AgeModelSurface]):
                     unit_above=above.id if above is not None else None,
                     unit_below=below.id if below is not None else None,
                 )
+
+
+def write_unit_boundaries(db, unit_boundaries: list[UnitBoundary]):
+    cls = db.model.macrostrat_unit_boundaries
+    mappings = [u.to_dict() for u in unit_boundaries]
+    db.session.bulk_insert_mappings(cls, mappings)
