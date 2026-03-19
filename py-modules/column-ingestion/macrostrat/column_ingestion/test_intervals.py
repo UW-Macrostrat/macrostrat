@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 from pytest import mark
+import re
+
 from .database import get_all_intervals
 
 
@@ -49,10 +51,21 @@ class IntervalTestCase:
 
 test_cases = [
     IntervalTestCase(
+        "254",
+        IntervalID(id=254, name="Stage 3"),
+    ),
+    IntervalTestCase("Early Cambrian, 254", IntervalID(id=254, name="Stage 3")),
+    IntervalTestCase(
+        "Early Cambrian, Series 2, 254", IntervalID(id=254, name="Stage 3")
+    ),
+    IntervalTestCase(
         "Early Cambrian, Series 2, Stage 3", IntervalID(id=254, name="Stage 3")
     ),
     IntervalTestCase(
         "Early Cambrian, Series 2, Stage 4", IntervalID(id=253, name="Stage 4")
+    ),
+    IntervalTestCase(
+        "Early Cambrian > Series 2 > Stage 4", IntervalID(id=253, name="Stage 4")
     ),
     IntervalTestCase(
         "Early Cambrian, Tommotian", IntervalID(id=1690, name="Tommotian")
@@ -63,27 +76,39 @@ test_cases = [
 ]
 
 
+def split_text(text: str):
+    """Split text by commas and/or >"""
+    res = re.split(r"[,>]", text)
+    return [x.strip() for x in res if x.strip()]
+
+
 @mark.parametrize("test_case", test_cases)
 def test_get_interval(test_case: IntervalTestCase):
     # Test that all intervals are matched and return the most specific
     all_intervals = get_intervals()
 
-    split_text = test_case.text.split(",")
     ints = []
-    for _int in split_text:
+    for _int in split_text(test_case.text):
         a = _int.strip()
-        # Find the interval that matches the most
-        match = [i for i in all_intervals if i.name == a]
+        # Check if the interval is an integer:
+        match = next((i for i in all_intervals if match_predicate(i, a)), None)
         if match:
-            ints.append(match[0])
+            ints.append(match)
         else:
             print(f"No match for {a}")
 
-    # Order by age range descending
+    # Order by age width descending
     ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
+    print(ints)
     # Ensure that intervals all overlap
     last_int = ints[-1]
     for _int in ints[:-1]:
         assert _int.age_bottom >= last_int.age_top
         assert _int.age_top <= last_int.age_bottom
     assert last_int == test_case.expected
+
+
+def match_predicate(interval: Interval, text: str):
+    if text.isdigit():
+        return int(text) == interval.id
+    return interval.name in text
