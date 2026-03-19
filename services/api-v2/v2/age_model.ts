@@ -57,7 +57,7 @@ module.exports = function (req, res, next) {
     t1_age::float AS model_age,
     boundary_status,
     boundary_type,
-    boundary_position,
+    boundary_position::float,
     unit_boundaries.unit_id as unit_below,
     unit_id_2 as unit_above,
     unit_boundaries.ref_id `;
