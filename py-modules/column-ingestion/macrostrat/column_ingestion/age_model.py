@@ -84,7 +84,8 @@ class AgeModelSurface:
             return None
         model_ages = [a.model_age() for a in ages]
         # Check that all ages are the same
-        assert len(set(model_ages)) == 1
+        if len(set(model_ages)) > 1:
+            print(f"[yellow bold]Warning: model ages are not all the same: {ages}")
         # Rank the ages by which is the most specific
         ages.sort(key=lambda x: x.interval.age_span)
         return ages[0]

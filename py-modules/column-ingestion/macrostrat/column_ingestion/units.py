@@ -90,10 +90,11 @@ def prepare_column_units(df) -> list[Unit]:
 
     # Fill in t_pos with the next b_pos value, unless it already exists
     # Do the same for intervals and proportions
-    for suffix in ["pos", "prop", "int"]:
+    for suffix in ["pos"]:  # , "prop", "int"]:
         b_col = "b_" + suffix
         t_col = "t_" + suffix
         # If the t_pos column does not exist, create it (empty for now)
+
         for col in [b_col, t_col]:
             if col in df.columns:
                 continue
