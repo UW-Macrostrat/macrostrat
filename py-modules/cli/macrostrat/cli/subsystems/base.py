@@ -1,4 +1,4 @@
-from macrostrat.app_frame import Application, Subsystem, CommandBase
+from macrostrat.app_frame import Application, CommandBase, Subsystem
 
 
 class MacrostratSubsystem(Subsystem):

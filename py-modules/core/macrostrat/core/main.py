@@ -3,10 +3,10 @@ from pathlib import Path
 from sys import argv, exit
 
 import toml
+from click.utils import get_app_dir
 from dynaconf import Dynaconf
 from rich.console import Console
 from typer import Context, Option
-from click.utils import get_app_dir
 
 from macrostrat.app_frame import Application, ControlCommand
 from macrostrat.utils import get_logger

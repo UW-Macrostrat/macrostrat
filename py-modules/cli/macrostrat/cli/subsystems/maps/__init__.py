@@ -6,12 +6,12 @@ from subprocess import run
 from rich import print
 from typer import Argument, Typer
 
-from ..base import MacrostratSubsystem
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 
 from ...database._legacy import get_db
 from ...database.utils import engine_for_db_name
+from ..base import MacrostratSubsystem
 
 __dir__ = Path(__file__).parent
 

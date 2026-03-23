@@ -1,7 +1,8 @@
 from contextvars import ContextVar
 
-from macrostrat.database import Database
 from sqlalchemy import create_engine
+
+from macrostrat.database import Database
 
 from ..config import PG_DATABASE
 

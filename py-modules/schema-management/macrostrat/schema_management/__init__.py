@@ -12,23 +12,13 @@ from typer import Argument, Option
 from macrostrat.app_frame import CommandBase
 from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
-from macrostrat.core.database import get_database
+from macrostrat.core.database import engine_for_db_name, get_database
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
-from macrostrat.core.database import engine_for_db_name
 
-from .inspect_utils import *
-from .inspect_utils import _any, _not
-from .migrations import (
-    run_migrations,
-    ReadinessState,
-    ApplicationStatus,
-    Migration,
-    MigrationResult,
-)
 from .defs import (
     StatementCounter,
     apply_schema_for_environment,
@@ -37,10 +27,19 @@ from .defs import (
     is_unsafe_statement,
     planning_database,
 )
+from .inspect_utils import *
+from .inspect_utils import _any, _not
 
 # First, register all migrations
 # NOTE: right now, this is quite implicit.
 from .migration_system import load_migrations
+from .migrations import (
+    ApplicationStatus,
+    Migration,
+    MigrationResult,
+    ReadinessState,
+    run_migrations,
+)
 
 log = get_logger(__name__)
 

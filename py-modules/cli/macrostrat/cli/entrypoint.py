@@ -10,8 +10,8 @@ from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
-from macrostrat.utils.shell import run
 from macrostrat.schema_management import schema_app
+from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
 from .subsystems.dev import dev_app

@@ -10,10 +10,11 @@ import docker
 from pydantic import BaseModel
 from rich import print
 
-from macrostrat.database.utils import OutputMode
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
+from macrostrat.database.utils import OutputMode
+from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+
 from .inspect_utils import *
 
 try:

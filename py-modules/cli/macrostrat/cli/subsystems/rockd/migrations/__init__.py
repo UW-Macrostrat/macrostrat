@@ -3,6 +3,7 @@ from pathlib import Path
 from sqlalchemy.engine import make_url
 
 from macrostrat.core import app as app_
+from macrostrat.database import Database
 from macrostrat.schema_management.migrations import (
     ApplicationStatus,
     Migration,
@@ -10,7 +11,6 @@ from macrostrat.schema_management.migrations import (
     has_columns,
     schema_exists,
 )
-from macrostrat.database import Database
 
 migrations_dir = Path(__file__).parent
 
