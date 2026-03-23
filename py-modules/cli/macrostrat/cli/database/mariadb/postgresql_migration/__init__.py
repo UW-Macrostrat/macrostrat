@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
 from macrostrat.core import app
-from macrostrat.core.migrations import migration_has_been_run
+from macrostrat.schema_management.migrations import migration_has_been_run
 from macrostrat.database import create_database, database_exists
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database.utils import run_query, run_sql

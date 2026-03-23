@@ -1,6 +1,6 @@
 from psycopg2.sql import Identifier
 
-from macrostrat.core.migrations import Migration, exists
+from macrostrat.schema_management import Migration, exists
 from macrostrat.database import Database
 
 

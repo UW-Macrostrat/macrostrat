@@ -11,9 +11,9 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
 from macrostrat.utils.shell import run
+from macrostrat.schema_management import schema_app
 
 from .database import db_app, db_subsystem
-from .schema_management import schema_app
 from .subsystems.dev import dev_app
 from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import (

@@ -1,6 +1,6 @@
 from psycopg2.sql import Identifier
 
-from macrostrat.core.migrations import ApplicationStatus, Migration
+from macrostrat.schema_management import ApplicationStatus, Migration
 from macrostrat.database import Database
 
 MATCHES_SLUG_SQL = """

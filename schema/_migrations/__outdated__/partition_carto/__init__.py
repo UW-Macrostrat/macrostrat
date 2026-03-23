@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import Migration, view_exists
+from macrostrat.schema_management import Migration, view_exists
 
 __dir__ = Path(__file__).parent
 

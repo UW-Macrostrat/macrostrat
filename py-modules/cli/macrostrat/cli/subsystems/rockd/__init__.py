@@ -22,9 +22,9 @@ from rich.table import Table
 from sqlalchemy import text
 from typer import Argument, Option, Typer
 
-from macrostrat.cli.database.utils import engine_for_db_name
+from macrostrat.core.database import engine_for_db_name
 from macrostrat.core import app as app_
-from macrostrat.core.migrations import _run_migrations
+from macrostrat.schema_management.migrations import _run_migrations
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 

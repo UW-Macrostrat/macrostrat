@@ -1,11 +1,9 @@
-import os
 from pathlib import Path
 
-from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 from macrostrat.core import app as app_
-from macrostrat.core.migrations import (
+from macrostrat.schema_management.migrations import (
     ApplicationStatus,
     Migration,
     exists,

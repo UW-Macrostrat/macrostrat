@@ -14,9 +14,8 @@ from rich import print
 from macrostrat.database import Database
 from macrostrat.database.utils import OutputMode
 from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
-
-from ..config import settings
-from ..database import get_database
+from macrostrat.core.config import settings
+from macrostrat.core.database import get_database
 
 """Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]
