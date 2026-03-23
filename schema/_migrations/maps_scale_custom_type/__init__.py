@@ -1,7 +1,7 @@
 from psycopg2.sql import Identifier
 
-from macrostrat.core.migrations import Migration, _any, _not, custom_type_exists
 from macrostrat.database import Database
+from macrostrat.schema_management import Migration, _any, _not, custom_type_exists
 
 
 class MapsScaleCustomTypeMigration(Migration):

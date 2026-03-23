@@ -4,7 +4,7 @@ __dir__ = Path(__file__).parent
 
 
 # TODO: break this into smaller atomic migrations
-from macrostrat.core.migrations import Migration, ReadinessState
+from macrostrat.schema_management import Migration, ReadinessState
 
 
 class MacrostratLexiconViewsMigration(Migration):
