@@ -6,7 +6,7 @@ from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
 
-from macrostrat.app_frame import CommandBase
+from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
@@ -36,6 +36,9 @@ install(show_locals=False)
 
 def initialize(app):
     pass
+
+
+app.subsystems = SubsystemManager()
 
 
 settings = app.settings
@@ -395,7 +398,7 @@ main.add_typer(test_app, name="test", rich_help_panel="Subsystems")
 main.add_typer(dev_app, name="dev", rich_help_panel="Subsystems")
 
 
-app.finish_loading_subsystems()
+app.subsystems.finalize(app)
 
 
 # Commands to manage this command-line interface

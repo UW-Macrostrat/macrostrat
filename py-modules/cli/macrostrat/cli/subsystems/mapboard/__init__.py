@@ -1,6 +1,6 @@
 from typer import Typer
 
-from macrostrat.core import MacrostratSubsystem
+from ..base import MacrostratSubsystem
 
 
 class MapboardSubsystem(MacrostratSubsystem):

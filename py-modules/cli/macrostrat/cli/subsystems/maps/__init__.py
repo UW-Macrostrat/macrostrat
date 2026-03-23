@@ -6,7 +6,7 @@ from subprocess import run
 from rich import print
 from typer import Argument, Typer
 
-from macrostrat.core import MacrostratSubsystem
+from ..base import MacrostratSubsystem
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 

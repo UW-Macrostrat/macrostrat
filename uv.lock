@@ -945,6 +945,7 @@ name = "macrostrat-core"
 version = "2.0.1"
 source = { editable = "py-modules/core" }
 dependencies = [
+    { name = "click" },
     { name = "dynaconf" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-database" },
@@ -955,21 +956,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.1.0,<9" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
     { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
     { name = "macrostrat-database", specifier = ">=3.5.3,<4" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "sqlalchemy", specifier = ">=2.0.28,<3" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "bandit", specifier = ">=1.7.7,<2" },
-    { name = "black", specifier = ">=24.2.0,<25" },
-    { name = "isort", specifier = ">=5.13.2,<6" },
-    { name = "mypy", specifier = ">=1.8.0,<2" },
-    { name = "pylint", specifier = ">=3.1.0,<4" },
 ]
 
 [[package]]

@@ -1,8 +1,6 @@
 import asyncio
 from datetime import datetime
-from pathlib import Path
 from sys import exit, stderr
-from typing import Callable
 
 import click
 from results import db as results_db
@@ -16,14 +14,21 @@ from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
-from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 from macrostrat.core.database import engine_for_db_name
 
-from .migrations import run_migrations
+from .inspect_utils import *
+from .inspect_utils import _any, _not
+from .migrations import (
+    run_migrations,
+    ReadinessState,
+    ApplicationStatus,
+    Migration,
+    MigrationResult,
+)
 from .defs import (
     StatementCounter,
     apply_schema_for_environment,
