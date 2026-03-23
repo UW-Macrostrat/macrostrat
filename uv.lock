@@ -831,6 +831,7 @@ dependencies = [
     { name = "macrostrat-integrations" },
     { name = "macrostrat-map-integration" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-utils" },
     { name = "mapboard-topology-manager" },
     { name = "numpy" },
@@ -881,6 +882,7 @@ requires-dist = [
     { name = "macrostrat-map-integration", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "py-modules/map-integration" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
+    { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "macrostrat-utils", specifier = ">=1.3.0,<2" },
     { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
     { name = "numpy", specifier = ">=1.23.4,<2" },
@@ -945,6 +947,7 @@ name = "macrostrat-core"
 version = "2.0.1"
 source = { editable = "py-modules/core" }
 dependencies = [
+    { name = "click" },
     { name = "dynaconf" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-database" },
@@ -955,21 +958,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.1.0,<9" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
     { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
     { name = "macrostrat-database", specifier = ">=3.5.3,<4" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "sqlalchemy", specifier = ">=2.0.28,<3" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "bandit", specifier = ">=1.7.7,<2" },
-    { name = "black", specifier = ">=24.2.0,<25" },
-    { name = "isort", specifier = ">=5.13.2,<6" },
-    { name = "mypy", specifier = ">=1.8.0,<2" },
-    { name = "pylint", specifier = ">=3.1.0,<4" },
 ]
 
 [[package]]
@@ -1112,6 +1107,37 @@ requires-dist = [
 ]
 
 [[package]]
+name = "macrostrat-schema-management"
+version = "1.0.0"
+source = { editable = "py-modules/schema-management" }
+dependencies = [
+    { name = "click" },
+    { name = "docker" },
+    { name = "macrostrat-app-frame" },
+    { name = "macrostrat-database" },
+    { name = "macrostrat-dinosaur" },
+    { name = "macrostrat-utils" },
+    { name = "pytest" },
+    { name = "results" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1.0,<8.2.0" },
+    { name = "docker", specifier = ">=7,<8" },
+    { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
+    { name = "macrostrat-database", specifier = ">=3.5.4,<4" },
+    { name = "macrostrat-dinosaur", specifier = ">=3.0.1,<4" },
+    { name = "macrostrat-utils", specifier = ">=1.3.0,<2" },
+    { name = "pytest", specifier = ">=8.3.4,<9" },
+    { name = "results", specifier = "==1.4.0" },
+    { name = "rich", specifier = ">=13,<14" },
+    { name = "typer", specifier = ">=0.12,<0.25" },
+]
+
+[[package]]
 name = "macrostrat-system"
 version = "0.1.0"
 source = { editable = "." }
@@ -1120,6 +1146,7 @@ dependencies = [
     { name = "macrostrat-cli" },
     { name = "macrostrat-core" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-schema-management" },
     { name = "setuptools" },
 ]
 
@@ -1139,6 +1166,7 @@ requires-dist = [
     { name = "macrostrat-cli", editable = "py-modules/cli" },
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
+    { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "setuptools", specifier = ">=75.8.2,<81.0.0" },
 ]
 

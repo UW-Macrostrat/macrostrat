@@ -10,7 +10,7 @@ from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
 
-from macrostrat.core import MacrostratSubsystem, app
+from macrostrat.core import app
 from macrostrat.core.database import get_database
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
@@ -19,6 +19,7 @@ from macrostrat.database.utils import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
+from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
 from .sequences import reset_sequences
 

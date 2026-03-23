@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import Migration, schema_exists
+from macrostrat.schema_management import Migration, schema_exists
 
 
 class ColumnBuilderMigration(Migration):

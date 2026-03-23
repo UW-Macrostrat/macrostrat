@@ -1,5 +1,7 @@
 from contextvars import ContextVar
 
+from sqlalchemy import create_engine
+
 from macrostrat.database import Database
 
 from ..config import PG_DATABASE
@@ -23,3 +25,11 @@ def refresh_database():
     db.session.close()
     db_ctx.set(None)
     return get_database()
+
+
+def engine_for_db_name(name: str | None):
+    engine = get_database().engine
+    if name is None:
+        return engine
+    url = engine.url.set(database=name)
+    return create_engine(url)

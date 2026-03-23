@@ -1,5 +1,5 @@
-from macrostrat.core.migrations import ApplicationStatus, Migration
 from macrostrat.database import Database
+from macrostrat.schema_management.migrations import ApplicationStatus, Migration
 
 
 class StorageSchemeMigration(Migration):
@@ -18,7 +18,7 @@ class StorageSchemeMigration(Migration):
         -- Lock the table to prevent concurrent updates
         LOCK TABLE storage.objects  IN ACCESS EXCLUSIVE MODE;
 
-        ALTER TABLE storage.objects 
+        ALTER TABLE storage.objects
         ALTER COLUMN scheme
               TYPE storage.scheme USING scheme::text::storage.scheme;
 

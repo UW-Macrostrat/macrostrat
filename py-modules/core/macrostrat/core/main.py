@@ -3,17 +3,12 @@ from pathlib import Path
 from sys import argv, exit
 
 import toml
+from click.utils import get_app_dir
 from dynaconf import Dynaconf
 from rich.console import Console
-from typer import Context, Option, get_app_dir
+from typer import Context, Option
 
-from macrostrat.app_frame import (
-    Application,
-    ControlCommand,
-    Subsystem,
-    SubsystemManager,
-)
-from macrostrat.app_frame.control_command import CommandBase
+from macrostrat.app_frame import Application, ControlCommand
 from macrostrat.utils import get_logger
 
 from .console import console_theme
@@ -76,15 +71,6 @@ def load_settings(console: Console):
     return settings
 
 
-class MacrostratSubsystem(Subsystem):
-    def __init__(self, app: Application):
-        self.app = app
-        self.settings = app.settings
-
-    def control_command(self, **kwargs):
-        return CommandBase(**kwargs)
-
-
 class StateManager:
     def get(self, key: str = None) -> str:
         return get_app_state(key)
@@ -108,7 +94,6 @@ class MacrostratControlCommand(ControlCommand):
 
 
 class Macrostrat(Application):
-    subsystems: SubsystemManager
     settings: Dynaconf
     console: Console
     state: StateManager
@@ -125,9 +110,9 @@ class Macrostrat(Application):
 
         self.console = Console(theme=console_theme)
         self.settings = load_settings(self.console)
-        self.subsystems = SubsystemManager()
         self.state = StateManager()
 
+        # TODO: move docker-compose to separate setting
         compose_files = []
         env_file = None
         root_dir = None
@@ -156,10 +141,7 @@ class Macrostrat(Application):
             restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
 
-        self.subsystems._app = self
-
-    def finish_loading_subsystems(self):
-        self.subsystems.finalize(self)
+        # self.subsystems._app = self
 
     @property
     def app_dir(self):

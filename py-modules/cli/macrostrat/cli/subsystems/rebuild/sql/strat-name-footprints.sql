@@ -1,5 +1,5 @@
 SET search_path TO macrostrat, public;
-DROP TABLE IF EXISTS macrostrat.strat_name_footprints_old;
+DROP TABLE IF EXISTS macrostrat.strat_name_footprints;
 DROP TABLE IF EXISTS macrostrat.strat_name_footprints_new;
 
 CREATE TABLE macrostrat.strat_name_footprints_new AS
