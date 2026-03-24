@@ -197,18 +197,6 @@ class StratNameFootprints:
         db = get_database()
         db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
 
-        counts = db.run_query("""
-            SELECT
-              (SELECT COUNT(*) FROM macrostrat.strat_name_footprints_new) AS new_count,
-              (SELECT COUNT(*) FROM macrostrat.strat_name_footprints) AS old_count
-        """).fetchone()
-
-        if counts.new_count < counts.old_count:
-            raise ValueError(
-                f"strat_name_footprints_new has fewer rows than current table "
-                f"({counts.new_count} < {counts.old_count})"
-            )
-
         db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 

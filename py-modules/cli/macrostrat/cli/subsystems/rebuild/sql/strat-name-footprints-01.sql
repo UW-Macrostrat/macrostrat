@@ -1,5 +1,5 @@
 SET search_path TO macrostrat, public;
-DROP TABLE IF EXISTS macrostrat.strat_name_footprints;
+DROP TABLE IF EXISTS macrostrat.strat_name_footprints_old;
 DROP TABLE IF EXISTS macrostrat.strat_name_footprints_new;
 
 CREATE TABLE macrostrat.strat_name_footprints_new AS
@@ -69,9 +69,7 @@ LEFT JOIN second ON first.concept_id = second.concept_id
 LEFT JOIN macrostrat.strat_names_meta ON second.concept_id = strat_names_meta.concept_id
 LEFT JOIN macrostrat.intervals ti ON strat_names_meta.t_int = ti.id
 LEFT JOIN macrostrat.intervals tb ON strat_names_meta.b_int = tb.id
-WHERE second.concept_id IS NOT NULL
-
-;
+WHERE second.concept_id IS NOT NULL;
 
 UPDATE macrostrat.strat_name_footprints_new SET geom = 'POLYGON EMPTY' WHERE ST_GeometryType(geom) = 'ST_Point';
 
@@ -143,8 +141,7 @@ FROM third
 LEFT JOIN macrostrat.strat_names_meta ON third.concept_id = strat_names_meta.concept_id
 JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = third.strat_name_id
 LEFT JOIN macrostrat.intervals ti ON strat_names_meta.t_int = ti.id
-LEFT JOIN macrostrat.intervals tb ON strat_names_meta.b_int = tb.id
-;
+LEFT JOIN macrostrat.intervals tb ON strat_names_meta.b_int = tb.id;
 
 UPDATE macrostrat.strat_name_footprints_new SET geom = 'POLYGON EMPTY' WHERE ST_GeometryType(geom) = 'ST_Point';
 UPDATE macrostrat.strat_name_footprints_new SET geom = ST_SetSRID(geom, 4326);

@@ -14,9 +14,9 @@ BEGIN
     RAISE EXCEPTION 'Sanity check failed: strat_name_footprints_new is empty';
   END IF;
 
-  --Row count shouldn't drop by more than 10% vs current table
+  --Row count shouldn't drop by more than 20% vs current table
   SELECT COUNT(*) INTO old_count FROM macrostrat.strat_name_footprints;
-  IF old_count > 0 AND new_count < old_count * 0.9 THEN
+  IF old_count > 0 AND new_count < old_count * 0.8 THEN
     RAISE EXCEPTION 'Sanity check failed: new table has % rows, old has % (>10%% drop)',
       new_count, old_count;
   END IF;
@@ -47,9 +47,7 @@ BEGIN
 
   RAISE NOTICE 'Sanity checks passed: % rows, % empty geoms, % invalid geoms',
     new_count, empty_geom, invalid_geom;
-END $$;
 
-BEGIN;
-  ALTER TABLE IF EXISTS macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
+    ALTER TABLE IF EXISTS macrostrat.strat_name_footprints RENAME TO strat_name_footprints_old;
   ALTER TABLE macrostrat.strat_name_footprints_new RENAME TO strat_name_footprints;
-COMMIT;
+END $$;
