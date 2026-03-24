@@ -84,6 +84,9 @@ class RelativeAge:
             self.interval.age_span
         )
 
+    def __hash__(self):
+        return hash(self.interval, self.proportion)
+
 
 def split_text(text: str):
     """Split text by commas and/or >"""

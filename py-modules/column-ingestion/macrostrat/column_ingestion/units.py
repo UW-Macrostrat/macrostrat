@@ -69,8 +69,17 @@ def get_units(data_file) -> {str: list[Unit]}:
     for warning in warnings:
         log.warning(warning)
 
-    # Ensure b_pos is numeric
-    df = df.with_columns(pl.col("b_pos").cast(pl.Float64, strict=False))
+    # Ensure that either b_pos or t_pos is present
+    if "b_pos" not in df.columns and "t_pos" not in df.columns:
+        raise ValueError("Either b_pos or t_pos must be present in the data frame.")
+
+    # Create the columns that don't exist
+    for col in ["b_pos", "t_pos"]:
+        if col not in df.columns:
+            newcol = pl.lit(None).alias(col)
+        else:
+            newcol = pl.col(col).cast(pl.Float64, strict=False)
+        df = df.with_columns(newcol)
 
     # Split into groups by column_id
     groups = df.group_by(["col_id"])
@@ -86,11 +95,12 @@ def get_units(data_file) -> {str: list[Unit]}:
 
 def prepare_column_units(df) -> list[Unit]:
     # Sort by b_pos (descending if height)
+    # TODO: figure out how to switch conventions for depth
     df = df.sort("b_pos", descending=True)
 
     # Fill in t_pos with the next b_pos value, unless it already exists
     # Do the same for intervals and proportions
-    for suffix in ["pos"]:  # , "prop", "int"]:
+    for suffix in ["pos", "prop", "int"]:
         b_col = "b_" + suffix
         t_col = "t_" + suffix
         # If the t_pos column does not exist, create it (empty for now)
@@ -172,17 +182,25 @@ def prepare_column_units(df) -> list[Unit]:
         # Only relative age positioning is supported for now
         b_int = get_interval_from_text(row.get("b_int"))
         if b_int is not None:
-            unit.b_age = RelativeAge(interval=b_int, proportion=row.get("b_prop") or 0)
-            print(f"b_age: {unit.b_age}")
+            unit.b_age = RelativeAge(
+                interval=b_int, proportion=coalesce(row.get("b_prop"), 0)
+            )
 
         t_int = get_interval_from_text(row.get("t_int"))
         if t_int is not None:
-            unit.t_age = RelativeAge(interval=t_int, proportion=row.get("t_prop") or 1)
-            print(f"t_age: {unit.t_age}")
+            unit.t_age = RelativeAge(
+                interval=t_int, proportion=coalesce(row.get("t_prop"), 1)
+            )
 
         res.append(unit)
 
     return res
+
+
+def coalesce(value, default):
+    if value is None:
+        return default
+    return value
 
 
 def write_units(db, units: list[Unit]):

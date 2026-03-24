@@ -58,7 +58,7 @@ class AgeModelSurface:
         if self.relative_age is None:
             self.relative_age = self.build_relative_age()
         if self.relative_age is not None:
-            self.boundary_statusp = BoundaryStatus.RELATIVE
+            self.boundary_status = BoundaryStatus.RELATIVE
 
     @property
     def units_above(self):
@@ -98,6 +98,9 @@ class AgeModelSurface:
         units_above = ",".join([str(u.id) for u in self.units_above])
         units_below = ",".join([str(u.id) for u in self.units_below])
         return f"AgeModelSurface(position={self.position}, relative_age={self.relative_age}, above={units_above}, below={units_below})"
+
+    def __hash__(self):
+        return hash(self.position, self.relative_age)
 
 
 def timescale_intervals(timescale_id: int):
@@ -198,7 +201,7 @@ def build_age_model(db, units: list[Unit]):
         build_section_age_model(db, units)
 
 
-def build_section_age_model(db, units: list[Unit]) -> list[UnitBoundary]:
+def build_section_age_model(db, units: list[Unit]):
     """Build an age model for a section"""
 
     # Build an index of surfaces by position
@@ -213,9 +216,9 @@ def build_section_age_model(db, units: list[Unit]) -> list[UnitBoundary]:
     ]
 
     model = AgeModel(surfaces)
+
     if not model.has_valid_age_model:
         print("[red bold]Invalid age model, skipping unit_boundaries")
-        return []
 
     boundaries = list(create_unit_boundaries(model.apply()))
 
