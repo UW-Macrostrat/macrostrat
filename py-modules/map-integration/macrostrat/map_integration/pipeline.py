@@ -32,7 +32,6 @@ from macrostrat.core.schemas import (  # type: ignore[import-untyped]
     IngestProcessTag,
     IngestState,
     Object,
-    ObjectGroup,
     SchemeEnum,
     Sources,
 )
