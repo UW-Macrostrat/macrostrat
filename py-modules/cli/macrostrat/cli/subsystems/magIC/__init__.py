@@ -1,23 +1,27 @@
-import requests
 from datetime import datetime, timezone
+
+import requests
+from pandas import read_sql
 from sqlalchemy import text
+
+from macrostrat.cli.database.utils import engine_for_db_name
+from macrostrat.database import Database
 from macrostrat.match_utils import (
+    ColumnInfo,
     get_columns_for_location,
     standardize_names,
 )
-from macrostrat.match_utils import ColumnInfo
 from macrostrat.match_utils.strat_names import create_ignore_list
-from macrostrat.database import Database
-from macrostrat.cli.database.utils import engine_for_db_name
-from pandas import read_sql
 
 API_DOMAIN = "https://api.earthref.org/v1/MagIC/search/sites"
+
 
 def _float(val):
     if val is None:
         return None
     stripped = str(val).strip()
     return float(stripped) if stripped else None
+
 
 def fetch_sites(published_since: str) -> list[dict]:
     """Paginate through the magIC API and return all site records."""
@@ -48,21 +52,29 @@ def map_site(site: dict, fetched_at: datetime) -> dict:
     """Map a raw magIC site record to the paleomag_sites schema."""
     lat = site.get("lat")
     lng = site.get("lon")
-    #update citations to use this format https://dx.doi.org/10.7288/V4/MAGIC/{contribution_id}}
+    # update citations to use this format https://dx.doi.org/10.7288/V4/MAGIC/{contribution_id}}
     return {
         "external_id": site.get("contribution_id"),
         "site_name": site.get("site"),
         "lat": _float(site.get("lat")),
         "lng": _float(site.get("lon")),
-        "age_low": _float(site.get("age_low")), #add age and uncertainty fields. Only 3.6k sites have this populated.
-        "age_high": _float(site.get("age_high")),#add age and uncertainty field. Only 3.6k sites have this populated.
+        "age_low": _float(
+            site.get("age_low")
+        ),  # add age and uncertainty fields. Only 3.6k sites have this populated.
+        "age_high": _float(
+            site.get("age_high")
+        ),  # add age and uncertainty field. Only 3.6k sites have this populated.
         "age": _float(site.get("age")),
-        "age_unit": site.get("age_unit"), #can have mapped units by strat name, or just map standalone ages alongside the column
+        "age_unit": site.get(
+            "age_unit"
+        ),  # can have mapped units by strat name, or just map standalone ages alongside the column
         "lithologies": site.get("lithologies"),
         "formation": site.get("formation") or "",
-        "dir_polarity": site.get("dir_polarity"), #can calc from inc and dec. Can get it from vgp_lat 45 to 90: normal, -45 to -90 reversed
-        "dir_inc": _float(site.get("dir_inc")), #main fields inputted
-        "dir_dec": _float(site.get("dir_dec")), #main fields inputted
+        "dir_polarity": site.get(
+            "dir_polarity"
+        ),  # can calc from inc and dec. Can get it from vgp_lat 45 to 90: normal, -45 to -90 reversed
+        "dir_inc": _float(site.get("dir_inc")),  # main fields inputted
+        "dir_dec": _float(site.get("dir_dec")),  # main fields inputted
         "dir_alpha95": _float(site.get("dir_alpha95")),
         "dir_k": _float(site.get("dir_k")),
         "dir_n_specimens_lines": _float(site.get("dir_n_specimens_lines")),
@@ -71,7 +83,11 @@ def map_site(site: dict, fetched_at: datetime) -> dict:
         "vgp_lon": _float(site.get("vgp_lon")),
         "last_updated": fetched_at,
         "citations": f"https://dx.doi.org/10.7288/V4/MAGIC/{site.get('contribution_id')}",
-        "geometry": f"SRID=4326;POINT({site.get('lon')} {site.get('lat')})" if site.get("lat") and site.get("lon") else None,
+        "geometry": (
+            f"SRID=4326;POINT({site.get('lon')} {site.get('lat')})"
+            if site.get("lat") and site.get("lon")
+            else None
+        ),
     }
 
 
@@ -80,7 +96,8 @@ def load_sites(engine, rows: list[dict]) -> None:
     Insert or update geomag_sites rows.
     load key: (external_id, site) — uniquely identifies a site.
     """
-    load_sql = text("""
+    load_sql = text(
+        """
         INSERT INTO integrations.geomag_sites (
             external_id, site_name,
             lat, lng,
@@ -119,7 +136,8 @@ def load_sites(engine, rows: list[dict]) -> None:
             last_updated          = EXCLUDED.last_updated,
             citations              = EXCLUDED.citations,
             geometry              = EXCLUDED.geometry
-    """)
+    """
+    )
 
     with engine.begin() as conn:
         conn.execute(load_sql, rows)
@@ -149,7 +167,6 @@ def run(published_since: str = None):
     print(f"Updated and inserted {len(rows)} rows into geomag_sites")
 
 
-
 def normalize_lithologies(known_liths, lithologies: str) -> list[str]:
     """
     Parse a geomag colon-separated lithology string and return only the
@@ -161,6 +178,7 @@ def normalize_lithologies(known_liths, lithologies: str) -> list[str]:
         return None
     input_liths = [l.strip().lower() for l in lithologies.split(":") if l.strip()]
     return [l for l in input_liths if l in known_liths]
+
 
 def get_units_by_name_age_formation_col(
     db,
@@ -224,7 +242,7 @@ def get_units_by_name_age_formation_col(
         WHERE {where_clause}
     """
     with db.engine.connect() as conn:
-        units_df =  read_sql(text(sql), conn, params=params)
+        units_df = read_sql(text(sql), conn, params=params)
 
     if units_df.empty:
         return None, None
@@ -313,8 +331,10 @@ def normalize_lithologies_custom(lithologies: str) -> list[str] | None:
 
     return mapped if mapped else None
 
+
 def insert_geomag_unit(db, geomag_site_id: int, unit, match_basis: str):
-    sql = text("""
+    sql = text(
+        """
         INSERT INTO integrations.geomag_units (
             geomag_site_id,
             unit_id,
@@ -335,17 +355,19 @@ def insert_geomag_unit(db, geomag_site_id: int, unit, match_basis: str):
             strat_name_id = EXCLUDED.strat_name_id,
             strat_name = EXCLUDED.strat_name,
             match_basis = EXCLUDED.match_basis
-    """)
-    params =  {
-            "geomag_site_id": geomag_site_id,
-            "unit_id": int(unit.unit_id),
-            "strat_name_id": int(unit.strat_name_id),
-            "strat_name": unit.strat_name,
-            "match_basis": match_basis,
-        }
+    """
+    )
+    params = {
+        "geomag_site_id": geomag_site_id,
+        "unit_id": int(unit.unit_id),
+        "strat_name_id": int(unit.strat_name_id),
+        "strat_name": unit.strat_name,
+        "match_basis": match_basis,
+    }
     with db.engine.begin() as conn:
         conn.execute(sql, params)
     print("Inserted", params)
+
 
 def get_nearest_column(db, lng: float, lat: float, max_distance_degrees: float = 1.0):
     """
@@ -370,6 +392,7 @@ def get_nearest_column(db, lng: float, lat: float, max_distance_degrees: float =
         return None
     return ColumnInfo.model_validate(rows[0])
 
+
 def match_geomag_sites():
     """
     Query all geomag_sites from the database and match each to a Macrostrat column + unit.
@@ -377,7 +400,7 @@ def match_geomag_sites():
     engine = engine_for_db_name("macrostrat")
     db = Database(engine.url)
 
-    #initialize ignore list once before matching
+    # initialize ignore list once before matching
     lith_names = db.run_query("SELECT lith FROM macrostrat.liths").scalars().all()
     create_ignore_list(lith_names)
     known_liths_rows = db.run_query(
@@ -404,14 +427,14 @@ def match_geomag_sites():
         lng = site.lng
         if lng > 180:
             lng -= 360
-        #Resolve age bounds
+        # Resolve age bounds
         age = _float(site.age)
         age_low = _float(site.age_low)
         age_high = _float(site.age_high)
 
         if age_low is not None and age_high is not None:
-            t_age = age_low #younger age
-            b_age = age_high #older age
+            t_age = age_low  # younger age
+            b_age = age_high  # older age
         else:
             t_age = age
             b_age = age
@@ -429,10 +452,8 @@ def match_geomag_sites():
         lith_string = None
         match_basis = None
 
-
-
-        #col_id and age
-        #get formation names,lithologies
+        # col_id and age
+        # get formation names,lithologies
         if col is not None:
             normalized_liths = normalize_lithologies(known_liths, site.lithologies)
             if not normalized_liths:
@@ -450,7 +471,7 @@ def match_geomag_sites():
                     else:
                         match_basis = "col_id, age, lithologies"
 
-            #col + age + formation
+            # col + age + formation
             if units is None and names is not None:
                 _, units = get_units_by_name_age_formation_col(
                     db, col.col_id, t_age, b_age, None, names
@@ -458,14 +479,13 @@ def match_geomag_sites():
                 if units is not None:
                     match_basis = "col_id, age, formation"
 
-            #col + age only
+            # col + age only
             if units is None:
                 _, units = get_units_by_name_age_formation_col(
                     db, col.col_id, t_age, b_age, None, None
                 )
                 if units is not None:
                     match_basis = "col_id, age"
-
 
         # Fetch matched unit's lithologies for comparison
         unit_liths = None
@@ -477,5 +497,5 @@ def match_geomag_sites():
 
 
 if __name__ == "__main__":
-    #run()
+    # run()
     match_geomag_sites()
