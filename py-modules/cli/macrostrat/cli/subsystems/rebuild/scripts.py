@@ -195,8 +195,8 @@ class Stats:
 class StratNameFootprints:
     def run(self):
         db = get_database()
+        print("This create script takes 60m in prod and 23 min in development")
         db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
-
         db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 

@@ -224,7 +224,6 @@ def get_units_by_name_age_formation_col(
         {lith_join}
         WHERE {where_clause}
     """
-    print(sql, params)
     with db.engine.connect() as conn:
         units_df =  read_sql(text(sql), conn, params=params)
 
@@ -392,7 +391,9 @@ def match_geomag_sites():
         else:
             col = cols[0] if cols else None
 
-
+        units = None
+        names = None
+        lith_string = None
         #col_id and age
         #get formation names,lithologies
         if col is not None:
@@ -428,16 +429,15 @@ def match_geomag_sites():
                 dict(unit_id=int(units.unit_id)),
             ).all()
             unit_liths = ", ".join(r.lith for r in lith_rows) or "(none)"
-
-        print("\n─── MATCH SUMMARY ───────────────────────────────────────")
-        print(f"  site_id       : {site.id} | {site.site_name}")
-        print(f"  --- INPUT ---")
-        print(f"  formation     : {site.formation or '(none)'}")
-        print(f"  lithologies   : {site.lithologies or '(none)'} → normalized: {lith_string or '(none)'}")
-        print(f"  ages          : t_age={t_age} | b_age={b_age}")
-        print(f"  lat/lng       : {site.lat}, {site.lng} → col_id={col.col_id if col else '(none)'}")
-        print(f"  --- MATCH ---")
-        if unit is not None:
+        if units is not None:
+            print("\n─── MATCH SUMMARY ───────────────────────────────────────")
+            print(f"  site_id       : {site.id} | {site.site_name}")
+            print(f"  --- INPUT ---")
+            print(f"  formation     : {site.formation or '(none)'}")
+            print(f"  lithologies   : {site.lithologies or '(none)'} → normalized: {lith_string or '(none)'}")
+            print(f"  ages          : t_age={t_age} | b_age={b_age}")
+            print(f"  lat/lng       : {site.lat}, {site.lng} → col_id={col.col_id if col else '(none)'}")
+            print(f"  --- MATCH ---")
             print(f"  strat_name    : {units.strat_name}")
             print(f"  unit_id       : {units.unit_id}")
             print(f"  col_id        : {units.col_id}")
@@ -459,5 +459,5 @@ def match_geomag_sites():
 
 
 if __name__ == "__main__":
-    run()
-    #match_geomag_sites()
+    #run()
+    match_geomag_sites()
