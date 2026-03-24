@@ -273,7 +273,7 @@ CONSTRAINT "idx_81799547_primary";
 ALTER TABLE "macrostrat"."units" DROP
 CONSTRAINT "idx_81799459_primary";
 DROP TABLE "macrostrat"."lookup_strat_names_old";
-DROP TABLE "macrostrat"."strat_name_footprints_old";
+DROP TABLE "macrostrat".strat_name_footprints;
 ALTER TABLE "macrostrat"."interval_boundaries" ALTER COLUMN "boundary_status"
    SET DEFAULT ''::macrostrat.boundary_status;
 ALTER TABLE "macrostrat"."interval_boundaries" ALTER COLUMN "boundary_status"

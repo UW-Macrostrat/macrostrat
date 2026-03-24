@@ -1,18 +1,16 @@
-import os
 from pathlib import Path
 
-from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 from macrostrat.core import app as app_
-from macrostrat.core.migrations import (
+from macrostrat.database import Database
+from macrostrat.schema_management.migrations import (
     ApplicationStatus,
     Migration,
     exists,
     has_columns,
     schema_exists,
 )
-from macrostrat.database import Database
 
 migrations_dir = Path(__file__).parent
 

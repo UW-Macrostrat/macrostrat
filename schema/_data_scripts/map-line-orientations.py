@@ -6,7 +6,7 @@ to populate the sources.lines_oriented flag for some known maps.
 """
 
 from macrostrat.core.database import get_database
-from macrostrat.core.migrations import has_columns
+from macrostrat.schema_management.migrations import has_columns
 
 _has_column = has_columns("maps", "sources", "lines_oriented")
 

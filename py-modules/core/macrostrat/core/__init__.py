@@ -1,3 +1,4 @@
-from .main import Macrostrat, MacrostratSubsystem, SubsystemManager
+from .database import get_database  # noqa
+from .main import Macrostrat
 
 app = Macrostrat()

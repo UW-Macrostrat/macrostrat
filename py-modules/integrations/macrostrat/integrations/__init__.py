@@ -1,6 +1,6 @@
 from typer import Argument, Typer
 
-from macrostrat.core.migrations import run_migrations
+from macrostrat.schema_management.migrations import run_migrations
 
 from .gbdb import app as gbdb_app
 from .gbdb import update_age_model

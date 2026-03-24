@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import Migration, exists
+from macrostrat.schema_management.migrations import Migration, exists
 
 
 class IntegrationsBaseSchema(Migration):
