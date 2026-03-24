@@ -195,7 +195,9 @@ class Stats:
 class StratNameFootprints:
     def run(self):
         db = get_database()
-        db.run_sql(here / "sql" / "strat-name-footprints.sql")
+        db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
+
+        db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 
 class LookupUnits:
