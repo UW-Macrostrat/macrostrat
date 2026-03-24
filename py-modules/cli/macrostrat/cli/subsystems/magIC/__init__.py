@@ -3,16 +3,12 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 from macrostrat.match_utils import (
     get_columns_for_location,
-    get_all_matched_units,
     standardize_names,
-    clean_strat_name_text,
-    match_row
 )
 from macrostrat.match_utils import ColumnInfo
 from macrostrat.match_utils.strat_names import create_ignore_list
 from macrostrat.database import Database
 from macrostrat.cli.database.utils import engine_for_db_name
-from macrostrat.match_utils.models import MatchComparison
 from pandas import read_sql
 
 API_DOMAIN = "https://api.earthref.org/v1/MagIC/search/sites"
@@ -74,7 +70,7 @@ def map_site(site: dict, fetched_at: datetime) -> dict:
         "vgp_lat": _float(site.get("vgp_lat")),
         "vgp_lon": _float(site.get("vgp_lon")),
         "last_updated": fetched_at,
-        "citations": f"https://dx.doi.org/10.7288/V4/MAGIC/{site.get("contribution_id")}",
+        "citations": f"https://dx.doi.org/10.7288/V4/MAGIC/{site.get('contribution_id')}",
         "geometry": f"SRID=4326;POINT({site.get('lon')} {site.get('lat')})" if site.get("lat") and site.get("lon") else None,
     }
 
@@ -193,18 +189,21 @@ def get_units_by_name_age_formation_col(
         params["formation_names"] = name_strings
         filters.append("lower(sn.strat_name) = ANY(:formation_names)")
 
-    lith_names = [l.strip().lower() for l in lithologies.split(":") if l.strip()]
-    params["lith_names"] = lith_names
-    lith_join = """
-        JOIN macrostrat.unit_liths ul ON ul.unit_id = u.id
-        JOIN macrostrat.liths l ON l.id = ul.lith_id
-    """
-    filters.append(
-        "(lower(l.lith) = ANY(:lith_names) OR "
-        "lower(l.lith_group::text) = ANY(:lith_names) OR "
-        "lower(l.lith_type::text) = ANY(:lith_names) OR "
-        "lower(l.lith_class::text) = ANY(:lith_names))"
-    )
+    lith_join = ""
+    if lithologies:
+        lith_names = [l.strip().lower() for l in lithologies.split(":") if l.strip()]
+        if lith_names:
+            params["lith_names"] = lith_names
+            lith_join = """
+                JOIN macrostrat.unit_liths ul ON ul.unit_id = u.id
+                JOIN macrostrat.liths l ON l.id = ul.lith_id
+            """
+            filters.append(
+                "(lower(l.lith) = ANY(:lith_names) OR "
+                "lower(l.lith_group::text) = ANY(:lith_names) OR "
+                "lower(l.lith_type::text) = ANY(:lith_names) OR "
+                "lower(l.lith_class::text) = ANY(:lith_names))"
+            )
 
     where_clause = " AND ".join(filters)
     sql = f"""
@@ -314,6 +313,40 @@ def normalize_lithologies_custom(lithologies: str) -> list[str] | None:
 
     return mapped if mapped else None
 
+def insert_geomag_unit(db, geomag_site_id: int, unit, match_basis: str):
+    sql = text("""
+        INSERT INTO integrations.geomag_units (
+            geomag_site_id,
+            unit_id,
+            strat_name_id,
+            strat_name,
+            match_basis
+        )
+        VALUES (
+            :geomag_site_id,
+            :unit_id,
+            :strat_name_id,
+            :strat_name,
+            :match_basis
+        )
+        ON CONFLICT (geomag_site_id)
+        DO UPDATE SET
+            unit_id = EXCLUDED.unit_id,
+            strat_name_id = EXCLUDED.strat_name_id,
+            strat_name = EXCLUDED.strat_name,
+            match_basis = EXCLUDED.match_basis
+    """)
+    params =  {
+            "geomag_site_id": geomag_site_id,
+            "unit_id": int(unit.unit_id),
+            "strat_name_id": int(unit.strat_name_id),
+            "strat_name": unit.strat_name,
+            "match_basis": match_basis,
+        }
+    with db.engine.begin() as conn:
+        conn.execute(sql, params)
+    print("Inserted", params)
+
 def get_nearest_column(db, lng: float, lat: float, max_distance_degrees: float = 1.0):
     """
     Fall back to nearest column when the point is not inside any column polygon.
@@ -394,6 +427,10 @@ def match_geomag_sites():
         units = None
         names = None
         lith_string = None
+        match_basis = None
+
+
+
         #col_id and age
         #get formation names,lithologies
         if col is not None:
@@ -401,58 +438,39 @@ def match_geomag_sites():
             if not normalized_liths:
                 normalized_liths = normalize_lithologies_custom(site.lithologies)
             lith_string = ": ".join(normalized_liths) if normalized_liths else None
-            if site.formation:
-                names = standardize_names(site.formation)
-            else:
-                names = None
-            names, units = get_units_by_name_age_formation_col(db, col.col_id, t_age, b_age, lith_string, names)
+            names = standardize_names(site.formation) if site.formation else None
+            # col + age + lith (+ formation if available)
+            if lith_string is not None:
+                _, units = get_units_by_name_age_formation_col(
+                    db, col.col_id, t_age, b_age, lith_string, names
+                )
+                if units is not None:
+                    if names is not None:
+                        match_basis = "col_id, age, formation, lithologies"
+                    else:
+                        match_basis = "col_id, age, lithologies"
 
-            """*
-            with db.engine.connect() as conn:
-                rows = get_all_matched_units(conn, col.col_id, names, t_age=t_age, b_age=b_age, n_results=1)
-            print("Using get_all_matched_units!!!")
-            unit = rows[0] if rows else None
-            """
+            #col + age + formation
+            if units is None and names is not None:
+                _, units = get_units_by_name_age_formation_col(
+                    db, col.col_id, t_age, b_age, None, names
+                )
+                if units is not None:
+                    match_basis = "col_id, age, formation"
 
-        #TODO add units within the integrations.geomag_units table
+            #col + age only
+            if units is None:
+                _, units = get_units_by_name_age_formation_col(
+                    db, col.col_id, t_age, b_age, None, None
+                )
+                if units is not None:
+                    match_basis = "col_id, age"
+
 
         # Fetch matched unit's lithologies for comparison
         unit_liths = None
         if units is not None:
-            lith_rows = db.run_query(
-                """
-                SELECT l.lith, l.lith_type, l.lith_class, l.lith_group
-                FROM macrostrat.unit_liths ul
-                JOIN macrostrat.liths l ON l.id = ul.lith_id
-                WHERE ul.unit_id = :unit_id
-                """,
-                dict(unit_id=int(units.unit_id)),
-            ).all()
-            unit_liths = ", ".join(r.lith for r in lith_rows) or "(none)"
-        if units is not None:
-            print("\n─── MATCH SUMMARY ───────────────────────────────────────")
-            print(f"  site_id       : {site.id} | {site.site_name}")
-            print(f"  --- INPUT ---")
-            print(f"  formation     : {site.formation or '(none)'}")
-            print(f"  lithologies   : {site.lithologies or '(none)'} → normalized: {lith_string or '(none)'}")
-            print(f"  ages          : t_age={t_age} | b_age={b_age}")
-            print(f"  lat/lng       : {site.lat}, {site.lng} → col_id={col.col_id if col else '(none)'}")
-            print(f"  --- MATCH ---")
-            print(f"  strat_name    : {units.strat_name}")
-            print(f"  unit_id       : {units.unit_id}")
-            print(f"  col_id        : {units.col_id}")
-            print(f"  lithologies   : {unit_liths}")
-            print(f"  ages          : t_age={units.t_age} | b_age={units.b_age}")
-            # Age overlap quality
-            if t_age is not None and b_age is not None:
-                if t_age == b_age:
-                    # Single point age — 100% if it falls within the unit range, 0% otherwise
-                    score = 1.0 if units.t_age <= t_age <= units.b_age else 0.0
-                else:
-                    overlap = min(units.b_age, b_age) - max(units.t_age, t_age)
-                    site_range = b_age - t_age
-                    score = max(0.0, overlap / site_range)
-                print(f"  age overlap   : {score:.0%}")
+            insert_geomag_unit(db, site.id, units, match_basis)
         else:
             print(f"  (no unit matched)")
         print("─────────────────────────────────────────────────────────\n")
