@@ -1796,7 +1796,7 @@ CREATE OR REPLACE VIEW macrostrat_api.feedback AS
 WITH selected_runs AS (
     SELECT *
     FROM macrostrat_xdd.all_runs
-    WHERE user_id IS NOT NULL 
+    WHERE user_id IS NOT NULL
 ),
 
 entities AS (
@@ -1812,6 +1812,8 @@ entities AS (
             )
         ) AS entities
     FROM macrostrat_xdd.entity e
+    JOIN selected_runs sr
+        ON sr.id = e.run_id   -- 🔥 filter early
     LEFT JOIN macrostrat_xdd.entity_type et
         ON et.id = e.entity_type_id
     GROUP BY e.run_id
@@ -1819,7 +1821,7 @@ entities AS (
 
 relations AS (
     SELECT
-        e.run_id,
+        parent.run_id,
         jsonb_agg(
             jsonb_build_object(
                 'head', r.src_entity_id,
@@ -1827,9 +1829,11 @@ relations AS (
             )
         ) AS relations
     FROM macrostrat_xdd.relationship r
-    JOIN macrostrat_xdd.entity e
-        ON e.id = r.src_entity_id
-    GROUP BY e.run_id
+    JOIN macrostrat_xdd.entity parent
+        ON parent.id = r.src_entity_id
+    JOIN selected_runs sr
+        ON sr.id = parent.run_id   -- 🔥 filter early
+    GROUP BY parent.run_id
 ),
 
 feedback_meta AS (
@@ -1846,6 +1850,8 @@ feedback_meta AS (
 
 SELECT
     sr.*,
+    ge.name AS root_entity_name,
+    ge.entity_table AS root_entity_table,
     fm.extraction_note,
     fm.extraction_feedback_type,
     COALESCE(ent.entities, '[]'::jsonb) AS entities,
@@ -1857,7 +1863,9 @@ LEFT JOIN entities ent
 LEFT JOIN relations rel
     ON rel.run_id = sr.id
 LEFT JOIN feedback_meta fm
-    ON fm.run_id = sr.id;
+    ON fm.run_id = sr.id
+LEFT JOIN macrostrat_xdd.global_entity ge
+    ON ge.global_entity_id = sr.root_id;
 
 ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
 
