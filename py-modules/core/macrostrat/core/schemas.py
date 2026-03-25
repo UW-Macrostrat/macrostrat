@@ -156,6 +156,14 @@ class IngestType(enum.Enum):
     ta1_output = "ta1_output"
 
 
+class MapFile(Base):
+    __tablename__ = "map_files"
+    __table_args__ = {"schema": "maps"}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"))
+    object_id: Mapped[int] = mapped_column(ForeignKey("storage.object.id"))
+
+
 class IngestProcess(Base):
     __tablename__ = "ingest_process"
     __table_args__ = {"schema": "maps_metadata"}
@@ -188,6 +196,12 @@ class IngestProcess(Base):
     source: Mapped[Sources] = relationship(back_populates="ingest_process")
     tags: Mapped[List["IngestProcessTag"]] = relationship(
         back_populates="ingest_process", lazy="joined"
+    )
+
+    # Map objects that were ingested via the map_files join table
+    object_ids: Mapped[List[int]] = relationship(
+        secondary=MapFile.__table__,
+        lazy="joined",
     )
 
 

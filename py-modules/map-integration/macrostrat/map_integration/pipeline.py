@@ -278,10 +278,10 @@ def update_object(id_: int, **data) -> Object:
     return new_obj
 
 
-def get_ingest_process_by_object_group_id(id_: int) -> Optional[IngestProcess]:
+def get_ingest_process_by_object_id(object_id: int) -> Optional[IngestProcess]:
     with get_db_session() as session:
         ingest_process = session.scalar(
-            select(IngestProcess).where(IngestProcess.object_group_id == id_),
+            select(IngestProcess).where(IngestProcess.object_ids.contains(object_id)),
         )
     return ingest_process
 
@@ -298,14 +298,8 @@ def create_ingest_process(**data) -> IngestProcess:
     data = data.copy()
     data["created_on"] = datetime.datetime.utcnow()
     with get_db_session() as session:
-        if not (
-            object_group := session.scalar(insert(ObjectGroup).returning(ObjectGroup))
-        ):
-            raise IngestError("Failed to create a new object group")
         new_ingest_process = session.scalar(
-            insert(IngestProcess)
-            .values(object_group_id=object_group.id, **data)
-            .returning(IngestProcess)
+            insert(IngestProcess).values(**data).returning(IngestProcess)
         )
         session.commit()
     return new_ingest_process
@@ -334,16 +328,18 @@ def create_ingest_process_tag(ingest_process_id: int, tag: str) -> IngestProcess
     return new_ingest_process_tag
 
 
-def get_source_by_id(id_: int) -> Optional[Sources]:
+def get_source_by_id(source_id) -> Optional[Sources]:
     with get_db_session() as session:
-        source = session.scalar(select(Sources).where(Sources.source_id == id_))
-    return source
+        return session.scalars(
+            select(Sources).where(Sources.source_id == source_id)
+        ).one_or_none()
 
 
 def get_source_by_slug(slug: str) -> Optional[Sources]:
     with get_db_session() as session:
-        source = session.scalar(select(Sources).where(Sources.slug == slug))
-    return source
+        return session.scalars(
+            select(Sources).where(Sources.slug == slug)
+        ).one_or_none()
 
 
 def create_source(**data) -> Sources:
@@ -689,7 +685,6 @@ def upload_file(
         source_info["website_url"] = website_url
 
     payload = {
-        "object_group_id": ingest_process.object_group_id,
         "scheme": SchemeEnum.s3,
         "host": config.S3_HOST,
         "bucket": bucket,
@@ -738,9 +733,7 @@ def load_object(
     """
     if not (obj := get_object(bucket, key)):
         raise IngestError(f"No such object in the database: {bucket}/{key}")
-    if not (
-        ingest_process := get_ingest_process_by_object_group_id(obj.object_group_id)
-    ):
+    if not (ingest_process := get_ingest_process_by_object_id(obj.object_id)):
         raise IngestError(f"No ingest process in the database for object ID {obj.id}")
     if not (source := get_source_by_id(ingest_process.source_id)):
         raise_ingest_error(
