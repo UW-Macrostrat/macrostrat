@@ -36,19 +36,104 @@ CREATE TABLE macrostrat_xdd.lookup_extraction_type (
 );
 ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO macrostrat_admin;
 
--- Global Macrostrat entity mapping
 CREATE TABLE macrostrat_xdd.global_entity (
     global_entity_id BIGSERIAL PRIMARY KEY,
     entity_table TEXT NOT NULL,
     entity_id INTEGER NOT NULL,
 
+    name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+
     CONSTRAINT unique_entity UNIQUE (entity_table, entity_id)
 );
 
--- TODO: populate table with 
--- TODO: auto sync with populated tables
-
 ALTER TABLE macrostrat_xdd.global_entity OWNER TO xdd_writer;
+
+-- INSERT SCRIPT
+
+INSERT INTO macrostrat_xdd.global_entity (
+    entity_table,
+    entity_id,
+    name,
+    normalized_name
+)
+
+SELECT 
+    'macrostrat.minerals',
+    m.id,
+    m.mineral,
+    lower(regexp_replace(m.mineral, '\s+', '', 'g'))
+FROM macrostrat.minerals m
+
+UNION ALL
+
+SELECT 
+    'macrostrat.intervals',
+    i.id,
+    i.interval_name,
+    lower(regexp_replace(i.interval_name, '\s+', '', 'g'))
+FROM macrostrat.intervals i
+
+UNION ALL
+
+SELECT 
+    'macrostrat.environs',
+    e.id,
+    e.environ,
+    lower(regexp_replace(e.environ, '\s+', '', 'g'))
+FROM macrostrat.environs e
+
+UNION ALL
+
+SELECT 
+    'macrostrat.tectonics',
+    t.id,
+    t.basin_type,
+    lower(regexp_replace(t.basin_type, '\s+', '', 'g'))
+FROM macrostrat.tectonics t
+
+UNION ALL
+
+SELECT 
+    'macrostrat.liths',
+    l.id,
+    l.lith,
+    lower(regexp_replace(l.lith, '\s+', '', 'g'))
+FROM macrostrat.liths l
+
+UNION ALL
+
+SELECT 
+    'macrostrat.lith_atts',
+    la.id,
+    la.lith_att,
+    lower(regexp_replace(la.lith_att, '\s+', '', 'g'))
+FROM macrostrat.lith_atts la
+
+UNION ALL
+
+SELECT 
+    'macrostrat.structures',
+    s.id,
+    s.structure,
+    lower(regexp_replace(s.structure, '\s+', '', 'g'))
+FROM macrostrat.structures s
+
+UNION ALL
+
+SELECT 
+    'macrostrat.structure_atts',
+    sa.id,
+    sa.structure_att,
+    lower(regexp_replace(sa.structure_att, '\s+', '', 'g'))
+FROM macrostrat.structure_atts sa
+
+ON CONFLICT (entity_table, entity_id)
+DO UPDATE SET
+    name = EXCLUDED.name,
+    normalized_name = EXCLUDED.normalized_name;
+
+--
 
 CREATE TABLE macrostrat_xdd.all_runs (
     user_id uuid,
