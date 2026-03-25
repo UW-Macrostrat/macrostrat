@@ -58,18 +58,9 @@ CREATE TABLE macrostrat_xdd.all_runs (
     model_job_id text,
     extraction_pipeline_id text,
     source_text_id integer NOT NULL,
-    supersedes integer
+    supersedes integer,
+    root_id BIGINT
 );
-
--- Add root_id 
-ALTER TABLE macrostrat_xdd.all_runs
-ADD COLUMN root_id BIGINT;
-
-ALTER TABLE macrostrat_xdd.all_runs
-ADD CONSTRAINT all_runs_root_id_fkey
-FOREIGN KEY (root_id)
-REFERENCES macrostrat_xdd.global_entity(global_entity_id)
-ON DELETE SET NULL;
 
 ALTER TABLE macrostrat_xdd.all_runs OWNER TO xdd_writer;
 
@@ -421,6 +412,9 @@ ALTER TABLE ONLY macrostrat_xdd.source_text
 
 ALTER TABLE ONLY macrostrat_xdd.all_runs
     ADD CONSTRAINT user_id_check FOREIGN KEY (user_id) REFERENCES macrostrat_xdd.users(internal_user_id);
+
+ALTER TABLE ONLY macrostrat_xdd.all_runs
+    ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_xdd.global_entity(global_entity_id) ON DELETE SET NULL;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_xdd.extraction_feedback TO web_anon;
 
