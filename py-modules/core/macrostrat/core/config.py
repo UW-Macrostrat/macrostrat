@@ -6,14 +6,22 @@ from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
+from enum import Enum
 
-from macrostrat.app_frame.control_command import BackendType
 from macrostrat.utils import get_logger
 
+from os import getenv
+
+from .exc import MacrostratError
 from .resolvers import cast_sources, setup_source_roots_environment
 from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
 
 log = get_logger(__name__)
+
+
+class BackendType(str, Enum):
+    Kubernetes = "kubernetes"
+    DockerCompose = "docker-compose"
 
 
 class MacrostratConfig(Dynaconf):
@@ -22,17 +30,24 @@ class MacrostratConfig(Dynaconf):
     config_file: Path
     srcroot: Path
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
+
+        env = getenv("MACROSTRAT_ENV")
+        if env is None:
+            raise MacrostratError(
+                "MACROSTRAT_ENV must be defined for configuration loading to work"
+            )
+
         cfg = find_macrostrat_config()
-        settings = []
+        settings_files = []
         if cfg is not None:
-            settings.append(cfg)
+            settings_files.append(cfg)
 
         super().__init__(
             envvar_prefix="MACROSTRAT",
             environments=True,
             env_switcher="MACROSTRAT_ENV",
-            settings_files=settings,
+            settings_files=settings_files,
             # We load dotenv files on our own
             load_dotenv=False,
         )
