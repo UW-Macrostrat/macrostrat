@@ -794,7 +794,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "2.2.4"
+version = "3.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-utils" },
@@ -804,9 +804,9 @@ dependencies = [
     { name = "toposort" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/4a/b260f2681029d6d04e59ef65ab1e225ea3e190c1df237c4598e53ad75410/macrostrat_app_frame-2.2.4.tar.gz", hash = "sha256:191db9724e8baa5d39dc1add3302ef30556127a250ada32d3281346a0c3ed203", size = 8375, upload-time = "2026-03-04T06:18:58.133Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/6d/ce5b7e4391160002218ea7d59be818707ebd06f4dc630332893ab932c5ab/macrostrat_app_frame-3.0.4.tar.gz", hash = "sha256:17c8becb31ca43b83b054c95c39e51ad41dd95f9493517e9b02d5cf8e2cc5ec6", size = 9300, upload-time = "2026-03-26T20:46:17.241Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/bd/642014591b2b15239ffcffd9d39a352abae92fd23ae487e18dc7206249b2/macrostrat_app_frame-2.2.4-py3-none-any.whl", hash = "sha256:0a3d0617492d54235d1026b9f00fcaa57bff1ed14a76b17206ac7447abdff8ed", size = 13314, upload-time = "2026-03-04T06:18:57.057Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/03/fbce2161919dfaff4680d1f7ec93ab41d25d219f3b116562379886342b45/macrostrat_app_frame-3.0.4-py3-none-any.whl", hash = "sha256:e0e5e30603bd88a852f699e7b9e0412ac3c96fcb463b5f19195641db7f989872", size = 14916, upload-time = "2026-03-26T20:46:16.273Z" },
 ]
 
 [[package]]
@@ -873,7 +873,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.0.3,<4" },
     { name = "htpheno-radosgw-admin-client", editable = "submodules/storage-admin" },
     { name = "ipython", specifier = ">=8.5.0,<9" },
-    { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
+    { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-column-ingestion", editable = "py-modules/column-ingestion" },
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=3.5.4,<4" },
@@ -958,7 +958,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<9" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
-    { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
+    { name = "macrostrat-app-frame", specifier = ">=3.0.4,<4" },
     { name = "macrostrat-database", specifier = ">=3.5.3,<4" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "sqlalchemy", specifier = ">=2.0.28,<3" },
@@ -1106,7 +1106,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-schema-management"
-version = "1.0.0"
+version = "1.1.0"
 source = { editable = "py-modules/schema-management" }
 dependencies = [
     { name = "click" },
@@ -1125,7 +1125,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<8.2.0" },
     { name = "docker", specifier = ">=7,<8" },
-    { name = "macrostrat-app-frame", specifier = ">=2.2.3,<3" },
+    { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-database", specifier = ">=3.5.4,<4" },
     { name = "macrostrat-dinosaur", specifier = ">=3.0.1,<4" },
     { name = "macrostrat-utils", specifier = ">=1.3.0,<2" },
