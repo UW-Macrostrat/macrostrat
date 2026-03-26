@@ -1,4 +1,5 @@
-from os import environ
+from enum import Enum
+from os import environ, getenv
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -6,11 +7,8 @@ from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from toml import load as load_toml
-from enum import Enum
 
 from macrostrat.utils import get_logger
-
-from os import getenv
 
 from .exc import MacrostratError
 from .resolvers import cast_sources, setup_source_roots_environment
