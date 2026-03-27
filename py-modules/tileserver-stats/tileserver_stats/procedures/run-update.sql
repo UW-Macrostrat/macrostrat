@@ -16,7 +16,7 @@ WITH a AS (
 	LIMIT 100000
 ),
 b AS (
-  INSERT INTO stats.day_index (layer, ext, referrer, app, app_version, date, num_requests)
+  INSERT INTO tileserver_stats.day_index (layer, ext, referrer, app, app_version, date, num_requests)
 	SELECT
     layer,
     ext,
@@ -29,7 +29,7 @@ b AS (
 	GROUP BY layer, ext, app, referrer, app_version, date
   ON CONFLICT (layer, ext, referrer, app, app_version, date)
   DO UPDATE SET
-    num_requests = stats.day_index.num_requests + EXCLUDED.num_requests
+    num_requests = tileserver_stats.day_index.num_requests + EXCLUDED.num_requests
   RETURNING *
 ),
 reduced_complexity_locations AS (
@@ -47,7 +47,7 @@ reduced_complexity_locations AS (
 	FROM a
 ),
 c AS (
-  INSERT INTO stats.location_index (layer, ext, x, y, z, orig_z, num_requests)
+  INSERT INTO tileserver_stats.location_index (layer, ext, x, y, z, orig_z, num_requests)
   SELECT
     layer,
     ext,
@@ -60,10 +60,10 @@ c AS (
   GROUP BY layer, ext, x, y, z, orig_z
   ON CONFLICT (layer, ext, x, y, z, orig_z)
   DO UPDATE SET
-    num_requests = stats.location_index.num_requests + EXCLUDED.num_requests
+    num_requests = tileserver_stats.location_index.num_requests + EXCLUDED.num_requests
 ),
 d AS (
-  INSERT INTO stats.processing_status (last_row_id, last_row_time)
-  SELECT req_id, time FROM requests WHERE req_id = (SELECT max(req_id) FROM a)
+  INSERT INTO tileserver_stats.processing_status (last_row_id, last_row_time)
+  SELECT req_id, time FROM tileserver_stats.requests WHERE req_id = (SELECT max(req_id) FROM a)
 )
 SELECT max(req_id) last_row_id, count(*) n_rows FROM a;

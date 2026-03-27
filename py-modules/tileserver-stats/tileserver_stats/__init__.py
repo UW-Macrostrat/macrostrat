@@ -18,8 +18,8 @@ load_dotenv()
 app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
 
 
-@app.command()
-def run(truncate: bool = False):
+@app.command(name="compute")
+def compute_stats(truncate: bool = False):
     """Run the update procedure."""
     tileserver_db = settings.databases.get("tileserver_stats")
     db = Database(tileserver_db)
@@ -66,37 +66,6 @@ def integrate_schema(drop: bool = False):
 
     task = move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"])
     asyncio.run(task)
-
-
-@app.command()
-def reset(drop: bool = False):
-    """Empty the stats schema and re-run the schema creation scripts."""
-    tileserver_db = settings.databases.get("tileserver_stats")
-    db = Database(tileserver_db)
-
-    if drop:
-        db.engine.execute("DROP SCHEMA IF EXISTS stats CASCADE")
-
-    files = Path(relative_path(__file__, "schema")).glob("*.sql")
-    files = list(files)
-    files.sort()
-
-    for file in files:
-        list(db.run_sql(file))
-
-
-@app.command()
-def truncate():
-    """Create the stats schema."""
-    tileserver_db = settings.databases.get("tileserver_stats")
-    db = Database(tileserver_db)
-
-    files = Path(relative_path(__file__, "schema")).glob("*.sql")
-    files = list(files)
-    files.sort()
-
-    for file in files:
-        list(db.run_sql(file))
 
 
 @app.command()

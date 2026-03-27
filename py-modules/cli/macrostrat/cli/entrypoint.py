@@ -7,11 +7,13 @@ from rich.traceback import install
 from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
+
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.main import env_text, set_app_state
 from macrostrat.schema_management import schema_app
 from macrostrat.utils.shell import run
+from tileserver_stats import app as tileserver_stats_app
 
 from .database import db_app, db_subsystem
 from .subsystems.dev import dev_app
@@ -119,6 +121,13 @@ main.add_typer(
     rebuild_cli,
     name="rebuild",  # command group name
     short_help="Rebuild scripts",  # shows in --help
+    rich_help_panel="Subsystems",
+)
+
+main.add_typer(
+    tileserver_stats_app,
+    name="tileserver-stats",
+    short_help="Tileserver stats",
     rich_help_panel="Subsystems",
 )
 

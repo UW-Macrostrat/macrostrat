@@ -1,11 +1,11 @@
-CREATE SCHEMA IF NOT EXISTS stats;
+CREATE SCHEMA IF NOT EXISTS tileserver_stats;
 
-CREATE TABLE IF NOT EXISTS stats.processing_status (
+CREATE TABLE IF NOT EXISTS tileserver_stats.processing_status (
   last_row_id integer NOT NULL,
   last_row_time timestamp without time zone DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS stats.day_index (
+CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   layer text NOT NULL,
   ext text NOT NULL,
   referrer text NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS stats.day_index (
   UNIQUE (layer, ext, referrer, app, app_version, date)
 );
 
-CREATE TABLE IF NOT EXISTS stats.location_index (
+CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
   layer text NOT NULL,
   ext text NOT NULL,
   x integer NOT NULL,
@@ -27,4 +27,4 @@ CREATE TABLE IF NOT EXISTS stats.location_index (
   UNIQUE (layer, ext, x, y, z, orig_z)
 );
 
-INSERT INTO stats.processing_status (last_row_id) VALUES (0);
+--INSERT INTO tileserver_stats.processing_status (last_row_id) VALUES (0);

@@ -79,9 +79,9 @@ default-groups = [
 "macrostrat.schema-management" = { path = "../schema-management", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../../submodules/storage-admin", editable = true }
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
-"macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
+"macrostrat.column-ingestion" = { path = "../column-ingestion", editable = true }
 "macrostrat.map-topology" = { path = "../map-topology", editable = true }
-"tileserver_stats" = { path = "../../py-modules/tileserver-stats", editable = true }
+"tileserver_stats" = { path = "../tileserver-stats", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]
