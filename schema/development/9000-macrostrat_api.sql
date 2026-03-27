@@ -1791,6 +1791,85 @@ FROM macrostrat.strat_names
 where concept_id is null;
 ALTER TABLE macrostrat_api.autocomplete OWNER TO macrostrat_admin;
 
+CREATE OR REPLACE VIEW macrostrat_api.feedback AS
+
+WITH selected_runs AS (
+    SELECT *
+    FROM macrostrat_xdd.all_runs
+    WHERE user_id IS NOT NULL
+),
+
+entities AS (
+    SELECT
+        e.run_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'id', e.id,
+                'text', e.name,
+                'type', et.name,
+                'start', e.start_index,
+                'end', e.end_index
+            )
+        ) AS entities
+    FROM macrostrat_xdd.entity e
+    JOIN selected_runs sr
+        ON sr.id = e.run_id   -- 🔥 filter early
+    LEFT JOIN macrostrat_xdd.entity_type et
+        ON et.id = e.entity_type_id
+    GROUP BY e.run_id
+),
+
+relations AS (
+    SELECT
+        parent.run_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'head', r.src_entity_id,
+                'tail', r.dst_entity_id
+            )
+        ) AS relations
+    FROM macrostrat_xdd.relationship r
+    JOIN macrostrat_xdd.entity parent
+        ON parent.id = r.src_entity_id
+    JOIN selected_runs sr
+        ON sr.id = parent.run_id   -- 🔥 filter early
+    GROUP BY parent.run_id
+),
+
+feedback_meta AS (
+    SELECT
+        ef.feedback_id AS run_id,
+        ef.custom_note AS extraction_note,
+        eft.type AS extraction_feedback_type
+    FROM macrostrat_xdd.extraction_feedback ef
+    LEFT JOIN macrostrat_xdd.lookup_extraction_type let
+        ON let.note_id = ef.note_id
+    LEFT JOIN macrostrat_xdd.extraction_feedback_type eft
+        ON eft.type_id = let.type_id
+)
+
+SELECT
+    sr.*,
+    ge.name AS root_entity_name,
+    ge.entity_table AS root_entity_table,
+    fm.extraction_note,
+    fm.extraction_feedback_type,
+    COALESCE(ent.entities, '[]'::jsonb) AS entities,
+    COALESCE(rel.relations, '[]'::jsonb) AS relations
+
+FROM selected_runs sr
+LEFT JOIN entities ent
+    ON ent.run_id = sr.id
+LEFT JOIN relations rel
+    ON rel.run_id = sr.id
+LEFT JOIN feedback_meta fm
+    ON fm.run_id = sr.id
+LEFT JOIN macrostrat_xdd.global_entity ge
+    ON ge.global_entity_id = sr.root_id;
+
+ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
+
+
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
