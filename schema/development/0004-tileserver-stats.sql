@@ -1,5 +1,22 @@
 CREATE SCHEMA IF NOT EXISTS tileserver_stats;
 
+CREATE TABLE tileserver_stats.requests (
+  req_id serial
+    PRIMARY KEY,
+  uri text,
+  layer text,
+  ext text,
+  x integer,
+  y integer,
+  z integer,
+  referrer text,
+  app text,
+  app_version text,
+  cache_hit boolean DEFAULT FALSE,
+  redis_hit boolean DEFAULT FALSE,
+  time timestamp DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS tileserver_stats.processing_status (
   last_row_id integer NOT NULL,
   last_row_time timestamp without time zone DEFAULT now()
