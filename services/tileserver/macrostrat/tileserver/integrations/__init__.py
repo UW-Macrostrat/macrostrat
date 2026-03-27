@@ -13,7 +13,6 @@ __here__ = Path(__file__).parent
 log = get_logger(__name__)
 
 
-
 @router.get("/magic/geomag_sites/tiles/{z}/{x}/{y}")
 async def magic_sites_tile(request: Request, z: int, x: int, y: int):
     pool = request.app.state.pool
@@ -76,6 +75,7 @@ async def integrations_tile(
     kwargs = {}
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(data, **kwargs)
+
 
 async def run_layer_query(con, layer_name, **params):
     query = get_layer_sql(layer_name)
