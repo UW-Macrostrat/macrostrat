@@ -37,8 +37,6 @@ origins = [
     "http://localhost:6006",
     "https://dev.rockd.org",
     "https://staging.rockd.org",
-
-
 ]
 
 app.add_middleware(
