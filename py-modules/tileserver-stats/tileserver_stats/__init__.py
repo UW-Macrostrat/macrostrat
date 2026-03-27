@@ -1,8 +1,8 @@
 from datetime import datetime
-from os import environ
 from pathlib import Path
 
 from dotenv import load_dotenv
+from macrostrat.database.transfer import move_tables
 from rich import print
 from sqlalchemy.sql import text
 from typer import Typer
@@ -10,6 +10,8 @@ from typer import Typer
 from macrostrat.database import Database
 from macrostrat.utils import relative_path
 from macrostrat.core.config import settings
+from macrostrat.core import get_database
+import asyncio
 
 load_dotenv()
 
@@ -24,7 +26,7 @@ def run(truncate: bool = False):
 
     # Run update
     fn = Path(relative_path(__file__, "procedures")) / "run-update.sql"
-    sql = text(fn.read_text().replace(":", "\:"))
+    sql = text(fn.read_text().replace(":", r"\:"))
 
     # check query timing
     conn = db.engine.connect()
@@ -44,6 +46,26 @@ def run(truncate: bool = False):
         conn.execute(text("TRUNCATE TABLE requests"))
 
     print(f"Total time: {datetime.now() - start}")
+
+
+@app.command()
+def integrate_schema(drop: bool = False):
+    """Merge the tileserver_stats schema into the core Macrostrat database."""
+    tileserver_db = settings.databases.get("tileserver_stats")
+
+    tdb = Database(tileserver_db)
+    # Rename the schema stats to tileserver_stats
+    tdb.run_sql("ALTER SCHEMA stats RENAME TO tileserver_stats")
+
+    # Move the `requests` table into the `tileserver_stats` schema
+    tdb.run_sql("ALTER TABLE requests SET SCHEMA tileserver_stats")
+
+    # Switch to SQL in Macrostrat database
+    db = get_database()
+    # Merge the `tileserver_stats` schema into the core Macrostrat database
+
+    task = move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"])
+    asyncio.run(task)
 
 
 @app.command()
