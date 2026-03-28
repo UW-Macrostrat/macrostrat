@@ -9,7 +9,6 @@ from rich.console import Console
 from typer import Context, Option
 
 from macrostrat.app_frame import Application, ControlCommand, DockerComposeManager
-
 from macrostrat.utils import get_logger
 
 from .console import console_theme

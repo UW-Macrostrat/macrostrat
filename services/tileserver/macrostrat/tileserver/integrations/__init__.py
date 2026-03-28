@@ -13,6 +13,44 @@ __here__ = Path(__file__).parent
 log = get_logger(__name__)
 
 
+@router.get("/magic/geomag_sites/tiles/{z}/{x}/{y}")
+async def magic_sites_tile(request: Request, z: int, x: int, y: int):
+    pool = request.app.state.pool
+    async with pool.acquire() as con:
+        q, p = render(
+            """
+            WITH feature_query AS (
+              SELECT
+                id,
+                external_id,
+                site_name,
+                age,
+                age_unit,
+                lithologies,
+                formation,
+                citations,
+                ST_AsMVTGeom(
+                  ST_Transform(geometry, 3857),
+                  tile_utils.envelope(:x, :y, :z)
+                ) AS geom
+              FROM integrations.geomag_sites
+              WHERE geometry IS NOT NULL
+                AND ST_Intersects(
+                  geometry,
+                  ST_Transform(tile_utils.envelope(:x, :y, :z), 4326)
+                )
+            )
+            SELECT ST_AsMVT(feature_query, 'default') FROM feature_query
+            """,
+            x=x,
+            y=y,
+            z=z,
+        )
+        data = await con.fetchval(q, *p)
+
+    return Response(data, media_type=MimeTypes.pbf.value)
+
+
 @router.get("/{organization}/{type}/tiles/{z}/{x}/{y}")
 async def integrations_tile(
     request: Request,
