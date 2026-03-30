@@ -360,14 +360,13 @@ enum APICapability {
   } {
     const routeDef = defs[routePath];
     const validParams = Object.keys(routeDef.options.parameters);
-    console.log("validParams", validParams);
     const invalidParams = Object.keys(req.query).filter(
       (d) => !validParams.includes(d),
     );
-    return {
-      validParams,
-      invalidParams,
-    };
+    if (invalidParams.length > 0) {
+      throw new Error("Invalid parameters: " + invalidParams.join(", "));
+    }
+    return;
   };
 
   larkin.getOutputFormat = function (requestedFormat) {

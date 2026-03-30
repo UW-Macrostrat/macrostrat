@@ -11,17 +11,10 @@ module.exports = function (req, res, next, cb) {
 
   /** New: check for invalid parameters based on the route definition */
 
-  const { invalidParams } = larkin.checkParameterValidity(
-    req,
-    "/defs/intervals",
-  );
-  if (invalidParams.length > 0) {
-    return larkin.error(
-      req,
-      res,
-      next,
-      "Invalid parameters: " + invalidParams.join(", "),
-    );
+  try {
+    larkin.checkParameterValidity(req, "/defs/intervals");
+  } catch (error) {
+    return larkin.error(req, res, next, error.message);
   }
 
   //updated params back to dict
