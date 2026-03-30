@@ -41,7 +41,7 @@ describe("api/v2", () => {
   describe("defs/sources", loadTests("./defs_sources"));
 
   describe("paleogeography", loadTests("./paleogeography"));
-  //describe("geologic_units/gmna", loadTests("./geologic_units_gmna"), null, true);
+  //describe("geologic_units/gmna", loadTests("./geologic_units_gmna"));
   //describe("geologic_units/gmus", loadTests("./geologic_units_gmus"));
   describe("geologic_units/burwell", loadTests("./geologic_units_burwell"));
 
@@ -50,7 +50,7 @@ describe("api/v2", () => {
   describe("tiles", loadTests("./tiles"));
 
   describe("mobile/point", loadTests("./mobile_point"));
-  //describe("mobile/point_details", loadTests("./mobile_point_details"));
+  describe("mobile/point_details", loadTests("./mobile_point_details"));
   describe(
     "mobile/fossil_collections",
     loadTests("./mobile_fossil_collections"),

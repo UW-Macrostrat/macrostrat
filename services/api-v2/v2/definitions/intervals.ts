@@ -11,12 +11,12 @@ module.exports = function (req, res, next, cb) {
 
   /** New: check for invalid parameters based on the route definition */
 
-  try {
-    larkin.checkParameterValidity(req, "/defs/intervals");
-  } catch (error) {
-    return larkin.error(req, res, next, error.message);
-  }
-
+  // try {
+  //   larkin.checkParameterValidity(req, "/defs/intervals");
+  // } catch (error) {
+  //   return larkin.error(req, res, next, error.message);
+  // }
+  //
   //updated params back to dict
   let params = {};
   let where = [];
