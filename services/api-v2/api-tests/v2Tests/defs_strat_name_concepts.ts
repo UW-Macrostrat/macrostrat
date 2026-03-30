@@ -50,3 +50,21 @@ it("should output CSV", function (done) {
       done();
     });
 });
+
+it("should return a valid result", function (done) {
+  this.timeout(9000);
+  request(settings.host)
+    .get("/defs/strat_name_concepts?concept_name=Dakota")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .expect(function (res: { body: { success: { data: string | any[] } } }) {
+      if (res.body.success.data.length !== 1) {
+        throw new Error();
+      }
+    })
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
+});

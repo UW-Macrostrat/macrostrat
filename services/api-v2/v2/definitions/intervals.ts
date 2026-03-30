@@ -9,6 +9,14 @@ module.exports = function (req, res, next, cb) {
     return larkin.info(req, res, next);
   }
 
+  /** New: check for invalid parameters based on the route definition */
+
+  // try {
+  //   larkin.checkParameterValidity(req, "/defs/intervals");
+  // } catch (error) {
+  //   return larkin.error(req, res, next, error.message);
+  // }
+  //
   //updated params back to dict
   let params = {};
   let where = [];
@@ -18,7 +26,7 @@ module.exports = function (req, res, next, cb) {
   let color = "";
 
   if (req.query.name && !req.query.interval_name) {
-  req.query.interval_name = req.query.name;
+    req.query.interval_name = req.query.name;
   }
   if (req.query.timescale) {
     where.push("timescale ILIKE :timescale");

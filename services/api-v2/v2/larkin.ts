@@ -350,6 +350,25 @@ enum APICapability {
     });
   };
 
+  /** New: check for invalid parameters based on the route definition */
+  larkin.checkParameterValidity = function (
+    req,
+    routePath,
+  ): {
+    validParams: string[];
+    invalidParams: string[];
+  } {
+    const routeDef = defs[routePath];
+    const validParams = Object.keys(routeDef.options.parameters);
+    const invalidParams = Object.keys(req.query).filter(
+      (d) => !validParams.includes(d),
+    );
+    if (invalidParams.length > 0) {
+      throw new Error("Invalid parameters: " + invalidParams.join(", "));
+    }
+    return;
+  };
+
   larkin.getOutputFormat = function (requestedFormat) {
     switch (requestedFormat) {
       case "geojson_bare":

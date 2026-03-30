@@ -34,10 +34,7 @@ module.exports = function (req, res, next) {
             "    ST_Contains(cols.poly_geom, ST_GeomFromText($1, 4326))\n" +
             "    AND cols.status_code = 'active'\n" +
             "ORDER BY lo_age;";
-          console.log("HERE IS THE POINT DETAILS SQL:", sql);
-          console.log("here are the params in point details: ", [
-            "POINT(" + req.query.lng + " " + req.query.lat + ")",
-          ]);
+
           larkin.queryPg(
             "geomacro",
             sql,
@@ -64,12 +61,6 @@ module.exports = function (req, res, next) {
                   const unit_age = result.rows[median].lo_period;
                   const unit_name = result.rows[median].strat_name;
 
-                  larkin.trace(
-                    "ROCKTYPE RESULTS",
-                    result.rows,
-                    "AND COL_ID ",
-                    col_id,
-                  );
                   const uniqueRocktypes = Array.from(new Set(rocktypes));
                   callback(null, {
                     gid: col_id,
@@ -175,20 +166,17 @@ module.exports = function (req, res, next) {
                   callback(err);
                 }
               } else {
-                var col = [
-                  {
-                    col_id: column.col_id,
-                    col_name: column.col_name,
-                    col_poly:
-                      req.query.geo_format === "wkt"
-                        ? wellknown.stringify(
-                            gp(JSON.parse(column.col_poly), 3),
-                          )
-                        : gp(JSON.parse(column.col_poly), 3),
-                    units: units,
-                  },
-                ];
-                callback(null, col[0]);
+                const col = {
+                  col_id: column.col_id,
+                  col_name: column.col_name,
+                  col_poly:
+                    req.query.geo_format === "wkt"
+                      ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3))
+                      : gp(JSON.parse(column.col_poly), 3),
+                  units: units,
+                };
+
+                callback(null, col);
               }
             },
           );
@@ -211,7 +199,7 @@ module.exports = function (req, res, next) {
               compact: true,
             },
             {
-              data: results,
+              data: [results],
             },
           );
         }
@@ -252,7 +240,7 @@ module.exports = function (req, res, next) {
                       if (result.rows.length === 0) {
                         callback(null);
                       } else {
-                        callbackB(null, result.rows[0]);
+                        callbackB(null, result.rows);
                       }
                     }
                   },
@@ -295,20 +283,16 @@ module.exports = function (req, res, next) {
               if (err) {
                 callback(err);
               } else {
-                var col = [
-                  {
-                    col_id: column.col_id,
-                    col_name: column.col_name,
-                    col_poly:
-                      req.query.geo_format === "wkt"
-                        ? wellknown.stringify(
-                            gp(JSON.parse(column.col_poly), 3),
-                          )
-                        : gp(JSON.parse(column.col_poly), 3),
-                    units: units,
-                  },
-                ];
-                callback(null, col[0]);
+                const col = {
+                  col_id: column.col_id,
+                  col_name: column.col_name,
+                  col_poly:
+                    req.query.geo_format === "wkt"
+                      ? wellknown.stringify(gp(JSON.parse(column.col_poly), 3))
+                      : gp(JSON.parse(column.col_poly), 3),
+                  units: units,
+                };
+                callback(null, col);
               }
             },
           );
