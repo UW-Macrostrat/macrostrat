@@ -32,7 +32,9 @@ module.exports = function (req, res, next, cb) {
     params["name"] = req.query.concept_like + "%";
   } else if ("concept_name" in req.query) {
     where.push("name = ANY(:concept_name)");
-    params["concept_name"] = req.query.concept_name;
+    params["concept_name"] = larkin.parseMultipleStrings(
+      req.query.concept_name,
+    );
   } else if (req.query.concept_id || req.query.strat_name_concept_id) {
     where.push("concept_id = ANY(:concept_id)");
     if (req.query.concept_id) {
