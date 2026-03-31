@@ -27,16 +27,24 @@ def find_gis_files(
     Recursively find GIS files in a directory, or treat a single file/directory as a GIS dataset.
     """
     gis_files = []
+    excluded_files = []
+
+    if directory.is_file():
+        if is_gis_file(directory):
+            gis_files.append(directory)
+        return gis_files, excluded_files
+    elif not directory.exists():
+        raise ValueError(f"{directory} does not exist.")
+    elif not directory.is_dir():
+        raise ValueError(f"{directory} is not a file or directory.")
 
     # If the given path is a single .gdb directory, just return it directly
-    if directory.suffix == ".gdb" and directory.is_dir():
+    if directory.suffix == ".gdb":
         return [directory], []
 
     # Otherwise, recursively search for files
     for path in directory.rglob("*"):
-        if path.suffix.lower() in (".geojson", ".gpkg", ".shp"):
-            gis_files.append(path)
-        elif path.is_dir() and path.suffix == ".gdb":
+        if is_gis_file(path):
             gis_files.append(path)
 
     if filter is not None:
@@ -50,6 +58,11 @@ def find_gis_files(
         log.warning(f"Excluded {len(excluded_files)} files due to filter")
 
     return filtered_gis_files, excluded_files
+
+def is_gis_file(file: Path) -> bool:
+    return file.suffix.lower() in (".geojson", ".gpkg", ".shp") or (
+        file.is_dir() and file.suffix == ".gdb"
+    )
 
 
 def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
