@@ -530,6 +530,7 @@ def multiple_fieldsite_to_spot(fieldsites: list[FieldSite]) -> dict:
             continue
     return {"type": "FeatureCollection", "features": features}
 
+
 def fieldsite_to_spot_single(fs: FieldSite) -> dict:
     """
     Convert a single FieldSite -> bare StraboSpot-style Feature payload
@@ -577,13 +578,16 @@ def fieldsite_to_spot_single(fs: FieldSite) -> dict:
                 "strike": float(p.strike) if p.strike is not None else None,
                 "dip": float(p.dip) if p.dip is not None else None,
                 "facing": (
-                    p.facing.value if getattr(p, "facing", None) is not None else "upright"
+                    p.facing.value
+                    if getattr(p, "facing", None) is not None
+                    else "upright"
                 ),
                 "orientation_type": "planar_orientation",
             }
             for p in planars
         ]
     return feat
+
 
 def checkin_to_spot_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     """
@@ -625,7 +629,7 @@ async def convert_field_site(
     key = (in_.lower(), out.lower())
     if key == ("spot", "fieldsite"):
         return multiple_spot_to_fieldsite(payload)
-    #output a b
+    # output a b
     if key == ("checkin", "fieldsite"):
         return multiple_checkin_to_fieldsite(payload)
     if key == ("fieldsite", "checkin"):
