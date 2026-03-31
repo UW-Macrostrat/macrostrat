@@ -18,15 +18,22 @@ def find_gis_files(
     gis_files = []
     excluded_files = []
 
+    if directory.is_file():
+        if is_gis_file(directory):
+            gis_files.append(directory)
+        return gis_files, excluded_files
+    elif not directory.exists():
+        raise ValueError(f"{directory} does not exist.")
+    elif not directory.is_dir():
+        raise ValueError(f"{directory} is not a file or directory.")
+
     # If the given path is a single .gdb directory, just return it directly
-    if directory.suffix == ".gdb" and directory.is_dir():
+    if directory.suffix == ".gdb":
         return [directory], []
 
     # Otherwise, recursively search for files
     for path in directory.rglob("*"):
-        if path.suffix.lower() in (".geojson", ".gpkg", ".shp"):
-            gis_files.append(path)
-        elif path.is_dir() and path.suffix == ".gdb":
+        if is_gis_file(path):
             gis_files.append(path)
 
     for gis_file in gis_files:
@@ -47,6 +54,12 @@ def find_gis_files(
                 excluded_files.append(gis_file)
 
     return gis_files, excluded_files
+
+
+def is_gis_file(file: Path) -> bool:
+    return file.suffix.lower() in (".geojson", ".gpkg", ".shp") or (
+        file.is_dir() and file.suffix == ".gdb"
+    )
 
 
 import re
