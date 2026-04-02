@@ -51,6 +51,7 @@ module.exports = function (req, res, next, cb) {
   where.push("sources.rgeom IS NOT NULL");
   where.push("sources.web_geom IS NOT NULL");
   where.push("sources.status_code = 'active'");
+  where.push("sources.is_finalized = true");
 
   var sql = `
   SELECT
