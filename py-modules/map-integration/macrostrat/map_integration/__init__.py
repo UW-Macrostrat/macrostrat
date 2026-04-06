@@ -11,7 +11,7 @@ from sys import stdin
 from psycopg2.sql import Identifier
 from rich.console import Console
 from typer import Option
-
+from .commands.staging_normalize import normalize_cli
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
@@ -403,6 +403,7 @@ def staging(
 
 staging_cli.add_command(staging, name="ingest")
 staging_cli.command("delete")(delete_sources)
+staging_cli.add_typer(normalize_cli, name="normalize")
 
 # ------------------------------------------
 # commands nested under 'macrostrat maps staging...'

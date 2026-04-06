@@ -128,6 +128,7 @@ class LineworkTableUpdater(SourcesTableUpdater):
         "name": "character varying(255)",
         "type": "character varying(100)",
         "direction": "character varying(20)",
+        "certainty": "character varying(100)",
     }
 
 
