@@ -95,7 +95,8 @@ class PolygonTableUpdater(SourcesTableUpdater):
         "t_interval": "integer",
         "b_interval": "integer",
         "color": "text",
-        "strat_symbol": "text",
+        "unit_label": "text",
+        "fill_pattern": "text",
     }
 
     def _update_legacy_polygon_columns(self):
