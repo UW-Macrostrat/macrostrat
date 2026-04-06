@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
+from psycopg2.sql import SQL, Identifier
 from rich.console import Console
 from rich.prompt import Prompt
 from typer import Argument, Option
-from psycopg2.sql import SQL, Identifier
 
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
@@ -15,14 +15,14 @@ from macrostrat.map_integration.utils import IngestionCLI
 
 console = Console()
 
-'''
+"""
 Future subcommands to add
 fill-null
 rename-values
 trim-whitespace
 lowercase-column
 coalesce-columns
-'''
+"""
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,7 @@ class TableTarget:
     @property
     def fq_identifier(self):
         return Identifier(self.schema, self.table)
+
 
 def get_integer_required_fields_for_table(table: str) -> set[str]:
     required_fields = get_required_fields_for_table(table)
@@ -93,6 +94,7 @@ def get_required_fields_for_table(table: str) -> dict[str, str]:
         "Expected table to end with _points, _lines, or _polygons."
     )
 
+
 def add_required_columns(
     target: TableTarget,
     dry_run: bool = False,
@@ -111,8 +113,7 @@ def add_required_columns(
             )
             continue
         console.print(
-            f"[blue]Adding[/blue] [bold]{col_name}[/bold] "
-            f"[dim]({col_type})[/dim]"
+            f"[blue]Adding[/blue] [bold]{col_name}[/bold] " f"[dim]({col_type})[/dim]"
         )
         if dry_run:
             continue
@@ -202,9 +203,7 @@ def copy_required_column_values_interactive(
         f"[bold]{target.schema}.{target.table}[/bold] "
         f"across {row_count} rows"
     )
-    console.print(
-        f"[dim]Available columns:[/dim] {', '.join(sorted(existing_cols))}"
-    )
+    console.print(f"[dim]Available columns:[/dim] {', '.join(sorted(existing_cols))}")
 
     for dst in required_fields:
         src = Prompt.ask(
@@ -215,9 +214,7 @@ def copy_required_column_values_interactive(
         ).strip()
 
         if src == "":
-            console.print(
-                f"[yellow]Skipping[/yellow] destination [bold]{dst}[/bold]"
-            )
+            console.print(f"[yellow]Skipping[/yellow] destination [bold]{dst}[/bold]")
             continue
 
         if src not in existing_cols:
@@ -279,8 +276,8 @@ normalize_cli = IngestionCLI(
 )
 
 
+# ____________________________________CLI COMMANDS________________________________________________
 
-#____________________________________CLI COMMANDS________________________________________________
 
 @normalize_cli.command("copy-column")
 def normalize_copy_column(

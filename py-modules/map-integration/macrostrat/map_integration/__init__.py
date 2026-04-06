@@ -11,7 +11,7 @@ from sys import stdin
 from psycopg2.sql import Identifier
 from rich.console import Console
 from typer import Option
-from .commands.staging_normalize import normalize_cli
+
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
@@ -34,6 +34,7 @@ from .commands.prepare_fields import prepare_fields
 from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
+from .commands.staging_normalize import normalize_cli
 from .database import get_database
 from .migrations import run_migrations
 from .pipeline import upload_file
