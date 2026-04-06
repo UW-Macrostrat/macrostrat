@@ -45,3 +45,8 @@ CREATE TABLE maps_metadata.ingest_process_tag (
         references maps_metadata.ingest_process,
     tag character varying(255) NOT NULL
 );
+
+ALTER TABLE maps_metadata.ingest_process
+ADD CONSTRAINT ingest_process_slug_fkey
+FOREIGN KEY (slug)
+REFERENCES maps.sources(slug);
