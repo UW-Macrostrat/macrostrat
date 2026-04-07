@@ -136,6 +136,7 @@ class LineworkTableUpdater(SourcesTableUpdater):
 class PointsTableUpdater(SourcesTableUpdater):
     column_spec = {
         **common_columns,
+        "descrip": "text",
         "comments": "text",
         "strike": "integer",
         "dip": "integer",
