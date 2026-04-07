@@ -29,6 +29,7 @@ coalesce-columns
 class TableTarget:
     """Immutable dataclass representing a fully-qualified database table target,
     identified by its schema and table name."""
+
     schema: str
     table: str
 
@@ -95,7 +96,8 @@ def get_existing_columns(target: TableTarget) -> set[str]:
 
 def get_preferred_fields_for_table(table: str) -> dict[str, str]:
     """Infers the expected column specification (name -> SQL type) for a staging table based on its suffix: _points,
-    _lines, or _polygons. Raises a ValueError if the table name does not match any known suffix."""
+    _lines, or _polygons. Raises a ValueError if the table name does not match any known suffix.
+    """
     if table.endswith("_points"):
         return PointsTableUpdater.column_spec
     if table.endswith("_lines"):
@@ -201,7 +203,8 @@ def copy_preferred_column_values_interactive(
 ):
     """Interactively prompts the user to map existing source columns into each preferred destination column for the
     target table. For integer-typed destination columns, the source value is cast to integer with NULL handling.
-    When dry_run is True, prompts are shown and mappings are printed but no SQL is executed."""
+    When dry_run is True, prompts are shown and mappings are printed but no SQL is executed.
+    """
     db = get_database()
     preferred_fields = get_preferred_fields_for_table(target.table)
     existing_cols = get_existing_columns(target)
@@ -293,7 +296,8 @@ METADATA_FIELDS = [
 
 def get_source_row_for_table(table_name: str):
     """Looks up the maps.sources row whose primary_table matches the given table name. Raises a ValueError if no
-    matching row is found. Returns the full database row including source_id and slug."""
+    matching row is found. Returns the full database row including source_id and slug.
+    """
     db = get_database()
     row = db.run_query(
         """
@@ -312,7 +316,8 @@ def get_source_row_for_table(table_name: str):
 
 def parse_metadata_value(field: str, raw_value: str):
     """Parses and coerces a raw string metadata value for a given field. Returns None for empty strings,
-    an int for scale_denominator, a list of strings for keywords, and the stripped string for all other fields."""
+    an int for scale_denominator, a list of strings for keywords, and the stripped string for all other fields.
+    """
     raw_value = raw_value.strip()
     if raw_value == "":
         return None
@@ -386,8 +391,7 @@ def add_metadata_interactive(
     console.print("[green]Done:[/green] metadata updated")
 
 
-
-#________________CALCULATE AGES/LINE TYPES/POINT TYPES FUNCTIONS___________________________________________
+# ________________CALCULATE AGES/LINE TYPES/POINT TYPES FUNCTIONS___________________________________________
 def calculate_age_intervals(
     target: TableTarget,
     col_one: str,
@@ -396,7 +400,8 @@ def calculate_age_intervals(
 ):
     """Populates b_interval and t_interval on the target table by matching values from two user-supplied
     text columns against macrostrat.intervals, with a fallback to the era column. Both destination columns are
-    set to the same resolved interval ID. Raises a ValueError if required columns are missing."""
+    set to the same resolved interval ID. Raises a ValueError if required columns are missing.
+    """
     db = get_database()
     col_one = validate_identifier(col_one, "first age column")
     col_two = validate_identifier(col_two, "second age column")
@@ -483,7 +488,8 @@ def copy_point_type_from_column(
     (case-insensitive, trimmed) against canonical point_type values in maps.points.
     Writes the matched integer maps.points.id into the destination point_type column.
     If src_col is point_type itself, all rows are remapped in place; otherwise only
-    currently-null rows are filled. Returns the count of remaining null point_type rows."""
+    currently-null rows are filled. Returns the count of remaining null point_type rows.
+    """
     db = get_database()
     src_col = validate_identifier(src_col, "source column")
     existing_cols = get_existing_columns(target)
@@ -572,7 +578,6 @@ def copy_point_type_from_column(
         f"Remaining null point_type rows: {remaining_nulls}"
     )
     return remaining_nulls
-
 
 
 def copy_line_type_from_column(
@@ -678,9 +683,6 @@ def copy_line_type_from_column(
     return remaining_nulls
 
 
-
-
-
 def copy_age_columns(
     target: TableTarget,
     older_col: str,
@@ -759,7 +761,6 @@ def copy_age_columns(
     )
 
 
-
 normalize_cli = IngestionCLI(
     no_args_is_help=True,
     help="Normalize or bulk-fix staged table data.",
@@ -827,7 +828,6 @@ def normalize_add_metadata(
     add_metadata_interactive(table_name=table, dry_run=dry_run)
 
 
-
 @normalize_cli.command("calculate-age")
 def normalize_calculate_age(
     schema: str = Argument(..., help="Schema name"),
@@ -847,7 +847,6 @@ def normalize_calculate_age(
         col_two=col_two,
         dry_run=dry_run,
     )
-
 
 
 @normalize_cli.command("copy-ages")
@@ -909,7 +908,6 @@ def normalize_copy_line_type(
         ).strip()
     if next_col == "":
         console.print("[green]Finished copy-line-type[/green]")
-
 
 
 @normalize_cli.command("copy-point-type")

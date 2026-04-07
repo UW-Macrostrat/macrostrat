@@ -10,7 +10,7 @@ from sys import stdin
 
 from psycopg2.sql import Identifier
 from rich.console import Console
-from typer import Option, Argument
+from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.database import Database
@@ -277,7 +277,9 @@ def staging(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
     ),
-    crs: str = Option(None, help="Force CRS for layers missing projection, e.g. EPSG:26911"),
+    crs: str = Option(
+        None, help="Force CRS for layers missing projection, e.g. EPSG:26911"
+    ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
