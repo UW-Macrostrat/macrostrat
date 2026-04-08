@@ -479,7 +479,7 @@ CREATE VIEW macrostrat_api.extraction_feedback AS
     extraction_feedback.feedback_id,
     extraction_feedback.date,
     extraction_feedback.custom_note
-   FROM macrostrat_xdd.extraction_feedback;
+   FROM macrostrat_kg.extraction_feedback;
 ALTER TABLE macrostrat_api.extraction_feedback OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.extraction_feedback_combined AS
@@ -487,9 +487,9 @@ CREATE VIEW macrostrat_api.extraction_feedback_combined AS
     f.date,
     f.custom_note AS note,
     COALESCE(json_agg(json_build_object('type_id', t.type_id, 'type', t.type)) FILTER (WHERE (t.type_id IS NOT NULL)), '[]'::json) AS types
-   FROM ((macrostrat_xdd.extraction_feedback f
-     LEFT JOIN macrostrat_xdd.lookup_extraction_type l ON ((l.note_id = f.note_id)))
-     LEFT JOIN macrostrat_xdd.extraction_feedback_type t ON ((t.type_id = l.type_id)))
+   FROM ((macrostrat_kg.extraction_feedback f
+     LEFT JOIN macrostrat_kg.lookup_extraction_type l ON ((l.note_id = f.note_id)))
+     LEFT JOIN macrostrat_kg.extraction_feedback_type t ON ((t.type_id = l.type_id)))
   GROUP BY f.feedback_id, f.date, f.custom_note
   ORDER BY f.date DESC;
 ALTER TABLE macrostrat_api.extraction_feedback_combined OWNER TO macrostrat_admin;
@@ -497,7 +497,7 @@ ALTER TABLE macrostrat_api.extraction_feedback_combined OWNER TO macrostrat_admi
 CREATE VIEW macrostrat_api.extraction_feedback_type AS
  SELECT extraction_feedback_type.type_id,
     extraction_feedback_type.type
-   FROM macrostrat_xdd.extraction_feedback_type;
+   FROM macrostrat_kg.extraction_feedback_type;
 ALTER TABLE macrostrat_api.extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.fossils AS
@@ -556,9 +556,9 @@ CREATE VIEW macrostrat_api.kg_entities AS
     mr.id AS model_run,
     mr.source_text_id AS source,
     COALESCE(to_json(sn.*), to_json(l.*), to_json(la.*)) AS match
-   FROM (((((macrostrat_xdd.entity e
-     JOIN macrostrat_xdd.entity_type et ON ((et.id = e.entity_type_id)))
-     JOIN macrostrat_xdd.model_run mr ON ((mr.id = e.run_id)))
+   FROM (((((macrostrat_kg.entity e
+     JOIN macrostrat_kg.entity_type et ON ((et.id = e.entity_type_id)))
+     JOIN macrostrat_kg.model_run mr ON ((mr.id = e.run_id)))
      LEFT JOIN strat_names sn ON ((sn.strat_name_id = e.strat_name_id)))
      LEFT JOIN liths l ON ((l.lith_id = e.lith_id)))
      LEFT JOIN lith_atts la ON ((la.lith_att_id = e.lith_att_id)));
@@ -567,10 +567,10 @@ ALTER TABLE macrostrat_api.kg_entities OWNER TO macrostrat_admin;
 CREATE VIEW macrostrat_api.kg_entity_tree AS
  WITH RECURSIVE start_entities AS (
          SELECT entity.id
-           FROM macrostrat_xdd.entity
+           FROM macrostrat_kg.entity
         EXCEPT
          SELECT relationship.src_entity_id
-           FROM macrostrat_xdd.relationship
+           FROM macrostrat_kg.relationship
         ), e0 AS (
          SELECT e.model_run,
             e.id,
@@ -587,7 +587,7 @@ CREATE VIEW macrostrat_api.kg_entity_tree AS
             e0.n_matches
            FROM ((e0
              JOIN start_entities se ON ((se.id = e0.id)))
-             LEFT JOIN macrostrat_xdd.relationship r ON ((r.dst_entity_id = se.id)))
+             LEFT JOIN macrostrat_kg.relationship r ON ((r.dst_entity_id = se.id)))
         UNION
          SELECT a.model_run,
             a.src_entity_id,
@@ -604,7 +604,7 @@ CREATE VIEW macrostrat_api.kg_entity_tree AS
                     tree_1.n_entities,
                     tree_1.n_matches
                    FROM (tree tree_1
-                     LEFT JOIN macrostrat_xdd.relationship r1 ON ((r1.dst_entity_id = tree_1.parent_id)))) a
+                     LEFT JOIN macrostrat_kg.relationship r1 ON ((r1.dst_entity_id = tree_1.parent_id)))) a
              JOIN e0 ON ((e0.id = a.parent_id)))
           GROUP BY a.model_run, a.depth, e0.tree, e0.n_matches, a.src_entity_id, a.parent_id
         )
@@ -618,8 +618,8 @@ CREATE VIEW macrostrat_api.kg_entity_tree AS
     tree.tree,
     tree.depth
    FROM ((tree
-     JOIN macrostrat_xdd.model_run mr ON ((mr.id = tree.model_run)))
-     JOIN macrostrat_xdd.source_text st ON ((st.id = mr.source_text_id)))
+     JOIN macrostrat_kg.model_run mr ON ((mr.id = tree.model_run)))
+     JOIN macrostrat_kg.source_text st ON ((st.id = mr.source_text_id)))
   WHERE (tree.parent_id IS NULL);
 ALTER TABLE macrostrat_api.kg_entity_tree OWNER TO macrostrat_admin;
 
@@ -642,8 +642,8 @@ CREATE VIEW macrostrat_api.kg_context_entities AS
     st.preprocessor_id,
     mr.model_id,
     mr.version_id
-   FROM ((macrostrat_xdd.source_text st
-     LEFT JOIN macrostrat_xdd.model_run mr ON ((mr.source_text_id = st.id)))
+   FROM ((macrostrat_kg.source_text st
+     LEFT JOIN macrostrat_kg.model_run mr ON ((mr.source_text_id = st.id)))
      LEFT JOIN entities e ON ((e.model_run = mr.id)));
 ALTER TABLE macrostrat_api.kg_context_entities OWNER TO macrostrat_admin;
 
@@ -652,13 +652,13 @@ CREATE VIEW macrostrat_api.kg_entity_type AS
     entity_type.name,
     entity_type.description,
     entity_type.color
-   FROM macrostrat_xdd.entity_type;
+   FROM macrostrat_kg.entity_type;
 ALTER TABLE macrostrat_api.kg_entity_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_extraction_feedback_type AS
  SELECT extraction_feedback_type.type_id,
     extraction_feedback_type.type
-   FROM macrostrat_xdd.extraction_feedback_type;
+   FROM macrostrat_kg.extraction_feedback_type;
 ALTER TABLE macrostrat_api.kg_extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_source_text AS
@@ -670,8 +670,8 @@ CREATE VIEW macrostrat_api.kg_source_text AS
             count((e.strat_name_id)::boolean) AS n_strat_names,
             min(mr."timestamp") AS created,
             max(mr."timestamp") AS last_update
-           FROM (macrostrat_xdd.model_run mr
-             LEFT JOIN macrostrat_xdd.entity e ON ((e.run_id = mr.id)))
+           FROM (macrostrat_kg.model_run mr
+             LEFT JOIN macrostrat_kg.entity e ON ((e.run_id = mr.id)))
           GROUP BY mr.source_text_id
         )
  SELECT st.preprocessor_id,
@@ -688,7 +688,7 @@ CREATE VIEW macrostrat_api.kg_source_text AS
     s.n_strat_names,
     s.created,
     s.last_update
-   FROM (macrostrat_xdd.source_text st
+   FROM (macrostrat_kg.source_text st
      JOIN stats s ON ((s.source_text_id = st.id)));
 ALTER TABLE macrostrat_api.kg_source_text OWNER TO macrostrat_admin;
 
@@ -732,9 +732,9 @@ CREATE VIEW macrostrat_api.kg_model AS
     count(DISTINCT e.id) AS n_entities,
     count((COALESCE(e.strat_name_id, e.lith_id, e.lith_att_id))::boolean) AS n_matches,
     count((e.strat_name_id)::boolean) AS n_strat_names
-   FROM ((macrostrat_xdd.model m
-     LEFT JOIN macrostrat_xdd.model_run mr ON ((mr.model_id = m.id)))
-     LEFT JOIN macrostrat_xdd.entity e ON ((e.run_id = mr.id)))
+   FROM ((macrostrat_kg.model m
+     LEFT JOIN macrostrat_kg.model_run mr ON ((mr.model_id = m.id)))
+     LEFT JOIN macrostrat_kg.entity e ON ((e.run_id = mr.id)))
   GROUP BY m.id;
 ALTER TABLE macrostrat_api.kg_model OWNER TO macrostrat_admin;
 
@@ -751,10 +751,10 @@ CREATE VIEW macrostrat_api.kg_model_run AS
     st.weaviate_id,
     mr.supersedes,
     mr1.id AS superseded_by
-   FROM (((macrostrat_xdd.model_run mr
-     LEFT JOIN macrostrat_xdd.model_run mr1 ON ((mr1.supersedes = mr.id)))
-     JOIN macrostrat_xdd.model m ON ((m.id = mr.model_id)))
-     JOIN macrostrat_xdd.source_text st ON ((st.id = mr.source_text_id)))
+   FROM (((macrostrat_kg.model_run mr
+     LEFT JOIN macrostrat_kg.model_run mr1 ON ((mr1.supersedes = mr.id)))
+     JOIN macrostrat_kg.model m ON ((m.id = mr.model_id)))
+     JOIN macrostrat_kg.source_text st ON ((st.id = mr.source_text_id)))
   ORDER BY mr.id;
 ALTER TABLE macrostrat_api.kg_model_run OWNER TO macrostrat_admin;
 
@@ -764,10 +764,10 @@ CREATE VIEW macrostrat_api.kg_publication_entities AS
             array_agg(DISTINCT mr.model_id) AS models,
             array_agg(DISTINCT e_1.strat_name_id) AS strat_name_matches,
             count(DISTINCT e_1.strat_name_id) AS n_matches
-           FROM (((macrostrat_xdd.publication p_1
-             JOIN macrostrat_xdd.source_text st ON ((st.paper_id = p_1.paper_id)))
-             JOIN macrostrat_xdd.model_run mr ON ((mr.source_text_id = st.id)))
-             JOIN macrostrat_xdd.entity e_1 ON ((mr.id = e_1.run_id)))
+           FROM (((macrostrat_kg.publication p_1
+             JOIN macrostrat_kg.source_text st ON ((st.paper_id = p_1.paper_id)))
+             JOIN macrostrat_kg.model_run mr ON ((mr.source_text_id = st.id)))
+             JOIN macrostrat_kg.entity e_1 ON ((mr.id = e_1.run_id)))
           WHERE (e_1.strat_name_id IS NOT NULL)
           GROUP BY p_1.paper_id
         ), entities AS (
@@ -782,7 +782,7 @@ CREATE VIEW macrostrat_api.kg_publication_entities AS
     p.n_matches,
     p.models,
     e.entities
-   FROM ((macrostrat_xdd.publication pub
+   FROM ((macrostrat_kg.publication pub
      LEFT JOIN paper_strat_names p ON ((pub.paper_id = p.paper_id)))
      LEFT JOIN entities e ON ((p.paper_id = e.paper_id)))
   ORDER BY p.n_matches DESC;
@@ -942,7 +942,7 @@ ALTER TABLE macrostrat_api.location_tags_intersect OWNER TO macrostrat_admin;
 CREATE VIEW macrostrat_api.lookup_extraction_type AS
  SELECT lookup_extraction_type.note_id,
     lookup_extraction_type.type_id
-   FROM macrostrat_xdd.lookup_extraction_type;
+   FROM macrostrat_kg.lookup_extraction_type;
 ALTER TABLE macrostrat_api.lookup_extraction_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.macrostrat_stats AS
@@ -1795,7 +1795,7 @@ CREATE OR REPLACE VIEW macrostrat_api.feedback AS
 
 WITH selected_runs AS (
     SELECT *
-    FROM macrostrat_xdd.all_runs
+    FROM macrostrat_kg.all_runs
     WHERE user_id IS NOT NULL
 ),
 
@@ -1811,10 +1811,10 @@ entities AS (
                 'end', e.end_index
             )
         ) AS entities
-    FROM macrostrat_xdd.entity e
+    FROM macrostrat_kg.entity e
     JOIN selected_runs sr
         ON sr.id = e.run_id   -- 🔥 filter early
-    LEFT JOIN macrostrat_xdd.entity_type et
+    LEFT JOIN macrostrat_kg.entity_type et
         ON et.id = e.entity_type_id
     GROUP BY e.run_id
 ),
@@ -1828,8 +1828,8 @@ relations AS (
                 'tail', r.dst_entity_id
             )
         ) AS relations
-    FROM macrostrat_xdd.relationship r
-    JOIN macrostrat_xdd.entity parent
+    FROM macrostrat_kg.relationship r
+    JOIN macrostrat_kg.entity parent
         ON parent.id = r.src_entity_id
     JOIN selected_runs sr
         ON sr.id = parent.run_id   -- 🔥 filter early
@@ -1841,10 +1841,10 @@ feedback_meta AS (
         ef.feedback_id AS run_id,
         ef.custom_note AS extraction_note,
         eft.type AS extraction_feedback_type
-    FROM macrostrat_xdd.extraction_feedback ef
-    LEFT JOIN macrostrat_xdd.lookup_extraction_type let
+    FROM macrostrat_kg.extraction_feedback ef
+    LEFT JOIN macrostrat_kg.lookup_extraction_type let
         ON let.note_id = ef.note_id
-    LEFT JOIN macrostrat_xdd.extraction_feedback_type eft
+    LEFT JOIN macrostrat_kg.extraction_feedback_type eft
         ON eft.type_id = let.type_id
 )
 
@@ -1864,7 +1864,7 @@ LEFT JOIN relations rel
     ON rel.run_id = sr.id
 LEFT JOIN feedback_meta fm
     ON fm.run_id = sr.id
-LEFT JOIN macrostrat_xdd.global_entity ge
+LEFT JOIN macrostrat_kg.global_entity ge
     ON ge.global_entity_id = sr.root_id;
 
 ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
