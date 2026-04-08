@@ -119,23 +119,6 @@ CREATE SEQUENCE public.geologic_boundary_source_seq
     CACHE 1;
 ALTER TABLE public.geologic_boundary_source_seq OWNER TO macrostrat;
 
-CREATE TABLE public.impervious (
-    rid integer NOT NULL,
-    rast public.raster
-);
-ALTER TABLE public.impervious OWNER TO macrostrat;
-
-CREATE SEQUENCE public.impervious_rid_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE public.impervious_rid_seq OWNER TO macrostrat;
-
-ALTER SEQUENCE public.impervious_rid_seq OWNED BY public.impervious.rid;
-
 CREATE TABLE public.land (
     gid integer NOT NULL,
     scalerank numeric(10,0),
@@ -349,16 +332,11 @@ ALTER TABLE public.usage_stats_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE public.usage_stats_id_seq OWNED BY public.usage_stats.id;
 
-ALTER TABLE ONLY public.impervious ALTER COLUMN rid SET DEFAULT nextval('public.impervious_rid_seq'::regclass);
-
 ALTER TABLE ONLY public.land ALTER COLUMN gid SET DEFAULT nextval('public.land_gid_seq'::regclass);
 
 ALTER TABLE ONLY public.macrostrat_union ALTER COLUMN id SET DEFAULT nextval('public.macrostrat_union_id_seq'::regclass);
 
 ALTER TABLE ONLY public.usage_stats ALTER COLUMN id SET DEFAULT nextval('public.usage_stats_id_seq'::regclass);
-
-ALTER TABLE ONLY public.impervious
-    ADD CONSTRAINT impervious_pkey PRIMARY KEY (rid);
 
 ALTER TABLE ONLY public.land
     ADD CONSTRAINT land_pkey PRIMARY KEY (gid);
@@ -368,8 +346,6 @@ ALTER TABLE ONLY public.macrostrat_union
 
 ALTER TABLE ONLY public.usage_stats
     ADD CONSTRAINT usage_stats_pkey PRIMARY KEY (id);
-
-CREATE INDEX impervious_st_convexhull_idx ON public.impervious USING gist (public.st_convexhull(rast));
 
 CREATE INDEX land_geom_idx ON public.land USING gist (geom);
 

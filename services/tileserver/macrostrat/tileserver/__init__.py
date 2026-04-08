@@ -32,27 +32,6 @@ from .map_ingestion import register_map_ingestion_routes
 from .paleogeography import PaleoGeographyLayer
 from .vendor.repeat_every import repeat_every
 
-
-# TODO: move this or improve it
-async def connect_to_rockd_db(
-    app: FastAPI,
-    settings: Optional[PostgresSettings] = None,
-    **kwargs,
-) -> None:
-    """Connect."""
-    if not settings:
-        settings = PostgresSettings()
-    app.state.rockd_pool = await asyncpg.create_pool_b(
-        settings.rockd_database_url,
-        min_size=settings.db_min_conn_size,
-        max_size=settings.db_max_conn_size,
-        max_queries=settings.db_max_queries,
-        max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
-        init=con_init,
-        **kwargs,
-    )
-
-
 # Wire up legacy postgres database
 if not environ.get("DATABASE_URL") and "POSTGRES_DB" in environ:
     environ["DATABASE_URL"] = environ["POSTGRES_DB"]
@@ -70,7 +49,6 @@ app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=[
 class TileServerSettings(PostgresSettings):
     # XDD embedding service URL
     xdd_embedding_service_url: Optional[str] = None
-    rockd_database_url: Optional[str] = None
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="allow",
@@ -89,8 +67,11 @@ async def startup_event():
     """Application startup: register the database connection and create table list."""
     # Don't rely on poort TimVT handling of database connections
     setup_stderr_logs("macrostrat_tileserver", "timvt")
-    await connect_to_db(app, db_settings)
-    await connect_to_rockd_db(app, db_settings)
+    await connect_to_db(
+        app,
+        db_settings,
+        server_settings={"application_name": "tileserver"},
+    )
 
     # Apply fixtures
     # apply_fixtures(db_settings.database_url)
@@ -191,10 +172,6 @@ app.include_router(map_bounds_router, tags=["Maps"], prefix="/maps")
 from .vector_search import router as search_router
 
 app.include_router(search_router, tags=["Vector search"], prefix="/search")
-
-from .rockd_checkins import router as checkins_router
-
-app.include_router(checkins_router, tags=["Checkins"], prefix="/checkins/tiles")
 
 from .fossils import router as fossils_router
 

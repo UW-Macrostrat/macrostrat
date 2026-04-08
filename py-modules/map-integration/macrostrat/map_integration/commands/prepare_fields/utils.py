@@ -95,7 +95,8 @@ class PolygonTableUpdater(SourcesTableUpdater):
         "t_interval": "integer",
         "b_interval": "integer",
         "color": "text",
-        "strat_symbol": "text",
+        "unit_label": "text",
+        "fill_pattern": "text",
     }
 
     def _update_legacy_polygon_columns(self):
@@ -128,12 +129,14 @@ class LineworkTableUpdater(SourcesTableUpdater):
         "name": "character varying(255)",
         "type": "character varying(100)",
         "direction": "character varying(20)",
+        "certainty": "character varying(100)",
     }
 
 
 class PointsTableUpdater(SourcesTableUpdater):
     column_spec = {
         **common_columns,
+        "descrip": "text",
         "comments": "text",
         "strike": "integer",
         "dip": "integer",

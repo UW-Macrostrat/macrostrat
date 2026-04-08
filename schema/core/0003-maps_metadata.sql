@@ -136,3 +136,8 @@ ALTER TABLE ONLY maps_metadata.map_files
 
 GRANT SELECT,UPDATE ON TABLE maps_metadata.ingest_process TO web_user;
 
+ALTER TABLE maps_metadata.ingest_process
+ADD CONSTRAINT ingest_process_slug_fkey
+FOREIGN KEY (slug)
+REFERENCES maps.sources(slug);
+

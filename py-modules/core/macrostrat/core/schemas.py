@@ -1,3 +1,5 @@
+# TODO: move this to a "macrostrat.data-schemas" module
+
 import datetime
 import enum
 from typing import List

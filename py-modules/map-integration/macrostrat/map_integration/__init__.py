@@ -10,7 +10,7 @@ from sys import stdin
 
 from psycopg2.sql import Identifier
 from rich.console import Console
-from typer import Option
+from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.database import Database
@@ -34,6 +34,7 @@ from .commands.prepare_fields import prepare_fields
 from .commands.set_srid import apply_srid
 from .commands.source_info import source_info
 from .commands.sources import map_sources
+from .commands.staging_normalize import normalize_cli
 from .database import get_database
 from .migrations import run_migrations
 from .pipeline import upload_file
@@ -90,7 +91,7 @@ sources.add_command(map_sources, name="list")
 
 @sources.command(name="delete")
 def delete_sources(
-    slug: list[str] = Option(
+    slug: list[str] = Argument(
         ...,
         help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
         + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
@@ -276,6 +277,9 @@ def staging(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the legend metadata is merged into. It defaults to sources polygons",
     ),
+    crs: str = Option(
+        None, help="Force CRS for layers missing projection, e.g. EPSG:26911"
+    ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
 ):
     """
@@ -308,6 +312,7 @@ def staging(
         meta_path=data_path,
         merge_key=merge_key,
         meta_table=meta_table,
+        crs=crs,
     )
 
     source_id = db.run_query(
@@ -403,6 +408,7 @@ def staging(
 
 staging_cli.add_command(staging, name="ingest")
 staging_cli.command("delete")(delete_sources)
+staging_cli.add_typer(normalize_cli, name="normalize")
 
 # ------------------------------------------
 # commands nested under 'macrostrat maps staging...'

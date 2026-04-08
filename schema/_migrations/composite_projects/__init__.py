@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from macrostrat.core.migrations import (
+from macrostrat.schema_management import (
     Migration,
     ReadinessState,
     _not,

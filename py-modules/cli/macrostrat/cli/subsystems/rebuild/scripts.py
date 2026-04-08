@@ -4,6 +4,7 @@ from psycopg2.sql import Identifier
 from rich.console import Console
 from rich.progress import Progress, track
 
+from macrostrat.app_frame import Subsystem
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
 
@@ -14,6 +15,22 @@ console = Console()
 # ---------------------------------------------------------------------------
 # Shared helpers (from lookup_units.py)
 # ---------------------------------------------------------------------------
+
+
+def grant_permissions(db):
+    """Re-grant read permissions to rockd_reader after any rebuild."""
+    db.run_sql(
+        """
+        GRANT CONNECT ON DATABASE macrostrat TO rockd_reader;
+        GRANT USAGE ON SCHEMA macrostrat TO rockd_reader;
+        GRANT USAGE ON SCHEMA public TO rockd_reader;
+        GRANT USAGE ON SCHEMA topology TO rockd_reader;
+
+        GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO rockd_reader;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO rockd_reader;
+        GRANT SELECT ON ALL TABLES IN SCHEMA topology TO rockd_reader;
+        """
+    )
 
 
 def validate_counts(db):
@@ -178,7 +195,9 @@ class Stats:
 class StratNameFootprints:
     def run(self):
         db = get_database()
-        db.run_sql(here / "sql" / "strat-name-footprints.sql")
+        print("This create script takes 60m in prod and 23 min in development")
+        db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
+        db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 
 class LookupUnits:

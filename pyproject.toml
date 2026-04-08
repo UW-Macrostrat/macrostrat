@@ -10,6 +10,7 @@ dependencies = [
     "macrostrat.cli",
     "macrostrat.match-utils",
     "macrostrat.core",
+    "macrostrat.schema-management",
     "api",
 ]
 
@@ -36,6 +37,7 @@ default-groups = [
 "macrostrat.cli" = { editable = true, path = "py-modules/cli" }
 "macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
 "macrostrat.core" = { editable = true, path = "py-modules/core" }
+"macrostrat.schema-management" = { editable = true, path = "py-modules/schema-management" }
 "api" = { editable = true, path = "services/api-v3" }
 
 [tool.black]

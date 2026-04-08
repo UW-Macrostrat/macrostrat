@@ -1,6 +1,10 @@
 from rich.console import Console
 from typer import Option, Typer
 
+from macrostrat.core.database import get_database
+
+from .scripts import grant_permissions
+
 cli = Typer(help="Rebuild database tools")
 console = Console()
 
@@ -44,14 +48,15 @@ def scripts(
             console.print(f"  [cyan]{n}[/]")
         return
 
-    to_run = {name: all_scripts[name]} if name else all_scripts
-
     if name and name not in all_scripts:
         raise RuntimeError(
             f"No script named '{name}'. Available: {', '.join(all_scripts)}"
         )
+    to_run = {name: all_scripts[name]} if name else all_scripts
 
     for script_name, cls in to_run.items():
         console.print(f"[bold cyan]→ {script_name}[/]")
         cls().run()
+        console.print(f"[dim]  granting permissions...[/]")
+        grant_permissions(get_database())
         console.print(f"[green]✓ done[/]")

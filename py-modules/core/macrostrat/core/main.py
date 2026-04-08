@@ -3,17 +3,12 @@ from pathlib import Path
 from sys import argv, exit
 
 import toml
+from click.utils import get_app_dir
 from dynaconf import Dynaconf
 from rich.console import Console
-from typer import Context, Option, get_app_dir
+from typer import Context, Option
 
-from macrostrat.app_frame import (
-    Application,
-    ControlCommand,
-    Subsystem,
-    SubsystemManager,
-)
-from macrostrat.app_frame.control_command import CommandBase
+from macrostrat.app_frame import Application, ControlCommand, DockerComposeManager
 from macrostrat.utils import get_logger
 
 from .console import console_theme
@@ -76,15 +71,6 @@ def load_settings(console: Console):
     return settings
 
 
-class MacrostratSubsystem(Subsystem):
-    def __init__(self, app: Application):
-        self.app = app
-        self.settings = app.settings
-
-    def control_command(self, **kwargs):
-        return CommandBase(**kwargs)
-
-
 class StateManager:
     def get(self, key: str = None) -> str:
         return get_app_state(key)
@@ -102,18 +88,17 @@ class MacrostratControlCommand(ControlCommand):
         env: str = Option(None, "--env", "-e", help="Set the active environment"),
     ):
         """:app_name: command-line interface"""
-        super().callback(ctx, verbose=verbose)
         if env is not None:
             environ["MACROSTRAT_ENV"] = env
+        super().callback(ctx, verbose=verbose)
 
 
 class Macrostrat(Application):
-    subsystems: SubsystemManager
     settings: Dynaconf
     console: Console
     state: StateManager
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
 
         # Check sys args for --env or -e, and use that to set the environment
         # TODO: this is pretty hacky.
@@ -125,17 +110,7 @@ class Macrostrat(Application):
 
         self.console = Console(theme=console_theme)
         self.settings = load_settings(self.console)
-        self.subsystems = SubsystemManager()
         self.state = StateManager()
-
-        compose_files = []
-        env_file = None
-        root_dir = None
-        if self.settings.get("compose_root", None) is not None:
-            root_dir = Path(self.settings.compose_root).expanduser().resolve()
-            compose_file = root_dir / "docker-compose.yaml"
-            env_file = root_dir / ".env"
-            compose_files.append(compose_file)
 
         # Modules to log when the --verbose flag is set.
         # This is set to macrostrat.* by default, but can be overridden in the config file.
@@ -147,26 +122,48 @@ class Macrostrat(Application):
 
         super().__init__(
             "Macrostrat",
-            root_dir=root_dir,
             project_prefix=self.settings.project_name,
             log_modules=log_modules,
+        )
+
+    def create_docker_compose_extension(self):
+        # TODO: move docker-compose to separate setting
+        if self.settings.get("compose_root", None) is None:
+            raise MacrostratError("Compose root not set")
+
+        compose_files = []
+
+        root_dir = Path(self.settings.compose_root).expanduser().resolve()
+        compose_file = root_dir / "docker-compose.yaml"
+        env_file = root_dir / ".env"
+        compose_files.append(compose_file)
+
+        mgr = DockerComposeManager(
+            self,
+            root_dir=root_dir,
             compose_files=compose_files,
-            load_dotenv=env_file,
-            # This only applies to Docker Compose
             restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
         )
 
-        self.subsystems._app = self
+        if env_file.exists(follow_symlinks=True):
+            self.load_dotenv(env_file)
 
-    def finish_loading_subsystems(self):
-        self.subsystems.finalize(self)
+        # Add the manager to the control command
+        return mgr
 
     @property
     def app_dir(self):
         return Path(get_app_dir("macrostrat"))
 
     def control_command(self, *args, **kwargs):
-        return MacrostratControlCommand(self, *args, **kwargs)
+        backend = kwargs.pop("backend")
+        cmd = MacrostratControlCommand(self, *args, **kwargs)
+        # Hack for local docker compose management
+        log.debug("Backend: %s" % backend)
+        if backend == "docker-compose":
+            mgr = self.create_docker_compose_extension()
+            mgr.add_commands(cmd)
+        return cmd
 
 
 def env_text():

@@ -1,4 +1,4 @@
-from macrostrat.core.migrations import (
+from macrostrat.schema_management import (
     Migration,
     column_type_is,
     exists,

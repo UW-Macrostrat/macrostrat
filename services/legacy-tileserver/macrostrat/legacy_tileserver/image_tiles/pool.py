@@ -3,8 +3,8 @@ from asyncio import Queue
 from contextlib import asynccontextmanager
 
 from mapnik import Map, load_map_from_string
+from sqlalchemy.engine import URL
 
-from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
 from .config import scales
@@ -29,21 +29,21 @@ class MapnikMapPool:
     def __init__(self, n_instances: int = 4):
         self.n_instances = n_instances
 
-    async def setup(self, db: Database):
+    async def setup(self, db_url: URL):
         for scale in scales:
-            self.storage[scale] = await self.setup_queue(db, scale)
+            self.storage[scale] = await self.setup_queue(db_url, scale)
 
-    async def setup_queue(self, db: Database, scale: str):
+    async def setup_queue(self, db_url: URL, scale: str):
         """Set up the queue for a given scale."""
         q = Queue(self.n_instances)
         # Fill the queue with Mapnik maps
         t = time.time()
-        _xml = make_mapnik_xml(scale, db.engine.url)
+        _xml = make_mapnik_xml(scale, db_url)
 
         # Set up PostGIS data sources for shared use here
 
-        line_datasource = make_line_datasource(db.engine.url, scale)
-        polygon_datasource = make_polygon_datasource(db.engine.url, scale)
+        line_datasource = make_line_datasource(db_url, scale)
+        polygon_datasource = make_polygon_datasource(db_url, scale)
 
         self.line_datasources[scale] = line_datasource
         self.polygon_datasources[scale] = polygon_datasource
