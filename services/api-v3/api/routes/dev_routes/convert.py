@@ -589,7 +589,6 @@ def fieldsite_to_spot_single(fs: FieldSite) -> dict:
     return feat
 
 
-
 def spot_to_checkin_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     """
     Convert a single spot payload -> single Rockd checkin dict.
