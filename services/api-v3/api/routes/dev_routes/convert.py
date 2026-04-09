@@ -251,7 +251,7 @@ def spot_to_fieldsite(feat) -> FieldSite:
         location=Location(latitude=float(lat), longitude=float(lng)),
         created=created,
         updated=updated,
-        notes=props.get("notes"),
+        notes=props.get("name") or props.get("notes"),
         photos=photos,
         observations=observations,
     )
