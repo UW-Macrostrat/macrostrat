@@ -589,6 +589,22 @@ def fieldsite_to_spot_single(fs: FieldSite) -> dict:
     return feat
 
 
+
+def spot_to_checkin_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
+    """
+    Convert a single spot payload -> single Rockd checkin dict.
+    """
+    fieldsites = multiple_spot_to_fieldsite(payload)
+
+    if len(fieldsites) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="bulk=false requires exactly one valid spot.",
+        )
+
+    return fieldsite_to_rockd_checkin(fieldsites[0])
+
+
 def checkin_to_spot_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     """
     Convert a single checkin dict -> bare Feature payload.
@@ -648,7 +664,10 @@ async def convert_field_site(
         else:
             return checkin_to_spot_single(payload)
     if key == ("spot", "checkin"):
-        return spot_to_checkin(payload)
+        if bulk:
+            return spot_to_checkin(payload)
+        else:
+            return spot_to_checkin_single(payload)
     raise HTTPException(
         status_code=400,
         detail="Unsupported conversion. Use in=[spot|fieldsite|checkin], out=[fieldsite|checkin|spot].",
