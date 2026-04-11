@@ -2,13 +2,16 @@ import sqlite3
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Annotated
+from enum import Enum
 
 import fiona
+from psycopg.types import none
 from psycopg2.extras import RealDictCursor
 from shapely import from_wkt, make_valid
 from shapely.geometry import mapping
 from shapely.wkb import loads
-from typer import Option
+from typer import Option, Argument
 
 from ..database import get_database
 from ..database._legacy import pgConnection
@@ -21,13 +24,36 @@ class ExportArg:
     wkt: str | None = None
 
 
+class MapScale(str, Enum):
+    tiny = "tiny"
+    small = "small"
+    medium = "medium"
+    large = "large"
+
+
+class Layer(str, Enum):
+    units = "units"
+    lines = "lines"
+
+
+class ExportFeature(str, Enum):
+    lith_hierarchy = "lith-hierarchy"
+
+
 def export_map(
-    filename: Path,
-    spec: str,
-    scale: str = Option(
+    filename: Path = Argument(..., help="The Geopackage file to export to"),
+    spec: str = Argument(
+        ...,
+        help="The source_id or bounding box to export, or 'global'",
+    ),
+    scale: MapScale = Option(
         None,
         "--scale",
-        help="Force export at a given scale (tiny, small, medium, large)",
+        help="Force export at a given scale",
+    ),
+    layer: Layer = Option(None, "--layer", help="Export a specific layer"),
+    features: list[ExportFeature] = Option(
+        None, "--with", help="Add optional data to the export"
     ),
     trim: bool = False,
     overwrite: bool = False,
@@ -78,7 +104,12 @@ def export_map(
                 f"File {filename} already exists. Please specify the --overwrite flag if you want to overwrite it."
             )
 
-    run_exporter(pth, extract_spec(spec), trim=trim, scale=scale)
+    if features is not None:
+        features = set(features)
+
+    run_exporter(
+        pth, extract_spec(spec), trim=trim, scale=scale, features=features, layer=layer
+    )
 
 
 def run_exporter(
@@ -86,7 +117,9 @@ def run_exporter(
     arg: ExportArg,
     *,
     trim: bool = False,
-    scale: str | None = None,
+    scale: MapScale | None = None,
+    features: set[ExportFeature] | None = None,
+    layer: Layer | None = None,
 ):
     conn = pgConnection()
 
@@ -103,6 +136,10 @@ def run_exporter(
     source_id = arg.source_id
     bbox = arg.bbox
     wkt = arg.wkt
+
+    layers = {Layer.units, Layer.lines}
+    if layer is not None:
+        layers = {layer}
 
     # source_id mode
     if source_id is not None:
@@ -209,112 +246,115 @@ def run_exporter(
     if trim:
         geom_field = "ST_Intersection(c.geom, %s)" % (geom,)
 
-    # Write carto units
-    select = """
-        SELECT c.map_id, l.legend_id, l.source_id, name,
-        strat_name,
-        age,
-        lith,
-        descrip,
-        comments,
-        b_interval,
-        t_interval,
-        best_age_bottom,
-        best_age_top,
-        color,
-        COALESCE(array_to_string(unit_ids, '|'), '') AS unit_ids,
-        COALESCE(array_to_string(strat_name_ids, '|'), '') AS strat_name_ids,
-        COALESCE(array_to_string(concept_ids, '|'), '') AS concept_ids,
-        COALESCE(array_to_string(lith_ids, '|'), '') AS lith_ids,
-        ST_Multi(ST_CollectionExtract(%s, 3)) AS geom
-        FROM carto.polygons c
-        JOIN maps.map_legend ON map_legend.map_id = c.map_id
-        JOIN maps.legend l ON l.legend_id = map_legend.legend_id
-        WHERE ST_Intersects(c.geom, %s)
-          AND scale = '%s'
-    """ % (
-        geom_field,
-        geom,
-        scale,
-    )
+    poly_fields = {
+        "map_id": "int",
+        "legend_id": "int",
+        "source_id": "int",
+        "name": "str",
+        "strat_name": "str",
+        "age": "str",
+        "lith": "str",
+        "descrip": "str",
+        "comments": "str",
+        "b_interval": "int",
+        "t_interval": "int",
+        "best_age_bottom": "str",
+        "best_age_top": "str",
+        "color": "str",
+        "unit_ids": "str",
+        "strat_name_ids": "str",
+        "concept_ids": "str",
+        "lith_ids": "str",
+    }
 
-    write_layer(
-        pg,
-        filename,
-        "units",
-        "MultiPolygon",
-        select,
-        {},
-        {
-            "map_id": "int",
-            "legend_id": "int",
-            "source_id": "int",
-            "name": "str",
-            "strat_name": "str",
-            "age": "str",
-            "lith": "str",
-            "descrip": "str",
-            "comments": "str",
-            "b_interval": "int",
-            "t_interval": "int",
-            "best_age_bottom": "str",
-            "best_age_top": "str",
-            "color": "str",
-            "unit_ids": "str",
-            "strat_name_ids": "str",
-            "concept_ids": "str",
-            "lith_ids": "str",
-        },
-    )
+    if Layer.units in layers:
+        lith_hierarchy_sql = ""
+        if ExportFeature.lith_hierarchy in features:
+            lith_hierarchy_sql = "(SELECT array_to_string(array_agg(array_to_string(macrostrat.lithology_hierarchy(l), '>')), ',') FROM macrostrat.liths l WHERE id = any(lith_ids)) AS lith_hierarchy,"
+            poly_fields["lith_hierarchy"] = "str"
 
-    # Write carto lines
-    select = """
-        SELECT
-            c.line_id,
-            ll.source_id,
-            ll.name,
-            ll.type,
-            ll.direction,
-            ll.descrip,
-            ll.new_type,
-            ll.new_direction,
-            ST_Multi(ST_CollectionExtract(%s, 2)) AS geom
-        FROM carto.lines c
-        JOIN (
-            SELECT * FROM lines.tiny
-            UNION ALL
-            SELECT * FROM lines.small
-            UNION ALL
-            SELECT * FROM lines.medium
-            UNION ALL
-            SELECT * FROM lines.large
-        ) ll ON c.line_id = ll.line_id
-        WHERE ST_Intersects(c.geom, %s)
-          AND scale = '%s'
-    """ % (
-        geom_field,
-        geom,
-        scale,
-    )
+        # Write carto units
+        select = """
+            SELECT c.map_id, l.legend_id, l.source_id, name,
+            strat_name,
+            age,
+            lith,
+            descrip,
+            comments,
+            b_interval,
+            t_interval,
+            best_age_bottom,
+            best_age_top,
+            color,
+            array_to_string(unit_ids, ',') AS unit_ids,
+            array_to_string(strat_name_ids, ',') AS strat_name_ids,
+            array_to_string(concept_ids, ',') AS concept_ids,
+            array_to_string(lith_ids, ',') AS lith_ids,
+            %s
+            ST_Multi(ST_CollectionExtract(%s, 3)) AS geom
+            FROM carto.polygons c
+            JOIN maps.map_legend ON map_legend.map_id = c.map_id
+            JOIN maps.legend l ON l.legend_id = map_legend.legend_id
+            WHERE ST_Intersects(c.geom, %s)
+              AND scale = '%s'
+        """ % (
+            lith_hierarchy_sql,
+            geom_field,
+            geom,
+            scale.value,
+        )
 
-    write_layer(
-        pg,
-        filename,
-        "lines",
-        "MultiLineString",
-        select,
-        {},
-        {
-            "line_id": "int",
-            "source_id": "int",
-            "name": "str",
-            "type": "str",
-            "direction": "str",
-            "descrip": "str",
-            "new_type": "str",
-            "new_direction": "str",
-        },
-    )
+        write_layer(pg, filename, "units", "MultiPolygon", select, {}, poly_fields)
+
+    if Layer.lines in layers:
+        # Write carto lines
+        select = """
+            SELECT
+                c.line_id,
+                ll.source_id,
+                ll.name,
+                ll.type,
+                ll.direction,
+                ll.descrip,
+                ll.new_type,
+                ll.new_direction,
+                ST_Multi(ST_CollectionExtract(%s, 2)) AS geom
+            FROM carto.lines c
+            JOIN (
+                SELECT * FROM lines.tiny
+                UNION ALL
+                SELECT * FROM lines.small
+                UNION ALL
+                SELECT * FROM lines.medium
+                UNION ALL
+                SELECT * FROM lines.large
+            ) ll ON c.line_id = ll.line_id
+            WHERE ST_Intersects(c.geom, %s)
+              AND scale = '%s'
+        """ % (
+            geom_field,
+            geom,
+            scale.value,
+        )
+
+        write_layer(
+            pg,
+            filename,
+            "lines",
+            "MultiLineString",
+            select,
+            {},
+            {
+                "line_id": "int",
+                "source_id": "int",
+                "name": "str",
+                "type": "str",
+                "direction": "str",
+                "descrip": "str",
+                "new_type": "str",
+                "new_direction": "str",
+            },
+        )
 
     # Write legend
     connection = sqlite3.connect(filename)
@@ -397,6 +437,9 @@ def run_exporter(
 
 def extract_spec(spec: str) -> ExportArg:
     """Extract the specification. This can be a source_id, bbox, or a WKT geometry"""
+
+    if spec == "global":
+        return ExportArg(wkt="POLYGON((-180 -90, -180 90, 180 90, 180 -90, -180 -90))")
 
     # Try to parse as source_id
     try:
