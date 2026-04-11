@@ -1,17 +1,17 @@
 import sqlite3
 import sys
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Annotated
-from enum import Enum
 
 import fiona
-from psycopg.types import none
 from psycopg2.extras import RealDictCursor
+from psycopg.types import none
 from shapely import from_wkt, make_valid
 from shapely.geometry import mapping
 from shapely.wkb import loads
-from typer import Option, Argument
+from typer import Argument, Option
 
 from ..database import get_database
 from ..database._legacy import pgConnection
