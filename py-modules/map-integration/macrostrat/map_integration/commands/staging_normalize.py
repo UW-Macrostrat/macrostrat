@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-
+import re
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
 from rich.prompt import Prompt
 from typer import Argument, Option
-
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
     PointsTableUpdater,
@@ -12,6 +11,10 @@ from macrostrat.map_integration.commands.prepare_fields.utils import (
 )
 from macrostrat.map_integration.database import get_database
 from macrostrat.map_integration.utils import IngestionCLI
+from typing import Optional
+import json
+from pathlib import Path
+from typing import Optional
 
 console = Console()
 
@@ -23,6 +26,36 @@ trim-whitespace
 lowercase-column
 coalesce-columns
 """
+
+CONTEXT_FILE = Path(".macrostrat_staging_context.json")
+DEFAULT_MAP_CONTEXT = {
+    "schema": "sources",
+    "slug": None,
+    "table": None,
+}
+
+
+def load_map_context() -> dict:
+    """Load persisted map context from disk."""
+    if not CONTEXT_FILE.exists():
+        return DEFAULT_MAP_CONTEXT.copy()
+
+    try:
+        data = json.loads(CONTEXT_FILE.read_text())
+    except Exception:
+        return DEFAULT_MAP_CONTEXT.copy()
+
+    return {
+        "schema": data.get("schema", "sources"),
+        "slug": data.get("slug"),
+        "table": data.get("table"),
+    }
+
+
+def save_map_context(context: dict):
+    """Persist map context to disk."""
+    CONTEXT_FILE.write_text(json.dumps(context, indent=2))
+
 
 
 @dataclass(frozen=True)
@@ -37,6 +70,74 @@ class TableTarget:
     def fq_identifier(self):
         """Returns an Identifier composed of (schema, table), suitable for safe interpolation into SQL queries."""
         return Identifier(self.schema, self.table)
+
+MY_MAP = {
+    "schema": "sources",
+    "slug": None,
+    "table": None,
+}
+
+
+def get_current_target() -> TableTarget:
+    """Return the current table target from persisted context."""
+    context = load_map_context()
+    schema = context.get("schema")
+    table = context.get("table")
+
+    if not schema or not table:
+        raise ValueError(
+            "No current map/layer is set. Run 'set-map' and then 'set-layer' first."
+        )
+
+    return TableTarget(schema=schema, table=table)
+
+def set_current_map(slug: str):
+    """Set the current map slug and default base table."""
+    slug = validate_identifier(slug, "slug")
+    context = load_map_context()
+    context["schema"] = "sources"
+    context["slug"] = slug
+    context["table"] = slug
+    save_map_context(context)
+
+
+def set_current_layer(layer: str):
+    """Set the current layer table from the stored slug."""
+    layer = layer.strip().lower()
+    if layer not in {"points", "lines", "polygons"}:
+        raise ValueError("layer must be one of: points, lines, polygons")
+
+    context = load_map_context()
+    slug = context.get("slug")
+    if not slug:
+        raise ValueError("No slug is set. Run 'set-map <slug>' first.")
+
+    context["table"] = f"{slug}_{layer}"
+    save_map_context(context)
+
+
+
+def get_column_sql_type(target: TableTarget, column: str) -> str:
+    """Return the SQL data type for a column on the target table."""
+    db = get_database()
+    row = db.run_query(
+        """
+        SELECT data_type, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+          AND table_name = :table
+          AND column_name = :column
+        """,
+        dict(schema=target.schema, table=target.table, column=column),
+    ).fetchone()
+
+    if row is None:
+        raise ValueError(
+            f"Column '{column}' does not exist in {target.schema}.{target.table}"
+        )
+
+    # udt_name is useful for postgres-specific types like int4, bool, etc.
+    return (row.udt_name or row.data_type or "").lower()
 
 
 def get_integer_preferred_fields_for_table(table: str) -> set[str]:
@@ -110,6 +211,115 @@ def get_preferred_fields_for_table(table: str) -> dict[str, str]:
     )
 
 
+
+def null_matching_value(
+    target: TableTarget,
+    column: str,
+    value: str,
+    dry_run: bool = False,
+):
+    """Sets cells in the specified column to NULL where the current value exactly
+    matches the provided string. Validates that the column exists before executing.
+    When dry_run is True, the operation is described but not executed.
+    """
+    db = get_database()
+    column = validate_identifier(column, "column")
+    existing_cols = get_existing_columns(target)
+
+    if column not in existing_cols:
+        raise ValueError(
+            f"Column '{column}' does not exist in {target.schema}.{target.table}"
+        )
+
+    match_count = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {column}::text = :value
+        """,
+        dict(
+            table=target.fq_identifier,
+            column=Identifier(column),
+            value=value,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to set matching values to NULL in[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"column [yellow]{column}[/yellow] where value = [yellow]{value}[/yellow] "
+        f"across {match_count} matching rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    db.run_sql(
+        """
+        UPDATE {table}
+        SET {column} = NULL
+        WHERE {column}::text = :value
+        """,
+        dict(
+            table=target.fq_identifier,
+            column=Identifier(column),
+            value=value,
+        ),
+    )
+
+    console.print(
+        f"[green]Done:[/green] set matching values in {column} to NULL "
+        f"in {target.schema}.{target.table}"
+    )
+
+def null_column_values(
+    target: TableTarget,
+    column: str,
+    dry_run: bool = False,
+):
+    """Sets all values in the specified column to NULL for the target table.
+    Validates that the column exists before executing. When dry_run is True,
+    the operation is described but not executed.
+    """
+    db = get_database()
+    column = validate_identifier(column, "column")
+    existing_cols = get_existing_columns(target)
+
+    if column not in existing_cols:
+        raise ValueError(
+            f"Column '{column}' does not exist in {target.schema}.{target.table}"
+        )
+
+    row_count = db.run_query(
+        "SELECT count(*) FROM {table}",
+        dict(table=target.fq_identifier),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to set all values to NULL in[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"column [yellow]{column}[/yellow] across {row_count} rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    db.run_sql(
+        "UPDATE {table} SET {column} = NULL",
+        dict(
+            table=target.fq_identifier,
+            column=Identifier(column),
+        ),
+    )
+
+    console.print(
+        f"[green]Done:[/green] set all values in {column} to NULL "
+        f"in {target.schema}.{target.table}"
+    )
+
+
 def add_preferred_columns(
     target: TableTarget,
     dry_run: bool = False,
@@ -149,19 +359,178 @@ def add_preferred_columns(
         console.print("[green]Done:[/green] preferred columns check/add complete")
 
 
+
+def replace_column_value(
+    target: TableTarget,
+    column: str,
+    old_value: str,
+    new_value: str,
+    dry_run: bool = False,
+):
+    """Replace one value with another in a specified column.
+    Lets PostgreSQL enforce type compatibility and surfaces a clean error if the
+    replacement value is invalid for the target column.
+    """
+    db = get_database()
+    column = validate_identifier(column, "column")
+    existing_cols = get_existing_columns(target)
+
+    if column not in existing_cols:
+        raise ValueError(
+            f"Column '{column}' does not exist in {target.schema}.{target.table}"
+        )
+
+    match_count = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {column}::text = :old_value
+        """,
+        dict(
+            table=target.fq_identifier,
+            column=Identifier(column),
+            old_value=old_value,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to replace values in[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"column [yellow]{column}[/yellow] "
+        f"from [yellow]{old_value}[/yellow] to [yellow]{new_value}[/yellow] "
+        f"across {match_count} matching rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    try:
+        db.run_sql(
+            """
+            UPDATE {table}
+            SET {column} = :new_value
+            WHERE {column}::text = :old_value
+            """,
+            dict(
+                table=target.fq_identifier,
+                column=Identifier(column),
+                old_value=old_value,
+                new_value=new_value,
+            ),
+        )
+    except Exception as e:
+        raise ValueError(
+            f"Could not replace values in column '{column}'. "
+            f"PostgreSQL rejected the new value '{new_value}'. "
+            f"Original error: {e}"
+        ) from e
+
+    console.print(
+        f"[green]Done:[/green] replaced matching values in {column} "
+        f"in {target.schema}.{target.table}"
+    )
+
+
+def merge_column_values(
+    target: TableTarget,
+    col_one: str,
+    col_two: str,
+    separator: str,
+    dry_run: bool = False,
+):
+    """Merge values from col_two into col_one using a user-provided separator.
+
+    Rules:
+    - If col_two is null/blank, leave col_one unchanged.
+    - If col_one is null/blank, set col_one = col_two.
+    - Otherwise set col_one = col_one || separator || col_two.
+    """
+    db = get_database()
+    col_one = validate_identifier(col_one, "first column")
+    col_two = validate_identifier(col_two, "second column")
+    existing_cols = get_existing_columns(target)
+
+    if col_one not in existing_cols:
+        raise ValueError(
+            f"Column '{col_one}' does not exist in {target.schema}.{target.table}"
+        )
+    if col_two not in existing_cols:
+        raise ValueError(
+            f"Column '{col_two}' does not exist in {target.schema}.{target.table}"
+        )
+
+    row_count = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {col_two} IS NOT NULL
+          AND trim({col_two}::text) <> ''
+        """,
+        dict(
+            table=target.fq_identifier,
+            col_two=Identifier(col_two),
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to merge[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"[yellow]{col_two}[/yellow] into [yellow]{col_one}[/yellow] "
+        f"using separator [yellow]{separator}[/yellow] "
+        f"across {row_count} candidate rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    try:
+        db.run_sql(
+            """
+            UPDATE {table}
+            SET {col_one} = CASE
+                WHEN {col_two} IS NULL OR trim({col_two}::text) = '' THEN {col_one}
+                WHEN {col_one} IS NULL OR trim({col_one}::text) = '' THEN {col_two}::text
+                ELSE {col_one}::text || :separator || {col_two}::text
+            END
+            WHERE {col_two} IS NOT NULL
+              AND trim({col_two}::text) <> ''
+            """,
+            dict(
+                table=target.fq_identifier,
+                col_one=Identifier(col_one),
+                col_two=Identifier(col_two),
+                separator=separator,
+            ),
+        )
+    except Exception as e:
+        raise ValueError(
+            f"Could not merge column '{col_two}' into '{col_one}'. "
+            f"Original error: {e}"
+        ) from e
+
+    console.print(
+        f"[green]Done:[/green] merged values from {col_two} into {col_one} "
+        f"in {target.schema}.{target.table}"
+    )
+
+
 def copy_column_values(
     target: TableTarget,
     src: str,
     dst: str,
     dry_run: bool = False,
-):
-    """Copies all values from column `src` into column `dst` in the target table, overwriting any existing
-    destination values. Validates that both columns exist before executing. When dry_run is True, the operation is
-    described but not executed."""
+) -> int:
+    """Copies values from column `src` into currently-null rows of column `dst`
+    in the target table. Validates that both columns exist before executing.
+    Returns the count of remaining null destination rows.
+    """
     db = get_database()
     src = validate_identifier(src, "src column")
     dst = validate_identifier(dst, "dst column")
     existing_cols = get_existing_columns(target)
+
     if src not in existing_cols:
         raise ValueError(
             f"Source column '{src}' does not exist in {target.schema}.{target.table}"
@@ -170,30 +539,124 @@ def copy_column_values(
         raise ValueError(
             f"Destination column '{dst}' does not exist in {target.schema}.{target.table}"
         )
+
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
         dict(table=target.fq_identifier),
     ).scalar()
+
     console.print(
         f"[blue]Preparing to copy[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
         f"[yellow]{src}[/yellow] -> [yellow]{dst}[/yellow] "
         f"across {row_count} rows"
     )
+
     if dry_run:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE {dst} IS NULL
+              AND coalesce(omit, false) = false
+            """,
+            dict(
+                table=target.fq_identifier,
+                dst=Identifier(dst),
+            ),
+        ).scalar()
         console.print("[green]Dry run only; no changes applied[/green]")
-        return
+        return remaining_nulls
+
     db.run_sql(
-        "UPDATE {table} SET {dst} = {src}",
+        """
+        UPDATE {table}
+        SET {dst} = {src}
+        WHERE {dst} IS NULL
+          AND {src} IS NOT NULL
+        """,
         dict(
             table=target.fq_identifier,
             src=Identifier(src),
             dst=Identifier(dst),
         ),
     )
+
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {dst} IS NULL
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            dst=Identifier(dst),
+        ),
+    ).scalar()
+
     console.print(
-        f"[green]Done:[/green] copied all values from {src} to {dst} "
-        f"in {target.schema}.{target.table}"
+        f"[green]Done:[/green] copied values from {src} to {dst} "
+        f"in {target.schema}.{target.table}. "
+        f"Remaining null {dst} rows: {remaining_nulls}"
+    )
+    return remaining_nulls
+
+
+def update_ingest_status(
+    state: str,
+    dry_run: bool = False,
+):
+    """Update maps_metadata.ingest_process.state for a given slug.
+    If slug is not provided, use the current MY_MAP slug.
+    """
+    db = get_database()
+    state = state.strip()
+    slug = load_map_context().get("slug").strip()
+
+    if slug == "":
+        raise ValueError(
+            "slug cannot be empty. Run 'set-map <slug>' first or pass --slug."
+        )
+    if state == "":
+        raise ValueError("state cannot be empty")
+
+    match_count = db.run_query(
+        """
+        SELECT count(*)
+        FROM maps_metadata.ingest_process
+        WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).scalar()
+    console.print(
+        f"[blue]Preparing to update ingest status for[/blue] "
+        f"[yellow]{slug}[/yellow] "
+        f"to state [yellow]{state}[/yellow] "
+        f"across {match_count} matching rows"
+    )
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+    db.run_sql(
+        """
+        UPDATE maps_metadata.ingest_process
+        SET state = :state
+        WHERE slug = :slug
+        """,
+        dict(slug=slug, state=state),
+    )
+
+    db.run_sql(
+    """
+    UPDATE maps_metadata.ingest_process
+    SET comments = 'metadata manually processed; polygons processed; lines processed; points processed;'
+    WHERE slug = :slug
+    """,
+    dict(slug=slug, state=state),
+    )
+    console.print(
+        f"[green]Done:[/green] updated ingest_process state for slug {slug}"
     )
 
 
@@ -515,7 +978,7 @@ def copy_point_type_from_column(
 
     if dry_run:
         remaining_nulls = db.run_query(
-            "SELECT count(*) FROM {table} WHERE point_type IS NULL",
+            "SELECT count(*) FROM {table} WHERE point_type IS NULL AND coalesce(omit, false) = false",
             dict(table=target.fq_identifier),
         ).scalar()
         console.print("[green]Dry run only; no changes applied[/green]")
@@ -527,21 +990,20 @@ def copy_point_type_from_column(
             WITH point_lookup AS (
                 SELECT DISTINCT ON (lower(trim(point_type::text)))
                     lower(trim(point_type::text)) AS type_key,
-                    point_id AS mapped_id
-                FROM maps.points
-                WHERE point_type IS NOT NULL
-                ORDER BY lower(trim(point_type::text)), point_id
+                    point_type AS mapped_value
+                FROM maps.point_type
+                ORDER BY lower(trim(point_type::text)), point_type
             ),
             mapped AS (
                 SELECT
                     t._pkid,
-                    pl.mapped_id
+                    pl.mapped_value
                 FROM {table} AS t
                 LEFT JOIN point_lookup AS pl
                     ON lower(trim(nullif(t.point_type::text, ''))) = pl.type_key
             )
             UPDATE {table} AS t
-            SET point_type = mapped.mapped_id
+            SET point_type = mapped.mapped_value
             FROM mapped
             WHERE t._pkid = mapped._pkid
             """,
@@ -553,13 +1015,12 @@ def copy_point_type_from_column(
             WITH point_lookup AS (
                 SELECT DISTINCT ON (lower(trim(point_type::text)))
                     lower(trim(point_type::text)) AS type_key,
-                    point_id AS mapped_id
-                FROM maps.points
-                WHERE point_type IS NOT NULL
-                ORDER BY lower(trim(point_type::text)), point_id
+                    point_type AS mapped_value
+                FROM maps.point_type
+                ORDER BY lower(trim(point_type::text)), point_type
             )
             UPDATE {table} AS t
-            SET point_type = pl.mapped_id
+            SET point_type = pl.mapped_value
             FROM point_lookup AS pl
             WHERE t.point_type IS NULL
               AND lower(trim(nullif(t.{src_col}::text, ''))) = pl.type_key
@@ -569,12 +1030,13 @@ def copy_point_type_from_column(
                 src_col=Identifier(src_col),
             ),
         )
+
     remaining_nulls = db.run_query(
-        "SELECT count(*) FROM {table} WHERE point_type IS NULL",
+        "SELECT count(*) FROM {table} WHERE point_type IS NULL AND coalesce(omit, false) = false",
         dict(table=target.fq_identifier),
     ).scalar()
     console.print(
-        f"[green]Done:[/green] mapped integer IDs from {src_col}. "
+        f"[green]Done:[/green] mapped canonical point_type values from {src_col}. "
         f"Remaining null point_type rows: {remaining_nulls}"
     )
     return remaining_nulls
@@ -593,7 +1055,6 @@ def copy_line_type_from_column(
     db = get_database()
     src_col = validate_identifier(src_col, "source column")
     existing_cols = get_existing_columns(target)
-
     if src_col not in existing_cols:
         raise ValueError(
             f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
@@ -602,47 +1063,42 @@ def copy_line_type_from_column(
         raise ValueError(
             f"Destination column 'type' does not exist in {target.schema}.{target.table}"
         )
-
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
         dict(table=target.fq_identifier),
     ).scalar()
-
     console.print(
         f"[blue]Mapping line types for[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
         f"from [yellow]{src_col}[/yellow] across {row_count} rows"
     )
-
     if dry_run:
         remaining_nulls = db.run_query(
-            "SELECT count(*) FROM {table} WHERE type IS NULL",
+            "SELECT count(*) FROM {table} WHERE type IS NULL AND coalesce(omit, false) = false",
             dict(table=target.fq_identifier),
         ).scalar()
         console.print("[green]Dry run only; no changes applied[/green]")
         return remaining_nulls
-
     if src_col == "type":
         db.run_sql(
             """
             WITH line_lookup AS (
-                SELECT DISTINCT ON (lower(trim(type::text)))
-                    lower(trim(type::text)) AS type_key,
-                    line_id AS mapped_id
-                FROM maps.lines
-                WHERE type IS NOT NULL
-                ORDER BY lower(trim(type::text)), line_id
+                SELECT DISTINCT ON (lower(trim(line_type::text)))
+                    lower(trim(line_type::text)) AS type_key,
+                    line_type AS mapped_value
+                FROM maps.line_type
+                ORDER BY lower(trim(line_type::text)), line_type
             ),
             mapped AS (
                 SELECT
                     t._pkid,
-                    ll.mapped_id
+                    ll.mapped_value
                 FROM {table} AS t
                 LEFT JOIN line_lookup AS ll
                     ON lower(trim(nullif(t.type::text, ''))) = ll.type_key
             )
             UPDATE {table} AS t
-            SET type = mapped.mapped_id
+            SET type = mapped.mapped_value
             FROM mapped
             WHERE t._pkid = mapped._pkid
             """,
@@ -652,15 +1108,14 @@ def copy_line_type_from_column(
         db.run_sql(
             """
             WITH line_lookup AS (
-                SELECT DISTINCT ON (lower(trim(type::text)))
-                    lower(trim(type::text)) AS type_key,
-                    line_id AS mapped_id
-                FROM maps.lines
-                WHERE type IS NOT NULL
-                ORDER BY lower(trim(type::text)), line_id
+                SELECT DISTINCT ON (lower(trim(line_type::text)))
+                    lower(trim(line_type::text)) AS type_key,
+                    line_type AS mapped_value
+                FROM maps.line_type
+                ORDER BY lower(trim(line_type::text)), line_type
             )
             UPDATE {table} AS t
-            SET type = ll.mapped_id
+            SET type = ll.mapped_value
             FROM line_lookup AS ll
             WHERE t.type IS NULL
               AND lower(trim(nullif(t.{src_col}::text, ''))) = ll.type_key
@@ -670,17 +1125,19 @@ def copy_line_type_from_column(
                 src_col=Identifier(src_col),
             ),
         )
-
     remaining_nulls = db.run_query(
-        "SELECT count(*) FROM {table} WHERE type IS NULL",
+        "SELECT count(*) FROM {table} WHERE type IS NULL AND coalesce(omit, false) = false",
         dict(table=target.fq_identifier),
     ).scalar()
 
     console.print(
-        f"[green]Done:[/green] mapped integer IDs from {src_col}. "
+        f"[green]Done:[/green] mapped canonical type values from {src_col}. "
         f"Remaining null type rows: {remaining_nulls}"
     )
     return remaining_nulls
+
+
+
 
 
 def copy_age_columns(
@@ -688,10 +1145,12 @@ def copy_age_columns(
     older_col: str,
     newer_col: str,
     dry_run: bool = False,
-):
+) -> int:
     """Copies an older and a newer age column into b_interval and t_interval respectively, resolving interval
     names via macrostrat.intervals. If either side is null, the non-null value is used for both columns.
-    Raises a ValueError if any required source or destination columns are missing."""
+    Raises a ValueError if any required source or destination columns are missing.
+    Returns the count of remaining rows with null age intervals.
+    """
     db = get_database()
     older_col = validate_identifier(older_col, "older column")
     newer_col = validate_identifier(newer_col, "newer column")
@@ -722,43 +1181,66 @@ def copy_age_columns(
         f"newer=[yellow]{newer_col}[/yellow] across {row_count} rows"
     )
     if dry_run:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE (b_interval IS NULL OR t_interval IS NULL)
+            AND coalesce(omit, false) = false
+            """,
+            dict(table=target.fq_identifier),
+        ).scalar()
         console.print("[green]Dry run only; no changes applied[/green]")
-        return
+        return remaining_nulls
+
     db.run_sql(
-        """
-        WITH interval_lookup AS (
-            SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
-            FROM macrostrat.intervals
-            GROUP BY 1
-        ),
-        mapped AS (
-            SELECT
-                t._pkid,
-                old_il.id AS older_id,
-                new_il.id AS newer_id
-            FROM {table} AS t
-            LEFT JOIN interval_lookup AS old_il
-                ON old_il.interval_name = lower(trim(nullif({older_col}::text, '')))
-            LEFT JOIN interval_lookup AS new_il
-                ON new_il.interval_name = lower(trim(nullif({newer_col}::text, '')))
-        )
-        UPDATE {table} AS t
-        SET
-            b_interval = COALESCE(mapped.older_id, mapped.newer_id),
-            t_interval = COALESCE(mapped.newer_id, mapped.older_id)
-        FROM mapped
-        WHERE t._pkid = mapped._pkid
-        """,
-        dict(
-            table=target.fq_identifier,
-            older_col=Identifier(older_col),
-            newer_col=Identifier(newer_col),
-        ),
+    """
+    WITH interval_lookup AS (
+        SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
+        FROM macrostrat.intervals
+        GROUP BY 1
+    ),
+    mapped AS (
+        SELECT
+            t._pkid,
+            old_il.id AS older_id,
+            new_il.id AS newer_id
+        FROM {table} AS t
+        LEFT JOIN interval_lookup AS old_il
+            ON old_il.interval_name = lower(trim(nullif({older_col}::text, '')))
+        LEFT JOIN interval_lookup AS new_il
+            ON new_il.interval_name = lower(trim(nullif({newer_col}::text, '')))
     )
+    UPDATE {table} AS t
+    SET
+        b_interval = COALESCE(t.b_interval, mapped.older_id, mapped.newer_id),
+        t_interval = COALESCE(t.t_interval, mapped.newer_id, mapped.older_id)
+    FROM mapped
+    WHERE t._pkid = mapped._pkid
+      AND (t.b_interval IS NULL OR t.t_interval IS NULL)
+    """,
+    dict(
+        table=target.fq_identifier,
+        older_col=Identifier(older_col),
+        newer_col=Identifier(newer_col),
+    ),
+    )
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE (b_interval IS NULL OR t_interval IS NULL)
+          AND coalesce(omit, false) = false
+        """,
+        dict(table=target.fq_identifier),
+    ).scalar()
+
     console.print(
         f"[green]Done:[/green] populated b_interval and t_interval in "
-        f"{target.schema}.{target.table}"
+        f"{target.schema}.{target.table}. "
+        f"Remaining null age rows: {remaining_nulls}"
     )
+    return remaining_nulls
 
 
 normalize_cli = IngestionCLI(
@@ -767,35 +1249,390 @@ normalize_cli = IngestionCLI(
 )
 
 
+#___________________________________MAP STRAT_NAMES______________________________________________
+def extract_capitalized_phrase_candidates(value: str) -> list[str]:
+    s = str(value).strip()
+    if s == "":
+        return []
+
+    candidates: list[str] = []
+    seen = set()
+
+    def add_candidate(text: str, allow_single_word: bool = False):
+        text = re.sub(r"\s+", " ", text).strip(" ,;:-")
+        if not text:
+            return
+        if not allow_single_word and len(text.split()) < 2:
+            return
+        key = text.lower()
+        if key not in seen:
+            seen.add(key)
+            candidates.append(text)
+
+    # keep full original phrase, even if one word
+    add_candidate(s, allow_single_word=True)
+
+    simplified = re.sub(r"\([^)]*\)", "", s)
+    simplified = re.sub(r"\s*-\s*\d+\s*$", "", simplified).strip()
+    add_candidate(simplified, allow_single_word=True)
+
+    m = re.search(r"\bof\s+(.+)$", simplified, flags=re.IGNORECASE)
+    if m:
+        tail = m.group(1).strip()
+        add_candidate(tail)
+        tail_tokens = tail.split()
+        if len(tail_tokens) >= 2:
+            add_candidate(" ".join(tail_tokens[:2]))
+    tokens = simplified.split()
+    capitalized = [t for t in tokens if re.match(r"^[A-Z][A-Za-z0-9'.-]*$", t)]
+    if len(capitalized) >= 2:
+        add_candidate(" ".join(capitalized))
+        add_candidate(" ".join(capitalized[:2]))
+    return candidates
+
+def find_lookup_strat_name(value: str) -> Optional[str]:
+    """Resolve a source string to a canonical stratigraphic name from
+    macrostrat.lookup_strat_names using progressive fallback candidates.
+    Returns the matched strat_name, or None if no match is found.
+    """
+    db = get_database()
+    candidates = extract_capitalized_phrase_candidates(value)
+
+    for candidate in candidates:
+        row = db.run_query(
+            """
+            SELECT strat_name
+            FROM macrostrat.lookup_strat_names
+            WHERE strat_name ILIKE :pattern
+               OR rank_name ILIKE :pattern
+            ORDER BY
+                CASE
+                    WHEN strat_name ILIKE :exact THEN 0
+                    WHEN rank_name ILIKE :exact THEN 1
+                    ELSE 2
+                END,
+                length(coalesce(rank_name, strat_name)),
+                strat_name_id
+            LIMIT 1
+            """,
+            dict(
+                pattern=f"%{candidate}%",
+                exact=candidate,
+            ),
+        ).fetchone()
+
+        if row is not None and row.strat_name is not None:
+            return row.strat_name
+
+    return None
+
+
+def calculate_strat_name_from_column(
+    target: TableTarget,
+    src_col: str,
+    dry_run: bool = False,
+):
+    """Populate strat_name from a source text column by progressively matching
+    candidate substrings against macrostrat.lookup_strat_names.strat_name and
+    rank_name. Only fills rows where strat_name is null. Leaves unmatched rows null.
+    """
+    db = get_database()
+    src_col = validate_identifier(src_col, "source column")
+    existing_cols = get_existing_columns(target)
+
+    if src_col not in existing_cols:
+        raise ValueError(
+            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+        )
+    if "strat_name" not in existing_cols:
+        raise ValueError(
+            f"Destination column 'strat_name' does not exist in {target.schema}.{target.table}"
+        )
+
+    rows = db.run_query(
+        """
+        SELECT _pkid, {src_col} AS src_value
+        FROM {table}
+        WHERE strat_name IS NULL
+          AND {src_col} IS NOT NULL
+          AND trim({src_col}::text) <> ''
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src_col=Identifier(src_col),
+        ),
+    ).fetchall()
+
+    console.print(
+        f"[blue]Calculating strat_name for[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"from [yellow]{src_col}[/yellow] across {len(rows)} candidate rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    mappings: list[tuple[int, str]] = []
+    for row in rows:
+        src_value = re.sub(r"\s+", " ", str(row.src_value)).strip()
+        if len(src_value.split()) < 2:
+            continue
+
+        resolved = find_lookup_strat_name(src_value)
+        if resolved is not None:
+            mappings.append((row._pkid, resolved))
+
+    if not mappings:
+        console.print(
+            f"[green]Done:[/green] no strat_name matches found from {src_col}"
+        )
+        return
+
+    values_sql = ", ".join([f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))])
+    params = {"table": target.fq_identifier}
+    for i, (pkid, strat_name) in enumerate(mappings):
+        params[f"pkid_{i}"] = pkid
+        params[f"strat_name_{i}"] = strat_name
+
+    db.run_sql(
+        f"""
+        UPDATE {{table}} AS t
+        SET strat_name = v.strat_name
+        FROM (
+            VALUES {values_sql}
+        ) AS v(_pkid, strat_name)
+        WHERE t._pkid = v._pkid
+          AND t.strat_name IS NULL
+        """,
+        params,
+    )
+
+    console.print(
+        f"[green]Done:[/green] populated strat_name from {src_col}. "
+        f"Updated rows: {len(mappings)}"
+    )
+
+
+
+#_____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
+def calculate_dip_dir_from_columns(
+    target: TableTarget,
+    strike_col: str,
+    strike_cardinal_col: str,
+    dip_col: str,
+    dip_cardinal_col: str,
+    dry_run: bool = False,
+):
+    """Populate dip_dir from strike and dip-direction information.
+
+    Rules:
+    - If strike is present, compute the two perpendicular azimuths:
+      (strike + 90) % 360 and (strike - 90) % 360.
+    - If dip-cardinal is present, choose the perpendicular option whose compass
+      direction matches the recorded dip-cardinal.
+    - Otherwise default to right-hand rule and use (strike + 90) % 360.
+    - Leave dip_dir null when strike is null or blank.
+    """
+    db = get_database()
+
+    strike_col = validate_identifier(strike_col, "strike column")
+    strike_cardinal_col = validate_identifier(
+        strike_cardinal_col, "strike cardinal column"
+    )
+    dip_col = validate_identifier(dip_col, "dip column")
+    dip_cardinal_col = validate_identifier(dip_cardinal_col, "dip cardinal column")
+
+    existing_cols = get_existing_columns(target)
+    required = {
+        strike_col,
+        strike_cardinal_col,
+        dip_col,
+        dip_cardinal_col,
+        "dip_dir",
+    }
+    missing = required - existing_cols
+    if missing:
+        raise ValueError(
+            f"Missing required columns in {target.schema}.{target.table}: "
+            f"{', '.join(sorted(missing))}"
+        )
+
+    row_count = db.run_query(
+        "SELECT count(*) FROM {table}",
+        dict(table=target.fq_identifier),
+    ).scalar()
+
+    console.print(
+        f"[blue]Calculating dip_dir for[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"using strike=[yellow]{strike_col}[/yellow], "
+        f"strike-cardinal=[yellow]{strike_cardinal_col}[/yellow], "
+        f"dip=[yellow]{dip_col}[/yellow], "
+        f"dip-cardinal=[yellow]{dip_cardinal_col}[/yellow] "
+        f"across {row_count} rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    db.run_sql(
+        """
+        WITH base AS (
+            SELECT
+                t._pkid,
+                CASE
+                    WHEN t.{strike_col} IS NULL THEN NULL
+                    WHEN trim(t.{strike_col}::text) = '' THEN NULL
+                    ELSE ((t.{strike_col}::text)::numeric % 360 + 360) % 360
+                END AS strike_azimuth,
+                lower(trim(nullif(t.{dip_cardinal_col}::text, ''))) AS dip_cardinal
+            FROM {table} AS t
+        ),
+        candidates AS (
+            SELECT
+                b._pkid,
+                b.strike_azimuth,
+                ((b.strike_azimuth + 90) % 360) AS rhs_dir,
+                ((b.strike_azimuth + 270) % 360) AS lhs_dir,
+                b.dip_cardinal
+            FROM base AS b
+            WHERE b.strike_azimuth IS NOT NULL
+        ),
+        resolved AS (
+            SELECT
+                c._pkid,
+                CASE
+                    WHEN c.dip_cardinal IS NULL THEN c.rhs_dir
+
+                    WHEN c.dip_cardinal IN ('n', 'north')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 315 OR c.rhs_dir < 45 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 315 OR c.lhs_dir < 45 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('e', 'east')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 45 AND c.rhs_dir < 135 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 45 AND c.lhs_dir < 135 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('s', 'south')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 135 AND c.rhs_dir < 225 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 135 AND c.lhs_dir < 225 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('w', 'west')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 225 AND c.rhs_dir < 315 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 225 AND c.lhs_dir < 315 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+
+                    WHEN c.dip_cardinal IN ('ne', 'northeast', 'north-east')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 0 AND c.rhs_dir < 90 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 0 AND c.lhs_dir < 90 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('se', 'southeast', 'south-east')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 90 AND c.rhs_dir < 180 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 90 AND c.lhs_dir < 180 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('sw', 'southwest', 'south-west')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 180 AND c.rhs_dir < 270 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 180 AND c.lhs_dir < 270 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+                    WHEN c.dip_cardinal IN ('nw', 'northwest', 'north-west')
+                        THEN CASE
+                            WHEN c.rhs_dir >= 270 AND c.rhs_dir < 360 THEN c.rhs_dir
+                            WHEN c.lhs_dir >= 270 AND c.lhs_dir < 360 THEN c.lhs_dir
+                            ELSE c.rhs_dir
+                        END
+
+                    ELSE c.rhs_dir
+                END AS dip_dir_value
+            FROM candidates AS c
+        )
+        UPDATE {table} AS t
+        SET dip_dir = resolved.dip_dir_value
+        FROM resolved
+        WHERE t._pkid = resolved._pkid
+        """,
+        dict(
+            table=target.fq_identifier,
+            strike_col=Identifier(strike_col),
+            strike_cardinal_col=Identifier(strike_cardinal_col),
+            dip_col=Identifier(dip_col),
+            dip_cardinal_col=Identifier(dip_cardinal_col),
+        ),
+    )
+
+    console.print(
+        f"[green]Done:[/green] populated dip_dir in "
+        f"{target.schema}.{target.table}"
+    )
+
+
+
+
+
+
+
 # ____________________________________CLI COMMANDS________________________________________________
 
 
 @normalize_cli.command("copy-column")
 def normalize_copy_column(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
-    src: str = Option(..., "--src", help="Source column to copy from"),
-    dst: str = Option(..., "--dst", help="Destination column to overwrite"),
+    src: str = Option(..., "--src", help="Initial source column to copy from"),
+    dst: str = Option(..., "--dst", help="Destination column to fill"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Copy all values from one column into another column, overwriting destination values.
+    Copy values from one column into another column, filling only currently-null
+    destination rows. If nulls remain in the destination after a pass, the user is
+    prompted to map another source column. Press Enter to stop.
     """
-    target = TableTarget(schema=schema, table=table)
-    copy_column_values(target=target, src=src, dst=dst, dry_run=dry_run)
+    target = get_current_target()
+    next_src = src.strip()
+    while next_src != "":
+        remaining_nulls = copy_column_values(
+            target=target,
+            src=next_src,
+            dst=dst,
+            dry_run=dry_run,
+        )
+        if remaining_nulls == 0:
+            console.print(f"[green]All null {dst} rows have been filled[/green]")
+            break
+        console.print(
+            f"[yellow]{remaining_nulls} rows still have null {dst} values.[/yellow]"
+        )
+        next_src = Prompt.ask(
+            f"Map values from another column into [bold]{dst}[/bold]? "
+            "Enter a column name or press Enter to exit",
+            default="",
+            show_default=False,
+        ).strip()
+    if next_src == "":
+        console.print("[green]Finished copy-column[/green]")
 
-
-@normalize_cli.command("copy-preferred-columns")
+@normalize_cli.command("copy-preferred-fields")
 def normalize_copy_preferred_columns(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Interactively map source columns into the preferred destination columns for
     points, lines, or polygons tables. Press Enter to skip a destination field.
     """
-    target = TableTarget(schema=schema, table=table)
+    target = get_current_target()
     copy_preferred_column_values_interactive(
         target=target,
         dry_run=dry_run,
@@ -804,15 +1641,13 @@ def normalize_copy_preferred_columns(
 
 @normalize_cli.command("add-preferred-columns")
 def normalize_add_preferred_columns(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Add any missing preferred standard columns for a points, lines, or polygons
     staging table. Existing columns are skipped.
     """
-    target = TableTarget(schema=schema, table=table)
+    target = get_current_target()
     add_preferred_columns(target=target, dry_run=dry_run)
 
 
@@ -830,8 +1665,6 @@ def normalize_add_metadata(
 
 @normalize_cli.command("calculate-age")
 def normalize_calculate_age(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
     col_one: str = Option(..., "--col-one", help="Primary age source column"),
     col_two: str = Option(..., "--col-two", help="Secondary age source column"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
@@ -840,7 +1673,7 @@ def normalize_calculate_age(
     Populate b_interval and t_interval using two user-provided columns,
     falling back to era when present.
     """
-    target = TableTarget(schema=schema, table=table)
+    target = get_current_target()
     calculate_age_intervals(
         target=target,
         col_one=col_one,
@@ -849,31 +1682,58 @@ def normalize_calculate_age(
     )
 
 
-@normalize_cli.command("copy-ages")
+@normalize_cli.command("copy-age")
 def normalize_copy_ages(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
-    older_col: str = Option(..., "--older-col", help="Column containing older age"),
-    newer_col: str = Option(..., "--newer-col", help="Column containing younger age"),
+    older_col: str = Option(..., "--older", help="Column containing older age"),
+    newer_col: str = Option(..., "--newer", help="Column containing younger age"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Copy older/newer age columns into b_interval and t_interval.
     If either side is null, use whichever column contains data for both.
+    If null age rows remain after a pass, the user is prompted to map another pair
+    of columns. Press Enter to stop.
     """
-    target = TableTarget(schema=schema, table=table)
-    copy_age_columns(
-        target=target,
-        older_col=older_col,
-        newer_col=newer_col,
-        dry_run=dry_run,
-    )
+    target = get_current_target()
+
+    next_older = older_col.strip()
+    next_newer = newer_col.strip()
+
+    while next_older != "" and next_newer != "":
+        remaining_nulls = copy_age_columns(
+            target=target,
+            older_col=next_older,
+            newer_col=next_newer,
+            dry_run=dry_run,
+        )
+        if remaining_nulls == 0:
+            console.print("[green]All null age rows have been filled[/green]")
+            break
+        console.print(
+            f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
+        )
+        next_older = Prompt.ask(
+            "Map values from another column into [bold]b_interval[/bold]? "
+            "Enter an older-age column name or press Enter to exit",
+            default="",
+            show_default=False,
+        ).strip()
+
+        if next_older == "":
+            break
+        next_newer = Prompt.ask(
+            "Map values from another column into [bold]t_interval[/bold]? "
+            "Enter a younger-age column name or press Enter to exit",
+            default="",
+            show_default=False,
+        ).strip()
+
+    if next_older == "" or next_newer == "":
+        console.print("[green]Finished copy-ages[/green]")
 
 
 @normalize_cli.command("copy-line-type")
 def normalize_copy_line_type(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
@@ -882,8 +1742,8 @@ def normalize_copy_line_type(
     If nulls remain in type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = TableTarget(schema=schema, table=table)
-
+    target = get_current_target()
+    table = target.table
     if not table.endswith("_lines"):
         raise ValueError("copy-line-type is intended for _lines tables")
     next_col = src.strip()
@@ -912,8 +1772,6 @@ def normalize_copy_line_type(
 
 @normalize_cli.command("copy-point-type")
 def normalize_copy_point_type(
-    schema: str = Argument(..., help="Schema name"),
-    table: str = Argument(..., help="Table name"),
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
@@ -922,7 +1780,8 @@ def normalize_copy_point_type(
     If nulls remain in point_type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = TableTarget(schema=schema, table=table)
+    target = get_current_target()
+    table = target.table
     if not table.endswith("_points"):
         raise ValueError("copy-point-type is intended for _points tables")
     next_col = src.strip()
@@ -946,3 +1805,159 @@ def normalize_copy_point_type(
         ).strip()
     if next_col == "":
         console.print("[green]Finished copy-point-type[/green]")
+
+@normalize_cli.command("null-column")
+def normalize_null_column(
+    column: str = Option(..., "--column", help="Column to set to NULL"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Set all values in a specified column to NULL.
+    """
+    target = get_current_target()
+    null_column_values(target=target, column=column, dry_run=dry_run)
+
+@normalize_cli.command("null-value")
+def normalize_null_value(
+    column: str = Option(..., "--column", help="Column to check"),
+    value: str = Option(..., "--value", help="String value to replace with NULL"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Set a cell to NULL when the specified column exactly matches a given string.
+    """
+    target = get_current_target()
+    null_matching_value(
+        target=target,
+        column=column,
+        value=value,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("calculate-strat-name")
+def normalize_calculate_strat_name(
+    src: str = Option(..., "--src", help="Source column to map from"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Populate strat_name from a source text column by matching progressively
+    smaller substrings against macrostrat.lookup_strat_names.
+    Unmatched rows are left as NULL.
+    """
+    target = get_current_target()
+    calculate_strat_name_from_column(
+        target=target,
+        src_col=src,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("replace-value")
+def normalize_replace_value(
+    column: str = Option(..., "--col", help="Column to update"),
+    old_value: str = Option(..., "--old", help="Value to replace"),
+    new_value: str = Option(..., "--new", help="Replacement value"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Replace a specific value in a column with a new value.
+    """
+    target = get_current_target()
+    replace_column_value(
+        target=target,
+        column=column,
+        old_value=old_value,
+        new_value=new_value,
+        dry_run=dry_run,
+    )
+
+@normalize_cli.command("merge-column")
+def normalize_merge_column(
+    col_one: str = Option(..., "--dst", help="Destination column"),
+    col_two: str = Option(..., "--src", help="Column to merge into dst column"),
+    separator: str = Option(..., "--separator", help="Separator between values"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Merge values from col-two into col-one using a user-provided separator.
+    """
+    target = get_current_target()
+    merge_column_values(
+        target=target,
+        col_one=col_one,
+        col_two=col_two,
+        separator=separator,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("calculate-dip-dir")
+def normalize_calculate_dip_dir(
+    strike_col: str = Option(..., "--str", help="Numeric strike column"),
+    strike_cardinal_col: str = Option(
+        ..., "--str-cardinal", help="Cardinal strike column"
+    ),
+    dip_col: str = Option(..., "--dip", help="Numeric dip column"),
+    dip_cardinal_col: str = Option(
+        ..., "--dip-cardinal", help="Cardinal dip-direction column"
+    ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Calculate dip_dir from strike and dip-direction information.
+    Defaults to right-hand rule when dip-cardinal is missing.
+    """
+    target = get_current_target()
+    calculate_dip_dir_from_columns(
+        target=target,
+        strike_col=strike_col,
+        strike_cardinal_col=strike_cardinal_col,
+        dip_col=dip_col,
+        dip_cardinal_col=dip_cardinal_col,
+        dry_run=dry_run,
+    )
+
+@normalize_cli.command("set-map")
+def normalize_set_map(
+    slug: str = Argument(..., help="Map slug, e.g. california_cosorange"),
+):
+    set_current_map(slug)
+    context = load_map_context()
+    console.print(
+        f"[green]Set current map:[/green] "
+        f"schema={context['schema']}, slug={context['slug']}, table={context['table']}"
+    )
+
+
+@normalize_cli.command("set-layer")
+def normalize_set_layer(
+    layer: str = Argument(..., help="Layer: points, lines, or polygons"),
+):
+    set_current_layer(layer)
+    context = load_map_context()
+    console.print(
+        f"[green]Set current layer:[/green] "
+        f"schema={context['schema']}, table={context['table']}"
+    )
+
+@normalize_cli.command("show-map")
+def normalize_show_map():
+    """
+    Show the current persisted map context.
+    """
+    console.print(f"[blue]Current MY_MAP:[/blue] {load_map_context()}")
+
+@normalize_cli.command("update-status")
+def normalize_update_status(
+    state: str = Option(..., "--state", help="New ingest state"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Update maps_metadata.ingest_process.state for the current map slug
+    or an explicitly provided slug.
+    """
+    update_ingest_status(
+        state=state,
+        dry_run=dry_run,
+    )
