@@ -1,9 +1,14 @@
-from dataclasses import dataclass
+import json
 import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
 from rich.prompt import Prompt
 from typer import Argument, Option
+
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
     PointsTableUpdater,
@@ -11,10 +16,6 @@ from macrostrat.map_integration.commands.prepare_fields.utils import (
 )
 from macrostrat.map_integration.database import get_database
 from macrostrat.map_integration.utils import IngestionCLI
-from typing import Optional
-import json
-from pathlib import Path
-from typing import Optional
 
 console = Console()
 
@@ -57,7 +58,6 @@ def save_map_context(context: dict):
     CONTEXT_FILE.write_text(json.dumps(context, indent=2))
 
 
-
 @dataclass(frozen=True)
 class TableTarget:
     """Immutable dataclass representing a fully-qualified database table target,
@@ -70,6 +70,7 @@ class TableTarget:
     def fq_identifier(self):
         """Returns an Identifier composed of (schema, table), suitable for safe interpolation into SQL queries."""
         return Identifier(self.schema, self.table)
+
 
 MY_MAP = {
     "schema": "sources",
@@ -90,6 +91,7 @@ def get_current_target() -> TableTarget:
         )
 
     return TableTarget(schema=schema, table=table)
+
 
 def set_current_map(slug: str):
     """Set the current map slug and default base table."""
@@ -114,7 +116,6 @@ def set_current_layer(layer: str):
 
     context["table"] = f"{slug}_{layer}"
     save_map_context(context)
-
 
 
 def get_column_sql_type(target: TableTarget, column: str) -> str:
@@ -211,7 +212,6 @@ def get_preferred_fields_for_table(table: str) -> dict[str, str]:
     )
 
 
-
 def null_matching_value(
     target: TableTarget,
     column: str,
@@ -272,6 +272,7 @@ def null_matching_value(
         f"[green]Done:[/green] set matching values in {column} to NULL "
         f"in {target.schema}.{target.table}"
     )
+
 
 def null_column_values(
     target: TableTarget,
@@ -357,7 +358,6 @@ def add_preferred_columns(
         console.print("[green]Dry run only; no changes applied[/green]")
     else:
         console.print("[green]Done:[/green] preferred columns check/add complete")
-
 
 
 def replace_column_value(
@@ -648,16 +648,14 @@ def update_ingest_status(
     )
 
     db.run_sql(
-    """
+        """
     UPDATE maps_metadata.ingest_process
     SET comments = 'metadata manually processed; polygons processed; lines processed; points processed;'
     WHERE slug = :slug
     """,
-    dict(slug=slug, state=state),
+        dict(slug=slug, state=state),
     )
-    console.print(
-        f"[green]Done:[/green] updated ingest_process state for slug {slug}"
-    )
+    console.print(f"[green]Done:[/green] updated ingest_process state for slug {slug}")
 
 
 def copy_preferred_column_values_interactive(
@@ -1137,9 +1135,6 @@ def copy_line_type_from_column(
     return remaining_nulls
 
 
-
-
-
 def copy_age_columns(
     target: TableTarget,
     older_col: str,
@@ -1194,7 +1189,7 @@ def copy_age_columns(
         return remaining_nulls
 
     db.run_sql(
-    """
+        """
     WITH interval_lookup AS (
         SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
         FROM macrostrat.intervals
@@ -1219,11 +1214,11 @@ def copy_age_columns(
     WHERE t._pkid = mapped._pkid
       AND (t.b_interval IS NULL OR t.t_interval IS NULL)
     """,
-    dict(
-        table=target.fq_identifier,
-        older_col=Identifier(older_col),
-        newer_col=Identifier(newer_col),
-    ),
+        dict(
+            table=target.fq_identifier,
+            older_col=Identifier(older_col),
+            newer_col=Identifier(newer_col),
+        ),
     )
     remaining_nulls = db.run_query(
         """
@@ -1249,7 +1244,7 @@ normalize_cli = IngestionCLI(
 )
 
 
-#___________________________________MAP STRAT_NAMES______________________________________________
+# ___________________________________MAP STRAT_NAMES______________________________________________
 def extract_capitalized_phrase_candidates(value: str) -> list[str]:
     s = str(value).strip()
     if s == "":
@@ -1289,6 +1284,7 @@ def extract_capitalized_phrase_candidates(value: str) -> list[str]:
         add_candidate(" ".join(capitalized))
         add_candidate(" ".join(capitalized[:2]))
     return candidates
+
 
 def find_lookup_strat_name(value: str) -> Optional[str]:
     """Resolve a source string to a canonical stratigraphic name from
@@ -1390,7 +1386,9 @@ def calculate_strat_name_from_column(
         )
         return
 
-    values_sql = ", ".join([f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))])
+    values_sql = ", ".join(
+        [f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))]
+    )
     params = {"table": target.fq_identifier}
     for i, (pkid, strat_name) in enumerate(mappings):
         params[f"pkid_{i}"] = pkid
@@ -1415,8 +1413,7 @@ def calculate_strat_name_from_column(
     )
 
 
-
-#_____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
+# _____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
 def calculate_dip_dir_from_columns(
     target: TableTarget,
     strike_col: str,
@@ -1576,14 +1573,8 @@ def calculate_dip_dir_from_columns(
     )
 
     console.print(
-        f"[green]Done:[/green] populated dip_dir in "
-        f"{target.schema}.{target.table}"
+        f"[green]Done:[/green] populated dip_dir in " f"{target.schema}.{target.table}"
     )
-
-
-
-
-
 
 
 # ____________________________________CLI COMMANDS________________________________________________
@@ -1623,6 +1614,7 @@ def normalize_copy_column(
         ).strip()
     if next_src == "":
         console.print("[green]Finished copy-column[/green]")
+
 
 @normalize_cli.command("copy-preferred-fields")
 def normalize_copy_preferred_columns(
@@ -1806,6 +1798,7 @@ def normalize_copy_point_type(
     if next_col == "":
         console.print("[green]Finished copy-point-type[/green]")
 
+
 @normalize_cli.command("null-column")
 def normalize_null_column(
     column: str = Option(..., "--column", help="Column to set to NULL"),
@@ -1816,6 +1809,7 @@ def normalize_null_column(
     """
     target = get_current_target()
     null_column_values(target=target, column=column, dry_run=dry_run)
+
 
 @normalize_cli.command("null-value")
 def normalize_null_value(
@@ -1872,6 +1866,7 @@ def normalize_replace_value(
         dry_run=dry_run,
     )
 
+
 @normalize_cli.command("merge-column")
 def normalize_merge_column(
     col_one: str = Option(..., "--dst", help="Destination column"),
@@ -1918,6 +1913,7 @@ def normalize_calculate_dip_dir(
         dry_run=dry_run,
     )
 
+
 @normalize_cli.command("set-map")
 def normalize_set_map(
     slug: str = Argument(..., help="Map slug, e.g. california_cosorange"),
@@ -1941,12 +1937,14 @@ def normalize_set_layer(
         f"schema={context['schema']}, table={context['table']}"
     )
 
+
 @normalize_cli.command("show-map")
 def normalize_show_map():
     """
     Show the current persisted map context.
     """
     console.print(f"[blue]Current MY_MAP:[/blue] {load_map_context()}")
+
 
 @normalize_cli.command("update-status")
 def normalize_update_status(
