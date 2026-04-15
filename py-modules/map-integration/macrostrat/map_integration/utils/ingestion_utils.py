@@ -76,7 +76,6 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     return slug, name, ext
 
 
-
 def resolve_slug_from_path(prefix: str, path: Path) -> tuple[str, str, str]:
     """
     If path.stem is already in slug format and begins with '<prefix>_',
@@ -114,6 +113,7 @@ def resolve_slug_from_path(prefix: str, path: Path) -> tuple[str, str, str]:
 
     return normalize_slug(prefix, path)
 
+
 def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
     """
     Generates a human-readable name from a slug, handling prefix-first
@@ -127,11 +127,11 @@ def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
         clean_prefix = prefix.lower().replace(" ", "_")
         # Check if the slug STARTS with the prefix (e.g., "arizona_mesa")
         if slug.startswith(f"{clean_prefix}_"):
-            place = slug[len(clean_prefix) + 1:]
+            place = slug[len(clean_prefix) + 1 :]
             region = clean_prefix
         # Check if the slug ENDS with the prefix (e.g., "mesa_arizona")
         elif slug.endswith(f"_{clean_prefix}"):
-            place = slug[:-(len(clean_prefix) + 1)]
+            place = slug[: -(len(clean_prefix) + 1)]
             region = clean_prefix
     # If no prefix was passed (or it didn't match), fallback to the default assumption
     if not region:
@@ -294,7 +294,8 @@ def process_sources_metadata(
         "description": _safe("description") or "",
     }
 
-def insert_sources_metadata(db,data_path, slug: str):
+
+def insert_sources_metadata(db, data_path, slug: str):
     db = get_database()
     get_name_from_slug(slug)
     slug, name, ext = normalize_slug(prefix, Path(data_path))

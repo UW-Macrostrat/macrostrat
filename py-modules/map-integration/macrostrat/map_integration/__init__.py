@@ -21,8 +21,8 @@ from macrostrat.map_integration.process.geometry import create_rgeom, create_web
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
     normalize_slug,
-    resolve_slug_from_path,
     process_sources_metadata,
+    resolve_slug_from_path,
 )
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *

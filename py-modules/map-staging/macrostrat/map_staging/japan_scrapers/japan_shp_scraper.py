@@ -362,7 +362,9 @@ def process_page(
             continue
 
         for vector_link in vector_links:
-            if not should_process_item(page_url, map_name, vector_link, prior_status_map):
+            if not should_process_item(
+                page_url, map_name, vector_link, prior_status_map
+            ):
                 print(f"✓ Already handled: {map_name} | {vector_link}")
                 continue
 

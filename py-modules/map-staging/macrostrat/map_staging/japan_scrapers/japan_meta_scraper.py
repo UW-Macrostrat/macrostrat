@@ -10,9 +10,7 @@ from bs4 import BeautifulSoup
 DOWNLOAD_LOG_CSV = Path(
     "/Users/afromandi/Macrostrat/Maps/Japan/quad_series/download_log.csv"
 )
-SHAPEFILES_DIR = Path(
-    "/Users/afromandi/Macrostrat/Maps/Japan/quad_series/"
-)
+SHAPEFILES_DIR = Path("/Users/afromandi/Macrostrat/Maps/Japan/quad_series/")
 OUTPUT_CSV = Path(
     "/Users/afromandi/Macrostrat/Projects/macrostrat/py-modules/map-staging/"
     "macrostrat/map_staging/japan_scrapers/metadata.csv"
@@ -54,6 +52,7 @@ def normalize_map_name_for_matching(text: str) -> str:
     text = text.replace("_", " ")
     text = re.sub(r"\s+", " ", text)
     return text
+
 
 def get_with_retries(
     session: requests.Session,
@@ -175,6 +174,8 @@ def load_downloaded_rows(download_log_csv: Path) -> list[dict]:
             )
 
     return rows
+
+
 def normalize_name_like_shapefile_dir(text: str, prefix: str | None = None) -> str:
     """
     Normalize a map name using the same rules as the shapefile directory renamer.
