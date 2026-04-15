@@ -1814,7 +1814,7 @@ entities AS (
         ) AS entities
     FROM macrostrat_kg.entity e
     JOIN selected_runs sr
-        ON sr.id = e.run_id   -- 🔥 filter early
+        ON sr.id = e.run_id   
     LEFT JOIN macrostrat_kg.entity_type et
         ON et.id = e.entity_type_id
     GROUP BY e.run_id
@@ -1833,7 +1833,7 @@ relations AS (
     JOIN macrostrat_kg.entity parent
         ON parent.id = r.src_entity_id
     JOIN selected_runs sr
-        ON sr.id = parent.run_id   -- 🔥 filter early
+        ON sr.id = parent.run_id  
     GROUP BY parent.run_id
 ),
 
