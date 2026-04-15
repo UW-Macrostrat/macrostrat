@@ -641,7 +641,8 @@ CREATE VIEW macrostrat_api.kg_context_entities AS
     st.hashed_text,
     st.preprocessor_id,
     mr.model_id,
-    mr.version_id
+    mr.version_id,
+    mr.user_id
    FROM ((macrostrat_kg.source_text st
      LEFT JOIN macrostrat_kg.model_run mr ON ((mr.source_text_id = st.id)))
      LEFT JOIN entities e ON ((e.model_run = mr.id)));
