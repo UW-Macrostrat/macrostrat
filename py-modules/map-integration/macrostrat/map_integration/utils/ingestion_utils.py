@@ -49,12 +49,6 @@ def find_gis_files(
     return gis_files, excluded_files
 
 
-import re
-from pathlib import Path
-
-SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
-
-
 def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     """
     Normalize a slug and also return a human-readable name and the file extension.
@@ -80,6 +74,77 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     name = f"{filename}, {region}"
 
     return slug, name, ext
+
+
+
+def resolve_slug_from_path(prefix: str, path: Path) -> tuple[str, str, str]:
+    """
+    If path.stem is already in slug format and begins with '<prefix>_',
+    use it directly. Otherwise fall back to normalize_slug(prefix, path).
+
+    Example:
+      prefix='japan', path='japan_shiriya_zaki' ->
+          ('japan_shiriya_zaki', 'Shiriya Zaki, Japan', '')
+      prefix='japan', path='Shiriya Zaki' ->
+          ('japan_shiriya_zaki', 'Shiriya Zaki, Japan', '')
+    """
+    ext = path.suffix.lower()
+    stem = path.stem.strip()
+
+    clean_prefix = prefix.strip().lower()
+    clean_prefix = re.sub(r"\s+", "_", clean_prefix)
+    clean_prefix = SLUG_SAFE_CHARS.sub("", clean_prefix)
+    clean_prefix = re.sub(r"_+", "_", clean_prefix).strip("_")
+
+    candidate = stem.lower().strip()
+    candidate = re.sub(r"_+", "_", candidate)
+
+    already_prefixed = candidate.startswith(f"{clean_prefix}_")
+    slug_safe = SLUG_SAFE_CHARS.sub("", candidate) == candidate
+
+    if already_prefixed and slug_safe:
+        slug = candidate
+
+        place = slug[len(clean_prefix) + 1 :]
+        place_name = place.replace("_", " ").title()
+        region_name = clean_prefix.replace("_", " ").title()
+        name = f"{place_name}, {region_name}"
+
+        return slug, name, ext
+
+    return normalize_slug(prefix, path)
+
+def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
+    """
+    Generates a human-readable name from a slug, handling prefix-first
+    or prefix-last ordering.
+    """
+    region = ""
+    place = ""
+
+    if prefix:
+        # Clean the prefix just in case it has spaces or odd casing
+        clean_prefix = prefix.lower().replace(" ", "_")
+        # Check if the slug STARTS with the prefix (e.g., "arizona_mesa")
+        if slug.startswith(f"{clean_prefix}_"):
+            place = slug[len(clean_prefix) + 1:]
+            region = clean_prefix
+        # Check if the slug ENDS with the prefix (e.g., "mesa_arizona")
+        elif slug.endswith(f"_{clean_prefix}"):
+            place = slug[:-(len(clean_prefix) + 1)]
+            region = clean_prefix
+    # If no prefix was passed (or it didn't match), fallback to the default assumption
+    if not region:
+        parts = slug.split("_", 1)
+        if len(parts) == 2:
+            region, place = parts
+        else:
+            return slug.title()
+    # Format both parts to Title Case
+    region_name = region.replace("_", " ").title()
+    place_name = place.replace("_", " ").title()
+
+    return f"{place_name}, {region_name}"
 
 
 def get_age_interval_df() -> pd.DataFrame:
@@ -228,3 +293,66 @@ def process_sources_metadata(
         "language": _safe("language") or "",
         "description": _safe("description") or "",
     }
+
+def insert_sources_metadata(db,data_path, slug: str):
+    db = get_database()
+    get_name_from_slug(slug)
+    slug, name, ext = normalize_slug(prefix, Path(data_path))
+    source_id = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+
+    if source_id is None:
+        raise RuntimeError(f"Could not find source for slug {slug}")
+
+    # add metadata from AZ map scraper /Users processed_item_urls.csv
+    sources_mapping = process_sources_metadata(slug, Path(data_path), None)
+
+    if sources_mapping is not None:
+        db.run_sql(
+            """
+            UPDATE maps.sources
+            SET name = :name,
+                scale = :scale,
+                ingested_by = :ingested_by,
+                url = :url,
+                ref_title = :ref_title,
+                authors = :authors,
+                ref_year = :ref_year,
+                ref_source = :ref_source,
+                isbn_doi = :isbn_doi,
+                license = :license,
+                keywords = :keywords,
+                language = :language,
+                description = :description
+            WHERE source_id = :source_id
+            """,
+            dict(
+                name=name,
+                scale="large",
+                ingested_by="macrostrat-admin",
+                source_id=source_id,
+                url=sources_mapping["url"],
+                ref_title=sources_mapping["ref_title"],
+                authors=sources_mapping["authors"],
+                ref_year=sources_mapping["ref_year"],
+                ref_source=sources_mapping["ref_source"],
+                isbn_doi=sources_mapping["isbn_doi"],
+                license=sources_mapping["license"],
+                keywords=sources_mapping["keywords"],  # array
+                language=sources_mapping["language"],
+                description=sources_mapping["description"],
+            ),
+        )
+
+    else:
+        db.run_sql(
+            "UPDATE maps.sources SET name = :name, scale = :scale, ingested_by = :ingested_by WHERE source_id = :source_id",
+            dict(
+                name=name,
+                scale="large",
+                ingested_by="macrostrat-admin",
+                source_id=source_id,
+            ),
+        )

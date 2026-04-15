@@ -15,7 +15,8 @@ from typing import Optional
 import json
 from pathlib import Path
 from typing import Optional
-
+import csv
+import math
 console = Console()
 
 """
@@ -791,6 +792,184 @@ def parse_metadata_value(field: str, raw_value: str):
         return [item.strip() for item in raw_value.split(",") if item.strip()]
     return raw_value
 
+#__________________________PROCESS METADATA VIA CSV OR INTERACTIVELY__________________________________
+def is_blank_metadata_value(value) -> bool:
+    """Return True if a CSV value should be treated as missing and skipped."""
+    if value is None:
+        return True
+
+    # pandas-style NaN safety if a float sneaks in
+    if isinstance(value, float) and math.isnan(value):
+        return True
+
+    text = str(value).strip()
+    if text == "":
+        return True
+
+    if text.lower() in {"nan", "null", "none"}:
+        return True
+
+    return False
+
+
+def parse_metadata_csv_value(field: str, raw_value):
+    """
+    Parse a metadata CSV value into the format expected by maps.sources.
+    Returns None for blank values.
+    """
+    if is_blank_metadata_value(raw_value):
+        return None
+
+    raw_text = str(raw_value).strip()
+
+    if field == "scale_denominator":
+        return int(raw_text)
+
+    if field == "keywords":
+        # support either semicolon-separated or comma-separated values
+        if ";" in raw_text:
+            parts = [item.strip() for item in raw_text.split(";") if item.strip()]
+        else:
+            parts = [item.strip() for item in raw_text.split(",") if item.strip()]
+        return parts
+
+    return raw_text
+
+
+def get_source_row_for_slug(slug: str):
+    """Look up a maps.sources row by slug."""
+    db = get_database()
+    row = db.run_query(
+        """
+        SELECT source_id, slug
+        FROM maps.sources
+        WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).fetchone()
+
+    if row is None:
+        return None
+
+    return row
+
+
+def process_metadata_csv(
+    csv_path: Path,
+    dry_run: bool = False,
+):
+    """
+    Read metadata rows from a CSV file and update maps.sources by slug.
+
+    Rules:
+    - slug is required
+    - blank/null CSV values are skipped and do not overwrite DB values
+    - rows with unknown slugs are skipped
+    """
+    db = get_database()
+
+    if not csv_path.is_file():
+        raise ValueError(f"Metadata CSV not found: {csv_path}")
+
+    with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+
+        if reader.fieldnames is None:
+            raise ValueError(f"CSV has no header row: {csv_path}")
+
+        missing_required = {"slug"} - set(reader.fieldnames)
+        if missing_required:
+            raise ValueError(
+                f"CSV missing required column(s): {', '.join(sorted(missing_required))}"
+            )
+
+        rows = list(reader)
+
+    console.print(
+        f"[blue]Processing metadata CSV:[/blue] [bold]{csv_path}[/bold] "
+        f"with {len(rows)} row(s)"
+    )
+
+    updated_count = 0
+    skipped_missing_slug = 0
+    skipped_unknown_slug = 0
+    skipped_empty_updates = 0
+
+    for i, row in enumerate(rows, start=1):
+        slug = str(row.get("slug", "")).strip()
+
+        if slug == "":
+            skipped_missing_slug += 1
+            console.print(
+                f"[yellow]Skipping row {i}:[/yellow] missing slug"
+            )
+            continue
+
+        source_row = get_source_row_for_slug(slug)
+        if source_row is None:
+            skipped_unknown_slug += 1
+            console.print(
+                f"[yellow]Skipping row {i}:[/yellow] slug not found in maps.sources: "
+                f"[bold]{slug}[/bold]"
+            )
+            continue
+
+        updates = {}
+        for field in METADATA_FIELDS:
+            if field not in row:
+                continue
+
+            try:
+                parsed = parse_metadata_csv_value(field, row[field])
+            except Exception as e:
+                console.print(
+                    f"[yellow]Skipping field[/yellow] [bold]{field}[/bold] "
+                    f"for slug [bold]{slug}[/bold]: invalid value {row[field]!r} ({e})"
+                )
+                continue
+
+            if parsed is None:
+                continue
+
+            updates[field] = parsed
+
+        if not updates:
+            skipped_empty_updates += 1
+            console.print(
+                f"[yellow]Skipping row {i}:[/yellow] no non-empty metadata values for "
+                f"[bold]{slug}[/bold]"
+            )
+            continue
+
+        console.print(
+            f"[blue]Prepared metadata update[/blue] for [bold]{slug}[/bold]: "
+            f"{', '.join(sorted(updates.keys()))}"
+        )
+
+        if dry_run:
+            continue
+
+        assignments = [f"{field} = :{field}" for field in updates.keys()]
+        params = {"source_id": source_row.source_id, **updates}
+
+        sql = f"""
+            UPDATE maps.sources
+            SET {", ".join(assignments)}
+            WHERE source_id = :source_id
+        """
+        db.run_sql(sql, params)
+        updated_count += 1
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+
+    console.print(
+        "[green]Done:[/green] "
+        f"updated={updated_count}, "
+        f"missing_slug={skipped_missing_slug}, "
+        f"unknown_slug={skipped_unknown_slug}, "
+        f"empty_updates={skipped_empty_updates}"
+    )
 
 def add_metadata_interactive(
     table_name: str,
@@ -1662,6 +1841,20 @@ def normalize_add_metadata(
     """
     add_metadata_interactive(table_name=table, dry_run=dry_run)
 
+@normalize_cli.command("add-metadata-csv")
+def normalize_add_metadata_csv(
+    csv_path: Path = Argument(..., help="Path to metadata CSV file"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Update maps.sources metadata from a CSV file.
+
+    - matches rows by slug
+    - skips blank/null CSV values
+    - updates only the fields present and non-empty for each row
+    """
+    process_metadata_csv(csv_path=csv_path, dry_run=dry_run)
+
 
 @normalize_cli.command("calculate-age")
 def normalize_calculate_age(
@@ -1808,7 +2001,7 @@ def normalize_copy_point_type(
 
 @normalize_cli.command("null-column")
 def normalize_null_column(
-    column: str = Option(..., "--column", help="Column to set to NULL"),
+    column: str = Argument(..., help="Column to set to NULL"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
