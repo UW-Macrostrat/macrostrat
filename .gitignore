@@ -9,4 +9,4 @@ macrostrat.toml
 .idea
 .idea/data_source_mapping.xml
 
-.macrostrat_staging_context.json
+macrostrat_staging_context.json

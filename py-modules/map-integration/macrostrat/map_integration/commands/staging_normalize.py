@@ -5,7 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
-
+from difflib import SequenceMatcher
+import pandas as pd
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
 from rich.prompt import Prompt
@@ -30,11 +31,23 @@ lowercase-column
 coalesce-columns
 """
 
-CONTEXT_FILE = Path(".macrostrat_staging_context.json")
+CONTEXT_FILE = Path("macrostrat_staging_context.json")
 DEFAULT_MAP_CONTEXT = {
     "schema": "sources",
     "slug": None,
     "table": None,
+}
+STRAT_NAME_SUFFIXES = [
+    "formation",
+    "fm",
+    "group",
+    "gp",
+    "member",
+    "mbr",
+]
+
+PRE_INTERVAL_MAP = {
+    "jurassic": "triassic",
 }
 
 
@@ -95,6 +108,22 @@ def get_current_target() -> TableTarget:
     return TableTarget(schema=schema, table=table)
 
 
+
+def strip_strat_name_suffixes(value: str) -> str:
+    """Strip common stratigraphic rank suffixes from the end of a value."""
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    if text == "":
+        return text
+
+    suffix_pattern = r"(?:\s+|,)+(formation|fm|group|gp|member|mbr)\.?\s*$"
+    while True:
+        updated = re.sub(suffix_pattern, "", text, flags=re.IGNORECASE).strip(" ,;:-")
+        if updated == text:
+            break
+        text = updated
+
+    return text
+
 def set_current_map(slug: str):
     """Set the current map slug and default base table."""
     slug = validate_identifier(slug, "slug")
@@ -141,6 +170,48 @@ def get_column_sql_type(target: TableTarget, column: str) -> str:
 
     # udt_name is useful for postgres-specific types like int4, bool, etc.
     return (row.udt_name or row.data_type or "").lower()
+
+def append_ingest_comment_for_current_slug(
+    comment: str,
+    dry_run: bool = False,
+):
+    """Append a comment fragment to maps_metadata.ingest_process.comments for the
+    current CONTEXT_FILE slug, avoiding duplicate appends.
+    """
+    db = get_database()
+    slug = (load_map_context().get("slug") or "").strip()
+    comment = comment.strip()
+    if slug == "":
+        raise ValueError(
+            "No slug is set in context. Run 'set-map <slug>' first."
+        )
+    if comment == "":
+        raise ValueError("comment cannot be empty")
+    if dry_run:
+        console.print(
+            f"[green]Dry run only:[/green] would append comment "
+            f"[yellow]{comment}[/yellow] to maps_metadata.ingest_process for slug "
+            f"[yellow]{slug}[/yellow]"
+        )
+        return
+    db.run_sql(
+        """
+        UPDATE maps_metadata.ingest_process
+        SET comments = CASE
+            WHEN comments IS NULL OR trim(comments) = '' THEN :comment
+            WHEN comments LIKE '%' || :comment || '%' THEN comments
+            ELSE comments || ' ' || :comment
+        END
+        WHERE slug = :slug
+        """,
+        dict(
+            slug=slug,
+            comment=comment,
+        ),
+    )
+    console.print(
+        f"[green]Done:[/green] appended ingest_process comment for slug {slug}"
+    )
 
 
 def get_integer_preferred_fields_for_table(table: str) -> set[str]:
@@ -212,6 +283,374 @@ def get_preferred_fields_for_table(table: str) -> dict[str, str]:
         "Could not infer table type from table name. "
         "Expected table to end with _points, _lines, or _polygons."
     )
+
+def get_nonempty_columns_ending_with_e(target: TableTarget) -> list[str]:
+    """Return all non-empty columns ending with 'e' ordered by ordinal_position ascending."""
+    db = get_database()
+    cols = db.run_query(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+          AND table_name = :table
+          AND lower(column_name) LIKE '%e'
+        ORDER BY ordinal_position
+        """,
+        dict(schema=target.schema, table=target.table),
+    ).fetchall()
+
+    out: list[str] = []
+    for row in cols:
+        col = row.column_name
+        has_data = db.run_query(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM {table}
+                WHERE {col} IS NOT NULL
+                  AND trim({col}::text) <> ''
+            )
+            """,
+            dict(
+                table=target.fq_identifier,
+                col=Identifier(col),
+            ),
+        ).scalar()
+        if has_data:
+            out.append(col)
+
+    return out
+
+
+def get_columns_between_non_age_and_second_last(
+    target: TableTarget,
+    non_age_col: str,
+) -> tuple[str, list[str], str]:
+    """Return (non_age_col, columns_between, second_last_col) for non-empty columns ending with 'e'."""
+    non_age_col = validate_identifier(non_age_col, "non_age_col")
+    e_cols = get_nonempty_columns_ending_with_e(target)
+
+    if non_age_col not in e_cols:
+        raise ValueError(
+            f"Column '{non_age_col}' is not a non-empty column ending with 'e' "
+            f"in {target.schema}.{target.table}"
+        )
+
+    if len(e_cols) < 2:
+        raise ValueError(
+            f"Need at least two non-empty columns ending with 'e' in "
+            f"{target.schema}.{target.table}"
+        )
+
+    second_last_col = e_cols[-2]
+    non_age_idx = e_cols.index(non_age_col)
+    second_last_idx = e_cols.index(second_last_col)
+
+    if non_age_idx > second_last_idx:
+        columns_between = e_cols[second_last_idx + 1:non_age_idx]
+    else:
+        columns_between = e_cols[non_age_idx + 1:second_last_idx]
+
+    return non_age_col, columns_between, second_last_col
+
+
+def find_last_nonempty_column_ending_with_e(target: TableTarget) -> str:
+    """Return the last column by ordinal position whose name ends with 'e'
+    and which contains at least one nonblank value.
+    """
+    db = get_database()
+    cols = db.run_query(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+          AND table_name = :table
+          AND lower(column_name) LIKE '%e'
+        ORDER BY ordinal_position DESC
+        """,
+        dict(schema=target.schema, table=target.table),
+    ).fetchall()
+
+    for row in cols:
+        col = row.column_name
+        has_data = db.run_query(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM {table}
+                WHERE {col} IS NOT NULL
+                  AND trim({col}::text) <> ''
+            )
+            """,
+            dict(
+                table=target.fq_identifier,
+                col=Identifier(col),
+            ),
+        ).scalar()
+        if has_data:
+            return col
+    raise ValueError(
+        f"No non-empty column ending with 'e' found in {target.schema}.{target.table}"
+    )
+
+
+def find_second_last_nonempty_column_ending_with_e(target: TableTarget) -> str:
+    """Return the second-last column by ordinal position whose name ends with 'e'
+    and which contains at least one nonblank value.
+    """
+    db = get_database()
+    cols = db.run_query(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+          AND table_name = :table
+          AND lower(column_name) LIKE '%e'
+        ORDER BY ordinal_position DESC
+        """,
+        dict(schema=target.schema, table=target.table),
+    ).fetchall()
+    matches: list[str] = []
+    for row in cols:
+        col = row.column_name
+        has_data = db.run_query(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM {table}
+                WHERE {col} IS NOT NULL
+                  AND trim({col}::text) <> ''
+            )
+            """,
+            dict(
+                table=target.fq_identifier,
+                col=Identifier(col),
+            ),
+        ).scalar()
+        if has_data:
+            matches.append(col)
+        if len(matches) == 2:
+            return matches[1]
+    raise ValueError(
+        f"Could not find a second non-empty column ending with 'e' in "
+        f"{target.schema}.{target.table}"
+    )
+
+def tokenize_lith_text(value: str) -> list[str]:
+    text = re.sub(r"[^A-Za-z0-9]+", " ", str(value)).strip().lower()
+    if text == "":
+        return []
+    return [tok for tok in text.split() if tok]
+
+
+def get_lith_reference_terms() -> set[str]:
+    """Build a normalized vocabulary from macrostrat.liths and macrostrat.lith_atts."""
+    db = get_database()
+    rows = db.run_query(
+        """
+        SELECT lith::text AS term
+        FROM macrostrat.liths
+        WHERE lith IS NOT NULL
+
+        UNION
+
+        SELECT lith_group::text AS term
+        FROM macrostrat.liths
+        WHERE lith_group IS NOT NULL
+
+        UNION
+
+        SELECT lith_type::text AS term
+        FROM macrostrat.liths
+        WHERE lith_type IS NOT NULL
+
+        UNION
+
+        SELECT lith_class::text AS term
+        FROM macrostrat.liths
+        WHERE lith_class IS NOT NULL
+
+        UNION
+
+        SELECT lith_att::text AS term
+        FROM macrostrat.lith_atts
+        WHERE lith_att IS NOT NULL
+        """
+    ).fetchall()
+
+    out = set()
+    for row in rows:
+        term = re.sub(r"\s+", " ", str(row.term)).strip().lower()
+        if term != "":
+            out.add(term)
+    return out
+
+
+
+def best_fuzzy_match(token: str, reference_terms: set[str]) -> tuple[Optional[str], float]:
+    """Return the best matching reference term and its similarity ratio."""
+    token = token.strip().lower()
+    if token == "":
+        return None, 0.0
+
+    best_term = None
+    best_ratio = 0.0
+
+    for ref in reference_terms:
+        ratio = SequenceMatcher(None, token, ref).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_term = ref
+            if best_ratio == 1.0:
+                break
+
+    return best_term, best_ratio
+
+
+def calculate_lith_fuzzy_match_percentages(
+    target: TableTarget,
+    src_col: str,
+    threshold: float = 0.85,
+    row_copy_threshold_percent: float = 10.0,
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+):
+    """Print per-row fuzzy match percentages for tokens in src_col against
+    macrostrat lith/lith_att vocabularies.
+
+    If a row's fuzzy match percentage is greater than row_copy_threshold_percent,
+    write the matched canonical lith strings directly into the lith column for
+    that same row/_pkid.
+    """
+    db = get_database()
+    src_col = validate_identifier(src_col, "source column")
+    existing_cols = get_existing_columns(target)
+
+    if src_col not in existing_cols:
+        raise ValueError(
+            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+        )
+    if "lith" not in existing_cols:
+        raise ValueError(
+            f"Destination column 'lith' does not exist in {target.schema}.{target.table}"
+        )
+
+    reference_terms = get_lith_reference_terms()
+
+    limit_sql = ""
+    params = {
+        "table": target.fq_identifier,
+        "src_col": Identifier(src_col),
+    }
+    if limit is not None:
+        limit_sql = "LIMIT :limit"
+        params["limit"] = limit
+
+    rows = db.run_query(
+        f"""
+        SELECT _pkid, {{src_col}} AS src_value
+        FROM {{table}}
+        WHERE {{src_col}} IS NOT NULL
+          AND trim({{src_col}}::text) <> ''
+          AND coalesce(omit, false) = false
+        ORDER BY _pkid
+        {limit_sql}
+        """,
+        params,
+    ).fetchall()
+
+    console.print(
+        f"[blue]Evaluating lith fuzzy matches for[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"using [yellow]{src_col}[/yellow] across {len(rows)} row(s)"
+    )
+
+    total_rows = 0
+    total_word_count = 0
+    total_match_percent = 0.0
+    updates: list[tuple[int, str]] = []
+
+    for row in rows:
+        tokens = tokenize_lith_text(row.src_value)
+        word_count = len(tokens)
+        total_rows += 1
+        total_word_count += word_count
+
+        if not tokens:
+            percent = 0.0
+            total_match_percent += percent
+            console.print(
+                f"_pkid={row._pkid} | words=0 | match=0.0% | matched= | value={row.src_value}"
+            )
+            continue
+
+        matched_count = 0
+        matched_terms: list[str] = []
+        seen_terms = set()
+
+        for token in tokens:
+            best_term, score = best_fuzzy_match(token, reference_terms)
+            if best_term is not None and score >= threshold:
+                matched_count += 1
+                if best_term not in seen_terms:
+                    seen_terms.add(best_term)
+                    matched_terms.append(best_term)
+
+        percent = 100.0 * matched_count / word_count
+        total_match_percent += percent
+        matched_string = ",".join(matched_terms)
+
+        console.print(
+            f"_pkid={row._pkid} | words={word_count} | match={percent:.1f}% | "
+            f"matched={matched_string} | value={row.src_value}"
+        )
+
+        if percent > row_copy_threshold_percent and matched_string != "":
+            updates.append((row._pkid, matched_string))
+
+    if updates and not dry_run:
+        values_sql = ", ".join(
+            [f"(:pkid_{i}, :lith_{i})" for i in range(len(updates))]
+        )
+        update_params = {
+            "table": target.fq_identifier,
+            "lith_col": Identifier("lith"),
+        }
+
+        for i, (pkid, lith_string) in enumerate(updates):
+            update_params[f"pkid_{i}"] = pkid
+            update_params[f"lith_{i}"] = lith_string
+
+        db.run_sql(
+            f"""
+            UPDATE {{table}} AS t
+            SET {{lith_col}} = v.lith_string
+            FROM (
+                VALUES {values_sql}
+            ) AS v(_pkid, lith_string)
+            WHERE t._pkid = v._pkid
+            """,
+            update_params,
+        )
+
+        console.print(
+            f"[green]Done:[/green] wrote matched lith strings into "
+            f"[bold]lith[/bold] for {len(updates)} row(s) with match > "
+            f"{row_copy_threshold_percent:.1f}%"
+        )
+
+    elif dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+
+    avg_words = (total_word_count / total_rows) if total_rows > 0 else 0.0
+    avg_match_percent = (total_match_percent / total_rows) if total_rows > 0 else 0.0
+
+    console.print(
+        f"[green]Summary:[/green] "
+        f"column={src_col} | rows={total_rows} | "
+        f"avg_words={avg_words:.2f} | avg_match={avg_match_percent:.1f}%"
+    )
+
 
 
 def null_matching_value(
@@ -1315,21 +1754,69 @@ def copy_line_type_from_column(
     return remaining_nulls
 
 
+
+
+
+def normalize_age_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if text == "":
+        return None
+
+    text = re.sub(r"\(\?\)", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*\([^)]*ma[^)]*\)\s*$", "", text, flags=re.IGNORECASE)
+    text = text.replace("–", "-").replace("—", "-")
+    text = re.sub(r"\s*-\s*", "-", text)
+    text = re.sub(r"\s+", " ", text).strip().lower()
+
+    return text or None
+
+
+def parse_age_range(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    text = normalize_age_text(value)
+    if text is None:
+        return None, None
+
+    if text == "jurassic and pre-jurassic":
+        return "jurassic", "triassic"
+
+    if " to " in text:
+        left, right = text.split(" to ", 1)
+        return left.strip(), right.strip()
+
+    if " and " in text:
+        left, right = text.split(" and ", 1)
+        right = right.strip()
+        if right.startswith("pre-"):
+            right_base = right.replace("pre-", "", 1).strip()
+            return left.strip(), PRE_INTERVAL_MAP.get(right_base, right_base)
+        return left.strip(), right
+
+    if "-" in text:
+        left, right = text.split("-", 1)
+        return left.strip(), right.strip()
+
+    return text, text
+
+
+
+
 def copy_age_columns(
     target: TableTarget,
     older_col: str,
     newer_col: str,
     dry_run: bool = False,
 ) -> int:
-    """Copies an older and a newer age column into b_interval and t_interval respectively, resolving interval
-    names via macrostrat.intervals. If either side is null, the non-null value is used for both columns.
-    Raises a ValueError if any required source or destination columns are missing.
-    Returns the count of remaining rows with null age intervals.
+    """Copy age text from source columns into b_interval and t_interval using
+    pandas for normalization/parsing and one final bulk SQL update.
     """
     db = get_database()
     older_col = validate_identifier(older_col, "older column")
     newer_col = validate_identifier(newer_col, "newer column")
     existing_cols = get_existing_columns(target)
+
     if older_col not in existing_cols:
         raise ValueError(
             f"Column '{older_col}' does not exist in {target.schema}.{target.table}"
@@ -1338,6 +1825,7 @@ def copy_age_columns(
         raise ValueError(
             f"Column '{newer_col}' does not exist in {target.schema}.{target.table}"
         )
+
     missing_required = {"b_interval", "t_interval"} - existing_cols
     if missing_required:
         raise ValueError(
@@ -1345,61 +1833,135 @@ def copy_age_columns(
             f"{', '.join(sorted(missing_required))}. "
             f"Run add-preferred-columns first."
         )
+
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
         dict(table=target.fq_identifier),
     ).scalar()
+
     console.print(
         f"[blue]Copying age columns for[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
         f"using older=[yellow]{older_col}[/yellow], "
         f"newer=[yellow]{newer_col}[/yellow] across {row_count} rows"
     )
+
+    rows = db.run_query(
+        """
+        SELECT _pkid, {older_col} AS older_raw, {newer_col} AS newer_raw
+        FROM {table}
+        WHERE (b_interval IS NULL OR t_interval IS NULL)
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            older_col=Identifier(older_col),
+            newer_col=Identifier(newer_col),
+        ),
+    ).fetchall()
+
+    if not rows:
+        return 0
+
+    df = pd.DataFrame(
+        [
+            {
+                "_pkid": row._pkid,
+                "older_raw": row.older_raw,
+                "newer_raw": row.newer_raw,
+            }
+            for row in rows
+        ]
+    )
+
+    df["older_norm"] = df["older_raw"].apply(normalize_age_text)
+    df["newer_norm"] = df["newer_raw"].apply(normalize_age_text)
+
+    parsed = df["older_raw"].apply(parse_age_range)
+    df["older_left"] = parsed.apply(lambda x: x[0])
+    df["older_right"] = parsed.apply(lambda x: x[1])
+
+    interval_rows = db.run_query(
+        """
+        SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
+        FROM macrostrat.intervals
+        GROUP BY 1
+        """
+    ).fetchall()
+
+    interval_map = {
+        row.interval_name: row.id
+        for row in interval_rows
+        if row.interval_name is not None
+    }
+
+    df["older_id"] = df["older_norm"].map(interval_map)
+    df["newer_id"] = df["newer_norm"].map(interval_map)
+    df["older_left_id"] = df["older_left"].map(interval_map)
+    df["older_right_id"] = df["older_right"].map(interval_map)
+
+    df["b_interval_new"] = (
+        df["older_left_id"]
+        .fillna(df["older_id"])
+        .fillna(df["newer_id"])
+    )
+    df["t_interval_new"] = (
+        df["older_right_id"]
+        .fillna(df["newer_id"])
+        .fillna(df["older_id"])
+    )
+
+    update_df = df[
+        df["b_interval_new"].notna() | df["t_interval_new"].notna()
+    ][["_pkid", "b_interval_new", "t_interval_new"]].copy()
+
+    update_df = update_df.rename(columns={"_pkid": "pkid"})
+
     if dry_run:
         remaining_nulls = db.run_query(
             """
             SELECT count(*)
             FROM {table}
             WHERE (b_interval IS NULL OR t_interval IS NULL)
-            AND coalesce(omit, false) = false
+              AND coalesce(omit, false) = false
             """,
             dict(table=target.fq_identifier),
         ).scalar()
-        console.print("[green]Dry run only; no changes applied[/green]")
+        console.print(
+            f"[green]Dry run only; no changes applied[/green] "
+            f"(candidate updates: {len(update_df)})"
+        )
         return remaining_nulls
 
-    db.run_sql(
-        """
-    WITH interval_lookup AS (
-        SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
-        FROM macrostrat.intervals
-        GROUP BY 1
-    ),
-    mapped AS (
-        SELECT
-            t._pkid,
-            old_il.id AS older_id,
-            new_il.id AS newer_id
-        FROM {table} AS t
-        LEFT JOIN interval_lookup AS old_il
-            ON old_il.interval_name = lower(trim(nullif({older_col}::text, '')))
-        LEFT JOIN interval_lookup AS new_il
-            ON new_il.interval_name = lower(trim(nullif({newer_col}::text, '')))
-    )
-    UPDATE {table} AS t
-    SET
-        b_interval = COALESCE(t.b_interval, mapped.older_id, mapped.newer_id),
-        t_interval = COALESCE(t.t_interval, mapped.newer_id, mapped.older_id)
-    FROM mapped
-    WHERE t._pkid = mapped._pkid
-      AND (t.b_interval IS NULL OR t.t_interval IS NULL)
-    """,
-        dict(
-            table=target.fq_identifier,
-            older_col=Identifier(older_col),
-            newer_col=Identifier(newer_col),
-        ),
-    )
+    if not update_df.empty:
+        values_sql = ", ".join(
+            [f"(:pkid_{i}, :b_{i}, :t_{i})" for i in range(len(update_df))]
+        )
+        params = {"table": target.fq_identifier}
+
+        for i, row in enumerate(update_df.itertuples(index=False)):
+            params[f"pkid_{i}"] = int(row.pkid)
+            params[f"b_{i}"] = (
+                None if pd.isna(row.b_interval_new) else int(row.b_interval_new)
+            )
+            params[f"t_{i}"] = (
+                None if pd.isna(row.t_interval_new) else int(row.t_interval_new)
+            )
+
+        db.run_sql(
+            f"""
+            UPDATE {{table}} AS tgt
+            SET
+                b_interval = COALESCE(tgt.b_interval, v.b_interval),
+                t_interval = COALESCE(tgt.t_interval, v.t_interval)
+            FROM (
+                VALUES {values_sql}
+            ) AS v(_pkid, b_interval, t_interval)
+            WHERE tgt._pkid = v._pkid
+            """,
+            params,
+        )
+
     remaining_nulls = db.run_query(
         """
         SELECT count(*)
@@ -1413,9 +1975,12 @@ def copy_age_columns(
     console.print(
         f"[green]Done:[/green] populated b_interval and t_interval in "
         f"{target.schema}.{target.table}. "
+        f"Candidate updates: {len(update_df)}. "
         f"Remaining null age rows: {remaining_nulls}"
     )
     return remaining_nulls
+
+
 
 
 normalize_cli = IngestionCLI(
@@ -1472,7 +2037,8 @@ def find_lookup_strat_name(value: str) -> Optional[str]:
     Returns the matched strat_name, or None if no match is found.
     """
     db = get_database()
-    candidates = extract_capitalized_phrase_candidates(value)
+    normalized_value = strip_strat_name_suffixes(value)
+    candidates = extract_capitalized_phrase_candidates(normalized_value)
 
     for candidate in candidates:
         row = db.run_query(
@@ -1507,10 +2073,12 @@ def calculate_strat_name_from_column(
     target: TableTarget,
     src_col: str,
     dry_run: bool = False,
-):
+) -> int:
     """Populate strat_name from a source text column by progressively matching
     candidate substrings against macrostrat.lookup_strat_names.strat_name and
-    rank_name. Only fills rows where strat_name is null. Leaves unmatched rows null.
+    rank_name after stripping common suffixes like Formation/Fm/Group/Gp/Member/Mbr.
+    Only fills rows where strat_name is null. Leaves unmatched rows null.
+    Returns the count of remaining null strat_name rows.
     """
     db = get_database()
     src_col = validate_identifier(src_col, "source column")
@@ -1547,51 +2115,66 @@ def calculate_strat_name_from_column(
     )
 
     if dry_run:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE strat_name IS NULL
+              AND coalesce(omit, false) = false
+            """,
+            dict(table=target.fq_identifier),
+        ).scalar()
         console.print("[green]Dry run only; no changes applied[/green]")
-        return
+        return remaining_nulls
 
     mappings: list[tuple[int, str]] = []
     for row in rows:
         src_value = re.sub(r"\s+", " ", str(row.src_value)).strip()
-        if len(src_value.split()) < 2:
+        if src_value == "":
             continue
 
         resolved = find_lookup_strat_name(src_value)
         if resolved is not None:
             mappings.append((row._pkid, resolved))
 
-    if not mappings:
-        console.print(
-            f"[green]Done:[/green] no strat_name matches found from {src_col}"
+    if mappings:
+        values_sql = ", ".join(
+            [f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))]
         )
-        return
+        params = {"table": target.fq_identifier}
+        for i, (pkid, strat_name) in enumerate(mappings):
+            params[f"pkid_{i}"] = pkid
+            params[f"strat_name_{i}"] = strat_name
 
-    values_sql = ", ".join(
-        [f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))]
-    )
-    params = {"table": target.fq_identifier}
-    for i, (pkid, strat_name) in enumerate(mappings):
-        params[f"pkid_{i}"] = pkid
-        params[f"strat_name_{i}"] = strat_name
+        db.run_sql(
+            f"""
+            UPDATE {{table}} AS t
+            SET strat_name = v.strat_name
+            FROM (
+                VALUES {values_sql}
+            ) AS v(_pkid, strat_name)
+            WHERE t._pkid = v._pkid
+              AND t.strat_name IS NULL
+            """,
+            params,
+        )
 
-    db.run_sql(
-        f"""
-        UPDATE {{table}} AS t
-        SET strat_name = v.strat_name
-        FROM (
-            VALUES {values_sql}
-        ) AS v(_pkid, strat_name)
-        WHERE t._pkid = v._pkid
-          AND t.strat_name IS NULL
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE strat_name IS NULL
+          AND coalesce(omit, false) = false
         """,
-        params,
-    )
+        dict(table=target.fq_identifier),
+    ).scalar()
 
     console.print(
         f"[green]Done:[/green] populated strat_name from {src_col}. "
-        f"Updated rows: {len(mappings)}"
+        f"Updated rows: {len(mappings)}. "
+        f"Remaining null strat_name rows: {remaining_nulls}"
     )
-
+    return remaining_nulls
 
 # _____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
 def calculate_dip_dir_from_columns(
@@ -1759,41 +2342,124 @@ def calculate_dip_dir_from_columns(
 
 # ____________________________________CLI COMMANDS________________________________________________
 
-
 @normalize_cli.command("copy-column")
 def normalize_copy_column(
-    src: str = Option(..., "--src", help="Initial source column to copy from"),
+    src_cols: list[str] = Option(
+        ...,
+        "--src",
+        help="Source column to copy from. Repeat --src for multiple columns.",
+    ),
     dst: str = Option(..., "--dst", help="Destination column to fill"),
+    no_prompt: bool = Option(
+        False,
+        "--no-prompt",
+        help="Do not prompt interactively for more source columns; use only the provided --src values.",
+    ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Copy values from one column into another column, filling only currently-null
-    destination rows. If nulls remain in the destination after a pass, the user is
-    prompted to map another source column. Press Enter to stop.
+    Copy values from one or more source columns into a destination column,
+    filling only currently-null destination rows.
+
+    - processes provided source columns in order
+    - stops early once all null destination rows are filled
+    - skips invalid source columns and continues
+    - optionally falls back to interactive prompting unless --no-prompt is used
     """
     target = get_current_target()
-    next_src = src.strip()
-    while next_src != "":
-        remaining_nulls = copy_column_values(
-            target=target,
-            src=next_src,
-            dst=dst,
-            dry_run=dry_run,
+    db = get_database()
+    dst = dst.strip()
+    cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
+
+    if dst == "":
+        raise ValueError("Destination column --dst cannot be empty")
+
+    existing_cols = get_existing_columns(target)
+    if dst not in existing_cols:
+        raise ValueError(
+            f"Destination column '{dst}' does not exist in {target.schema}.{target.table}"
         )
+    remaining_nulls: Optional[int] = None
+    for src in cleaned_srcs:
+        try:
+            remaining_nulls = copy_column_values(
+                target=target,
+                src=src,
+                dst=dst,
+                dry_run=dry_run,
+            )
+        except ValueError as e:
+            console.print(
+                f"[yellow]Skipping source column[/yellow] "
+                f"[bold]{src}[/bold] -> [bold]{dst}[/bold]: {e}"
+            )
+            continue
+
         if remaining_nulls == 0:
             console.print(f"[green]All null {dst} rows have been filled[/green]")
-            break
+            return
+
         console.print(
             f"[yellow]{remaining_nulls} rows still have null {dst} values.[/yellow]"
         )
+    if not no_prompt:
         next_src = Prompt.ask(
             f"Map values from another column into [bold]{dst}[/bold]? "
             "Enter a column name or press Enter to exit",
             default="",
             show_default=False,
         ).strip()
-    if next_src == "":
-        console.print("[green]Finished copy-column[/green]")
+
+        while next_src != "":
+            try:
+                remaining_nulls = copy_column_values(
+                    target=target,
+                    src=next_src,
+                    dst=dst,
+                    dry_run=dry_run,
+                )
+            except ValueError as e:
+                console.print(
+                    f"[yellow]Skipping source column[/yellow] "
+                    f"[bold]{next_src}[/bold] -> [bold]{dst}[/bold]: {e}"
+                )
+                next_src = Prompt.ask(
+                    f"Map values from another column into [bold]{dst}[/bold]? "
+                    "Enter a column name or press Enter to exit",
+                    default="",
+                    show_default=False,
+                ).strip()
+                continue
+
+            if remaining_nulls == 0:
+                console.print(f"[green]All null {dst} rows have been filled[/green]")
+                return
+
+            console.print(
+                f"[yellow]{remaining_nulls} rows still have null {dst} values.[/yellow]"
+            )
+            next_src = Prompt.ask(
+                f"Map values from another column into [bold]{dst}[/bold]? "
+                "Enter a column name or press Enter to exit",
+                default="",
+                show_default=False,
+            ).strip()
+    if remaining_nulls is None:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE {dst} IS NULL
+              AND coalesce(omit, false) = false
+            """,
+            dict(
+                table=target.fq_identifier,
+                dst=Identifier(dst),
+            ),
+        ).scalar()
+    console.print("[green]Finished copy-column[/green]")
+
+
 
 
 @normalize_cli.command("copy-preferred-fields")
@@ -1871,34 +2537,85 @@ def normalize_calculate_age(
 
 @normalize_cli.command("copy-age")
 def normalize_copy_ages(
-    older_col: str = Option(..., "--older", help="Column containing older age"),
-    newer_col: str = Option(..., "--newer", help="Column containing younger age"),
+    older_cols: list[str] = Option(
+        ...,
+        "--older",
+        help="Column containing older age. Repeat --older/--newer for multiple pairs.",
+    ),
+    newer_cols: list[str] = Option(
+        ...,
+        "--newer",
+        help="Column containing younger age. Repeat --older/--newer for multiple pairs.",
+    ),
+    no_prompt: bool = Option(
+        False,
+        "--no-prompt",
+        help="Do not prompt interactively for more columns; use only the provided pairs.",
+    ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Copy older/newer age columns into b_interval and t_interval.
-    If either side is null, use whichever column contains data for both.
-    If null age rows remain after a pass, the user is prompted to map another pair
-    of columns. Press Enter to stop.
+
+    - processes provided older/newer pairs in order
+    - stops early once all null age rows are filled
+    - optionally falls back to interactive prompting unless --no-prompt is used
+    - tracks columns that do not reduce remaining null age rows
+    - appends 'some ages null;' to maps_metadata.ingest_process.comments if nulls remain
+      after all provided/prompted pairs are exhausted
     """
     target = get_current_target()
+    db = get_database()
+    cleaned_older = [col.strip() for col in older_cols if col.strip() != ""]
+    cleaned_newer = [col.strip() for col in newer_cols if col.strip() != ""]
 
-    next_older = older_col.strip()
-    next_newer = newer_col.strip()
-
-    while next_older != "" and next_newer != "":
-        remaining_nulls = copy_age_columns(
-            target=target,
-            older_col=next_older,
-            newer_col=next_newer,
-            dry_run=dry_run,
+    if len(cleaned_older) != len(cleaned_newer):
+        raise ValueError(
+            "The number of --older values must match the number of --newer values."
         )
+
+    prev_remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE (b_interval IS NULL OR t_interval IS NULL)
+          AND coalesce(omit, false) = false
+        """,
+        dict(table=target.fq_identifier),
+    ).scalar()
+
+    non_age_cols: list[str] = []
+    remaining_nulls: Optional[int] = None
+
+    for older_col, newer_col in zip(cleaned_older, cleaned_newer):
+        try:
+            remaining_nulls = copy_age_columns(
+                target=target,
+                older_col=older_col,
+                newer_col=newer_col,
+                dry_run=dry_run,
+            )
+        except ValueError as e:
+            console.print(
+                f"[yellow]Skipping pair[/yellow] "
+                f"[bold]{older_col}[/bold] / [bold]{newer_col}[/bold]: {e}"
+            )
+            continue
+
+        if remaining_nulls == prev_remaining_nulls:
+            non_age_cols.append(older_col)
+
+        prev_remaining_nulls = remaining_nulls
+
         if remaining_nulls == 0:
             console.print("[green]All null age rows have been filled[/green]")
             break
+
         console.print(
             f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
         )
+
+    if not no_prompt and (remaining_nulls is None or remaining_nulls > 0):
         next_older = Prompt.ask(
             "Map values from another column into [bold]b_interval[/bold]? "
             "Enter an older-age column name or press Enter to exit",
@@ -1906,17 +2623,82 @@ def normalize_copy_ages(
             show_default=False,
         ).strip()
 
-        if next_older == "":
-            break
-        next_newer = Prompt.ask(
-            "Map values from another column into [bold]t_interval[/bold]? "
-            "Enter a younger-age column name or press Enter to exit",
-            default="",
-            show_default=False,
-        ).strip()
+        while next_older != "":
+            next_newer = Prompt.ask(
+                "Map values from another column into [bold]t_interval[/bold]? "
+                "Enter a younger-age column name or press Enter to exit",
+                default="",
+                show_default=False,
+            ).strip()
 
-    if next_older == "" or next_newer == "":
-        console.print("[green]Finished copy-ages[/green]")
+            if next_newer == "":
+                break
+
+            try:
+                remaining_nulls = copy_age_columns(
+                    target=target,
+                    older_col=next_older,
+                    newer_col=next_newer,
+                    dry_run=dry_run,
+                )
+            except ValueError as e:
+                console.print(
+                    f"[yellow]Skipping pair[/yellow] "
+                    f"[bold]{next_older}[/bold] / [bold]{next_newer}[/bold]: {e}"
+                )
+                next_older = Prompt.ask(
+                    "Map values from another column into [bold]b_interval[/bold]? "
+                    "Enter an older-age column name or press Enter to exit",
+                    default="",
+                    show_default=False,
+                ).strip()
+                continue
+
+            if remaining_nulls == prev_remaining_nulls:
+                non_age_cols.append(next_older)
+
+            prev_remaining_nulls = remaining_nulls
+
+            if remaining_nulls == 0:
+                console.print("[green]All null age rows have been filled[/green]")
+                break
+
+            console.print(
+                f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
+            )
+
+            next_older = Prompt.ask(
+                "Map values from another column into [bold]b_interval[/bold]? "
+                "Enter an older-age column name or press Enter to exit",
+                default="",
+                show_default=False,
+            ).strip()
+
+    if remaining_nulls is None:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE (b_interval IS NULL OR t_interval IS NULL)
+              AND coalesce(omit, false) = false
+            """,
+            dict(table=target.fq_identifier),
+        ).scalar()
+
+    if non_age_cols:
+        console.print(
+            f"[yellow]Columns that did not reduce null age rows:[/yellow] "
+            f"{', '.join(non_age_cols)}"
+        )
+
+    if remaining_nulls > 0:
+        append_ingest_comment_for_current_slug(
+            comment="some ages null;",
+            dry_run=dry_run,
+        )
+
+    console.print("[green]Finished copy-age[/green]")
+
 
 
 @normalize_cli.command("copy-line-type")
@@ -2026,20 +2808,106 @@ def normalize_null_value(
 
 @normalize_cli.command("calculate-strat-name")
 def normalize_calculate_strat_name(
-    src: str = Option(..., "--src", help="Source column to map from"),
+    src_cols: list[str] = Option(
+        ...,
+        "--src",
+        help="Source column to map from. Repeat --src for multiple columns.",
+    ),
+    no_prompt: bool = Option(
+        False,
+        "--no-prompt",
+        help="Do not prompt interactively for more source columns; use only the provided --src values.",
+    ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Populate strat_name from a source text column by matching progressively
-    smaller substrings against macrostrat.lookup_strat_names.
+    Populate strat_name from one or more source text columns by matching
+    progressively smaller substrings against macrostrat.lookup_strat_names.
+    Common suffixes like Formation/Fm/Group/Gp/Member/Mbr are stripped before matching.
     Unmatched rows are left as NULL.
     """
     target = get_current_target()
-    calculate_strat_name_from_column(
-        target=target,
-        src_col=src,
-        dry_run=dry_run,
-    )
+    db = get_database()
+    cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
+    remaining_nulls: Optional[int] = None
+
+    for src in cleaned_srcs:
+        try:
+            remaining_nulls = calculate_strat_name_from_column(
+                target=target,
+                src_col=src,
+                dry_run=dry_run,
+            )
+        except ValueError as e:
+            console.print(
+                f"[yellow]Skipping source column[/yellow] "
+                f"[bold]{src}[/bold]: {e}"
+            )
+            continue
+
+        if remaining_nulls == 0:
+            console.print("[green]All null strat_name rows have been filled[/green]")
+            return
+
+        console.print(
+            f"[yellow]{remaining_nulls} rows still have null strat_name values.[/yellow]"
+        )
+
+    if not no_prompt:
+        next_src = Prompt.ask(
+            "Map values from another column into [bold]strat_name[/bold]? "
+            "Enter a column name or press Enter to exit",
+            default="",
+            show_default=False,
+        ).strip()
+
+        while next_src != "":
+            try:
+                remaining_nulls = calculate_strat_name_from_column(
+                    target=target,
+                    src_col=next_src,
+                    dry_run=dry_run,
+                )
+            except ValueError as e:
+                console.print(
+                    f"[yellow]Skipping source column[/yellow] "
+                    f"[bold]{next_src}[/bold]: {e}"
+                )
+                next_src = Prompt.ask(
+                    "Map values from another column into [bold]strat_name[/bold]? "
+                    "Enter a column name or press Enter to exit",
+                    default="",
+                    show_default=False,
+                ).strip()
+                continue
+
+            if remaining_nulls == 0:
+                console.print("[green]All null strat_name rows have been filled[/green]")
+                return
+
+            console.print(
+                f"[yellow]{remaining_nulls} rows still have null strat_name values.[/yellow]"
+            )
+
+            next_src = Prompt.ask(
+                "Map values from another column into [bold]strat_name[/bold]? "
+                "Enter a column name or press Enter to exit",
+                default="",
+                show_default=False,
+            ).strip()
+
+    if remaining_nulls is None:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE strat_name IS NULL
+              AND coalesce(omit, false) = false
+            """,
+            dict(table=target.fq_identifier),
+        ).scalar()
+
+    console.print("[green]Finished calculate-strat-name[/green]")
 
 
 @normalize_cli.command("replace-value")
@@ -2133,7 +3001,7 @@ def normalize_set_layer(
     )
 
 
-@normalize_cli.command("show-map")
+@normalize_cli.command("get-map")
 def normalize_show_map():
     """
     Show the current persisted map context.
@@ -2154,3 +3022,196 @@ def normalize_update_status(
         state=state,
         dry_run=dry_run,
     )
+
+@normalize_cli.command("fuzzy-match-lith")
+def normalize_fuzzy_match_lith(
+    src: Optional[str] = Option(
+        None,
+        "--src",
+        help="Optional source column to use instead of auto-detecting the last non-empty column ending with 'e'.",
+    ),
+    threshold: float = Option(
+        0.85,
+        "--threshold",
+        help="Per-token fuzzy-match threshold between 0 and 1.",
+    ),
+    row_copy_threshold_percent: float = Option(
+        10.0,
+        "--row-copy-threshold",
+        help="If a row's match percentage is greater than this value, copy matched lith strings directly into lith.",
+    ),
+    limit: Optional[int] = Option(
+        None,
+        "--limit",
+        help="Optional limit on number of rows to inspect.",
+    ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Compute per-row fuzzy match percentages for a lithology text column against
+    macrostrat.liths and macrostrat.lith_atts vocabularies.
+
+    - if --src is provided, use that column
+    - otherwise auto-detect the last non-empty column whose name ends with 'e'
+    - if a row's match percentage is > --row-copy-threshold, write the matched
+      lith strings directly into lith for that same row/_pkid
+    """
+    target = get_current_target()
+
+    if src is not None and src.strip() != "":
+        src_col = validate_identifier(src, "source column")
+        existing_cols = get_existing_columns(target)
+        if src_col not in existing_cols:
+            raise ValueError(
+                f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+            )
+    else:
+        src_col = find_last_nonempty_column_ending_with_e(target)
+
+    console.print(
+        f"[green]Using source column:[/green] [bold]{src_col}[/bold]"
+    )
+
+    calculate_lith_fuzzy_match_percentages(
+        target=target,
+        src_col=src_col,
+        threshold=threshold,
+        row_copy_threshold_percent=row_copy_threshold_percent,
+        limit=limit,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("find-last-e-column")
+def normalize_find_last_e_column():
+    """Print the last non-empty column ending with 'e'."""
+    target = get_current_target()
+    src_col = find_last_nonempty_column_ending_with_e(target)
+    print(src_col)
+
+@normalize_cli.command("find-second-last-e-column")
+def normalize_find_second_last_e_column():
+    """Print the second-last non-empty column ending with 'e'."""
+    target = get_current_target()
+    src_col = find_second_last_nonempty_column_ending_with_e(target)
+    print(src_col)
+
+@normalize_cli.command("fuzzy-match-strat-names")
+def normalize_fuzzy_match_strat_names(
+    non_age_col: str = Argument(
+        ...,
+        help="Column identified as not an age column.",
+    ),
+    limit: Optional[int] = Option(
+        None,
+        "--limit",
+        help="Optional limit on number of rows to print.",
+    ),
+):
+    """
+    For now:
+    - determine non_age_col, columns_between, and second_last_col
+    - print those column names
+    - run a SELECT query to print the values in those columns
+    """
+    db = get_database()
+    target = get_current_target()
+
+    non_age_col, between_cols, second_last_col = get_columns_between_non_age_and_second_last(
+        target=target,
+        non_age_col=non_age_col,
+    )
+
+    selected_cols = [non_age_col] + between_cols + [second_last_col]
+
+    # de-duplicate while preserving order
+    deduped_cols: list[str] = []
+    seen = set()
+    for col in selected_cols:
+        col = validate_identifier(col, "selected column")
+        if col not in seen:
+            seen.add(col)
+            deduped_cols.append(col)
+
+    console.print(f"[green]non_age_col:[/green] [bold]{non_age_col}[/bold]")
+    console.print(
+        f"[green]columns_between:[/green] "
+        f"{', '.join(between_cols) if between_cols else '(none)'}"
+    )
+    console.print(f"[green]second_last_col:[/green] [bold]{second_last_col}[/bold]")
+
+    select_sql = ", ".join(["_pkid"] + deduped_cols)
+
+    query = f"""
+    SELECT {select_sql}
+    FROM {target.schema}.{target.table}
+    WHERE coalesce(omit, false) = false
+    ORDER BY _pkid
+    """
+
+    params = {}
+    if limit is not None:
+        query += "\nLIMIT :limit"
+        params["limit"] = limit
+
+
+    rows = db.run_query(query, params).fetchall()
+
+    console.print(
+        f"[blue]Selected columns:[/blue] _pkid, {', '.join(deduped_cols)}"
+    )
+
+    for row in rows:
+        parts = [f"_pkid={row._pkid}"]
+        for col in deduped_cols:
+            parts.append(f"{col}={getattr(row, col)}")
+        console.print(" | ".join(parts))
+
+'''
+--------------BULK UPDATE COMMANDS-------------------
+slugs=(
+  japan_yunotsu_and_gotsu
+  japan_yotsuya
+  japan_yoshioka
+)
+
+for slug in "${slugs[@]}"; do
+  non_age_col=$(
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer polygons >/dev/null
+    macrostrat maps staging normalize copy-age \
+      --older legend03e --newer legend03e \
+      --older legend02e --newer legend02e \
+      --older legend01e --newer legend01e \
+      --no-prompt \
+    | grep "Columns that did not reduce null age rows:" \
+    | sed 's/.*Columns that did not reduce null age rows:[[:space:]]*//' \
+    | tr ',' '\n' \
+    | sed 's/^ *//; s/ *$//' \
+    | sort -V \
+    | head -n 1
+  )
+
+  if [[ -z "$non_age_col" ]]; then
+    non_age_col="legend04e"
+  fi
+
+  last_col=$(macrostrat maps staging normalize find-last-e-column)
+
+  macrostrat maps staging normalize copy-column \
+    --src "$last_col" \
+    --dst descrip \
+    --no-prompt
+
+  macrostrat maps staging normalize fuzzy-match-lith \
+    --src "$last_col"
+
+  macrostrat maps staging normalize fuzzy-match-strat-names \
+    "$non_age_col"
+
+  macrostrat maps staging normalize copy-column \
+    --src symbol \
+    --dst unit_label \
+    --no-prompt
+done
+'''
