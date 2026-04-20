@@ -3,9 +3,10 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Optional
-from difflib import SequenceMatcher
+
 import pandas as pd
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
@@ -72,8 +73,9 @@ NON_LITHS = {
     "for",
     "from",
     "as",
-    "at"
+    "at",
 }
+
 
 def load_map_context() -> dict:
     """Load persisted map context from disk."""
@@ -132,7 +134,6 @@ def get_current_target() -> TableTarget:
     return TableTarget(schema=schema, table=table)
 
 
-
 def strip_strat_name_suffixes(value: str) -> str:
     """Strip common stratigraphic rank suffixes from the end of a value."""
     text = re.sub(r"\s+", " ", str(value)).strip()
@@ -147,6 +148,7 @@ def strip_strat_name_suffixes(value: str) -> str:
         text = updated
 
     return text
+
 
 def set_current_map(slug: str):
     """Set the current map slug and default base table."""
@@ -195,6 +197,7 @@ def get_column_sql_type(target: TableTarget, column: str) -> str:
     # udt_name is useful for postgres-specific types like int4, bool, etc.
     return (row.udt_name or row.data_type or "").lower()
 
+
 def append_ingest_comment_for_current_slug(
     comment: str,
     dry_run: bool = False,
@@ -206,9 +209,7 @@ def append_ingest_comment_for_current_slug(
     slug = (load_map_context().get("slug") or "").strip()
     comment = comment.strip()
     if slug == "":
-        raise ValueError(
-            "No slug is set in context. Run 'set-map <slug>' first."
-        )
+        raise ValueError("No slug is set in context. Run 'set-map <slug>' first.")
     if comment == "":
         raise ValueError("comment cannot be empty")
     if dry_run:
@@ -308,6 +309,7 @@ def get_preferred_fields_for_table(table: str) -> dict[str, str]:
         "Expected table to end with _points, _lines, or _polygons."
     )
 
+
 def get_nonempty_columns_ending_with_e(target: TableTarget) -> list[str]:
     """Return all non-empty columns ending with 'e' ordered by ordinal_position ascending."""
     db = get_database()
@@ -371,9 +373,9 @@ def get_columns_between_non_age_and_second_last(
     second_last_idx = e_cols.index(second_last_col)
 
     if non_age_idx > second_last_idx:
-        columns_between = e_cols[second_last_idx + 1:non_age_idx]
+        columns_between = e_cols[second_last_idx + 1 : non_age_idx]
     else:
-        columns_between = e_cols[non_age_idx + 1:second_last_idx]
+        columns_between = e_cols[non_age_idx + 1 : second_last_idx]
 
     return non_age_col, columns_between, second_last_col
 
@@ -466,12 +468,7 @@ def tokenize_lith_text(value: str) -> list[str]:
     if text == "":
         return []
 
-    return [
-        tok
-        for tok in text.split()
-        if tok
-        and tok not in NON_LITHS
-    ]
+    return [tok for tok in text.split() if tok and tok not in NON_LITHS]
 
 
 def get_lith_reference_terms() -> tuple[set[str], set[str]]:
@@ -523,8 +520,9 @@ def get_lith_reference_terms() -> tuple[set[str], set[str]]:
     return normalize_terms(lith_rows), normalize_terms(att_rows)
 
 
-
-def best_fuzzy_match(token: str, reference_terms: set[str]) -> tuple[Optional[str], float]:
+def best_fuzzy_match(
+    token: str, reference_terms: set[str]
+) -> tuple[Optional[str], float]:
     """Return the best matching reference term and its similarity ratio."""
     token = token.strip().lower()
     if token == "":
@@ -635,8 +633,12 @@ def calculate_lith_fuzzy_match_percentages(
             else:
                 best_att, att_score = best_fuzzy_match(token, lith_att_terms)
                 best_lith, lith_score = best_fuzzy_match(token, lith_terms)
-            #choose the better match, but preserve whether it came from lith_atts or liths.
-            if best_att is not None and att_score >= threshold and att_score >= lith_score:
+            # choose the better match, but preserve whether it came from lith_atts or liths.
+            if (
+                best_att is not None
+                and att_score >= threshold
+                and att_score >= lith_score
+            ):
                 matched_count += 1
                 if best_att not in seen_lith_atts:
                     seen_lith_atts.add(best_att)
@@ -660,9 +662,7 @@ def calculate_lith_fuzzy_match_percentages(
             updates.append((row._pkid, matched_string))
 
     if updates and not dry_run:
-        values_sql = ", ".join(
-            [f"(:pkid_{i}, :lith_{i})" for i in range(len(updates))]
-        )
+        values_sql = ", ".join([f"(:pkid_{i}, :lith_{i})" for i in range(len(updates))])
         update_params = {
             "table": target.fq_identifier,
             "lith_col": Identifier("lith"),
@@ -701,7 +701,6 @@ def calculate_lith_fuzzy_match_percentages(
         f"column={src_col} | rows={total_rows} | "
         f"avg_words={avg_words:.2f} | avg_match={avg_match_percent:.1f}%"
     )
-
 
 
 def null_matching_value(
@@ -944,10 +943,14 @@ def merge_column_values(
     existing_cols = get_existing_columns(target)
 
     if col_one not in existing_cols:
-        console.print(f"[yellow]Skipping merge. Column '{col_one}' does not exist in {target.schema}.{target.table}[/yellow]")
+        console.print(
+            f"[yellow]Skipping merge. Column '{col_one}' does not exist in {target.schema}.{target.table}[/yellow]"
+        )
         return
     if col_two not in existing_cols:
-        console.print(f"[yellow]Skipping merge. Column '{col_two}' does not exist in {target.schema}.{target.table}[/yellow]")
+        console.print(
+            f"[yellow]Skipping merge. Column '{col_two}' does not exist in {target.schema}.{target.table}[/yellow]"
+        )
         return
     row_count = db.run_query(
         """
@@ -2034,17 +2037,15 @@ def copy_line_type_from_column(
     return remaining_nulls
 
 
-
-
 def normalize_age_text(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
     text = str(value).strip()
     if text == "":
         return None
-    #remove "(?)", including with extra spaces: "( ? )"
+    # remove "(?)", including with extra spaces: "( ? )"
     text = re.sub(r"\(\s*\?\s*\)", "", text, flags=re.IGNORECASE)
-    #remove.g. "Jurassic (201.3-145 Ma)"
+    # remove.g. "Jurassic (201.3-145 Ma)"
     text = re.sub(r"\s*\([^)]*ma[^)]*\)\s*$", "", text, flags=re.IGNORECASE)
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s*-\s*", "-", text)
@@ -2093,7 +2094,9 @@ def get_age_lookup_candidates(term: Optional[str]) -> list[str]:
     return out
 
 
-def resolve_interval_id(term: Optional[str], interval_map: dict[str, int]) -> Optional[int]:
+def resolve_interval_id(
+    term: Optional[str], interval_map: dict[str, int]
+) -> Optional[int]:
     """
     Resolve an interval ID using ordered lookup candidates.
 
@@ -2299,28 +2302,31 @@ def copy_age_columns(
         for row in interval_rows
         if row.interval_name is not None
     }
-    df["older_id"] = df["older_norm"].apply(lambda x: resolve_interval_id(x, interval_map))
-    df["newer_id"] = df["newer_norm"].apply(lambda x: resolve_interval_id(x, interval_map))
-    df["older_left_id"] = df["older_left"].apply(lambda x: resolve_interval_id(x, interval_map))
-    df["older_right_id"] = df["older_right"].apply(lambda x: resolve_interval_id(x, interval_map))
+    df["older_id"] = df["older_norm"].apply(
+        lambda x: resolve_interval_id(x, interval_map)
+    )
+    df["newer_id"] = df["newer_norm"].apply(
+        lambda x: resolve_interval_id(x, interval_map)
+    )
+    df["older_left_id"] = df["older_left"].apply(
+        lambda x: resolve_interval_id(x, interval_map)
+    )
+    df["older_right_id"] = df["older_right"].apply(
+        lambda x: resolve_interval_id(x, interval_map)
+    )
 
     df["b_interval_new"] = (
-        df["older_left_id"]
-        .fillna(df["older_id"])
-        .fillna(df["newer_id"])
+        df["older_left_id"].fillna(df["older_id"]).fillna(df["newer_id"])
     )
     df["t_interval_new"] = (
-        df["older_right_id"]
-        .fillna(df["newer_id"])
-        .fillna(df["older_id"])
+        df["older_right_id"].fillna(df["newer_id"]).fillna(df["older_id"])
     )
 
-
-    #calculate whether each row actually produced an interval candidate.
+    # calculate whether each row actually produced an interval candidate.
     df["has_interval_candidate"] = (
         df["b_interval_new"].notna() | df["t_interval_new"].notna()
     )
-    #calculate the match percentage for this candidate source column.
+    # calculate the match percentage for this candidate source column.
     candidate_row_count = len(df)
     usable_match_count = int(df["has_interval_candidate"].sum())
     match_percent = (
@@ -2340,8 +2346,7 @@ def copy_age_columns(
     # including rows that did not individually match.
     if "age" in existing_cols and match_percent > 30.0:
         age_update_df = df[
-            df["older_raw"].notna()
-            & (df["older_raw"].astype(str).str.strip() != "")
+            df["older_raw"].notna() & (df["older_raw"].astype(str).str.strip() != "")
         ][["_pkid", "older_raw"]].copy()
 
         if dry_run:
@@ -2384,16 +2389,16 @@ def copy_age_columns(
                 f"(match rate: {match_percent:.1f}%)"
             )
     else:
-        #leave age alone if this source column does not look age-like.
+        # leave age alone if this source column does not look age-like.
         console.print(
             f"[yellow]Skipping age copy from {older_col}:[/yellow] "
             f"match rate {match_percent:.1f}% is not > 50%"
         )
 
-    #use the same has_interval_candidate flag for the interval update.
-    update_df = df[
-        df["has_interval_candidate"]
-    ][["_pkid", "b_interval_new", "t_interval_new"]].copy()
+    # use the same has_interval_candidate flag for the interval update.
+    update_df = df[df["has_interval_candidate"]][
+        ["_pkid", "b_interval_new", "t_interval_new"]
+    ].copy()
 
     update_df = update_df.rename(columns={"_pkid": "pkid"})
 
@@ -2459,8 +2464,6 @@ def copy_age_columns(
         f"Remaining null age rows: {remaining_nulls}"
     )
     return remaining_nulls
-
-
 
 
 normalize_cli = IngestionCLI(
@@ -2656,6 +2659,7 @@ def calculate_strat_name_from_column(
     )
     return remaining_nulls
 
+
 # _____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
 def calculate_dip_dir_from_columns(
     target: TableTarget,
@@ -2822,6 +2826,7 @@ def calculate_dip_dir_from_columns(
 
 # ____________________________________CLI COMMANDS________________________________________________
 
+
 @normalize_cli.command("copy-column")
 def normalize_copy_column(
     src_cols: list[str] = Option(
@@ -2938,8 +2943,6 @@ def normalize_copy_column(
             ),
         ).scalar()
     console.print("[green]Finished copy-column[/green]")
-
-
 
 
 @normalize_cli.command("copy-preferred-fields")
@@ -3099,8 +3102,8 @@ def normalize_copy_ages(
             break
 
     console.print(
-            f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
-        )
+        f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
+    )
 
     if not no_prompt and (remaining_nulls is None or remaining_nulls > 0):
         next_older = Prompt.ask(
@@ -3174,7 +3177,7 @@ def normalize_copy_ages(
             """,
             dict(table=target.fq_identifier),
         ).scalar()
-    #TODO set a maps_metadata.ingest_process_tag that indicates some ages null
+    # TODO set a maps_metadata.ingest_process_tag that indicates some ages null
     if remaining_nulls > 0:
         append_ingest_comment_for_current_slug(
             comment="some ages null;",
@@ -3185,7 +3188,6 @@ def normalize_copy_ages(
 
     if detected_non_age_col is not None:
         print(detected_non_age_col)
-
 
 
 @normalize_cli.command("copy-orig-id")
@@ -3417,8 +3419,7 @@ def normalize_calculate_strat_name(
             )
         except ValueError as e:
             console.print(
-                f"[yellow]Skipping source column[/yellow] "
-                f"[bold]{src}[/bold]: {e}"
+                f"[yellow]Skipping source column[/yellow] " f"[bold]{src}[/bold]: {e}"
             )
             continue
 
@@ -3459,7 +3460,9 @@ def normalize_calculate_strat_name(
                 continue
 
             if remaining_nulls == 0:
-                console.print("[green]All null strat_name rows have been filled[/green]")
+                console.print(
+                    "[green]All null strat_name rows have been filled[/green]"
+                )
                 return
 
             console.print(
@@ -3600,6 +3603,7 @@ def normalize_update_status(
         dry_run=dry_run,
     )
 
+
 @normalize_cli.command("fuzzy-match-lith")
 def normalize_fuzzy_match_lith(
     src: Optional[str] = Option(
@@ -3645,9 +3649,7 @@ def normalize_fuzzy_match_lith(
     else:
         src_col = find_last_nonempty_column_ending_with_e(target)
 
-    console.print(
-        f"[green]Using source column:[/green] [bold]{src_col}[/bold]"
-    )
+    console.print(f"[green]Using source column:[/green] [bold]{src_col}[/bold]")
 
     calculate_lith_fuzzy_match_percentages(
         target=target,
@@ -3666,13 +3668,13 @@ def normalize_find_last_e_column():
     src_col = find_last_nonempty_column_ending_with_e(target)
     print(src_col)
 
+
 @normalize_cli.command("find-second-last-e-column")
 def normalize_find_second_last_e_column():
     """Print the second-last non-empty column ending with 'e'."""
     target = get_current_target()
     src_col = find_second_last_nonempty_column_ending_with_e(target)
     print(src_col)
-
 
 
 @normalize_cli.command("match-remaining-cols")
@@ -3699,9 +3701,11 @@ def match_remaining_cols(
     target = get_current_target()
     existing_cols = get_existing_columns(target)
 
-    non_age_col, columns_between, second_last_col = get_columns_between_non_age_and_second_last(
-        target=target,
-        non_age_col=non_age_col,
+    non_age_col, columns_between, second_last_col = (
+        get_columns_between_non_age_and_second_last(
+            target=target,
+            non_age_col=non_age_col,
+        )
     )
 
     merge_cols = [non_age_col] + columns_between + [second_last_col]
@@ -3755,11 +3759,15 @@ def match_remaining_cols(
         else:
             console.print("[dim]Preview values: (none)[/dim]")
 
-        response = Prompt.ask(
-            "Would you like to merge into 'name'? [y/n, Enter to exit]",
-            default="",
-            show_default=False,
-        ).strip().lower()
+        response = (
+            Prompt.ask(
+                "Would you like to merge into 'name'? [y/n, Enter to exit]",
+                default="",
+                show_default=False,
+            )
+            .strip()
+            .lower()
+        )
 
         if response == "":
             console.print("[yellow]Exiting match-remaining-cols[/yellow]")
@@ -3809,11 +3817,15 @@ def match_remaining_cols(
         else:
             console.print("  - (none)")
 
-    response = Prompt.ask(
-        "Would you like to merge the no columns elsewhere? [y/n]",
-        default="n",
-        show_default=False,
-    ).strip().lower()
+    response = (
+        Prompt.ask(
+            "Would you like to merge the no columns elsewhere? [y/n]",
+            default="n",
+            show_default=False,
+        )
+        .strip()
+        .lower()
+    )
 
     if response != "y":
         console.print("[green]Finished match-remaining-cols[/green]")
@@ -3886,10 +3898,9 @@ def normalize_update_process_flag(
     update_process_flag_for_current_context(dry_run=dry_run)
 
 
+# ____________________________BASH SCRIPTS POLYGONS_______________________________________
 
-#____________________________BASH SCRIPTS POLYGONS_______________________________________
-
-'''
+"""
 --------------BULK UPDATE POLYGONS COMMANDS-------------------
 processed=japan_wakayanagi
 japan_wakayama_and_ozaki
@@ -4014,11 +4025,10 @@ for slug in "${slugs[@]}"; do
     
     macrostrat maps staging normalize update-process-tag
 done
-'''
+"""
 
 
-
-'''
+"""
 BULK NULL POLYGON PREFERRED COLUMNS
 
 for slug in "${slugs[@]}"; do
@@ -4035,12 +4045,12 @@ for slug in "${slugs[@]}"; do
 done
 
 
-'''
+"""
 
 
-#_______________________________BASH SCRIPTS LINES_______________________________
+# _______________________________BASH SCRIPTS LINES_______________________________
 
-'''
+"""
 --------------BULK UPDATE LINES COMMANDS-------------------
 
 for slug in "${slugs[@]}"; do
@@ -4073,10 +4083,10 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize update-process-tag
 
 done
-'''
+"""
 
 
-'''
+"""
 BULK NULL LINES
 for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-map "$slug" >/dev/null
@@ -4085,16 +4095,12 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize null-column descrip
     macrostrat maps staging normalize add-preferred-columns
 done
-'''
+"""
 
 
+# _______________________________BASH SCRIPTS POINTS___________________________________
 
-
-
-
-#_______________________________BASH SCRIPTS POINTS___________________________________
-
-'''
+"""
 --------------BULK UPDATE POINTS COMMANDS-------------------
 
 for slug in "${slugs[@]}"; do
@@ -4138,9 +4144,9 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize update-process-tag
 
 done
-'''
+"""
 
-'''
+"""
 BULK NULL POINTS
 for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-map "$slug" >/dev/null
@@ -4149,13 +4155,10 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize null-column descrip
     macrostrat maps staging normalize null-column comments
 done
-'''
+"""
 
 
-
-
-
-'''
+"""
 _________________________________BULK POLYGONS, LINES, POINTS PROCESSING__________________
 
 for slug in "${slugs[@]}"; do
@@ -4285,7 +4288,4 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize update-process-tag
 done
 
-'''
-
-
-
+"""
