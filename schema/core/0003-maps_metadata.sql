@@ -45,6 +45,14 @@ CREATE TABLE maps_metadata.ingest_process_tag (
 );
 ALTER TABLE maps_metadata.ingest_process_tag OWNER TO macrostrat;
 
+create table maps_metadata.ingest_state (
+    state               varchar(150) not null primary key,
+    description         varchar(150),
+    color               varchar(150)
+);
+ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
+
+
 CREATE SEQUENCE maps_metadata.ingest_process_id_seq
     AS integer
     START WITH 1

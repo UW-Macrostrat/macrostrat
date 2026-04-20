@@ -293,7 +293,7 @@ def get_nonempty_columns_ending_with_e(target: TableTarget) -> list[str]:
         FROM information_schema.columns
         WHERE table_schema = :schema
           AND table_name = :table
-          AND lower(column_name) LIKE '%e'
+          AND lower(column_name) ILIKE 'legend%e'
         ORDER BY ordinal_position
         """,
         dict(schema=target.schema, table=target.table),
@@ -365,7 +365,7 @@ def find_last_nonempty_column_ending_with_e(target: TableTarget) -> str:
         FROM information_schema.columns
         WHERE table_schema = :schema
           AND table_name = :table
-          AND lower(column_name) LIKE '%e'
+          AND lower(column_name) ILIKE 'legend%e'
         ORDER BY ordinal_position DESC
         """,
         dict(schema=target.schema, table=target.table),
@@ -405,7 +405,7 @@ def find_second_last_nonempty_column_ending_with_e(target: TableTarget) -> str:
         FROM information_schema.columns
         WHERE table_schema = :schema
           AND table_name = :table
-          AND lower(column_name) LIKE '%e'
+          AND lower(column_name) ILIKE 'legend%e'
         ORDER BY ordinal_position DESC
         """,
         dict(schema=target.schema, table=target.table),
@@ -598,7 +598,7 @@ def calculate_lith_fuzzy_match_percentages(
 
         percent = 100.0 * matched_count / word_count
         total_match_percent += percent
-        matched_string = ",".join(matched_terms)
+        matched_string = ", ".join(matched_terms)
 
         console.print(
             f"_pkid={row._pkid} | words={word_count} | match={percent:.1f}% | "
@@ -883,9 +883,9 @@ def merge_column_values(
     """Merge values from col_two into col_one using a user-provided separator.
 
     Rules:
-    - If col_two is null/blank, leave col_one unchanged.
-    - If col_one is null/blank, set col_one = col_two.
-    - Otherwise set col_one = col_one || separator || col_two.
+    - Skip col_two values that are null, blank, whitespace, 'unknown', or 'none'
+    - If col_one is null/blank, set col_one = col_two
+    - Otherwise set col_one = col_one || separator || col_two
     """
     db = get_database()
     col_one = validate_identifier(col_one, "first column")
@@ -893,20 +893,19 @@ def merge_column_values(
     existing_cols = get_existing_columns(target)
 
     if col_one not in existing_cols:
-        raise ValueError(
-            f"Column '{col_one}' does not exist in {target.schema}.{target.table}"
-        )
+        console.print(f"[yellow]Skipping merge. Column '{col_one}' does not exist in {target.schema}.{target.table}[/yellow]")
+        return
     if col_two not in existing_cols:
-        raise ValueError(
-            f"Column '{col_two}' does not exist in {target.schema}.{target.table}"
-        )
-
+        console.print(f"[yellow]Skipping merge. Column '{col_two}' does not exist in {target.schema}.{target.table}[/yellow]")
+        return
     row_count = db.run_query(
         """
         SELECT count(*)
         FROM {table}
         WHERE {col_two} IS NOT NULL
           AND trim({col_two}::text) <> ''
+          AND lower(trim({col_two}::text)) <> 'unknown'
+          AND lower(trim({col_two}::text)) <> 'none'
         """,
         dict(
             table=target.fq_identifier,
@@ -931,12 +930,13 @@ def merge_column_values(
             """
             UPDATE {table}
             SET {col_one} = CASE
-                WHEN {col_two} IS NULL OR trim({col_two}::text) = '' THEN {col_one}
-                WHEN {col_one} IS NULL OR trim({col_one}::text) = '' THEN {col_two}::text
-                ELSE {col_one}::text || :separator || {col_two}::text
+                WHEN {col_one} IS NULL OR trim({col_one}::text) = '' THEN trim({col_two}::text)
+                ELSE trim({col_one}::text) || :separator || trim({col_two}::text)
             END
             WHERE {col_two} IS NOT NULL
               AND trim({col_two}::text) <> ''
+              AND lower(trim({col_two}::text)) <> 'unknown'
+              AND lower(trim({col_two}::text)) <> 'none'
             """,
             dict(
                 table=target.fq_identifier,
@@ -955,6 +955,143 @@ def merge_column_values(
         f"[green]Done:[/green] merged values from {col_two} into {col_one} "
         f"in {target.schema}.{target.table}"
     )
+
+
+def get_distinct_preview_values_for_column(
+    target: TableTarget,
+    column: str,
+    limit: int = 30,
+) -> list[str]:
+    """Return a small preview of distinct nonblank values from a column."""
+    db = get_database()
+    column = validate_identifier(column, "column")
+
+    rows = db.run_query(
+        """
+        SELECT DISTINCT trim({column}::text) AS value
+        FROM {table}
+        WHERE {column} IS NOT NULL
+          AND trim({column}::text) <> ''
+          AND lower(trim({column}::text)) <> 'unknown'
+          AND lower(trim({column}::text)) <> 'none'
+          AND coalesce(omit, false) = false
+        ORDER BY value
+        LIMIT :limit
+        """,
+        dict(
+            table=target.fq_identifier,
+            column=Identifier(column),
+            limit=limit,
+        ),
+    ).fetchall()
+
+    return [row.value for row in rows if row.value is not None]
+
+
+def merge_column_into_destination(
+    target: TableTarget,
+    src_col: str,
+    dst_col: str,
+    dry_run: bool = False,
+) -> int:
+    """
+    Merge values from src_col into dst_col.
+
+    Rules:
+    - skip src values that are NULL, blank, whitespace, 'unknown', or 'none'
+    - if dst_col is NULL/blank, set dst_col = src_col
+    - otherwise set dst_col = dst_col || ', ' || src_col
+    - return remaining null/blank destination rows
+    """
+    db = get_database()
+    src_col = validate_identifier(src_col, "source column")
+    dst_col = validate_identifier(dst_col, "destination column")
+    existing_cols = get_existing_columns(target)
+
+    if src_col not in existing_cols:
+        raise ValueError(
+            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+        )
+    if dst_col not in existing_cols:
+        raise ValueError(
+            f"Destination column '{dst_col}' does not exist in {target.schema}.{target.table}"
+        )
+
+    candidate_rows = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {src_col} IS NOT NULL
+          AND trim({src_col}::text) <> ''
+          AND lower(trim({src_col}::text)) <> 'unknown'
+          AND lower(trim({src_col}::text)) <> 'none'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src_col=Identifier(src_col),
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Merging[/blue] [yellow]{src_col}[/yellow] into [yellow]{dst_col}[/yellow] "
+        f"across {candidate_rows} candidate rows"
+    )
+
+    if dry_run:
+        remaining_nulls = db.run_query(
+            """
+            SELECT count(*)
+            FROM {table}
+            WHERE ({dst_col} IS NULL OR trim({dst_col}::text) = '')
+              AND coalesce(omit, false) = false
+            """,
+            dict(
+                table=target.fq_identifier,
+                dst_col=Identifier(dst_col),
+            ),
+        ).scalar()
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return remaining_nulls
+
+    db.run_sql(
+        """
+        UPDATE {table}
+        SET {dst_col} = CASE
+            WHEN {dst_col} IS NULL OR trim({dst_col}::text) = '' THEN trim({src_col}::text)
+            ELSE trim({dst_col}::text) || ', ' || trim({src_col}::text)
+        END
+        WHERE {src_col} IS NOT NULL
+          AND trim({src_col}::text) <> ''
+          AND lower(trim({src_col}::text)) <> 'unknown'
+          AND lower(trim({src_col}::text)) <> 'none'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src_col=Identifier(src_col),
+            dst_col=Identifier(dst_col),
+        ),
+    )
+
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE ({dst_col} IS NULL OR trim({dst_col}::text) = '')
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            dst_col=Identifier(dst_col),
+        ),
+    ).scalar()
+
+    console.print(
+        f"[green]Done:[/green] merged values from {src_col} into {dst_col}. "
+        f"Remaining null {dst_col} rows: {remaining_nulls}"
+    )
+    return remaining_nulls
 
 
 def copy_column_values(
@@ -1801,6 +1938,87 @@ def parse_age_range(value: Optional[str]) -> tuple[Optional[str], Optional[str]]
     return text, text
 
 
+def copy_orig_id_from_column(
+    target: TableTarget,
+    src_col: str,
+    dry_run: bool = False,
+):
+    """Copy src_col into orig_id only if every row is non-null/nonblank and all
+    values are unique across the table.
+    """
+    db = get_database()
+    src_col = validate_identifier(src_col, "source column")
+    existing_cols = get_existing_columns(target)
+
+    if src_col not in existing_cols:
+        raise ValueError(
+            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+        )
+    if "orig_id" not in existing_cols:
+        raise ValueError(
+            f"Destination column 'orig_id' does not exist in {target.schema}.{target.table}"
+        )
+
+    stats = db.run_query(
+        """
+        SELECT
+            count(*) AS total_rows,
+            count({src_col}) AS nonnull_rows,
+            count(DISTINCT {src_col}) AS distinct_rows,
+            count(*) FILTER (
+                WHERE {src_col} IS NOT NULL
+                  AND trim({src_col}::text) <> ''
+            ) AS nonblank_rows
+        FROM {table}
+        WHERE coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src_col=Identifier(src_col),
+        ),
+    ).fetchone()
+
+    total_rows = stats.total_rows
+    nonnull_rows = stats.nonnull_rows
+    distinct_rows = stats.distinct_rows
+    nonblank_rows = stats.nonblank_rows
+
+    if (
+        total_rows == 0
+        or nonnull_rows != total_rows
+        or nonblank_rows != total_rows
+        or distinct_rows != total_rows
+    ):
+        console.print(
+            f"[yellow]invalid {src_col} column and not copied into orig_id[/yellow]"
+        )
+        return
+
+    console.print(
+        f"[blue]Copying[/blue] [yellow]{src_col}[/yellow] -> [yellow]orig_id[/yellow] "
+        f"across {total_rows} rows"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    db.run_sql(
+        """
+        UPDATE {table}
+        SET orig_id = {src_col}
+        WHERE coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src_col=Identifier(src_col),
+        ),
+    )
+
+    console.print(
+        f"[green]Done:[/green] copied values from {src_col} to orig_id "
+        f"in {target.schema}.{target.table}"
+    )
 
 
 def copy_age_columns(
@@ -1894,11 +2112,47 @@ def copy_age_columns(
         for row in interval_rows
         if row.interval_name is not None
     }
-
     df["older_id"] = df["older_norm"].map(interval_map)
     df["newer_id"] = df["newer_norm"].map(interval_map)
     df["older_left_id"] = df["older_left"].map(interval_map)
     df["older_right_id"] = df["older_right"].map(interval_map)
+
+    # Bulk-copy raw older_col into age only if this column has at least 3
+    # usable interval matches after normalization/parsing.
+    if "age" in existing_cols:
+        usable_match_count = (
+            df["older_id"].notna()
+            | df["older_left_id"].notna()
+            | df["older_right_id"].notna()
+            | df["newer_id"].notna()
+        ).sum()
+
+        if usable_match_count >= 3:
+            if dry_run:
+                console.print(
+                    f"[green]Dry run only; would copy raw values from[/green] "
+                    f"[yellow]{older_col}[/yellow] [green]into age[/green] "
+                    f"(usable normalized interval matches: {int(usable_match_count)})"
+                )
+            else:
+                db.run_sql(
+                    """
+                    UPDATE {table}
+                    SET age = {older_col}
+                    WHERE age IS NULL
+                      AND {older_col} IS NOT NULL
+                      AND trim({older_col}::text) <> ''
+                    """,
+                    dict(
+                        table=target.fq_identifier,
+                        older_col=Identifier(older_col),
+                    ),
+                )
+                console.print(
+                    f"[green]Copied raw values from[/green] "
+                    f"[yellow]{older_col}[/yellow] [green]into age[/green] "
+                    f"(usable normalized interval matches: {int(usable_match_count)})"
+                )
 
     df["b_interval_new"] = (
         df["older_left_id"]
@@ -1910,6 +2164,7 @@ def copy_age_columns(
         .fillna(df["newer_id"])
         .fillna(df["older_id"])
     )
+
 
     update_df = df[
         df["b_interval_new"].notna() | df["t_interval_new"].notna()
@@ -2584,8 +2839,10 @@ def normalize_copy_ages(
         dict(table=target.fq_identifier),
     ).scalar()
 
-    non_age_cols: list[str] = []
     remaining_nulls: Optional[int] = None
+
+    last_no_match_col: Optional[str] = None
+    detected_non_age_col: Optional[str] = None
 
     for older_col, newer_col in zip(cleaned_older, cleaned_newer):
         try:
@@ -2603,7 +2860,12 @@ def normalize_copy_ages(
             continue
 
         if remaining_nulls == prev_remaining_nulls:
-            non_age_cols.append(older_col)
+            # this column found no new age matches
+            last_no_match_col = older_col
+        elif remaining_nulls < prev_remaining_nulls:
+            # this column found matches
+            if last_no_match_col is not None and detected_non_age_col is None:
+                detected_non_age_col = last_no_match_col
 
         prev_remaining_nulls = remaining_nulls
 
@@ -2611,7 +2873,7 @@ def normalize_copy_ages(
             console.print("[green]All null age rows have been filled[/green]")
             break
 
-        console.print(
+    console.print(
             f"[yellow]{remaining_nulls} rows still have null age values.[/yellow]"
         )
 
@@ -2655,7 +2917,10 @@ def normalize_copy_ages(
                 continue
 
             if remaining_nulls == prev_remaining_nulls:
-                non_age_cols.append(next_older)
+                last_no_match_col = next_older
+            elif remaining_nulls < prev_remaining_nulls:
+                if last_no_match_col is not None and detected_non_age_col is None:
+                    detected_non_age_col = last_no_match_col
 
             prev_remaining_nulls = remaining_nulls
 
@@ -2684,13 +2949,7 @@ def normalize_copy_ages(
             """,
             dict(table=target.fq_identifier),
         ).scalar()
-
-    if non_age_cols:
-        console.print(
-            f"[yellow]Columns that did not reduce null age rows:[/yellow] "
-            f"{', '.join(non_age_cols)}"
-        )
-
+    #TODO set a maps_metadata.ingest_process_tag that indicates some ages null
     if remaining_nulls > 0:
         append_ingest_comment_for_current_slug(
             comment="some ages null;",
@@ -2699,6 +2958,99 @@ def normalize_copy_ages(
 
     console.print("[green]Finished copy-age[/green]")
 
+    if detected_non_age_col is not None:
+        print(detected_non_age_col)
+
+
+
+@normalize_cli.command("copy-orig-id")
+def normalize_copy_orig_id(
+    src_cols: list[str] = Option(
+        ...,
+        "--src",
+        help="One or more source columns to try for orig_id. The first valid column is copied.",
+    ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Try one or more source columns for orig_id.
+
+    A source column is valid only if:
+    - all values are non-null
+    - all values are nonblank
+    - all values are unique
+    - distinct count equals row count
+
+    The first valid source column is copied into orig_id.
+    """
+    target = get_current_target()
+
+    cleaned_srcs: list[str] = []
+    seen = set()
+    for src in src_cols:
+        src = validate_identifier(src, "source column")
+        if src not in seen:
+            seen.add(src)
+            cleaned_srcs.append(src)
+
+    for src in cleaned_srcs:
+        db = get_database()
+        existing_cols = get_existing_columns(target)
+
+        if src not in existing_cols:
+            console.print(
+                f"[yellow]invalid {src} column and not copied into orig_id[/yellow]"
+            )
+            continue
+
+        if "orig_id" not in existing_cols:
+            raise ValueError(
+                f"Destination column 'orig_id' does not exist in {target.schema}.{target.table}"
+            )
+
+        stats = db.run_query(
+            """
+            SELECT
+                count(*) AS total_rows,
+                count({src_col}) AS nonnull_rows,
+                count(DISTINCT {src_col}) AS distinct_rows,
+                count(*) FILTER (
+                    WHERE {src_col} IS NOT NULL
+                      AND trim({src_col}::text) <> ''
+                ) AS nonblank_rows
+            FROM {table}
+            WHERE coalesce(omit, false) = false
+            """,
+            dict(
+                table=target.fq_identifier,
+                src_col=Identifier(src),
+            ),
+        ).fetchone()
+
+        total_rows = stats.total_rows
+        nonnull_rows = stats.nonnull_rows
+        distinct_rows = stats.distinct_rows
+        nonblank_rows = stats.nonblank_rows
+
+        if (
+            total_rows == 0
+            or nonnull_rows != total_rows
+            or nonblank_rows != total_rows
+            or distinct_rows != total_rows
+        ):
+            console.print(
+                f"[yellow]invalid {src} column and not copied into orig_id[/yellow]"
+            )
+            continue
+
+        copy_orig_id_from_column(
+            target=target,
+            src_col=src,
+            dry_run=dry_run,
+        )
+        return
+
+    console.print("[yellow]No valid source columns found for orig_id[/yellow]")
 
 
 @normalize_cli.command("copy-line-type")
@@ -3096,38 +3448,43 @@ def normalize_find_second_last_e_column():
     src_col = find_second_last_nonempty_column_ending_with_e(target)
     print(src_col)
 
-@normalize_cli.command("fuzzy-match-strat-names")
-def normalize_fuzzy_match_strat_names(
+
+
+@normalize_cli.command("match-remaining-cols")
+def match_remaining_cols(
     non_age_col: str = Argument(
         ...,
         help="Column identified as not an age column.",
     ),
-    limit: Optional[int] = Option(
-        None,
-        "--limit",
-        help="Optional limit on number of rows to print.",
+    preview_limit: int = Option(
+        30,
+        "--preview-limit",
+        help="Number of distinct preview values to print for each candidate column.",
     ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    For now:
-    - determine non_age_col, columns_between, and second_last_col
-    - print those column names
-    - run a SELECT query to print the values in those columns
+    Interactively merge legend columns into name, starting from non_age_col and
+    continuing through columns_between to second_last_col.
+
+    After the initial pass, optionally allow skipped ('n') columns to be merged
+    into another user-specified destination column.
     """
     db = get_database()
     target = get_current_target()
+    existing_cols = get_existing_columns(target)
 
-    non_age_col, between_cols, second_last_col = get_columns_between_non_age_and_second_last(
+    non_age_col, columns_between, second_last_col = get_columns_between_non_age_and_second_last(
         target=target,
         non_age_col=non_age_col,
     )
 
-    selected_cols = [non_age_col] + between_cols + [second_last_col]
+    merge_cols = [non_age_col] + columns_between + [second_last_col]
 
     # de-duplicate while preserving order
     deduped_cols: list[str] = []
     seen = set()
-    for col in selected_cols:
+    for col in merge_cols:
         col = validate_identifier(col, "selected column")
         if col not in seen:
             seen.add(col)
@@ -3136,82 +3493,347 @@ def normalize_fuzzy_match_strat_names(
     console.print(f"[green]non_age_col:[/green] [bold]{non_age_col}[/bold]")
     console.print(
         f"[green]columns_between:[/green] "
-        f"{', '.join(between_cols) if between_cols else '(none)'}"
+        f"{', '.join(columns_between) if columns_between else '(none)'}"
     )
     console.print(f"[green]second_last_col:[/green] [bold]{second_last_col}[/bold]")
 
-    select_sql = ", ".join(["_pkid"] + deduped_cols)
-
-    query = f"""
-    SELECT {select_sql}
-    FROM {target.schema}.{target.table}
-    WHERE coalesce(omit, false) = false
-    ORDER BY _pkid
-    """
-
-    params = {}
-    if limit is not None:
-        query += "\nLIMIT :limit"
-        params["limit"] = limit
-
-
-    rows = db.run_query(query, params).fetchall()
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE (name IS NULL OR trim(name::text) = '')
+          AND coalesce(omit, false) = false
+        """,
+        dict(table=target.fq_identifier),
+    ).scalar()
 
     console.print(
-        f"[blue]Selected columns:[/blue] _pkid, {', '.join(deduped_cols)}"
+        f"[green]Initial remaining null name rows:[/green] [bold]{remaining_nulls}[/bold]"
     )
 
-    for row in rows:
-        parts = [f"_pkid={row._pkid}"]
-        for col in deduped_cols:
-            parts.append(f"{col}={getattr(row, col)}")
-        console.print(" | ".join(parts))
+    no_cols: list[str] = []
+
+    for col in deduped_cols:
+        preview_values = get_distinct_preview_values_for_column(
+            target=target,
+            column=col,
+            limit=preview_limit,
+        )
+
+        console.print("")
+        console.print(f"[bold cyan]Column:[/bold cyan] {col}")
+
+        if preview_values:
+            console.print("[dim]Preview values:[/dim]")
+            for value in preview_values:
+                console.print(f"  - {value}")
+        else:
+            console.print("[dim]Preview values: (none)[/dim]")
+
+        response = Prompt.ask(
+            "Would you like to merge into 'name'? [y/n, Enter to exit]",
+            default="",
+            show_default=False,
+        ).strip().lower()
+
+        if response == "":
+            console.print("[yellow]Exiting match-remaining-cols[/yellow]")
+            return
+
+        if response == "n":
+            no_cols.append(col)
+            console.print(f"[yellow]Skipping[/yellow] column [bold]{col}[/bold]")
+            continue
+
+        if response != "y":
+            console.print(
+                "[yellow]Invalid response. Please enter 'y', 'n', or press Enter to exit.[/yellow]"
+            )
+            return
+
+        remaining_nulls = merge_column_into_destination(
+            target=target,
+            src_col=col,
+            dst_col="name",
+            dry_run=dry_run,
+        )
+
+        console.print(
+            f"[green]Remaining null name rows:[/green] [bold]{remaining_nulls}[/bold]"
+        )
+
+        if remaining_nulls == 0:
+            console.print("[green]All null name rows have been filled[/green]")
+
+    if not no_cols:
+        console.print("[green]Finished match-remaining-cols[/green]")
+        return
+
+    console.print("")
+    console.print("[bold cyan]Skipped columns:[/bold cyan]")
+    for col in no_cols:
+        preview_values = get_distinct_preview_values_for_column(
+            target=target,
+            column=col,
+            limit=preview_limit,
+        )
+        console.print(f"[bold]{col}[/bold]")
+        if preview_values:
+            for value in preview_values:
+                console.print(f"  - {value}")
+        else:
+            console.print("  - (none)")
+
+    response = Prompt.ask(
+        "Would you like to merge the no columns elsewhere? [y/n]",
+        default="n",
+        show_default=False,
+    ).strip().lower()
+
+    if response != "y":
+        console.print("[green]Finished match-remaining-cols[/green]")
+        return
+
+    for curr_no_col in no_cols:
+        preview_values = get_distinct_preview_values_for_column(
+            target=target,
+            column=curr_no_col,
+            limit=preview_limit,
+        )
+
+        console.print("")
+        console.print(f"[bold cyan]No column:[/bold cyan] {curr_no_col}")
+        if preview_values:
+            console.print("[dim]Preview values:[/dim]")
+            for value in preview_values:
+                console.print(f"  - {value}")
+        else:
+            console.print("[dim]Preview values: (none)[/dim]")
+
+        while True:
+            dst_col = Prompt.ask(
+                f"What column do you want to merge {curr_no_col} into? "
+                f"(press Enter to skip)",
+                default="",
+                show_default=False,
+            ).strip()
+
+            if dst_col == "":
+                console.print(
+                    f"[yellow]Skipping[/yellow] no column [bold]{curr_no_col}[/bold]"
+                )
+                break
+
+            if dst_col not in existing_cols:
+                console.print(
+                    f"[red]Wrong column name entered:[/red] [bold]{dst_col}[/bold]"
+                )
+                continue
+
+            remaining_dst_nulls = merge_column_into_destination(
+                target=target,
+                src_col=curr_no_col,
+                dst_col=dst_col,
+                dry_run=dry_run,
+            )
+
+            console.print(
+                f"[green]Remaining null {dst_col} rows:[/green] "
+                f"[bold]{remaining_dst_nulls}[/bold]"
+            )
+            break
+
+    console.print("[green]Finished match-remaining-cols[/green]")
+
+
+
+#____________________________BASH SCRIPTS POLYGONS_______________________________________
 
 '''
---------------BULK UPDATE COMMANDS-------------------
+--------------BULK UPDATE POLYGONS COMMANDS-------------------
 slugs=(
-  japan_yunotsu_and_gotsu
-  japan_yotsuya
-  japan_yoshioka
+japan_yoriiso
+japan_yorii
+japan_yonaizawa
+japan_yokoyama
+japan_yokota
+japan_yokohama
 )
 
 for slug in "${slugs[@]}"; do
-  non_age_col=$(
     macrostrat maps staging normalize set-map "$slug" >/dev/null
     macrostrat maps staging normalize set-layer polygons >/dev/null
-    macrostrat maps staging normalize copy-age \
-      --older legend03e --newer legend03e \
-      --older legend02e --newer legend02e \
-      --older legend01e --newer legend01e \
-      --no-prompt \
-    | grep "Columns that did not reduce null age rows:" \
-    | sed 's/.*Columns that did not reduce null age rows:[[:space:]]*//' \
-    | tr ',' '\n' \
-    | sed 's/^ *//; s/ *$//' \
-    | sort -V \
-    | head -n 1
-  )
-
-  if [[ -z "$non_age_col" ]]; then
-    non_age_col="legend04e"
-  fi
-
-  last_col=$(macrostrat maps staging normalize find-last-e-column)
-
-  macrostrat maps staging normalize copy-column \
+    non_age_col=$(
+      macrostrat maps staging normalize copy-age \
+        --older legend03e --newer legend03e \
+        --older legend02e --newer legend02e \
+        --older legend01e --newer legend01e \
+        --no-prompt \
+      | tail -n 1
+    )
+    
+    if [[ "$non_age_col" == "Finished copy-age" || -z "$non_age_col" ]]; then
+        non_age_col="legend04e"
+    fi
+    
+    last_col=$(macrostrat maps staging normalize find-last-e-column)
+    
+    macrostrat maps staging normalize copy-column \
     --src "$last_col" \
     --dst descrip \
     --no-prompt
-
-  macrostrat maps staging normalize fuzzy-match-lith \
-    --src "$last_col"
-
-  macrostrat maps staging normalize fuzzy-match-strat-names \
-    "$non_age_col"
-
-  macrostrat maps staging normalize copy-column \
+    
+    macrostrat maps staging normalize copy-orig-id \
+    --src major_code
+    
+    macrostrat maps staging normalize copy-column \
     --src symbol \
     --dst unit_label \
     --no-prompt
+    
+    macrostrat maps staging normalize match-remaining-cols \
+    "$non_age_col"
+    
+    macrostrat maps staging normalize fuzzy-match-lith \
+    --src "$last_col"
+
+done
+'''
+
+
+
+
+
+'''
+BULK NULL POLYGON PREFERRED COLUMNS
+slugs=(
+japan_yunotsu_and_gotsu
+japan_yotsuya
+japan_yoshioka
+japan_yoshino_yama
+)
+
+for slug in "${slugs[@]}"; do
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer polygons >/dev/null
+    macrostrat maps staging normalize null-column t_interval; \
+    macrostrat maps staging normalize null-column b_interval; \
+    macrostrat maps staging normalize null-column lith; \
+    macrostrat maps staging normalize null-column age; \
+    macrostrat maps staging normalize null-column descrip; \
+    macrostrat maps staging normalize null-column name;
+done
+
+
+'''
+
+
+#_______________________________BASH SCRIPTS LINES_______________________________
+
+'''
+--------------BULK UPDATE LINES COMMANDS-------------------
+slugs=(
+japan_yunotsu_and_gotsu
+japan_yotsuya
+japan_yoshioka
+japan_yoshino_yama
+japan_yoriiso
+japan_yorii
+japan_yonaizawa
+japan_yokoyama
+japan_yokota
+japan_yokohama
+
+)
+
+for slug in "${slugs[@]}"; do
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer lines >/dev/null
+    
+    macrostrat maps staging normalize copy-orig-id \
+    --src major_code
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend01e \
+    --dst type \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend02e \
+    --dst name \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src descriptio \
+    --dst descrip \
+    --no-prompt
+    
+    macrostrat maps staging normalize merge-column \
+    --src remarks \
+    --dst descrip \
+    --separator '; '
+
+done
+'''
+
+
+
+
+
+
+#_______________________________BASH SCRIPTS POINTS___________________________________
+
+'''
+--------------BULK UPDATE POINTS COMMANDS-------------------
+slugs=(
+japan_yunotsu_and_gotsu
+japan_yotsuya
+japan_yoshioka
+japan_yoshino_yama
+japan_yoriiso
+japan_yorii
+japan_yonaizawa
+japan_yokoyama
+japan_yokota
+japan_yokohama
+)
+
+for slug in "${slugs[@]}"; do
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer points >/dev/null
+    
+    macrostrat maps staging normalize copy-orig-id \
+    --src serial_no \
+    --src no
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend01e \
+    --dst point_type \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src strike_val \
+    --dst strike \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src dip_value \
+    --dst dip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend02e \
+    --dst descrip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src remarks \
+    --dst comments \
+    --no-prompt
+    
+    macrostrat maps staging normalize merge-column \
+    --src legend03e \
+    --dst descrip \
+    --separator "; "
 done
 '''
