@@ -126,6 +126,7 @@ class LineworkTableUpdater(SourcesTableUpdater):
     column_spec = {
         **common_columns,
         "descrip": "text",
+        "comments": "text",
         "name": "character varying(255)",
         "type": "character varying(100)",
         "direction": "character varying(20)",

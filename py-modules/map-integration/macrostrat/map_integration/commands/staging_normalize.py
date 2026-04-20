@@ -46,10 +46,34 @@ STRAT_NAME_SUFFIXES = [
     "mbr",
 ]
 
-PRE_INTERVAL_MAP = {
-    "jurassic": "triassic",
+AGE_TERM_REMAP = {
+    "pre-jurassic": "triassic",
+    "pre-tertiary": "mesozoic",
+    "paleoozoic": "paleozoic",
 }
 
+AGE_MODIFIER_REMAP = {
+    "upper": "late",
+    "lower": "early",
+}
+
+NON_LITHS = {
+    "and",
+    "or",
+    "with",
+    "of",
+    "the",
+    "a",
+    "an",
+    "to",
+    "in",
+    "on",
+    "by",
+    "for",
+    "from",
+    "as",
+    "at"
+}
 
 def load_map_context() -> dict:
     """Load persisted map context from disk."""
@@ -436,17 +460,25 @@ def find_second_last_nonempty_column_ending_with_e(target: TableTarget) -> str:
         f"{target.schema}.{target.table}"
     )
 
+
 def tokenize_lith_text(value: str) -> list[str]:
     text = re.sub(r"[^A-Za-z0-9]+", " ", str(value)).strip().lower()
     if text == "":
         return []
-    return [tok for tok in text.split() if tok]
+
+    return [
+        tok
+        for tok in text.split()
+        if tok
+        and tok not in NON_LITHS
+    ]
 
 
-def get_lith_reference_terms() -> set[str]:
-    """Build a normalized vocabulary from macrostrat.liths and macrostrat.lith_atts."""
+def get_lith_reference_terms() -> tuple[set[str], set[str]]:
+    """Build normalized lith and lith_att vocabularies separately."""
     db = get_database()
-    rows = db.run_query(
+
+    lith_rows = db.run_query(
         """
         SELECT lith::text AS term
         FROM macrostrat.liths
@@ -469,21 +501,26 @@ def get_lith_reference_terms() -> set[str]:
         SELECT lith_class::text AS term
         FROM macrostrat.liths
         WHERE lith_class IS NOT NULL
+        """
+    ).fetchall()
 
-        UNION
-
+    att_rows = db.run_query(
+        """
         SELECT lith_att::text AS term
         FROM macrostrat.lith_atts
         WHERE lith_att IS NOT NULL
         """
     ).fetchall()
 
-    out = set()
-    for row in rows:
-        term = re.sub(r"\s+", " ", str(row.term)).strip().lower()
-        if term != "":
-            out.add(term)
-    return out
+    def normalize_terms(rows) -> set[str]:
+        out = set()
+        for row in rows:
+            term = re.sub(r"\s+", " ", str(row.term)).strip().lower()
+            if term != "":
+                out.add(term)
+        return out
+
+    return normalize_terms(lith_rows), normalize_terms(att_rows)
 
 
 
@@ -510,7 +547,7 @@ def best_fuzzy_match(token: str, reference_terms: set[str]) -> tuple[Optional[st
 def calculate_lith_fuzzy_match_percentages(
     target: TableTarget,
     src_col: str,
-    threshold: float = 0.85,
+    threshold: float = 0.9,
     row_copy_threshold_percent: float = 10.0,
     limit: Optional[int] = None,
     dry_run: bool = False,
@@ -535,7 +572,7 @@ def calculate_lith_fuzzy_match_percentages(
             f"Destination column 'lith' does not exist in {target.schema}.{target.table}"
         )
 
-    reference_terms = get_lith_reference_terms()
+    lith_terms, lith_att_terms = get_lith_reference_terms()
 
     limit_sql = ""
     params = {
@@ -558,24 +595,20 @@ def calculate_lith_fuzzy_match_percentages(
         """,
         params,
     ).fetchall()
-
     console.print(
         f"[blue]Evaluating lith fuzzy matches for[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
         f"using [yellow]{src_col}[/yellow] across {len(rows)} row(s)"
     )
-
     total_rows = 0
     total_word_count = 0
     total_match_percent = 0.0
     updates: list[tuple[int, str]] = []
-
     for row in rows:
         tokens = tokenize_lith_text(row.src_value)
         word_count = len(tokens)
         total_rows += 1
         total_word_count += word_count
-
         if not tokens:
             percent = 0.0
             total_match_percent += percent
@@ -583,23 +616,41 @@ def calculate_lith_fuzzy_match_percentages(
                 f"_pkid={row._pkid} | words=0 | match=0.0% | matched= | value={row.src_value}"
             )
             continue
-
         matched_count = 0
-        matched_terms: list[str] = []
-        seen_terms = set()
-
+        matched_lith_atts: list[str] = []
+        matched_liths: list[str] = []
+        seen_lith_atts = set()
+        seen_liths = set()
         for token in tokens:
-            best_term, score = best_fuzzy_match(token, reference_terms)
-            if best_term is not None and score >= threshold:
+            if len(token) <= 3:
+                if token in lith_att_terms:
+                    best_att, att_score = token, 1.0
+                else:
+                    best_att, att_score = None, 0.0
+
+                if token in lith_terms:
+                    best_lith, lith_score = token, 1.0
+                else:
+                    best_lith, lith_score = None, 0.0
+            else:
+                best_att, att_score = best_fuzzy_match(token, lith_att_terms)
+                best_lith, lith_score = best_fuzzy_match(token, lith_terms)
+            #choose the better match, but preserve whether it came from lith_atts or liths.
+            if best_att is not None and att_score >= threshold and att_score >= lith_score:
                 matched_count += 1
-                if best_term not in seen_terms:
-                    seen_terms.add(best_term)
-                    matched_terms.append(best_term)
+                if best_att not in seen_lith_atts:
+                    seen_lith_atts.add(best_att)
+                    matched_lith_atts.append(best_att)
+            elif best_lith is not None and lith_score >= threshold:
+                matched_count += 1
+                if best_lith not in seen_liths:
+                    seen_liths.add(best_lith)
+                    matched_liths.append(best_lith)
 
         percent = 100.0 * matched_count / word_count
         total_match_percent += percent
-        matched_string = ", ".join(matched_terms)
-
+        matched_terms = matched_lith_atts + matched_liths
+        matched_string = " ".join(matched_terms)
         console.print(
             f"_pkid={row._pkid} | words={word_count} | match={percent:.1f}% | "
             f"matched={matched_string} | value={row.src_value}"
@@ -1546,6 +1597,98 @@ def process_metadata_csv(
     )
 
 
+def get_process_tag_from_current_table() -> str:
+    """
+    Infer the ingest_process_tag value from the current staging table name.
+
+    Examples:
+    - sources.japan_yobuko_polygons -> polygons processed
+    - sources.japan_yobuko_lines    -> lines processed
+    - sources.japan_yobuko_points   -> points processed
+    """
+    context = load_map_context()
+    table = (context.get("table") or "").strip()
+    if table.endswith("_polygons"):
+        return "polygons processed"
+    if table.endswith("_lines"):
+        return "lines processed"
+    if table.endswith("_points"):
+        return "points processed"
+    raise ValueError(
+        f"Could not infer process tag from table '{table}'. "
+        "Expected table to end with _polygons, _lines, or _points."
+    )
+
+
+def update_process_flag_for_current_context(dry_run: bool = False):
+    """
+    Insert a process tag for the current slug based on the current table/layer.
+
+    Uses:
+    - slug from load_map_context()
+    - table from load_map_context()
+    - tag inferred from table suffix
+    """
+    db = get_database()
+    context = load_map_context()
+
+    slug = (context.get("slug") or "").strip()
+    table = (context.get("table") or "").strip()
+    tag = get_process_tag_from_current_table()
+
+    if slug == "":
+        raise ValueError("No slug is set. Run 'set-map <slug>' first.")
+
+    if table == "":
+        raise ValueError("No table is set. Run 'set-layer <layer>' first.")
+
+    match_count = db.run_query(
+        """
+        SELECT count(*)
+        FROM maps_metadata.ingest_process
+        WHERE slug = :slug
+        """,
+        dict(slug=slug),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to add process flag[/blue] "
+        f"[yellow]{tag}[/yellow] for slug [yellow]{slug}[/yellow] "
+        f"from table [yellow]{table}[/yellow] "
+        f"across {match_count} ingest_process row(s)"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+
+    db.run_sql(
+        """
+        INSERT INTO maps_metadata.ingest_process_tag (ingest_process_id, tag)
+        SELECT
+            i.id,
+            :tag
+        FROM maps_metadata.ingest_process i
+        WHERE i.slug = :slug
+          AND NOT EXISTS (
+              SELECT 1
+              FROM maps_metadata.ingest_process_tag t
+              WHERE t.ingest_process_id = i.id
+                AND t.tag = :tag
+          )
+        """,
+        dict(
+            slug=slug,
+            tag=tag,
+        ),
+    )
+
+    console.print(
+        f"[green]Done:[/green] added process flag "
+        f"[yellow]{tag}[/yellow] for slug [yellow]{slug}[/yellow]"
+    )
+
+
 def add_metadata_interactive(
     table_name: str,
     dry_run: bool = False,
@@ -1893,49 +2036,93 @@ def copy_line_type_from_column(
 
 
 
-
 def normalize_age_text(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
-
     text = str(value).strip()
     if text == "":
         return None
-
-    text = re.sub(r"\(\?\)", "", text, flags=re.IGNORECASE)
+    #remove "(?)", including with extra spaces: "( ? )"
+    text = re.sub(r"\(\s*\?\s*\)", "", text, flags=re.IGNORECASE)
+    #remove.g. "Jurassic (201.3-145 Ma)"
     text = re.sub(r"\s*\([^)]*ma[^)]*\)\s*$", "", text, flags=re.IGNORECASE)
     text = text.replace("–", "-").replace("—", "-")
     text = re.sub(r"\s*-\s*", "-", text)
     text = re.sub(r"\s+", " ", text).strip().lower()
-
     return text or None
+
+
+def remap_age_term(term: Optional[str]) -> Optional[str]:
+    if term is None:
+        return None
+
+    term = term.strip().lower()
+    term = AGE_TERM_REMAP.get(term, term)
+
+    parts = term.split()
+    if parts and parts[0] in AGE_MODIFIER_REMAP:
+        parts[0] = AGE_MODIFIER_REMAP[parts[0]]
+        term = " ".join(parts)
+
+    return term
+
+
+def get_age_lookup_candidates(term: Optional[str]) -> list[str]:
+    """
+    Return candidate interval names in priority order.
+
+    Example:
+    upper jurassic -> late jurassic -> jurassic
+    lower cretaceous -> early cretaceous -> cretaceous
+    pre-tertiary -> mesozoic
+    """
+    term = remap_age_term(term)
+    if term is None:
+        return []
+    candidates = [term]
+    parts = term.split()
+    if len(parts) >= 2 and parts[0] in {"early", "middle", "late"}:
+        candidates.append(" ".join(parts[1:]))
+    # de-duplicate while preserving order
+    out = []
+    seen = set()
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            out.append(candidate)
+    return out
+
+
+def resolve_interval_id(term: Optional[str], interval_map: dict[str, int]) -> Optional[int]:
+    """
+    Resolve an interval ID using ordered lookup candidates.
+
+    Example:
+    - "upper jurassic" becomes candidates ["late jurassic", "jurassic"]
+    - returns late jurassic ID if present
+    - otherwise returns jurassic ID if present
+    """
+    for candidate in get_age_lookup_candidates(term):
+        if candidate in interval_map:
+            return interval_map[candidate]
+    return None
 
 
 def parse_age_range(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
     text = normalize_age_text(value)
     if text is None:
         return None, None
-
-    if text == "jurassic and pre-jurassic":
-        return "jurassic", "triassic"
-
+    text = remap_age_term(text)
     if " to " in text:
         left, right = text.split(" to ", 1)
-        return left.strip(), right.strip()
-
+        return remap_age_term(left), remap_age_term(right)
     if " and " in text:
         left, right = text.split(" and ", 1)
-        right = right.strip()
-        if right.startswith("pre-"):
-            right_base = right.replace("pre-", "", 1).strip()
-            return left.strip(), PRE_INTERVAL_MAP.get(right_base, right_base)
-        return left.strip(), right
-
-    if "-" in text:
+        return remap_age_term(left), remap_age_term(right)
+    if "-" in text and not text.startswith("pre-"):
         left, right = text.split("-", 1)
-        return left.strip(), right.strip()
-
-    return text, text
+        return remap_age_term(left), remap_age_term(right)
+    return remap_age_term(text), remap_age_term(text)
 
 
 def copy_orig_id_from_column(
@@ -2029,6 +2216,13 @@ def copy_age_columns(
 ) -> int:
     """Copy age text from source columns into b_interval and t_interval using
     pandas for normalization/parsing and one final bulk SQL update.
+
+    Age-column population rule:
+    - First calculate candidate b_interval/t_interval matches.
+    - Calculate the percent of candidate rows that matched an interval.
+    - Only copy raw older_col values into age if match_percent > 50%.
+    - Only copy age for rows that actually produced interval candidates.
+    - Remaining null age rows can be filled by later copy-age passes.
     """
     db = get_database()
     older_col = validate_identifier(older_col, "older column")
@@ -2043,7 +2237,6 @@ def copy_age_columns(
         raise ValueError(
             f"Column '{newer_col}' does not exist in {target.schema}.{target.table}"
         )
-
     missing_required = {"b_interval", "t_interval"} - existing_cols
     if missing_required:
         raise ValueError(
@@ -2051,12 +2244,10 @@ def copy_age_columns(
             f"{', '.join(sorted(missing_required))}. "
             f"Run add-preferred-columns first."
         )
-
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
         dict(table=target.fq_identifier),
     ).scalar()
-
     console.print(
         f"[blue]Copying age columns for[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
@@ -2077,10 +2268,8 @@ def copy_age_columns(
             newer_col=Identifier(newer_col),
         ),
     ).fetchall()
-
     if not rows:
         return 0
-
     df = pd.DataFrame(
         [
             {
@@ -2091,10 +2280,8 @@ def copy_age_columns(
             for row in rows
         ]
     )
-
-    df["older_norm"] = df["older_raw"].apply(normalize_age_text)
-    df["newer_norm"] = df["newer_raw"].apply(normalize_age_text)
-
+    df["older_norm"] = df["older_raw"].apply(normalize_age_text).apply(remap_age_term)
+    df["newer_norm"] = df["newer_raw"].apply(normalize_age_text).apply(remap_age_term)
     parsed = df["older_raw"].apply(parse_age_range)
     df["older_left"] = parsed.apply(lambda x: x[0])
     df["older_right"] = parsed.apply(lambda x: x[1])
@@ -2112,47 +2299,10 @@ def copy_age_columns(
         for row in interval_rows
         if row.interval_name is not None
     }
-    df["older_id"] = df["older_norm"].map(interval_map)
-    df["newer_id"] = df["newer_norm"].map(interval_map)
-    df["older_left_id"] = df["older_left"].map(interval_map)
-    df["older_right_id"] = df["older_right"].map(interval_map)
-
-    # Bulk-copy raw older_col into age only if this column has at least 3
-    # usable interval matches after normalization/parsing.
-    if "age" in existing_cols:
-        usable_match_count = (
-            df["older_id"].notna()
-            | df["older_left_id"].notna()
-            | df["older_right_id"].notna()
-            | df["newer_id"].notna()
-        ).sum()
-
-        if usable_match_count >= 3:
-            if dry_run:
-                console.print(
-                    f"[green]Dry run only; would copy raw values from[/green] "
-                    f"[yellow]{older_col}[/yellow] [green]into age[/green] "
-                    f"(usable normalized interval matches: {int(usable_match_count)})"
-                )
-            else:
-                db.run_sql(
-                    """
-                    UPDATE {table}
-                    SET age = {older_col}
-                    WHERE age IS NULL
-                      AND {older_col} IS NOT NULL
-                      AND trim({older_col}::text) <> ''
-                    """,
-                    dict(
-                        table=target.fq_identifier,
-                        older_col=Identifier(older_col),
-                    ),
-                )
-                console.print(
-                    f"[green]Copied raw values from[/green] "
-                    f"[yellow]{older_col}[/yellow] [green]into age[/green] "
-                    f"(usable normalized interval matches: {int(usable_match_count)})"
-                )
+    df["older_id"] = df["older_norm"].apply(lambda x: resolve_interval_id(x, interval_map))
+    df["newer_id"] = df["newer_norm"].apply(lambda x: resolve_interval_id(x, interval_map))
+    df["older_left_id"] = df["older_left"].apply(lambda x: resolve_interval_id(x, interval_map))
+    df["older_right_id"] = df["older_right"].apply(lambda x: resolve_interval_id(x, interval_map))
 
     df["b_interval_new"] = (
         df["older_left_id"]
@@ -2166,8 +2316,83 @@ def copy_age_columns(
     )
 
 
-    update_df = df[
+    #calculate whether each row actually produced an interval candidate.
+    df["has_interval_candidate"] = (
         df["b_interval_new"].notna() | df["t_interval_new"].notna()
+    )
+    #calculate the match percentage for this candidate source column.
+    candidate_row_count = len(df)
+    usable_match_count = int(df["has_interval_candidate"].sum())
+    match_percent = (
+        100.0 * usable_match_count / candidate_row_count
+        if candidate_row_count > 0
+        else 0.0
+    )
+    console.print(
+        f"[blue]Age match check:[/blue] "
+        f"column={older_col} | "
+        f"matches={usable_match_count}/{candidate_row_count} "
+        f"({match_percent:.1f}%)"
+    )
+    # Only populate age when current column appears to be a valid age column.
+    # Column-level gate: if >50% of candidate rows matched intervals,
+    # copy the raw age text for ALL nonblank rows from this column,
+    # including rows that did not individually match.
+    if "age" in existing_cols and match_percent > 30.0:
+        age_update_df = df[
+            df["older_raw"].notna()
+            & (df["older_raw"].astype(str).str.strip() != "")
+        ][["_pkid", "older_raw"]].copy()
+
+        if dry_run:
+            console.print(
+                f"[green]Dry run only; would copy raw values from[/green] "
+                f"[yellow]{older_col}[/yellow] [green]into age for[/green] "
+                f"{len(age_update_df)} row(s) "
+                f"(match rate: {match_percent:.1f}%)"
+            )
+        elif not age_update_df.empty:
+            values_sql = ", ".join(
+                [f"(:age_pkid_{i}, :age_{i})" for i in range(len(age_update_df))]
+            )
+
+            age_params = {
+                "table": target.fq_identifier,
+            }
+            age_update_df = age_update_df.rename(columns={"_pkid": "pkid"})
+            for i, row in enumerate(age_update_df.itertuples(index=False)):
+                age_params[f"age_pkid_{i}"] = int(row.pkid)
+                age_params[f"age_{i}"] = str(row.older_raw).strip()
+
+            db.run_sql(
+                f"""
+                UPDATE {{table}} AS tgt
+                SET age = v.age_value
+                FROM (
+                    VALUES {values_sql}
+                ) AS v(_pkid, age_value)
+                WHERE tgt._pkid = v._pkid
+                  AND tgt.age IS NULL
+                """,
+                age_params,
+            )
+
+            console.print(
+                f"[green]Copied raw values from[/green] "
+                f"[yellow]{older_col}[/yellow] [green]into age for[/green] "
+                f"{len(age_update_df)} row(s) "
+                f"(match rate: {match_percent:.1f}%)"
+            )
+    else:
+        #leave age alone if this source column does not look age-like.
+        console.print(
+            f"[yellow]Skipping age copy from {older_col}:[/yellow] "
+            f"match rate {match_percent:.1f}% is not > 50%"
+        )
+
+    #use the same has_interval_candidate flag for the interval update.
+    update_df = df[
+        df["has_interval_candidate"]
     ][["_pkid", "b_interval_new", "t_interval_new"]].copy()
 
     update_df = update_df.rename(columns={"_pkid": "pkid"})
@@ -3361,7 +3586,7 @@ def normalize_show_map():
     console.print(f"[blue]Current MY_MAP:[/blue] {load_map_context()}")
 
 
-@normalize_cli.command("update-status")
+@normalize_cli.command("update-state")
 def normalize_update_status(
     state: str = Option(..., "--state", help="New ingest state"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
@@ -3646,18 +3871,108 @@ def match_remaining_cols(
     console.print("[green]Finished match-remaining-cols[/green]")
 
 
+@normalize_cli.command("update-process-tag")
+def normalize_update_process_flag(
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Add a maps_metadata.ingest_process_tag row for the current slug.
+
+    The tag is inferred from the current table/layer:
+    - *_polygons -> polygons processed
+    - *_lines    -> lines processed
+    - *_points   -> points processed
+    """
+    update_process_flag_for_current_context(dry_run=dry_run)
+
+
 
 #____________________________BASH SCRIPTS POLYGONS_______________________________________
 
 '''
 --------------BULK UPDATE POLYGONS COMMANDS-------------------
+processed=japan_wakayanagi
+japan_wakayama_and_ozaki
+japan_wakasa
+japan_uzen_kaneyama
+japan_uwajima
+japan_usuki
+japan_urago
+japan_uozu
+japan_ugo_wada
+japan_ugo_hamada
+japan_ueno
+japan_uchinoura
+japan_ube_tobu
+japan_ube
+japan_tsuyama_tobu
+japan_tsuya
+japan_tsuta
+japan_tsuruoka
+japan_tsurumisaki
+japan_tsuruga
+japan_tsuno
+
 slugs=(
-japan_yoriiso
-japan_yorii
-japan_yonaizawa
-japan_yokoyama
-japan_yokota
-japan_yokohama
+japan_tsumago
+japan_tsuma_and_takanabe
+japan_tsukechi
+japan_tsuchibuchi
+japan_tsubata
+japan_toyooka
+japan_toyoma
+japan_toyama
+japan_towada
+japan_tottori_nambu
+japan_tottori_hokubu
+japan_tomochi
+japan_tomitaka
+japan_tomie
+japan_tokyo_seinambu
+japan_toino_misaki
+japan_todorogi
+japan_tochigi
+japan_tazawako
+japan_tatsuno
+japan_tateyama
+japan_tateshina_yama
+japan_tate_yama
+japan_tarumizu
+japan_taro
+japan_tari
+japan_tanigumi
+japan_tango_yura
+japan_taketa
+japan_takayama
+japan_takato
+japan_takasago
+japan_takanosu
+japan_takada_tobu
+japan_takada_seibu
+japan_taisha
+japan_taihei_zan
+japan_suwa
+japan_susai
+japan_sumoto
+japan_suma
+japan_sukumo
+japan_sueyoshi
+japan_sonobe
+japan_soma_nakamura
+japan_shuzenji
+japan_shizuoka
+japan_shizukuishi
+japan_shizugawa
+japan_shirokimine
+japan_shiriya_zaki
+japan_shiojiri
+japan_shiogama
+japan_shinano_ikeda
+japan_shimoda
+japan_shimizu
+japan_shiibamura
+japan_shibushi
+japan_senzaki
 )
 
 for slug in "${slugs[@]}"; do
@@ -3695,23 +4010,16 @@ for slug in "${slugs[@]}"; do
     "$non_age_col"
     
     macrostrat maps staging normalize fuzzy-match-lith \
-    --src "$last_col"
-
+    --src descrip
+    
+    macrostrat maps staging normalize update-process-tag
 done
 '''
 
 
 
-
-
 '''
 BULK NULL POLYGON PREFERRED COLUMNS
-slugs=(
-japan_yunotsu_and_gotsu
-japan_yotsuya
-japan_yoshioka
-japan_yoshino_yama
-)
 
 for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-map "$slug" >/dev/null
@@ -3721,6 +4029,8 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize null-column lith; \
     macrostrat maps staging normalize null-column age; \
     macrostrat maps staging normalize null-column descrip; \
+    macrostrat maps staging normalize null-column unit_label; \
+    macrostrat maps staging normalize null-column orig_id; \
     macrostrat maps staging normalize null-column name;
 done
 
@@ -3732,30 +4042,17 @@ done
 
 '''
 --------------BULK UPDATE LINES COMMANDS-------------------
-slugs=(
-japan_yunotsu_and_gotsu
-japan_yotsuya
-japan_yoshioka
-japan_yoshino_yama
-japan_yoriiso
-japan_yorii
-japan_yonaizawa
-japan_yokoyama
-japan_yokota
-japan_yokohama
-
-)
 
 for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-map "$slug" >/dev/null
     macrostrat maps staging normalize set-layer lines >/dev/null
-    
+    macrostrat maps staging normalize add-preferred-columns
     macrostrat maps staging normalize copy-orig-id \
     --src major_code
     
     macrostrat maps staging normalize copy-column \
     --src legend01e \
-    --dst type \
+    --dst descrip \
     --no-prompt
     
     macrostrat maps staging normalize copy-column \
@@ -3765,14 +4062,28 @@ for slug in "${slugs[@]}"; do
     
     macrostrat maps staging normalize copy-column \
     --src descriptio \
-    --dst descrip \
+    --dst comments \
     --no-prompt
     
     macrostrat maps staging normalize merge-column \
     --src remarks \
-    --dst descrip \
+    --dst comments \
     --separator '; '
+    
+    macrostrat maps staging normalize update-process-tag
 
+done
+'''
+
+
+'''
+BULK NULL LINES
+for slug in "${slugs[@]}"; do
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer lines >/dev/null
+    macrostrat maps staging normalize null-column type
+    macrostrat maps staging normalize null-column descrip
+    macrostrat maps staging normalize add-preferred-columns
 done
 '''
 
@@ -3785,18 +4096,6 @@ done
 
 '''
 --------------BULK UPDATE POINTS COMMANDS-------------------
-slugs=(
-japan_yunotsu_and_gotsu
-japan_yotsuya
-japan_yoshioka
-japan_yoshino_yama
-japan_yoriiso
-japan_yorii
-japan_yonaizawa
-japan_yokoyama
-japan_yokota
-japan_yokohama
-)
 
 for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-map "$slug" >/dev/null
@@ -3808,7 +4107,7 @@ for slug in "${slugs[@]}"; do
     
     macrostrat maps staging normalize copy-column \
     --src legend01e \
-    --dst point_type \
+    --dst descrip \
     --no-prompt
     
     macrostrat maps staging normalize copy-column \
@@ -3823,17 +4122,170 @@ for slug in "${slugs[@]}"; do
     
     macrostrat maps staging normalize copy-column \
     --src legend02e \
-    --dst descrip \
-    --no-prompt
-    
-    macrostrat maps staging normalize copy-column \
-    --src remarks \
     --dst comments \
     --no-prompt
     
     macrostrat maps staging normalize merge-column \
     --src legend03e \
-    --dst descrip \
+    --dst comments \
     --separator "; "
+    
+    macrostrat maps staging normalize merge-column \
+    --src remarks \
+    --dst comments \
+    --separator "; "
+    
+    macrostrat maps staging normalize update-process-tag
+
 done
 '''
+
+'''
+BULK NULL POINTS
+for slug in "${slugs[@]}"; do
+    macrostrat maps staging normalize set-map "$slug" >/dev/null
+    macrostrat maps staging normalize set-layer points >/dev/null
+    macrostrat maps staging normalize null-column point_type
+    macrostrat maps staging normalize null-column descrip
+    macrostrat maps staging normalize null-column comments
+done
+'''
+
+
+
+
+
+'''
+_________________________________BULK POLYGONS, LINES, POINTS PROCESSING__________________
+
+for slug in "${slugs[@]}"; do
+    if ! macrostrat maps staging normalize set-map "$slug" >/dev/null; then
+        echo "ERROR: could not set map for $slug. Stopping script." >&2
+        exit 1
+    fi
+    
+    if ! macrostrat maps staging normalize set-layer polygons >/dev/null; then
+        echo "ERROR: could not set polygons layer for $slug. Stopping script." >&2
+        exit 1
+    fi
+    non_age_col=$(
+      macrostrat maps staging normalize copy-age \
+        --older legend03e --newer legend03e \
+        --older legend02e --newer legend02e \
+        --older legend01e --newer legend01e \
+        --no-prompt \
+      | tail -n 1
+    )
+    
+    if [[ "$non_age_col" == "Finished copy-age" || -z "$non_age_col" ]]; then
+        non_age_col="legend04e"
+    fi
+    
+    last_col=$(macrostrat maps staging normalize find-last-e-column)
+    
+    if [[ -z "$last_col" ]]; then
+    echo "ERROR: could not find last e-column for $slug polygons. Stopping script." >&2
+    exit 1
+    fi
+    
+    macrostrat maps staging normalize copy-column \
+    --src "$last_col" \
+    --dst descrip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-orig-id \
+    --src major_code
+    
+    macrostrat maps staging normalize copy-column \
+    --src symbol \
+    --dst unit_label \
+    --no-prompt
+    
+    macrostrat maps staging normalize match-remaining-cols \
+    "$non_age_col"
+    
+    macrostrat maps staging normalize fuzzy-match-lith \
+    --src descrip
+
+    macrostrat maps staging normalize update-process-tag
+    
+    
+    if ! macrostrat maps staging normalize set-layer lines >/dev/null; then
+        echo "ERROR: could not set lines layer for $slug. Stopping script." >&2
+        exit 1
+    fi
+    
+    macrostrat maps staging normalize add-preferred-columns
+    macrostrat maps staging normalize copy-orig-id \
+    --src major_code
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend01e \
+    --dst descrip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend02e \
+    --dst name \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src descriptio \
+    --dst comments \
+    --no-prompt
+    
+    macrostrat maps staging normalize merge-column \
+    --src remarks \
+    --dst comments \
+    --separator '; '
+    
+    macrostrat maps staging normalize update-process-tag
+    
+    
+    
+    if ! macrostrat maps staging normalize set-layer points >/dev/null; then
+        echo "ERROR: could not set points layer for $slug. Stopping script." >&2
+        exit 1
+    fi
+    
+    macrostrat maps staging normalize copy-orig-id \
+    --src serial_no \
+    --src no
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend01e \
+    --dst descrip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src strike_val \
+    --dst strike \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src dip_value \
+    --dst dip \
+    --no-prompt
+    
+    macrostrat maps staging normalize copy-column \
+    --src legend02e \
+    --dst comments \
+    --no-prompt
+    
+    macrostrat maps staging normalize merge-column \
+    --src legend03e \
+    --dst comments \
+    --separator "; "
+    
+    macrostrat maps staging normalize merge-column \
+    --src remarks \
+    --dst comments \
+    --separator "; "
+    
+    macrostrat maps staging normalize update-process-tag
+done
+
+'''
+
+
+
