@@ -6,7 +6,7 @@
 	url = https://github.com/UW-Macrostrat/postgis-tile-utils
 [submodule "submodules/storage-admin"]
 	path = submodules/storage-admin
-	url = https://github.com/UW-Macrostrat/radosgw_admin_client
+	url = https://github.com/UW-Macrostrat/storage-admin
 [submodule "submodules/column-ingestion"]
 	path = submodules/column-ingestion
 	url = https://github.com/Macrostrat/column-ingestion.git
