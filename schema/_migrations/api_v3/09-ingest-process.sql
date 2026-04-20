@@ -46,6 +46,13 @@ CREATE TABLE maps_metadata.ingest_process_tag (
     tag character varying(255) NOT NULL
 );
 
+create table maps_metadata.ingest_state (
+    state               varchar(150) not null primary key,
+    description         varchar(150),
+    color               varchar(150)
+);
+ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
+
 ALTER TABLE maps_metadata.ingest_process
 ADD CONSTRAINT ingest_process_slug_fkey
 FOREIGN KEY (slug)
