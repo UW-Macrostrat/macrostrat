@@ -31,7 +31,7 @@ dependencies = [
     # "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "macrostrat.column-ingestion",
     "macrostrat.usage_stats",
-    "htpheno.radosgw-admin-client",
+    "macrostrat.radosgw-admin",
     "numpy>=2.0.0,<3",
     "pyproj>=3.4.0,<4",
     "python-dotenv>=1.0.0,<2",
@@ -78,7 +78,7 @@ default-groups = [
 "macrostrat.core" = { path = "../core", editable = true }
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "macrostrat.schema-management" = { path = "../schema-management", editable = true }
-"htpheno.radosgw-admin-client" = { path = "../../submodules/storage-admin", editable = true }
+"macrostrat.radosgw-admin" = { path = "../../submodules/storage-admin", editable = true }
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
 "macrostrat.column-ingestion" = { path = "../column-ingestion", editable = true }
 "macrostrat.map-topology" = { path = "../map-topology", editable = true }

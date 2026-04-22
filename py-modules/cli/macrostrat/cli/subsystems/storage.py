@@ -35,29 +35,17 @@ if admin := settings.get("storage.admin", None):
 
         # Set up the radosgw-admin command
 
-        @app.command("admin", add_help_option=False)
-        def storage_admin(args: List[str] = Argument(None)):
-            """
-            Run the Ceph Object Storage admin command.
-            """
-            import sys
-            from os import environ
+        import sys
+        from os import environ
 
-            from htpheno.radosgw_admin_client.cli import UserError, main
+        from macrostrat.radosgw_admin.cli import app as storage_app
+        from macrostrat.radosgw_admin.utils import UserError
 
-            environ["RADOSGW_ACCESS_KEY"] = access_key
-            environ["RADOSGW_SECRET_KEY"] = secret_key
-            environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
+        environ["RADOSGW_ACCESS_KEY"] = access_key
+        environ["RADOSGW_SECRET_KEY"] = secret_key
+        environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
 
-            if args is None:
-                args = ["--help"]
-
-            sys.argv = ["radosgw-admin", *args]
-            try:
-                main()
-            except UserError as e:
-                # raise MacrostratError(e)
-                print("[red bold]Error:[/] [red]" + str(e))
+        app.add_typer(storage_app, name="admin", help="Radosgw admin commands")
 
 
 def _s3_users():
