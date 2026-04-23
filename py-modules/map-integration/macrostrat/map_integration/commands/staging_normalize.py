@@ -3902,88 +3902,51 @@ def normalize_update_process_flag(
 
 """
 --------------BULK UPDATE POLYGONS COMMANDS-------------------
-processed=japan_wakayanagi
-japan_wakayama_and_ozaki
-japan_wakasa
-japan_uzen_kaneyama
-japan_uwajima
-japan_usuki
-japan_urago
-japan_uozu
-japan_ugo_wada
-japan_ugo_hamada
-japan_ueno
-japan_uchinoura
-japan_ube_tobu
-japan_ube
-japan_tsuyama_tobu
-japan_tsuya
-japan_tsuta
-japan_tsuruoka
-japan_tsurumisaki
-japan_tsuruga
-japan_tsuno
+processed=
 
-slugs=(
-japan_tsumago
-japan_tsuma_and_takanabe
-japan_tsukechi
-japan_tsuchibuchi
-japan_tsubata
-japan_toyooka
-japan_toyoma
-japan_toyama
-japan_towada
-japan_tottori_nambu
-japan_tottori_hokubu
-japan_tomochi
-japan_tomitaka
-japan_tomie
-japan_tokyo_seinambu
-japan_toino_misaki
-japan_todorogi
-japan_tochigi
-japan_tazawako
-japan_tatsuno
-japan_tateyama
-japan_tateshina_yama
-japan_tate_yama
-japan_tarumizu
-japan_taro
-japan_tari
-japan_tanigumi
-japan_tango_yura
-japan_taketa
-japan_takayama
-japan_takato
-japan_takasago
-japan_takanosu
-japan_takada_tobu
-japan_takada_seibu
-japan_taisha
-japan_taihei_zan
-japan_suwa
-japan_susai
-japan_sumoto
-japan_suma
-japan_sukumo
-japan_sueyoshi
-japan_sonobe
-japan_soma_nakamura
-japan_shuzenji
-japan_shizuoka
-japan_shizukuishi
-japan_shizugawa
-japan_shirokimine
-japan_shiriya_zaki
-japan_shiojiri
-japan_shiogama
-japan_shinano_ikeda
-japan_shimoda
-japan_shimizu
-japan_shiibamura
-japan_shibushi
-japan_senzaki
+
+slugs=(japan_hachiman
+japan_goshogawara
+japan_gojome
+japan_gohyakkoku
+japan_gifu
+japan_gero
+japan_futtsu
+japan_furukawa
+japan_funatsu
+japan_fukuoka
+japan_fukui
+japan_fukue
+japan_fukuchiyama
+japan_fukaura
+japan_fujisawa
+japan_etomo
+japan_danjo_gunto_hokubu_and_nambu
+japan_daisen
+japan_daira_kozan
+japan_chokaisan_and_fukura
+japan_chizu
+japan_chikubu_shima
+japan_chikagawa
+japan_bungo_kitsuki
+japan_beppu
+japan_ayabe
+japan_awashima
+japan_atami
+japan_ashibe
+japan_asamushi
+japan_asamai
+japan_arashima_dake
+japan_aoya
+japan_aomori_seibu
+japan_anesaki
+japan_akasaki
+japan_akana
+japan_akaho
+japan_ajigasawa
+japan_agematsu
+japan_aburakawa
+japan_abuga_shima
 )
 
 for slug in "${slugs[@]}"; do
@@ -4093,7 +4056,9 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize set-layer lines >/dev/null
     macrostrat maps staging normalize null-column type
     macrostrat maps staging normalize null-column descrip
-    macrostrat maps staging normalize add-preferred-columns
+    macrostrat maps staging normalize null-column comments
+    macrostrat maps staging normalize null-column name
+    macrostrat maps staging normalize null-column orig_id
 done
 """
 
@@ -4154,6 +4119,10 @@ for slug in "${slugs[@]}"; do
     macrostrat maps staging normalize null-column point_type
     macrostrat maps staging normalize null-column descrip
     macrostrat maps staging normalize null-column comments
+    macrostrat maps staging normalize null-column strike
+    macrostrat maps staging normalize null-column dip
+    macrostrat maps staging normalize null-column orig_id
+
 done
 """
 

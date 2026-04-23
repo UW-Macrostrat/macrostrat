@@ -2,25 +2,6 @@
 CREATE SCHEMA maps;
 ALTER SCHEMA maps OWNER TO macrostrat;
 
-CREATE TYPE maps.ingest_state AS ENUM (
-    'pending',
-    'ingested',
-    'prepared',
-    'failed',
-    'abandoned',
-    'post_harmonization',
-    'pre-processed',
-    'post-processed',
-    'needs review',
-    'finalized'
-);
-ALTER TYPE maps.ingest_state OWNER TO macrostrat;
-
-CREATE TYPE maps.ingest_type AS ENUM (
-    'vector',
-    'ta1_output'
-);
-ALTER TYPE maps.ingest_type OWNER TO macrostrat;
 
 CREATE TYPE maps.map_scale AS ENUM (
     'tiny',
@@ -431,24 +412,15 @@ CREATE TABLE maps.source_operations (
 );
 ALTER TABLE maps.source_operations OWNER TO macrostrat;
 
-
 create table maps.line_type (
-    line_type varchar(100) not null primary key
+    id text not null primary key,
+    description text
 );
-insert into maps.line_type (line_type)
-select distinct type
-from maps.lines
-where type is not null;
-
-
 
 create table maps.point_type (
-    point_type varchar(100) not null primary key
+    id text not null primary key,
+    description text
 );
-insert into maps.point_type (point_type)
-select distinct point_type
-from maps.points
-where point_type is not null;
 
 COMMENT ON TABLE maps.source_operations IS 'Tracks management operations for Macrostrat maps';
 

@@ -1,23 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS maps_metadata;
 
-CREATE TYPE maps.ingest_state AS ENUM (
-  'pending',
-  'ingested',
-  'prepared',
-  'failed',
-  'abandoned',
-  'post-harmonization',
-  'pre-processed',
-  'post-processed',
-  'needs review',
-  'finalized'
-);
-
-CREATE TYPE maps.ingest_type AS ENUM (
-  'vector',
-  'ta1_output'
-);
-
 CREATE TABLE maps_metadata.ingest_process
 (
     id                serial primary key,
@@ -46,12 +28,6 @@ CREATE TABLE maps_metadata.ingest_process_tag (
     tag character varying(255) NOT NULL
 );
 
-create table maps_metadata.ingest_state (
-    state               varchar(150) not null primary key,
-    description         varchar(150),
-    color               varchar(150)
-);
-ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
 
 ALTER TABLE maps_metadata.ingest_process
 ADD CONSTRAINT ingest_process_slug_fkey

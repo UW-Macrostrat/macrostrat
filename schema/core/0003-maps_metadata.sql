@@ -20,9 +20,16 @@ ALTER FUNCTION maps_metadata.maps_metadata_update_trigger() OWNER TO macrostrat_
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
+
+CREATE TYPE maps.ingest_type AS ENUM (
+    'vector',
+    'ta1_output'
+);
+ALTER TYPE maps.ingest_type OWNER TO macrostrat;
+
 CREATE TABLE maps_metadata.ingest_process (
     id integer NOT NULL,
-    state maps.ingest_state,
+    state text references maps_metadata.ingest_state (id),
     comments text,
     source_id integer,
     created_on timestamp with time zone DEFAULT now() NOT NULL,
@@ -45,12 +52,27 @@ CREATE TABLE maps_metadata.ingest_process_tag (
 );
 ALTER TABLE maps_metadata.ingest_process_tag OWNER TO macrostrat;
 
+
 create table maps_metadata.ingest_state (
-    state               varchar(150) not null primary key,
-    description         varchar(150),
-    color               varchar(150)
+    id               text not null primary key,
+    description      text,
+    color            varchar(25)
 );
 ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
+
+INSERT INTO maps_metadata.ingest_state (id)
+VALUES ('pending'),
+    ('ingested'),
+    ('prepared'),
+    ('failed'),
+    ('abandoned'),
+    ('post_harmonization'),
+    ('pre-processed'),
+    ('post-processed'),
+    ('needs review'),
+    ('finalized'),
+    ('ready')
+ON CONFLICT (id) DO NOTHING;
 
 
 CREATE SEQUENCE maps_metadata.ingest_process_id_seq
