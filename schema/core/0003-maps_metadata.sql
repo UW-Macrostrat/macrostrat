@@ -31,7 +31,9 @@ CREATE TABLE maps_metadata.ingest_process (
     id integer NOT NULL,
     state text references maps_metadata.ingest_state (id),
     comments text,
-    source_id integer,
+    source_id integer not null
+        constraint ingest_process_source_id_unique unique
+        references maps.sources,
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     completed_on timestamp with time zone,
     map_id text,
@@ -42,8 +44,8 @@ CREATE TABLE maps_metadata.ingest_process (
     ingest_pipeline text,
     map_url text,
     ingested_by text,
-    slug text
-);
+    slug text references maps.sources (slug));
+
 ALTER TABLE maps_metadata.ingest_process OWNER TO macrostrat;
 
 CREATE TABLE maps_metadata.ingest_process_tag (
