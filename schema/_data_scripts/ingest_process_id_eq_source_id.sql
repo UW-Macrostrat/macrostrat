@@ -22,22 +22,6 @@ WHERE ingest_process_id IN (
   2088
 );
 
-DELETE FROM maps_metadata.map_files
-WHERE ingest_process_id IN (
-  668, 669, 670, 671,
-  684,
-  691, 692,
-  716, 717, 720,
-  733,
-  747,
-  805,
-  807,
-  809,
-  811,
-  1934,
-  2068, 2078,
-  2088
-);
 
 DELETE FROM maps_metadata.ingest_process
 WHERE id IN (
