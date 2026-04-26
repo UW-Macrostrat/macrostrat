@@ -20,11 +20,20 @@ ALTER FUNCTION maps_metadata.maps_metadata_update_trigger() OWNER TO macrostrat_
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
+
+CREATE TYPE maps.ingest_type AS ENUM (
+    'vector',
+    'ta1_output'
+);
+ALTER TYPE maps.ingest_type OWNER TO macrostrat;
+
 CREATE TABLE maps_metadata.ingest_process (
     id integer NOT NULL,
-    state maps.ingest_state,
+    state text references maps_metadata.ingest_state (id),
     comments text,
-    source_id integer,
+    source_id integer not null
+        constraint ingest_process_source_id_unique unique
+        references maps.sources,
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     completed_on timestamp with time zone,
     map_id text,
@@ -35,8 +44,8 @@ CREATE TABLE maps_metadata.ingest_process (
     ingest_pipeline text,
     map_url text,
     ingested_by text,
-    slug text
-);
+    slug text references maps.sources (slug));
+
 ALTER TABLE maps_metadata.ingest_process OWNER TO macrostrat;
 
 CREATE TABLE maps_metadata.ingest_process_tag (
@@ -44,6 +53,29 @@ CREATE TABLE maps_metadata.ingest_process_tag (
     tag character varying(255) NOT NULL
 );
 ALTER TABLE maps_metadata.ingest_process_tag OWNER TO macrostrat;
+
+
+create table maps_metadata.ingest_state (
+    id               text not null primary key,
+    description      text,
+    color            varchar(25)
+);
+ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
+
+INSERT INTO maps_metadata.ingest_state (id)
+VALUES ('pending'),
+    ('ingested'),
+    ('prepared'),
+    ('failed'),
+    ('abandoned'),
+    ('post_harmonization'),
+    ('pre-processed'),
+    ('post-processed'),
+    ('needs review'),
+    ('finalized'),
+    ('ready')
+ON CONFLICT (id) DO NOTHING;
+
 
 CREATE SEQUENCE maps_metadata.ingest_process_id_seq
     AS integer
@@ -135,4 +167,9 @@ ALTER TABLE ONLY maps_metadata.map_files
     ADD CONSTRAINT map_files_object_id_fkey FOREIGN KEY (object_id) REFERENCES storage.object(id);
 
 GRANT SELECT,UPDATE ON TABLE maps_metadata.ingest_process TO web_user;
+
+ALTER TABLE maps_metadata.ingest_process
+ADD CONSTRAINT ingest_process_slug_fkey
+FOREIGN KEY (slug)
+REFERENCES maps.sources(slug);
 

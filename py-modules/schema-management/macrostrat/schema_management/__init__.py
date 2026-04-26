@@ -4,7 +4,7 @@ from sys import exit, stderr
 
 import click
 from results import db as results_db
-from results.dbdiff import Migration
+from results.dbdiff import Migration as DiffMigration
 from rich import print
 from sqlparse import format as format_sql
 from typer import Argument, Option
@@ -75,7 +75,7 @@ def plan():
             excluded_schemas=["topology", "sources", "tiger", "tiger_data"],
         )
 
-        m = Migration(
+        m = DiffMigration(
             from_db,
             target_db,
         )

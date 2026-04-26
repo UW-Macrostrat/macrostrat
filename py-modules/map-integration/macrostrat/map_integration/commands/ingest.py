@@ -146,7 +146,7 @@ def preprocess_dataframe(
             print("Points df merge successful")
             return meta_df, ingest_pipeline, comments, state
     if meta_df is None:
-        comments += "No metadata dataframe produced. Skipping metadata merge. "
+        comments = "No metadata in maps.sources."
         state = state or "needs review"
         return poly_line_pt_df, ingest_pipeline, comments, state
 

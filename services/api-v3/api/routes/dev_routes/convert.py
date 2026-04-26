@@ -251,7 +251,7 @@ def spot_to_fieldsite(feat) -> FieldSite:
         location=Location(latitude=float(lat), longitude=float(lng)),
         created=created,
         updated=updated,
-        notes=props.get("notes"),
+        notes=props.get("name") or props.get("notes"),
         photos=photos,
         observations=observations,
     )
@@ -531,6 +531,95 @@ def multiple_fieldsite_to_spot(fieldsites: list[FieldSite]) -> dict:
     return {"type": "FeatureCollection", "features": features}
 
 
+def fieldsite_to_spot_single(fs: FieldSite) -> dict:
+    """
+    Convert a single FieldSite -> bare StraboSpot-style Feature payload
+    using the new single-object format.
+    """
+    if not isinstance(fs, FieldSite):
+        fs = FieldSite(**fs)
+
+    created = fs.created or datetime.now(timezone.utc)
+    updated = fs.updated or created
+    feat: dict = {
+        "type": "Feature",
+        "properties": {
+            "images": [],
+            "time": created.isoformat().replace("+00:00", "Z"),
+            "id": fs.id,
+            "orientation_data": [],
+            "modified_timestamp": _dt_to_ms(updated),
+            "date": created.isoformat().replace("+00:00", "Z"),
+            "samples": [],
+            "name": fs.notes or "",
+        },
+        "geometry": {
+            "type": "Point",
+            "coordinates": [fs.location.longitude, fs.location.latitude],
+        },
+    }
+    if fs.photos:
+        feat["properties"]["images"] = [
+            {
+                "height": int(getattr(p, "height", 0) or 0),
+                "id": int(p.id),
+                "annotated": False,
+                "title": "",
+                "width": int(getattr(p, "width", 0) or 0),
+                "caption": "",
+            }
+            for p in fs.photos
+        ]
+    planars = _all_planars_from_fieldsite(fs)
+    if planars:
+        feat["properties"]["orientation_data"] = [
+            {
+                "dip_direction": None,
+                "strike": float(p.strike) if p.strike is not None else None,
+                "dip": float(p.dip) if p.dip is not None else None,
+                "facing": (
+                    p.facing.value
+                    if getattr(p, "facing", None) is not None
+                    else "upright"
+                ),
+                "orientation_type": "planar_orientation",
+            }
+            for p in planars
+        ]
+    return feat
+
+
+def spot_to_checkin_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
+    """
+    Convert a single spot payload -> single Rockd checkin dict.
+    """
+    fieldsites = multiple_spot_to_fieldsite(payload)
+
+    if len(fieldsites) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="bulk=false requires exactly one valid spot.",
+        )
+
+    return fieldsite_to_rockd_checkin(fieldsites[0])
+
+
+def checkin_to_spot_single(payload: Union[dict, List[dict]] = Body(...)) -> dict:
+    """
+    Convert a single checkin dict -> bare Feature payload.
+    Reuses existing checkin -> FieldSite logic.
+    """
+    fieldsites = multiple_checkin_to_fieldsite(payload)
+
+    if len(fieldsites) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="bulk=false requires exactly one valid checkin.",
+        )
+
+    return fieldsite_to_spot_single(fieldsites[0])
+
+
 def checkin_to_spot(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     """
     Convert:
@@ -550,10 +639,12 @@ async def convert_field_site(
     payload: Union[dict, List[dict]] = Body(...),
     in_: str = Query(..., alias="in"),
     out: str = Query(..., alias="out"),
+    bulk: bool = Query(False, alias="bulk"),
 ) -> Any:
     key = (in_.lower(), out.lower())
     if key == ("spot", "fieldsite"):
         return multiple_spot_to_fieldsite(payload)
+    # output a b
     if key == ("checkin", "fieldsite"):
         return multiple_checkin_to_fieldsite(payload)
     if key == ("fieldsite", "checkin"):
@@ -567,9 +658,15 @@ async def convert_field_site(
             return multiple_fieldsite_to_spot(payload)
         return fieldsite_to_spot(payload)
     if key == ("checkin", "spot"):
-        return checkin_to_spot(payload)
+        if bulk:
+            return checkin_to_spot(payload)
+        else:
+            return checkin_to_spot_single(payload)
     if key == ("spot", "checkin"):
-        return spot_to_checkin(payload)
+        if bulk:
+            return spot_to_checkin(payload)
+        else:
+            return spot_to_checkin_single(payload)
     raise HTTPException(
         status_code=400,
         detail="Unsupported conversion. Use in=[spot|fieldsite|checkin], out=[fieldsite|checkin|spot].",

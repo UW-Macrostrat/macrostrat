@@ -139,7 +139,7 @@ def insert_storage_object(
     )
     object_id = get_existing_object_id(db, host=host, bucket=bucket, key=key)
     if object_id is None:
-        raise RuntimeError("Failed to retrieve storage.objects  id after insert")
+        raise RuntimeError("Failed to retrieve storage.objects id after insert")
     return object_id
 
 
@@ -259,6 +259,11 @@ def staging_upload_dir(
     finally:
         try:
             zip_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+        try:
+            minio_client._http.clear()
         except Exception:
             pass
 

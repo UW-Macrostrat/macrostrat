@@ -39,7 +39,9 @@ def stats():
 def strat_name_footprints():
     """Footprints for stratigraphic names"""
     db = get_database()
-    db.run_sql(here / "sql" / "strat-name-footprints.sql")
+    print("This create script takes 60m in prod and 23 min in development")
+    db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
+    db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 
 def lookup_units():
