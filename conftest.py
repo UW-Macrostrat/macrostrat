@@ -115,7 +115,7 @@ from testcontainers.postgres import PostgresContainer
 
 
 @fixture(scope="session")
-def test_db(request):
+def empty_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
     cfg = load_config_module().settings
@@ -140,3 +140,13 @@ def test_db(request):
     url = postgres.get_connection_url()
     db = Database(url)
     yield db
+
+
+@fixture(scope="session")
+def test_db(empty_db: Database):
+    """The database used for testing."""
+    from macrostrat.schema_management import apply_schema_for_environment
+    from macrostrat.core.config import settings
+
+    apply_schema_for_environment(empty_db, env=settings.environment)
+    return empty_db

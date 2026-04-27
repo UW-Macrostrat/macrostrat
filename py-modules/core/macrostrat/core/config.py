@@ -22,24 +22,38 @@ class BackendType(str, Enum):
     DockerCompose = "docker-compose"
 
 
+def get_default_environment():
+    cfg = find_macrostrat_config()
+    if cfg is None:
+        raise MacrostratError("Could not find macrostrat.toml")
+    return _all_environments(cfg)[0]
+
+
 class MacrostratConfig(Dynaconf):
     """Macrostrat config manager that reads from a TOML file"""
 
     config_file: Path
     srcroot: Path
+    environment: str
 
     def __init__(self):
+
+        cfg = find_macrostrat_config()
+        settings_files = []
+        if cfg is not None:
+            settings_files.append(cfg)
+
+        env = getenv("MACROSTRAT_ENV")
+        if env is None:
+            env = get_default_environment()
+            if env is not None:
+                environ["MACROSTRAT_ENV"] = env
 
         env = getenv("MACROSTRAT_ENV")
         if env is None:
             raise MacrostratError(
                 "MACROSTRAT_ENV must be defined for configuration loading to work"
             )
-
-        cfg = find_macrostrat_config()
-        settings_files = []
-        if cfg is not None:
-            settings_files.append(cfg)
 
         super().__init__(
             envvar_prefix="MACROSTRAT",
@@ -60,11 +74,7 @@ class MacrostratConfig(Dynaconf):
 
     def all_environments(self):
         # Parse out top-level headers from TOML file
-        with open(self.config_file, "r") as f:
-            cfg = load_toml(f)
-            keys = iter(cfg.keys())
-            next(keys)
-            return [k for k in keys]
+        return _all_environments(self.config_file)
 
     def get(self, key, default=None):
         if not "." in key:
@@ -76,6 +86,14 @@ class MacrostratConfig(Dynaconf):
                 return default
             self = getattr(self, k)
         return self
+
+
+def _all_environments(config_file: Path):
+    with open(config_file, "r") as f:
+        cfg = load_toml(f)
+        keys = iter(cfg.keys())
+        next(keys)
+        return [k for k in keys]
 
 
 settings = MacrostratConfig()
