@@ -113,16 +113,6 @@ def load_config_module():
     return mod_instance
 
 
-@fixture()
-def cfg():
-    cfg_file = __here__ / "macrostrat" / "cli" / "tests" / "macrostrat.test.toml"
-    with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
-        mod_instance = load_config_module()
-
-        assert cfg_file == mod_instance.settings.config_file
-        yield mod_instance.settings
-
-
 from testcontainers.postgres import PostgresContainer
 
 
