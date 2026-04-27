@@ -123,6 +123,9 @@ def cfg():
         yield mod_instance.settings
 
 
+from testcontainers.postgres import PostgresContainer
+
+
 @fixture(scope="session")
 def test_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
@@ -138,18 +141,14 @@ def test_db(request):
 
     image = cfg.get("pg_database_container", "postgres:15")
 
-    client = docker.from_env()
+    postgres = PostgresContainer(image)
+    postgres.start()
 
-    img_root = cfg.srcroot / "base-images" / "database"
+    def remove_container():
+        postgres.stop()
 
-    # Build postgres pgaudit image
-    img_tag = "macrostrat-local-database:latest"
+    request.addfinalizer(remove_container)
 
-    client.images.build(path=str(img_root), tag=img_tag)
-
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        url = f"postgresql://postgres@localhost:{port}/postgres"
-        db = Database(url)
-        yield db
+    url = postgres.get_connection_url()
+    db = Database(url)
+    yield db

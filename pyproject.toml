@@ -12,6 +12,7 @@ dependencies = [
     "macrostrat.core",
     "macrostrat.schema-management",
     "api",
+    "testcontainers>=4.14.2",
 ]
 
 [dependency-groups]
