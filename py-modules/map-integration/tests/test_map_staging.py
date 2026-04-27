@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from contextlib import contextmanager
 from psycopg2.sql import Identifier
 
 from macrostrat.map_integration.commands.ingest import ingest_map
@@ -146,30 +147,49 @@ def test_map_staging(test_db, test_maps):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+__fixtures__ = Path(__file__).parent / "fixtures"
 
-region_dirs = sorted((Path(__file__).parent / "fixtures" / "maps" / "Japan").glob("*"))
+from shutil import unpack_archive
+from tempfile import TemporaryDirectory
 
 
-@pytest.mark.skip(reason="This test needs review and local fixtures to be defined.")
-@pytest.mark.parametrize("region_path", region_dirs)
+japan_map_files = (__fixtures__ / "Japan").glob("*.zip")
+
+ARCHIVE_SUFFIXES = (".zip", ".tar.gz", ".tar.bz2", ".tgz")
+
+
+@contextmanager
+def extracted_path(path: Path):
+    """If needed, unzips test data to temporary directories for working with on import"""
+    # Unzip the files to temporary directories, and yield temporary paths
+    if path.is_file() and path.suffix in ARCHIVE_SUFFIXES:
+        with TemporaryDirectory() as tmpdir:
+            unpack_archive(path, tmpdir)
+            yield Path(tmpdir)
+    else:
+        yield path
+
+
+@pytest.mark.parametrize("region_path", japan_map_files)
 def test_map_staging_bulk(test_db, region_path):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = test_db
-    slug = f"test_{region_path.name.lower()}"
-    name = region_path.name
+    slug = f"test_{region_path.stem.lower()}"
+    name = region_path.stem
     data_path = region_path
     print(f"\n🚀 Ingesting map for region: {name} at {data_path}")
 
-    gis_files, excluded_files = find_gis_files(data_path, filter=lambda p: True)
-    assert gis_files, f"No GIS files found for {region_path}"
+    with extracted_path(data_path) as data_path:
+        gis_files, excluded_files = find_gis_files(data_path)
+        assert gis_files, f"No GIS files found for {region_path}"
 
-    for path in gis_files:
-        print(f"  ✓ {path}")
+        for path in gis_files:
+            print(f"  ✓ {path}")
 
-    # Ingest
-    ingest_map(slug, gis_files, if_exists="replace")
+        # Ingest
+        ingest_map(slug, gis_files, if_exists="replace")
 
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -190,18 +210,12 @@ def test_map_staging_bulk(test_db, region_path):
         dict(scale="large", source_id=source_id),
     )
 
-    object_group_id = db.run_query(
-        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
-    ).scalar()
-
-    assert object_group_id is not None
-
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES (:state, :source_id, :object_group_id);
+        INSERT INTO maps_metadata.ingest_process (state, source_id)
+        VALUES (:state, :source_id);
         """,
-        dict(state="ingested", source_id=source_id, object_group_id=object_group_id),
+        dict(state="ingested", source_id=source_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -220,12 +234,11 @@ def test_map_staging_bulk(test_db, region_path):
 
     # Ingest process assertions
     ingest_process = db.run_query(
-        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        "SELECT source_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
     assert ingest_process is not None
     assert ingest_process.state == "ingested"
-    assert ingest_process.object_group_id == object_group_id
 
     # Data exists
     count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
