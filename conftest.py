@@ -102,7 +102,7 @@ def db(env_config):
 
     db = Database(env_config.pg_database)
     # Change the user on the connection
-    # db.run_sql("SET ROLE macrostrat_reader;")
+    db.run_sql("SET ROLE web_anon;")
 
     yield db
 
