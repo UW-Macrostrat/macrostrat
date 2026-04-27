@@ -132,7 +132,7 @@ def empty_db(request):
     if request.config.getoption("--skip-local-database"):
         skip("skipping Docker test database")
 
-    with test_database_cluster() as db:
+    with test_database_cluster(username="macrostrat_admin") as db:
         yield db
 
 

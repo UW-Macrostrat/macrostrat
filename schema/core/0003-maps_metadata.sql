@@ -21,6 +21,28 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 
+CREATE TABLE maps_metadata.ingest_state (
+  id               text not null primary key,
+  description      text,
+  color            varchar(25)
+);
+ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
+
+INSERT INTO maps_metadata.ingest_state (id)
+VALUES ('pending'),
+  ('ingested'),
+  ('prepared'),
+  ('failed'),
+  ('abandoned'),
+  ('post_harmonization'),
+  ('pre-processed'),
+  ('post-processed'),
+  ('needs review'),
+  ('finalized'),
+  ('ready')
+ON CONFLICT (id) DO NOTHING;
+
+
 CREATE TYPE maps.ingest_type AS ENUM (
     'vector',
     'ta1_output'
@@ -53,28 +75,6 @@ CREATE TABLE maps_metadata.ingest_process_tag (
     tag character varying(255) NOT NULL
 );
 ALTER TABLE maps_metadata.ingest_process_tag OWNER TO macrostrat;
-
-
-create table maps_metadata.ingest_state (
-    id               text not null primary key,
-    description      text,
-    color            varchar(25)
-);
-ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
-
-INSERT INTO maps_metadata.ingest_state (id)
-VALUES ('pending'),
-    ('ingested'),
-    ('prepared'),
-    ('failed'),
-    ('abandoned'),
-    ('post_harmonization'),
-    ('pre-processed'),
-    ('post-processed'),
-    ('needs review'),
-    ('finalized'),
-    ('ready')
-ON CONFLICT (id) DO NOTHING;
 
 
 CREATE SEQUENCE maps_metadata.ingest_process_id_seq

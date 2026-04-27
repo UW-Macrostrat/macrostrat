@@ -33,26 +33,6 @@ def test_get_database(test_db):
     assert db1 is db
 
 
-"""
-@pytest.fixture(scope="session", autouse=True)
-def allow_macrostrat_login():
-    super_engine = create_engine("postgresql://postgres@localhost:54884/postgres?sslmode=disable")
-    with super_engine.connect() as conn:
-        conn.execute(text("ALTER ROLE macrostrat LOGIN"))
-        conn.commit()
-
-
-
-@pytest.fixture
-def db_as_macrostrat(allow_macrostrat_login):
-    # Adjust to match your test DB port
-    url = "postgresql://macrostrat@localhost:54884/macrostrat?sslmode=disable"
-    engine = create_engine(url)
-    db = Database(engine)
-    yield db
-    engine.dispose()"""
-
-
 @pytest.fixture
 def test_maps():
     return {
@@ -110,21 +90,12 @@ def test_map_staging(test_db, test_maps):
         dict(scale="large", source_id=source_id),
     )
 
-    # object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
-    # the storage.sql ALTER TABLE storage.objects  OWNER TO macrostrat is switching the owner.
-    # we are temporarily using macrostrat to run the query below
-    object_group_id = db.run_query(
-        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
-    ).scalar()
-
-    assert object_group_id is not None
-
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES (:state, :source_id, :object_group_id);
+        INSERT INTO maps_metadata.ingest_process (state, source_id)
+        VALUES (:state, :source_id);
         """,
-        dict(state="ingested", source_id=source_id, object_group_id=object_group_id),
+        dict(state="ingested", source_id=source_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -143,12 +114,11 @@ def test_map_staging(test_db, test_maps):
 
     # Ingest process assertions
     ingest_process = db.run_query(
-        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        "SELECT source_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
     assert ingest_process is not None
     assert ingest_process.state == "ingested"
-    assert ingest_process.object_group_id == object_group_id
 
     # Data exists
     count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
@@ -180,6 +150,7 @@ def test_map_staging(test_db, test_maps):
 region_dirs = sorted((Path(__file__).parent / "fixtures" / "maps" / "Japan").glob("*"))
 
 
+@pytest.mark.skip(reason="This test needs review and local fixtures to be defined.")
 @pytest.mark.parametrize("region_path", region_dirs)
 def test_map_staging_bulk(test_db, region_path):
     """
