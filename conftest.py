@@ -10,6 +10,8 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger, override_environment
 
 from macrostrat.schema_management.defs import test_database_cluster
+from sqlalchemy.orm import Session
+
 
 runner = CliRunner()
 
@@ -91,7 +93,7 @@ def env_config(request):
 
 # TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
-def db(env_config):
+def base_db(env_config):
     """The actually operational database for the current environment."""
 
     if env_config is None:
@@ -105,6 +107,12 @@ def db(env_config):
     db.run_sql("SET ROLE web_anon;")
 
     yield db
+
+
+@fixture(scope="class")
+def db(base_db):
+    with base_db.transaction(rollback=True):
+        yield base_db
 
 
 def load_config_module():
