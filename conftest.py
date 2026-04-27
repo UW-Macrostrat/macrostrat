@@ -92,7 +92,7 @@ def env_config(request):
 
 # TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
-def db(env_config):
+def env_db(env_config):
     """The actually operational database for the current environment."""
 
     if env_config is None:
@@ -110,10 +110,10 @@ def db(env_config):
     yield db
 
 
-# @fixture(scope="class")
-# def db(base_db):
-#     with base_db.transaction(rollback=True):
-#         yield base_db
+@fixture(scope="class")
+def db(env_db):
+    with env_db.transaction(rollback=True):
+        yield env_db
 
 
 def load_config_module():

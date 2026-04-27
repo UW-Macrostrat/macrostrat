@@ -18,7 +18,7 @@ __here__ = Path(__file__).parent
 test_cfg_file = __here__ / "macrostrat.test.toml"
 
 
-@fixture(scope="session")
+@fixture(scope="module")
 def test_cfg():
     import macrostrat.core.config as cfg
 

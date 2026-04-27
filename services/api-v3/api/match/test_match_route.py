@@ -10,9 +10,9 @@ from . import MatchQuery, router, setup_intervals
 
 
 @fixture(scope="module")
-def client(db):
+def client(env_db):
     # This helps make sure that the API v3 codebase gets the right database connection string
-    environ["MACROSTRAT_DATABASE_URL"] = raw_database_url(db.engine.url)
+    environ["MACROSTRAT_DATABASE_URL"] = raw_database_url(env_db.engine.url)
     test_app = FastAPI()
     test_app.include_router(router)
     return TestClient(test_app, raise_server_exceptions=True)
