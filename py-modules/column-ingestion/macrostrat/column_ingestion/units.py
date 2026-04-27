@@ -52,11 +52,15 @@ def rename_aliases(df, aliases):
 
 def get_units(data_file) -> {str: list[Unit]}:
     df = pl.read_excel(data_file, sheet_name="units")
+    return get_units_from_df(df)
 
+
+def get_units_from_df(df) -> {str: list[Unit]}:
     # Rename some columns
     df, warnings = rename_aliases(
         df,
         {
+            "pos": "position",
             "position": "b_pos",
             "bottom_position": "b_pos",
             "height": "b_pos",
