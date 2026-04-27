@@ -1,12 +1,12 @@
 import re
 from pathlib import Path
+from typing import Callable
 
 import geopandas as G
 import pandas as pd
 
 from macrostrat.core.database import get_database
 from macrostrat.utils import get_logger
-from typing import Callable
 
 log = get_logger(__name__)
 

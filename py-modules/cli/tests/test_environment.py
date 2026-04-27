@@ -1,6 +1,5 @@
 from pytest import mark
 
-
 # These environment checks require access to the live/canonical Macrostrat database.
 pytestmark = mark.requires_canonical_db
 

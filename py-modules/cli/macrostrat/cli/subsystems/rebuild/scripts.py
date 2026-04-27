@@ -1,17 +1,16 @@
 from psycopg2.sql import Identifier
 from rich.progress import Progress
 
+from macrostrat.cli.subsystems.rebuild.utils import (
+    copy_table_into_place,
+    here,
+    update_intervals_lookup_units,
+    update_timescale_lookup_units,
+    update_timescale_unit_intervals,
+    validate_counts,
+)
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
-
-from macrostrat.cli.subsystems.rebuild.utils import (
-    here,
-    validate_counts,
-    copy_table_into_place,
-    update_intervals_lookup_units,
-    update_timescale_unit_intervals,
-    update_timescale_lookup_units,
-)
 
 # ---------------------------------------------------------------------------
 # Scripts (unchanged logic, just consolidated)

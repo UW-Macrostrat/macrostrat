@@ -1,7 +1,8 @@
 from pathlib import Path
-from typer import Argument, Typer
-from .project_metadata import shanan_column_importer
 
+from typer import Argument, Typer
+
+from .project_metadata import shanan_column_importer
 
 app = Typer(
     no_args_is_help=True,

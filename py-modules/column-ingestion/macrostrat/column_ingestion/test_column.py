@@ -2,8 +2,10 @@
 Basic tests for the creation of Macrostrat columns.
 """
 
-from polars import read_csv
 from io import StringIO
+
+from polars import read_csv
+
 from .units import get_units_from_df
 
 # Wkt for a basic point-based stratigraphic column

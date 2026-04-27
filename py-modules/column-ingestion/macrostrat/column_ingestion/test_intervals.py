@@ -1,9 +1,10 @@
 """Test cases for intervals matching"""
 
 from dataclasses import dataclass
+
 from pytest import mark
 
-from .intervals import IntervalID, get_intervals, get_interval_from_text
+from .intervals import IntervalID, get_interval_from_text, get_intervals
 
 
 def test_get_intervals():

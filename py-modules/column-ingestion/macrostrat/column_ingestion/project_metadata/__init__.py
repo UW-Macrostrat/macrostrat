@@ -41,22 +41,22 @@ Usage:
   python macrostrat_import_3.py --mapping macrostrat_mapping_v3.json
 """
 
-import sys
-import re
-import json
 import argparse
-import os
 import hashlib
-from datetime import datetime, timezone
+import json
+import os
+import re
+import sys
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, ROUND_FLOOR
-from typing import Any, Dict, List, Optional, Tuple, Callable
+from datetime import datetime, timezone
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal, InvalidOperation
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import requests
 import psycopg2
-from macrostrat.core.database import get_database
+import requests
 from openpyxl import load_workbook
 
+from macrostrat.core.database import get_database
 
 # -----------------------------
 # Engine utilities
@@ -2495,6 +2495,7 @@ def write_strat_name_audit_files(
 # -----------------------------
 
 from pathlib import Path
+
 from typer import Argument, Option
 
 __here__ = Path(__file__).parent

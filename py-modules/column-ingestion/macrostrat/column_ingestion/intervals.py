@@ -1,6 +1,7 @@
 import re
-from dataclasses import dataclass, field
 from contextvars import ContextVar
+from dataclasses import dataclass, field
+
 from rich import print
 
 from .database import get_all_intervals

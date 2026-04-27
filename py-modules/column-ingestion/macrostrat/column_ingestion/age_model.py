@@ -1,6 +1,7 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from collections import defaultdict
+
 import numpy as N
 from rich import print
 

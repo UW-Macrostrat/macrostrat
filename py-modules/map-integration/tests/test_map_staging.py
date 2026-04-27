@@ -1,7 +1,7 @@
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from contextlib import contextmanager
 from psycopg2.sql import Identifier
 
 from macrostrat.map_integration.commands.ingest import ingest_map
@@ -38,7 +38,6 @@ __fixtures__ = Path(__file__).parent / "fixtures" / "maps"
 
 from shutil import unpack_archive
 from tempfile import TemporaryDirectory
-
 
 japan_map_files = (__fixtures__).glob("*.zip")
 

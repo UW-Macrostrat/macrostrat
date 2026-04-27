@@ -1,9 +1,10 @@
+from os import environ
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from macrostrat.database.transfer.utils import raw_database_url
-from os import environ
-from pytest import mark, fixture
+from pytest import fixture, mark
 
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.match_utils.test_match_strat_names import cases
 
 from . import MatchQuery, router, setup_intervals

@@ -1,5 +1,6 @@
 from rich.console import Console
 from typer import Option, Typer
+
 from macrostrat.core.database import get_database
 
 from .utils import grant_permissions

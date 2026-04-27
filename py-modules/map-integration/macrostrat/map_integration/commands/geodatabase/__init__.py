@@ -1,7 +1,7 @@
 from functools import lru_cache
+from json import loads
 from pathlib import Path
 from subprocess import check_output
-from json import loads
 
 
 @lru_cache

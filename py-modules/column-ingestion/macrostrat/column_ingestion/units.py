@@ -6,14 +6,14 @@ from sqlalchemy import and_
 from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
-from .lithologies import Lithology, process_liths_text, LithAbundance
 from .intervals import (
     Interval,
-    get_intervals,
     RelativeAge,
     get_interval_by_id,
     get_interval_from_text,
+    get_intervals,
 )
+from .lithologies import LithAbundance, Lithology, process_liths_text
 
 
 @dataclass

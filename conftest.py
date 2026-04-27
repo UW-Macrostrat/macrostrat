@@ -1,16 +1,15 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
+from os import environ
 from pathlib import Path
 
 from pytest import fixture, mark, skip
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
-from macrostrat.utils import get_logger, override_environment
-
 from macrostrat.schema_management.defs import test_database_cluster
-from os import environ
+from macrostrat.utils import get_logger, override_environment
 
 runner = CliRunner()
 
@@ -145,8 +144,8 @@ def empty_db(request):
 @fixture(scope="session")
 def test_db(request, empty_db: Database):
     """The database used for testing."""
-    from macrostrat.schema_management import apply_schema_for_environment
     from macrostrat.core.config import settings
+    from macrostrat.schema_management import apply_schema_for_environment
 
     _filter = lambda s, p: True
 

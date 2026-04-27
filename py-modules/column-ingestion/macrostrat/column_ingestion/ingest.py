@@ -3,6 +3,7 @@ from openpyxl import load_workbook
 from macrostrat.core.database import get_database
 from macrostrat.database import on_conflict
 
+from .age_model import build_age_model
 from .columns import (
     get_column_data,
     get_or_create_column,
@@ -12,7 +13,6 @@ from .columns import (
 from .database import get_or_create_project
 from .metadata import get_metadata
 from .units import get_units, write_units
-from .age_model import build_age_model
 
 
 def ingest_columns_from_file(data_file):
