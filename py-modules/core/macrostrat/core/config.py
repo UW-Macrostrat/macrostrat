@@ -67,6 +67,7 @@ class MacrostratConfig(Dynaconf):
         self.config_file = None
         if cfg is not None:
             self.config_file = Path(cfg)
+        self.environment = env
 
         # TODO: this enables sketchy behavior and tight coupling and should be removed.
         # However it is a useful hack for now

@@ -8,7 +8,6 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
 
 
 def is_unsafe_statement(s: str) -> bool:
@@ -77,27 +76,29 @@ def apply_schema_for_environment(
         )
 
 
-@contextmanager
-def planning_database(environment):
-    """Context manager to create a temporary database for planning schema changes"""
-    client = docker.from_env()
+from testcontainers.postgres import PostgresContainer
 
+
+@contextmanager
+def test_database_cluster(**kwargs):
+    """Context manager to create a temporary database cluster"""
+
+    client = docker.from_env()
     img_root = settings.srcroot / "base-images" / "database"
 
     # Build postgres pgaudit image
     img_tag = "macrostrat.local/database:latest"
-
     client.images.build(path=str(img_root), tag=img_tag)
 
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        _url = f"postgresql://postgres@localhost:{port}/postgres"
-        plan_db = Database(_url)
+    container = PostgresContainer(img_tag, **kwargs)
+    container.start()
+    try:
+        _url = container.get_connection_url()
+        db = Database(_url)
 
         # Optimize postgres for fast testing
         # TODO: this must be integrated with the database_cluster context manager
-        plan_db.run_sql(
+        db.run_sql(
             """
             SET fsync TO off;
             SET synchronous_commit TO off;
@@ -109,6 +110,16 @@ def planning_database(environment):
         """
         )
 
+        yield db
+    finally:
+        container.stop()
+
+
+@contextmanager
+def planning_database(environment, **kwargs):
+    """Context manager to create a temporary database for planning schema changes"""
+    # Spin up an image with this container
+    with test_database_cluster(**kwargs) as plan_db:
         apply_schema_for_environment(plan_db, environment)
         yield plan_db
 

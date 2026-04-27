@@ -9,6 +9,8 @@ from typer.testing import CliRunner
 from macrostrat.database import Database
 from macrostrat.utils import get_logger, override_environment
 
+from macrostrat.schema_management.defs import test_database_cluster
+
 runner = CliRunner()
 
 log = get_logger(__name__)
@@ -118,32 +120,17 @@ from testcontainers.postgres import PostgresContainer
 def empty_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
-    cfg = load_config_module().settings
     if request.config.getoption("--skip-test-database"):
         import pytest
 
         pytest.skip("skipping Docker test database")
 
-    # Spin up a docker container with a temporary database using the
-    # pg_database_container image
-
-    image = cfg.get("pg_database_container", "postgres:15")
-
-    postgres = PostgresContainer(image)
-    postgres.start()
-
-    def remove_container():
-        postgres.stop()
-
-    request.addfinalizer(remove_container)
-
-    url = postgres.get_connection_url()
-    db = Database(url)
-    yield db
+    with test_database_cluster() as db:
+        yield db
 
 
 @fixture(scope="session")
-def test_db(empty_db: Database):
+def temp_db(empty_db: Database):
     """The database used for testing."""
     from macrostrat.schema_management import apply_schema_for_environment
     from macrostrat.core.config import settings
