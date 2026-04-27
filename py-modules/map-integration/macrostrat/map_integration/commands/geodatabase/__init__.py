@@ -1,14 +1,19 @@
 from functools import lru_cache
 from pathlib import Path
+from subprocess import check_output
+from json import loads
 
 
 @lru_cache
 def get_vector_info(dataset: Path):
-    from osgeo import gdal, ogr
-
+    # from osgeo import gdal, ogr
     """Get information on fields and layers (high-level function roughly equivalent to ogrinfo)"""
-    ogr.UseExceptions()
-    return gdal.VectorInfo(str(dataset), format="json")
+    # ogr.UseExceptions()
+    # return gdal.VectorInfo(str(dataset), format="json")
+
+    cmd = ["ogrinfo", "-so", "-al", "-json", str(dataset)]
+    res = check_output(cmd, text=True)
+    return loads(res)
 
 
 def get_layer_names(ds: Path):

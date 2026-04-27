@@ -5,6 +5,7 @@ from pytest import fixture, mark
 from macrostrat.map_integration.commands.geodatabase import (
     apply_domains_to_fields,
     get_layer_info,
+    get_vector_info,
 )
 from macrostrat.map_integration.commands.ingest import create_dataframe_for_layer
 from macrostrat.map_integration.pipeline import ingestion_context
@@ -21,9 +22,7 @@ def gdb_fn():
 
 @mark.requires_gdal
 def test_get_geodatabase_domains(gdb_fn):
-    from osgeo import gdal, ogr
-
-    res = gdal.VectorInfo(str(gdb_fn), format="json")
+    res = get_vector_info(gdb_fn)
 
     lyr_name = "GB_UNIDAD_GEO_P"
 

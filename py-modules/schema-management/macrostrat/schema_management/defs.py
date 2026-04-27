@@ -8,7 +8,9 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.utils import get_logger
+
+log = get_logger(__name__)
 
 
 def is_unsafe_statement(s: str) -> bool:
@@ -77,38 +79,75 @@ def apply_schema_for_environment(
         )
 
 
+from testcontainers.postgres import PostgresContainer
+
+
 @contextmanager
-def planning_database(environment):
-    """Context manager to create a temporary database for planning schema changes"""
+def test_database_cluster(**kwargs):
+    """Context manager to create a temporary database cluster"""
+    should_build = kwargs.pop("build", False)
+    image_tag = kwargs.pop("image", "macrostrat.local/database:latest")
+    build_context = kwargs.pop("context", settings.srcroot / "base-images" / "database")
+    optimize = kwargs.pop("optimize", True)
+
+    if not optimize:
+        should_build = True
+
     client = docker.from_env()
+    # Check if image exists locally to avoid build
+    if not should_build:
+        try:
+            client.images.get(image_tag)
+            log.info(f"Using existing image {image_tag}")
+        except docker.errors.ImageNotFound:
+            should_build = True
 
-    img_root = settings.srcroot / "base-images" / "database"
+    if should_build:
+        # Build postgres pgaudit image
+        client.images.build(path=str(build_context), tag=image_tag)
 
-    # Build postgres pgaudit image
-    img_tag = "macrostrat.local/database:latest"
+    container = PostgresContainer(image_tag, **kwargs)
 
-    client.images.build(path=str(img_root), tag=img_tag)
+    if optimize:
+        container = optimize_for_testing(container)
+    container.start()
+    try:
+        _url = container.get_connection_url()
+        db = Database(_url)
+        yield db
+    finally:
+        container.stop()
 
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        _url = f"postgresql://postgres@localhost:{port}/postgres"
-        plan_db = Database(_url)
 
-        # Optimize postgres for fast testing
-        # TODO: this must be integrated with the database_cluster context manager
-        plan_db.run_sql(
-            """
-            SET fsync TO off;
-            SET synchronous_commit TO off;
-            SET full_page_writes TO off;
-            SET temp_buffers TO '16MB';
-            SET work_mem TO '64MB';
-            SET maintenance_work_mem TO '128MB';
-            SET autovacuum TO off;
-        """
+def optimize_for_testing(container: PostgresContainer):
+    configs = {
+        "synchronous_commit": "off",
+        "fsync": "off",
+        "wal_level": "minimal",
+        "max_wal_senders": "0",
+        "full_page_writes": "off",
+        "checkpoint_completion_target": "0.9",
+    }
+    cmd = "postgres"
+    for k, v in configs.items():
+        cmd += f" -c {k}={v}"
+
+    return (
+        container.with_kwargs(
+            tmpfs={
+                "/var/lib/postgresql/data": "rw",
+            }
         )
+        .with_command(cmd)
+        .with_env("POSTGRES_HOST_AUTH_METHOD", "trust")
+    )
 
+
+@contextmanager
+def planning_database(environment, **kwargs):
+    """Context manager to create a temporary database for planning schema changes"""
+    # Spin up an image with this container
+    with test_database_cluster(**kwargs) as plan_db:
         apply_schema_for_environment(plan_db, environment)
         yield plan_db
 

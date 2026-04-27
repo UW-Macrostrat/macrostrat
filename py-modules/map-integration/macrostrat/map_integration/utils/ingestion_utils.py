@@ -5,18 +5,28 @@ import geopandas as G
 import pandas as pd
 
 from macrostrat.core.database import get_database
+from macrostrat.utils import get_logger
+from typing import Callable
+
+log = get_logger(__name__)
 
 SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
 
+def default_filter(path: Path) -> bool:
+    """Define additional criteria for filtering GIS files."""
+    if path.stem.startswith("._"):
+        return False
+    return True
+
+
 def find_gis_files(
-    directory: Path, filter: str | None = None
+    directory: Path, filter: Callable | None = default_filter
 ) -> tuple[list[Path], list[Path]]:
     """
     Recursively find GIS files in a directory, or treat a single file/directory as a GIS dataset.
     """
     gis_files = []
-    excluded_files = []
 
     # If the given path is a single .gdb directory, just return it directly
     if directory.suffix == ".gdb" and directory.is_dir():
@@ -29,24 +39,17 @@ def find_gis_files(
         elif path.is_dir() and path.suffix == ".gdb":
             gis_files.append(path)
 
-    for gis_file in gis_files:
-        name = gis_file.name
-        if filter == "polymer":
-            if (
-                name.startswith("polymer")
-                and "_bbox" not in name
-                and "_legend" not in name
-            ):
-                continue
-            else:
-                excluded_files.append(gis_file)
-        elif filter == "ta1":
-            if "_bbox" not in name and "_legend" not in name:
-                continue
-            else:
-                excluded_files.append(gis_file)
+    if filter is not None:
+        filtered_gis_files = [f for f in gis_files if filter(f)]
+        excluded_files = [f for f in gis_files if not filter(f)]
+    else:
+        filtered_gis_files = gis_files
+        excluded_files = []
 
-    return gis_files, excluded_files
+    if len(excluded_files) > 0:
+        log.warning(f"Excluded {len(excluded_files)} files due to filter")
+
+    return filtered_gis_files, excluded_files
 
 
 def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
