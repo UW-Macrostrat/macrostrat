@@ -59,6 +59,18 @@ presents a broad list of management functionality for Macrostrat's system. **Sub
 This CLI is rapidly evolving so expect breakage! When in doubt run `make`, or ~equivalently
 `uv sync` to update your installation.
 
+## Testing
+
+The Macrostrat command line app exposes a configurable test suite under
+the `macrostrat test` command. It allows testing of both a "clean-room"
+database (constructed via Docker) and of processes that must be run against
+a live database with a full complement of data.
+
+`macrostrat test all` will run the full test suite. `make test` runs only
+the "clean-room" tests and is suitable for local development and CI environments.
+We will eventually load basic datasets (e.g., lithology, intervals) into the "clean-room"
+database to allow more rigorous testing.
+
 ## Documentation
 
 Documentation is a work in progress. We have starting points for:
