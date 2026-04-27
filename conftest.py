@@ -87,6 +87,9 @@ def env_config(request):
         # Print the current environment to the PyTest output
         log.info("Current env: %s", mod_instance.settings.env)
 
+        if mod_instance.settings.env is None:
+            skip("No environment configured")
+
         yield mod_instance.settings
 
 
@@ -173,7 +176,8 @@ def test_db(request, empty_db: Database):
 
     apply_schema_for_environment(
         empty_db,
-        env=settings.environment,
+        env=settings.env or "development",
         statement_filter=_filter,
+        suppress_logging=True,
     )
     return empty_db

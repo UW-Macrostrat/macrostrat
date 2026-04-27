@@ -460,7 +460,10 @@ def show_app_dir():
 
 
 @self_app.command()
-def state():
+def state(clear: bool = False):
+    if clear:
+        app.state.clear()
+
     """Show the current state of the application"""
     app.console.print(app.state.get())
 

@@ -52,12 +52,33 @@ def schema_dirs_for_environment(env: str):
         yield schema_dir / "local"
 
 
+from contextlib import contextmanager
+import logging
+
+
+@contextmanager
+def suppress_loggers(*loggers, level=logging.ERROR):
+    """Temporarily suppresses logs for a specific logger or the root logger."""
+    orig_level_map = {}
+    for logger_name in loggers:
+        logger = logging.getLogger(logger_name)
+        orig_level_map[logger_name] = logger.getEffectiveLevel()
+        logger.setLevel(level)
+    try:
+        yield
+    finally:
+        for logger_name, original_level in orig_level_map.items():
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(original_level)
+
+
 def apply_schema_for_environment(
     db: Database,
     env: str,
     *,
     recursive: bool = True,
     statement_filter=lambda s, p: True,
+    suppress_logging: bool = False,
     pattern: str = "*",
 ):
     if "*" not in pattern:
@@ -74,9 +95,16 @@ def apply_schema_for_environment(
 
         if len(fixtures) == 0:
             continue
-        db.run_fixtures(
-            fixtures, recursive=recursive, statement_filter=statement_filter
-        )
+        _suppressed_loggers = []
+        if suppress_logging:
+            _suppressed_loggers = [
+                "sqlalchemy.engine",
+                "macrostrat.database.utils",
+            ]
+        with suppress_loggers(*_suppressed_loggers):
+            db.run_fixtures(
+                fixtures, recursive=recursive, statement_filter=statement_filter
+            )
 
 
 from testcontainers.postgres import PostgresContainer

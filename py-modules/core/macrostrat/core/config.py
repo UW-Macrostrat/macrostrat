@@ -25,7 +25,7 @@ class BackendType(str, Enum):
 def get_default_environment():
     cfg = find_macrostrat_config()
     if cfg is None:
-        raise MacrostratError("Could not find macrostrat.toml")
+        return None
     return _all_environments(cfg)[0]
 
 
@@ -34,7 +34,6 @@ class MacrostratConfig(Dynaconf):
 
     config_file: Path
     srcroot: Path
-    environment: str
 
     def __init__(self):
 
@@ -44,17 +43,6 @@ class MacrostratConfig(Dynaconf):
             settings_files.append(cfg)
 
         env = getenv("MACROSTRAT_ENV")
-        if env is None:
-            env = get_default_environment()
-            if env is not None:
-                environ["MACROSTRAT_ENV"] = env
-
-        env = getenv("MACROSTRAT_ENV")
-        if env is None:
-            raise MacrostratError(
-                "MACROSTRAT_ENV must be defined for configuration loading to work"
-            )
-
         super().__init__(
             envvar_prefix="MACROSTRAT",
             environments=True,
@@ -63,11 +51,12 @@ class MacrostratConfig(Dynaconf):
             # We load dotenv files on our own
             load_dotenv=False,
         )
+        if not hasattr(self, "env"):
+            self.env = None
 
         self.config_file = None
         if cfg is not None:
             self.config_file = Path(cfg)
-        self.environment = env
 
         # TODO: this enables sketchy behavior and tight coupling and should be removed.
         # However it is a useful hack for now
@@ -196,8 +185,12 @@ environ["PG_DATABASE_CONTAINER"] = getattr(
 # Ideally we should be able to do this in the settings object
 settings.offline = getattr(settings, "offline", False)
 
+project_name = "macrostrat"
+if macrostrat_env is not None:
+    project_name = "macrostrat_" + macrostrat_env
 
-environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
+environ["COMPOSE_PROJECT_NAME"] = project_name
+settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 
 # Docker compose file
 compose_file = getattr(settings, "compose_file", None)
@@ -211,8 +204,6 @@ if compose_file is not None:
     environ["COMPOSE_FILE"] = str(compose_file)
 
 
-settings.project_name = environ["COMPOSE_PROJECT_NAME"]
-
 # A database connection string for MySQL
 # This should eventually become optional if it isn't already
 MYSQL_DATABASE = getattr(settings, "mysql_database", None)
@@ -222,7 +213,6 @@ if mapbox_token := getattr(settings, "mapbox_token", None):
 
 if secret_key := getattr(settings, "secret_key", None):
     environ["SECRET_KEY"] = secret_key
-
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 

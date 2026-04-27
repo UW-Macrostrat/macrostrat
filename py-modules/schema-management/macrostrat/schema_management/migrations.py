@@ -46,16 +46,17 @@ class ReadinessState(Enum):
 # based on set_env in macrostrat/cli/macrostrat/cli/entrypoint.py
 def _get_active_env() -> str:
     env = getattr(settings, "env", None)
+    state = None
     if not env and _app is not None:
-        env = getattr(getattr(_app, "settings", None), "env", None) or (
-            getattr(_app, "state", None).get().get("active_env")
-            if getattr(_app, "state", None)
-            else None
-        )
+        state_mgr = getattr(_app, "state", None)
+        if state_mgr is not None:
+            state = state_mgr.get()
+        if state is not None:
+            env = getattr(state, "active_env", None)
     if not env:
         env = environ.get("MACROSTRAT_ENV")
     env = (env or "dev").lower()
-    return _ENV_ALIASES.get(env, "dev")
+    return _ENV_ALIASES.get(env, "development")
 
 
 def _env_allows_migration(
