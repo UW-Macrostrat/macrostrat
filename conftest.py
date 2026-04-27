@@ -21,10 +21,10 @@ __here__ = Path(__file__).parent
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--skip-local-database",
+        "--skip-database",
         action="store_true",
         default=False,
-        help="skip test database creation",
+        help="skip local database creation",
     )
 
     parser.addoption(
@@ -43,6 +43,13 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="skip slow tests",
+    )
+
+    parser.addoption(
+        "--optimize-database",
+        action="store_true",
+        default=True,
+        help="optimize database for fast testing",
     )
 
 
@@ -122,17 +129,16 @@ def load_config_module():
     return mod_instance
 
 
-from testcontainers.postgres import PostgresContainer
-
-
 @fixture(scope="session")
 def empty_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
-    if request.config.getoption("--skip-local-database"):
+    if request.config.getoption("--skip-database"):
         skip("skipping Docker test database")
 
-    with test_database_cluster(username="macrostrat_admin") as db:
+    optimize = request.config.getoption("--optimize-database")
+
+    with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
         yield db
 
 
@@ -142,5 +148,33 @@ def test_db(request, empty_db: Database):
     from macrostrat.schema_management import apply_schema_for_environment
     from macrostrat.core.config import settings
 
-    apply_schema_for_environment(empty_db, env=settings.environment)
+    _filter = lambda s, p: True
+
+    if request.config.getoption("--optimize-database"):
+        # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
+        # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
+        # indexes, constraints, and permissions that are not necessary for mist tests.
+        def _filter(statement: str, path: Path):
+            stmt = statement.strip().lower()
+            if (
+                stmt.startswith("create index")
+                or stmt.startswith("create unique index")
+                or statement.startswith("alter index")
+            ):
+                return False
+
+            # Modify ownership of tables
+            if stmt.startswith("alter table") and "owner to" in stmt:
+                return False
+
+            if stmt.startswith("grant"):
+                return False
+
+            return True
+
+    apply_schema_for_environment(
+        empty_db,
+        env=settings.environment,
+        statement_filter=_filter,
+    )
     return empty_db
