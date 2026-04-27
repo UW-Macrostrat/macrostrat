@@ -52,8 +52,8 @@ def schema_dirs_for_environment(env: str):
         yield schema_dir / "local"
 
 
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
 
 
 @contextmanager
