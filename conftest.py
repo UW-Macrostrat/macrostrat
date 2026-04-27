@@ -10,8 +10,7 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger, override_environment
 
 from macrostrat.schema_management.defs import test_database_cluster
-from sqlalchemy.orm import Session
-
+from os import environ
 
 runner = CliRunner()
 
@@ -22,7 +21,7 @@ __here__ = Path(__file__).parent
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--skip-test-database",
+        "--skip-local-database",
         action="store_true",
         default=False,
         help="skip test database creation",
@@ -93,7 +92,7 @@ def env_config(request):
 
 # TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
-def base_db(env_config):
+def db(env_config):
     """The actually operational database for the current environment."""
 
     if env_config is None:
@@ -103,16 +102,18 @@ def base_db(env_config):
         skip("No database configured for this environment")
 
     db = Database(env_config.pg_database)
-    # Change the user on the connection
+
+    # Change the user on the connection to a read-only user
+    # TODO: verify read-only
     db.run_sql("SET ROLE web_anon;")
 
     yield db
 
 
-@fixture(scope="class")
-def db(base_db):
-    with base_db.transaction(rollback=True):
-        yield base_db
+# @fixture(scope="class")
+# def db(base_db):
+#     with base_db.transaction(rollback=True):
+#         yield base_db
 
 
 def load_config_module():
@@ -128,17 +129,15 @@ from testcontainers.postgres import PostgresContainer
 def empty_db(request):
     """A temporary, initially empty database for Macorstrat testing."""
     # Get the current settings without an override
-    if request.config.getoption("--skip-test-database"):
-        import pytest
-
-        pytest.skip("skipping Docker test database")
+    if request.config.getoption("--skip-local-database"):
+        skip("skipping Docker test database")
 
     with test_database_cluster() as db:
         yield db
 
 
 @fixture(scope="session")
-def temp_db(empty_db: Database):
+def test_db(request, empty_db: Database):
     """The database used for testing."""
     from macrostrat.schema_management import apply_schema_for_environment
     from macrostrat.core.config import settings
