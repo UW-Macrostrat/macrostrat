@@ -1,7 +1,7 @@
 CREATE SCHEMA maps_metadata;
-ALTER SCHEMA maps_metadata OWNER TO macrostrat_admin;
+ALTER SCHEMA maps_metadata OWNER TO macrostrat;
 
-CREATE FUNCTION maps_metadata.maps_metadata_update_trigger() RETURNS trigger
+CREATE OR REPLACE FUNCTION maps_metadata.maps_metadata_update_trigger() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -16,7 +16,7 @@ BEGIN
 	RETURN NEW;
 END;
 $$;
-ALTER FUNCTION maps_metadata.maps_metadata_update_trigger() OWNER TO macrostrat_admin;
+ALTER FUNCTION maps_metadata.maps_metadata_update_trigger() OWNER TO macrostrat;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
