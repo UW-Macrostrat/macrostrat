@@ -137,6 +137,7 @@ test_cases = [
 
 
 @mark.parametrize("test_case", test_cases)
-def test_process_liths_text(test_case):
+def test_process_liths_text(db, test_case):
+    # We have to depend on the database to get the IDs for the lithologies
     liths = process_liths_text(test_case.input)
     assert liths == test_case.output
