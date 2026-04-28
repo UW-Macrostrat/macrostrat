@@ -291,3 +291,19 @@ def provision(pattern: str = Argument("*")):
     )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()
+
+
+def view_filter(statement, params):
+    stmt = statement.lower().strip()
+    return stmt.startswith("create view") or stmt.startswith("create or replace view")
+
+
+@schema_app.command(rich_help_panel="Utils")
+def rebuild_views():
+    """Rebuild all views"""
+    db = get_database()
+    environment = settings.env
+
+    apply_schema_for_environment(db, environment, statement_filter=view_filter)
+
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
