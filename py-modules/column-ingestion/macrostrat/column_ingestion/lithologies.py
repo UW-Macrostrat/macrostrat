@@ -58,6 +58,71 @@ class LithsProcessor:
         self.liths = get_all_liths()
         self.atts = get_all_lith_attributes()
 
+    def __call__(self, lith_text: str | None, type=None) -> set[Lithology]:
+        return self.process_text(lith_text, type)
+
+    def process_text(self, lith: str | None, type=None) -> set[Lithology]:
+        # Process the lithology string to extract information about the rock type, grainsize, color, etc.
+        output = set()
+
+        if lith is None:
+            return output
+
+        split_lith = split_domains(lith)
+        for lith in split_lith:
+            res = self.process_domain(lith.strip().lower())
+            output.update(res)
+        for lith in output:
+            if lith.dom is None:
+                lith.dom = type
+
+        return output
+
+    def process_domain(self, lith_text) -> set[Lithology]:
+        """
+        Process a single lithology block that doesn't have a strong separator (semicolon) from other lithologies.
+        It looks for a single lithology and any attributes that are associated with it.
+        However, if multiple lithologies are found, the same attributes will be applied to all of them.
+        """
+
+        liths = set()
+        atts = set()
+
+        candidate_entities = [x.strip() for x in lith_text.split(",")]
+
+        for entity in candidate_entities:
+            # Start searching for attributes first, then lithologies
+            remaining_text = entity
+            while len(remaining_text) > 0:
+                att = None
+                lith, remaining_text1 = self.find_lith(remaining_text)
+                if lith is not None:
+                    # If we find a lithology that consumes the entire remaining text, we can stop searching for attributes and just add the lithology.
+                    # This handles special cases like "calcareous ooze" which is its own lithology, despite having the word "calcareous" which is also an attribute.
+                    liths.add(lith)
+                    remaining_text = remaining_text1
+                else:
+                    # Otherwise, we search for attributes.
+                    att, remaining_text0 = self.find_lith_attribute(remaining_text)
+
+                    remaining_text = remaining_text0
+                    if att is not None:
+                        atts.add(att)
+                # Now search for lithologies. If we find one, we reset the attribute list.
+                lith, remaining_text = self.find_lith(remaining_text)
+                if lith is None and att is None:
+                    # If we can't find a lithology or attribute, we advance to the next word to continue the search
+                    remaining_text = " ".join(remaining_text.split()[1:])
+                elif lith is not None:
+                    if len(atts) > 0:
+                        lith.attributes = atts
+                        atts = set()  # reset attributes after applying to a lithology
+                    liths.add(lith)
+
+            # Once we've consumed all text in this entity, we can move to the next entity
+
+        return liths
+
     def match_lith(self, name) -> Lithology | None:
         return _match_target(name, self.liths)
 
@@ -138,72 +203,6 @@ def split_domains(text) -> list[str]:
     for split_word in split_words:
         text = text.replace(f" {split_word} ", ";")
     return text.split(";")
-
-
-def process_liths_text(lith: str | None, type=None) -> set[Lithology]:
-    # Process the lithology string to extract information about the rock type, grainsize, color, etc.
-    output = set()
-
-    if lith is None:
-        return output
-
-    split_lith = split_domains(lith)
-    for lith in split_lith:
-        res = process_lith_domain(lith.strip().lower())
-        output.update(res)
-    for lith in output:
-        if lith.dom is None:
-            lith.dom = type
-
-    return output
-
-
-def process_lith_domain(lith_text) -> set[Lithology]:
-    """
-    This function processes a single lithology block that doesn't have a strong separator (semicolon) from other lithologies.
-    It looks for a single lithology and any attributes that are associated with it.
-    However, if multiple lithologies are found, the same attributes will be applied to all of them.
-    """
-
-    liths = set()
-    atts = set()
-
-    candidate_entities = [x.strip() for x in lith_text.split(",")]
-
-    for entity in candidate_entities:
-        # Start searching for attributes first, then lithologies
-        remaining_text = entity
-        while len(remaining_text) > 0:
-            att = None
-            lith, remaining_text1 = liths_processor.find_lith(remaining_text)
-            if lith is not None:
-                # If we find a lithology that consumes the entire remaining text, we can stop searching for attributes and just add the lithology.
-                # This handles special cases like "calcareous ooze" which is its own lithology, despite having the word "calcareous" which is also an attribute.
-                liths.add(lith)
-                remaining_text = remaining_text1
-            else:
-                # Otherwise, we search for attributes.
-                att, remaining_text0 = liths_processor.find_lith_attribute(
-                    remaining_text
-                )
-
-                remaining_text = remaining_text0
-                if att is not None:
-                    atts.add(att)
-            # Now search for lithologies. If we find one, we reset the attribute list.
-            lith, remaining_text = liths_processor.find_lith(remaining_text)
-            if lith is None and att is None:
-                # If we can't find a lithology or attribute, we advance to the next word to continue the search
-                remaining_text = " ".join(remaining_text.split()[1:])
-            elif lith is not None:
-                if len(atts) > 0:
-                    lith.attributes = atts
-                    atts = set()  # reset attributes after applying to a lithology
-                liths.add(lith)
-
-        # Once we've consumed all text in this entity, we can move to the next entity
-
-    return liths
 
 
 class MultipleLithologiesError(ValueError):

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from pytest import mark
 
-from .lithologies import LithAtt, Lithology, process_liths_text
+from .lithologies import LithAtt, Lithology, LithsProcessor
 
 
 @dataclass
@@ -135,9 +135,11 @@ test_cases = [
     ),
 ]
 
+processor = LithsProcessor()
+
 
 @mark.parametrize("test_case", test_cases)
 def test_process_liths_text(db, test_case):
     # We have to depend on the database to get the IDs for the lithologies
-    liths = process_liths_text(test_case.input)
+    liths = processor.process_text(test_case.input)
     assert liths == test_case.output

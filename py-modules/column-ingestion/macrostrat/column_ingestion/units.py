@@ -13,7 +13,7 @@ from .intervals import (
     get_interval_from_text,
     get_intervals,
 )
-from .lithologies import LithAbundance, Lithology, process_liths_text
+from .lithologies import LithAbundance, Lithology, LithsProcessor
 
 
 @dataclass
@@ -167,11 +167,12 @@ def prepare_column_units(df) -> list[Unit]:
             print_list(col, lithologies)
 
     res = []
+    liths_processor = LithsProcessor()
     for row in df.iter_rows(named=True):
         lith = row.get("lithology")
-        liths = process_liths_text(lith, LithAbundance.DOMINANT)
+        liths = liths_processor(lith, LithAbundance.DOMINANT)
         # Process minor lithologies if they are present
-        liths |= process_liths_text(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
+        liths |= liths_processor(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
 
         unit = Unit(
             section_id=row.get("section_id"),
