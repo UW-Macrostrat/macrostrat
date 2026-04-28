@@ -1,18 +1,25 @@
+from os import environ
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pytest import mark
+from pytest import fixture, mark
 
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.match_utils.test_match_strat_names import cases
 
 from . import MatchQuery, router, setup_intervals
 
-test_app = FastAPI()
-test_app.include_router(router)
 
-client = TestClient(test_app, raise_server_exceptions=True)
+@fixture(scope="module")
+def client(env_db):
+    # This helps make sure that the API v3 codebase gets the right database connection string
+    environ["MACROSTRAT_DATABASE_URL"] = raw_database_url(env_db.engine.url)
+    test_app = FastAPI()
+    test_app.include_router(router)
+    return TestClient(test_app, raise_server_exceptions=True)
 
 
-def test_match_units_no_params():
+def test_match_units_no_params(client):
     response = client.get("/strat-names")
     assert response.status_code == 422  # Missing required parameters
     data = response.json()
@@ -20,7 +27,7 @@ def test_match_units_no_params():
 
 
 @mark.parametrize("case", cases)
-def test_basic_match_units(case):
+def test_basic_match_units(client, case):
     response = client.get(
         "/strat-names",
         params={
@@ -42,7 +49,7 @@ def test_basic_match_units(case):
     assert best_match["strat_name_id"] == case.strat_name_id
 
 
-def test_no_match_units():
+def test_no_match_units(client):
     response = client.get(
         "/strat-names",
         params={
@@ -59,7 +66,7 @@ def test_no_match_units():
     assert len(results[0]["matches"]) == 0
 
 
-def test_multi_match_units():
+def test_multi_match_units(client):
     response = client.post(
         "/strat-names",
         json=[
@@ -92,7 +99,7 @@ def test_multi_match_units():
 # Neoproterozoic
 
 
-def test_match_units_ambiguous_column():
+def test_match_units_ambiguous_column(client):
     response = client.get(
         "/strat-names",
         params={
@@ -120,7 +127,7 @@ pos = [-105.6, 40.9]  # Near front range of Colorado
 # Triassic
 
 
-def test_match_units_time_limited():
+def test_match_units_time_limited(client):
     response = client.get(
         "/strat-names",
         params={
@@ -144,7 +151,7 @@ def test_match_units_time_limited():
     assert best_match["strat_name_id"] == 981
 
 
-def test_match_units_wrong_time_period():
+def test_match_units_wrong_time_period(client):
     response = client.get(
         "/strat-names",
         params={
@@ -179,7 +186,7 @@ def test_age_constraints(db):
     assert age_range.t_age == 200.0
 
 
-def test_age_constraints_interval():
+def test_age_constraints_interval(client):
     response = client.get(
         "/strat-names",
         params={
@@ -206,7 +213,7 @@ def test_age_constraints_interval():
     assert best_match["b_age"] <= 260.0
 
 
-def test_invalid_age_constraints():
+def test_invalid_age_constraints(client):
     response = client.get(
         "/strat-names",
         params={
@@ -227,7 +234,7 @@ def test_invalid_age_constraints():
     assert any("Inconsistent age constraints" in msg["message"] for msg in messages)
 
 
-def test_match_types():
+def test_match_types(client):
     response = client.get(
         "/strat-names",
         params={

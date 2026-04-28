@@ -1,14 +1,14 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
+from os import environ
 from pathlib import Path
 
-import docker
 from pytest import fixture, mark, skip
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster import database_cluster
+from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
 runner = CliRunner()
@@ -20,10 +20,10 @@ __here__ = Path(__file__).parent
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--skip-test-database",
+        "--skip-database",
         action="store_true",
         default=False,
-        help="skip test database creation",
+        help="skip local database creation",
     )
 
     parser.addoption(
@@ -42,6 +42,13 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="skip slow tests",
+    )
+
+    parser.addoption(
+        "--optimize-database",
+        action="store_true",
+        default=True,
+        help="optimize database for fast testing",
     )
 
 
@@ -80,6 +87,9 @@ def env_config(request):
         # Print the current environment to the PyTest output
         log.info("Current env: %s", mod_instance.settings.env)
 
+        if mod_instance.settings.env is None:
+            skip("No environment configured")
+
         yield mod_instance.settings
 
 
@@ -91,7 +101,7 @@ def env_config(request):
 
 # TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
-def db(env_config):
+def env_db(env_config):
     """The actually operational database for the current environment."""
 
     if env_config is None:
@@ -101,10 +111,18 @@ def db(env_config):
         skip("No database configured for this environment")
 
     db = Database(env_config.pg_database)
-    # Change the user on the connection
-    # db.run_sql("SET ROLE macrostrat_reader;")
+
+    # Change the user on the connection to a read-only user
+    # TODO: verify read-only
+    db.run_sql("SET ROLE web_anon;")
 
     yield db
+
+
+@fixture(scope="class")
+def db(env_db):
+    with env_db.transaction(rollback=True):
+        yield env_db
 
 
 def load_config_module():
@@ -113,43 +131,53 @@ def load_config_module():
     return mod_instance
 
 
-@fixture()
-def cfg():
-    cfg_file = __here__ / "macrostrat" / "cli" / "tests" / "macrostrat.test.toml"
-    with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
-        mod_instance = load_config_module()
+@fixture(scope="session")
+def empty_db(request):
+    """A temporary, initially empty database for Macorstrat testing."""
+    # Get the current settings without an override
+    if request.config.getoption("--skip-database"):
+        skip("skipping Docker test database")
 
-        assert cfg_file == mod_instance.settings.config_file
-        yield mod_instance.settings
+    optimize = request.config.getoption("--optimize-database")
+
+    with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
+        yield db
 
 
 @fixture(scope="session")
-def test_db(request):
-    """A temporary, initially empty database for Macorstrat testing."""
-    # Get the current settings without an override
-    cfg = load_config_module().settings
-    if request.config.getoption("--skip-test-database"):
-        import pytest
+def test_db(request, empty_db: Database):
+    """The database used for testing."""
+    from macrostrat.core.config import settings
+    from macrostrat.schema_management import apply_schema_for_environment
 
-        pytest.skip("skipping Docker test database")
+    _filter = lambda s, p: True
 
-    # Spin up a docker container with a temporary database using the
-    # pg_database_container image
+    if request.config.getoption("--optimize-database"):
+        # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
+        # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
+        # indexes, constraints, and permissions that are not necessary for mist tests.
+        def _filter(statement: str, path: Path):
+            stmt = statement.strip().lower()
+            if (
+                stmt.startswith("create index")
+                or stmt.startswith("create unique index")
+                or statement.startswith("alter index")
+            ):
+                return False
 
-    image = cfg.get("pg_database_container", "postgres:15")
+            # Modify ownership of tables
+            if stmt.startswith("alter table") and "owner to" in stmt:
+                return False
 
-    client = docker.from_env()
+            if stmt.startswith("grant"):
+                return False
 
-    img_root = cfg.srcroot / "base-images" / "database"
+            return True
 
-    # Build postgres pgaudit image
-    img_tag = "macrostrat-local-database:latest"
-
-    client.images.build(path=str(img_root), tag=img_tag)
-
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        url = f"postgresql://postgres@localhost:{port}/postgres"
-        db = Database(url)
-        yield db
+    apply_schema_for_environment(
+        empty_db,
+        env=settings.env or "development",
+        statement_filter=_filter,
+        suppress_logging=True,
+    )
+    return empty_db

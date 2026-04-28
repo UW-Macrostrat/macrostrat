@@ -59,6 +59,59 @@ presents a broad list of management functionality for Macrostrat's system. **Sub
 This CLI is rapidly evolving so expect breakage! When in doubt run `make`, or ~equivalently
 `uv sync` to update your installation.
 
+## Testing
+
+The `macrostrat test` command is a thin wrapper around `pytest`.
+The `all` subcommand forwards extra arguments directly to `pytest`, so you can
+mix standard pytest flags (`-x`, `-k`, `-m`, etc.) with Macrostrat-specific options
+defined in `conftest.py`.
+
+### Test modes
+
+- **Environment/conformance tests** use the `env_config`, `env_db`, and `db` fixtures.
+  They target a configured Macrostrat environment from your `macrostrat.toml`.
+- **Clean-room database tests** use `empty_db` and `test_db`.
+  They create a temporary PostgreSQL cluster, apply schema, and run tests against it.
+- **Unit-style tests** do not require either database fixture.
+
+### Macrostrat-specific pytest options
+
+- `--skip-env`: skip environment-backed tests that require `env_config`/`env_db`/`db`. This is the default
+  for CI runs.
+- `--env ENV`: override the active Macrostrat environment for the test run.
+- `--skip-database`: skip creation of the temporary clean-room database.
+- `--skip-slow`: skip tests marked `@pytest.mark.slow`.
+- `--optimize-database`: (on by default) enable faster schema setup for clean-room tests by skipping
+  non-essential statements (indexes, grants, and ownership changes).
+
+### Fixture behaviors
+
+- `env_db` connects to the database for the active environment, then sets `ROLE web_anon` to ensure that tests are read-only.
+- `db` wraps each test class in a transaction and rolls it back. Environment-backed tests should
+  not change the database so this is purely a precautionary measure.
+- `test_db` applies schema for the current environment. with transactional rollback as well.
+
+### Common commands
+
+```bash
+# Full suite (environment + clean-room + unit tests)
+macrostrat test all
+
+# Local/CI-friendly run without environment-backed tests (same intent as `make test`)
+macrostrat test all --skip-env -x -s
+
+# Focus on fast tests only
+macrostrat test all --skip-env --skip-database --skip-slow
+
+# Target a specific environment for conformance tests
+macrostrat test all --env development
+```
+
+For marker-based filtering, the repository also defines `docker` and `requires_gdal`
+pytest markers in `pyproject.toml`.
+
+
+
 ## Documentation
 
 Documentation is a work in progress. We have starting points for:

@@ -1,7 +1,9 @@
 from openpyxl import load_workbook
 
 from macrostrat.core.database import get_database
+from macrostrat.database import on_conflict
 
+from .age_model import build_age_model
 from .columns import (
     get_column_data,
     get_or_create_column,
@@ -62,5 +64,8 @@ def ingest_columns_from_file(data_file):
             for unit in col.units:
                 unit.col_id = col_id
                 unit.section_id = section_id
-            write_units(db, col.units)
+            units = write_units(db, col.units)
+
+            build_age_model(db, units)
+
         db.session.commit()

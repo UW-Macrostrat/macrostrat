@@ -900,7 +900,7 @@ CREATE TABLE macrostrat.cols (
   col_type macrostrat.cols_col_type NOT NULL,
   col_position macrostrat.cols_col_position NOT NULL,
   col numeric(6,2) NOT NULL,
-  col_name character varying(75) NOT NULL,
+  col_name text NOT NULL,
   lat numeric(8,5) NOT NULL,
   lng numeric(8,5) NOT NULL,
   col_area double precision NOT NULL,
@@ -1749,9 +1749,9 @@ CREATE TABLE macrostrat.sections (
     id bigint NOT NULL,
     col_id integer NOT NULL,
     fo integer DEFAULT 0 NOT NULL,
-    fo_h smallint NOT NULL,
     lo integer DEFAULT 0 NOT NULL,
-    lo_h smallint NOT NULL,
+    fo_h smallint,
+    lo_h smallint,
     CONSTRAINT idx_44157294_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.sections OWNER TO macrostrat;
@@ -1833,14 +1833,14 @@ ALTER TABLE macrostrat.strat_names_meta ADD CONSTRAINT strat_names_meta_refs_fk
 
 CREATE TABLE macrostrat.strat_names (
     id integer NOT NULL,
-    old_id integer NOT NULL,
     concept_id integer,  -- TODO: Should be set NOT NULL in future
     strat_name character varying(75) DEFAULT NULL::character varying,
     rank macrostrat.strat_names_rank,
-    old_strat_name_id integer NOT NULL,
     ref_id integer,
     places text,
-    orig_id integer NOT NULL,
+    old_id integer,
+    old_strat_name_id integer,
+    orig_id integer,
     CONSTRAINT idx_44157311_primary PRIMARY KEY (id)
 );
 ALTER TABLE macrostrat.strat_names OWNER TO macrostrat_admin;
@@ -1902,7 +1902,7 @@ CREATE TABLE macrostrat.strat_names_places (
 ALTER TABLE macrostrat.strat_names_places OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.strat_tree (
-    id integer,
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     parent integer,
     rel macrostrat.strat_tree_rel,
     child integer,
@@ -2092,15 +2092,17 @@ CREATE TABLE macrostrat.unit_boundaries (
     t1 integer NOT NULL,
     t1_prop numeric(6,5) NOT NULL,
     t1_age numeric(8,4) NOT NULL,
-    unit_id integer NOT NULL,
-    unit_id_2 integer NOT NULL,
+    unit_id integer,
+    unit_id_2 integer,
     section_id integer NOT NULL,
     boundary_position numeric(7,3) DEFAULT NULL::numeric,
     boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
     boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
-    ref_id integer DEFAULT 217 NOT NULL
+    ref_id integer DEFAULT 217 NOT NULL,
+    -- At least one of unit_id and unit_id_2 need to be filled
+    CHECK ((unit_id IS NOT NULL) OR (unit_id_2 IS NOT NULL))
 );
 ALTER TABLE macrostrat.unit_boundaries OWNER TO macrostrat;
 
@@ -2513,14 +2515,14 @@ CREATE TABLE macrostrat.units (
   color macrostrat.units_color NOT NULL,
   outcrop macrostrat.units_outcrop NOT NULL,
   fo integer DEFAULT 0 NOT NULL,
-  fo_h smallint DEFAULT '0'::smallint NOT NULL,
   lo integer DEFAULT 0 NOT NULL,
-  lo_h smallint DEFAULT '0'::smallint NOT NULL,
+  fo_h smallint,
+  lo_h smallint,
   position_bottom numeric(7,3) NOT NULL,
   position_top numeric(7,3) NOT NULL,
-  max_thick numeric(7,2) NOT NULL,
-  min_thick numeric(7,2) NOT NULL,
-  section_id integer DEFAULT 0 NOT NULL,
+  max_thick numeric(7,2),
+  min_thick numeric(7,2),
+  section_id integer, -- TODO: re-add this NOT NULL constraint, but without a default value
   col_id integer NOT NULL,
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157375_primary PRIMARY KEY (id),

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -33,172 +34,48 @@ def test_get_database(test_db):
     assert db1 is db
 
 
-"""
-@pytest.fixture(scope="session", autouse=True)
-def allow_macrostrat_login():
-    super_engine = create_engine("postgresql://postgres@localhost:54884/postgres?sslmode=disable")
-    with super_engine.connect() as conn:
-        conn.execute(text("ALTER ROLE macrostrat LOGIN"))
-        conn.commit()
+__fixtures__ = Path(__file__).parent / "fixtures" / "maps"
+
+from shutil import unpack_archive
+from tempfile import TemporaryDirectory
+
+japan_map_files = (__fixtures__).glob("*.zip")
+
+ARCHIVE_SUFFIXES = (".zip", ".tar.gz", ".tar.bz2", ".tgz")
 
 
-
-@pytest.fixture
-def db_as_macrostrat(allow_macrostrat_login):
-    # Adjust to match your test DB port
-    url = "postgresql://macrostrat@localhost:54884/macrostrat?sslmode=disable"
-    engine = create_engine(url)
-    db = Database(engine)
-    yield db
-    engine.dispose()"""
-
-
-@pytest.fixture
-def test_maps():
-    return {
-        "slug": "test_map",
-        "data_path": Path(__file__).parent / "fixtures" / "maps" / "Itaete",
-        "name": "Test Map",
-        "filter": None,
-    }
+@contextmanager
+def extracted_path(path: Path):
+    """If needed, unzips test data to temporary directories for working with on import"""
+    # Unzip the files to temporary directories, and yield temporary paths
+    if path.is_file() and path.suffix in ARCHIVE_SUFFIXES:
+        with TemporaryDirectory() as tmpdir:
+            unpack_archive(path, tmpdir)
+            yield Path(tmpdir)
+    else:
+        yield path
 
 
-def test_map_staging(test_db, test_maps):
+@pytest.mark.parametrize("region_path", japan_map_files)
+def test_map_staging(test_db, region_path):
     """
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = test_db
-    slug = test_maps["slug"]
-    data_path = test_maps["data_path"]
-    name = test_maps["name"]
-    filter = test_maps["filter"]
-
-    print(f"Ingesting {slug} from {data_path}")
-
-    gis_files, excluded_files = find_gis_files(Path(data_path), filter=filter)
-    if not gis_files:
-        raise ValueError(f"No GIS files found in {data_path}")
-
-    print(f"Found {len(gis_files)} GIS file(s)")
-    for path in gis_files:
-        print(f"  ✓ {path}")
-
-    if excluded_files:
-        print(f"Excluded {len(excluded_files)} file(s) due to filter:")
-        for path in excluded_files:
-            print(f"  ⚠️ {path}")
-
-    # Ingest
-    ingest_map(slug, gis_files, if_exists="replace")
-
-    source_id = db.run_query(
-        "SELECT source_id FROM maps.sources WHERE slug = :slug",
-        dict(slug=slug),
-    ).scalar()
-
-    if source_id is None:
-        raise RuntimeError(f"Could not find source for slug {slug}")
-
-    if name:
-        db.run_sql(
-            "UPDATE maps.sources SET name = :name WHERE source_id = :source_id",
-            dict(name=name, source_id=source_id),
-        )
-
-    db.run_sql(
-        "UPDATE maps.sources SET scale = :scale WHERE source_id = :source_id",
-        dict(scale="large", source_id=source_id),
-    )
-
-    # object_group_id is a foreign key into the storage schema where the curr user postgres does not have access to.
-    # the storage.sql ALTER TABLE storage.objects  OWNER TO macrostrat is switching the owner.
-    # we are temporarily using macrostrat to run the query below
-    object_group_id = db.run_query(
-        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
-    ).scalar()
-
-    assert object_group_id is not None
-
-    db.run_sql(
-        """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES (:state, :source_id, :object_group_id);
-        """,
-        dict(state="ingested", source_id=source_id, object_group_id=object_group_id),
-    )
-
-    map_info = get_map_info(db, slug)
-    _prepare_fields(map_info)
-    create_rgeom(map_info)
-    create_webgeom(map_info)
-
-    # Metadata assertions
-    row = db.run_query(
-        "SELECT name, scale FROM maps.sources WHERE source_id = :source_id",
-        dict(source_id=source_id),
-    ).fetchone()
-    assert row is not None
-    assert row.name == name
-    assert row.scale == "large"
-
-    # Ingest process assertions
-    ingest_process = db.run_query(
-        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
-        dict(source_id=source_id),
-    ).fetchone()
-    assert ingest_process is not None
-    assert ingest_process.state == "ingested"
-    assert ingest_process.object_group_id == object_group_id
-
-    # Data exists
-    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
-    assert count > 0
-
-    # Geometry column assertions
-    rgeom = db.run_query(
-        """
-        SELECT rgeom FROM maps.sources WHERE slug = :slug
-        """,
-        dict(slug=slug),
-    ).fetchone()
-    assert rgeom is not None
-
-    web_geom = db.run_query(
-        """
-        SELECT web_geom FROM maps.sources WHERE slug = :slug
-        """,
-        dict(slug=slug),
-    ).fetchone()
-    assert web_geom is not None
-
-    print("All tests have passed the map ingestion staging test suite!")
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-region_dirs = sorted((Path(__file__).parent / "fixtures" / "maps" / "Japan").glob("*"))
-
-
-@pytest.mark.parametrize("region_path", region_dirs)
-def test_map_staging_bulk(test_db, region_path):
-    """
-    Ingest a map, update metadata, prepare fields, and build geometries.
-    """
-    db = test_db
-    slug = f"test_{region_path.name.lower()}"
-    name = region_path.name
+    slug = f"test_{region_path.stem.lower()}"
+    name = region_path.stem
     data_path = region_path
     print(f"\n🚀 Ingesting map for region: {name} at {data_path}")
 
-    gis_files, excluded_files = find_gis_files(data_path, filter=lambda p: True)
-    assert gis_files, f"No GIS files found for {region_path}"
+    with extracted_path(data_path) as data_path:
+        gis_files, excluded_files = find_gis_files(data_path)
+        assert gis_files, f"No GIS files found for {region_path}"
 
-    for path in gis_files:
-        print(f"  ✓ {path}")
+        for path in gis_files:
+            print(f"  ✓ {path}")
 
-    # Ingest
-    ingest_map(slug, gis_files, if_exists="replace")
+        # Ingest
+        ingest_map(slug, gis_files, if_exists="replace")
 
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
@@ -219,18 +96,12 @@ def test_map_staging_bulk(test_db, region_path):
         dict(scale="large", source_id=source_id),
     )
 
-    object_group_id = db.run_query(
-        "INSERT INTO storage.object_group DEFAULT VALUES RETURNING id"
-    ).scalar()
-
-    assert object_group_id is not None
-
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, object_group_id)
-        VALUES (:state, :source_id, :object_group_id);
+        INSERT INTO maps_metadata.ingest_process (state, source_id)
+        VALUES (:state, :source_id);
         """,
-        dict(state="ingested", source_id=source_id, object_group_id=object_group_id),
+        dict(state="ingested", source_id=source_id),
     )
 
     map_info = get_map_info(db, slug)
@@ -249,12 +120,11 @@ def test_map_staging_bulk(test_db, region_path):
 
     # Ingest process assertions
     ingest_process = db.run_query(
-        "SELECT source_id, object_group_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
+        "SELECT source_id, state FROM maps_metadata.ingest_process WHERE source_id = :source_id",
         dict(source_id=source_id),
     ).fetchone()
     assert ingest_process is not None
     assert ingest_process.state == "ingested"
-    assert ingest_process.object_group_id == object_group_id
 
     # Data exists
     count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()

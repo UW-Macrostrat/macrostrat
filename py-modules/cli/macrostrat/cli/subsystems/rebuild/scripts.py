@@ -1,277 +1,124 @@
-from pathlib import Path
-
 from psycopg2.sql import Identifier
-from rich.console import Console
-from rich.progress import Progress, track
+from rich.progress import Progress
 
-from macrostrat.app_frame import Subsystem
+from macrostrat.cli.subsystems.rebuild.utils import (
+    copy_table_into_place,
+    here,
+    update_intervals_lookup_units,
+    update_timescale_lookup_units,
+    update_timescale_unit_intervals,
+    validate_counts,
+)
 from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
-
-here = Path(__file__).parent
-console = Console()
-
-
-# ---------------------------------------------------------------------------
-# Shared helpers (from lookup_units.py)
-# ---------------------------------------------------------------------------
-
-
-def grant_permissions(db):
-    """Re-grant read permissions to rockd_reader after any rebuild."""
-    db.run_sql(
-        """
-        GRANT CONNECT ON DATABASE macrostrat TO rockd_reader;
-        GRANT USAGE ON SCHEMA macrostrat TO rockd_reader;
-        GRANT USAGE ON SCHEMA public TO rockd_reader;
-        GRANT USAGE ON SCHEMA topology TO rockd_reader;
-
-        GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO rockd_reader;
-        GRANT SELECT ON ALL TABLES IN SCHEMA public TO rockd_reader;
-        GRANT SELECT ON ALL TABLES IN SCHEMA topology TO rockd_reader;
-        """
-    )
-
-
-def validate_counts(db):
-    data = db.run_query(
-        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_unit_attrs_api_new) lookup_units_count FROM units"
-    ).fetchone()
-    if data.units_count != data.lookup_units_count:
-        raise ValueError(
-            "Inconsistent units count in lookup_unit_attrs_api_new table", data
-        )
-    else:
-        print(
-            f"""Validation successful:
-units:                 {data.units_count} rows
-lookup_unit_attrs_api: {data.lookup_units_count} rows
-"""
-        )
-
-
-def copy_table_into_place(
-    db, table_name, *, new_table_name=None, old_table_name=None, schema="macrostrat"
-):
-    if new_table_name is None:
-        new_table_name = table_name + "_new"
-    if old_table_name is None:
-        old_table_name = table_name + "_old"
-
-    db.run_sql(
-        """
-        TRUNCATE TABLE {table};
-        INSERT INTO {table} SELECT * FROM {new_table};
-        DROP TABLE IF EXISTS {new_table};
-        DROP TABLE IF EXISTS {old_table};
-        """,
-        dict(
-            table=Identifier(schema, table_name),
-            new_table=Identifier(schema, new_table_name),
-            old_table=Identifier(schema, old_table_name),
-        ),
-    )
-
-
-def update_intervals_lookup_units(db, *, where_clauses: list[str] = None, **params):
-    """Internal version of interval update method which allows more flexible integration
-    with different timescales and fields. This is primarily used to allow the lookup_intervals
-    update to proceed along similar lines to lookup_units.
-    """
-    if where_clauses is None:
-        where_clauses = [
-            "t.b_age > i.age_top",
-            "t.b_age <= i.age_bottom",
-            "t.t_age < i.age_bottom",
-            "t.t_age >= i.age_top",
-        ]
-
-    fields = []
-    if "interval_name_field" in params:
-        fields.append("{interval_name_field} = i.interval_name")
-    if "interval_id_field" in params:
-        fields.append("{interval_id_field} = i.id")
-
-    sql = """
-          WITH ints AS (
-              SELECT i.id,
-                  interval_name,
-                  age_bottom,
-                  age_top
-              FROM macrostrat.intervals i
-              JOIN macrostrat.timescales_intervals ON i.id = interval_id
-              JOIN macrostrat.timescales ON timescale_id = macrostrat.timescales.id
-              WHERE timescale = :timescale
-          )
-          UPDATE {table} t SET
-              ::fields
-          FROM ints i
-          """
-
-    sql = sql.replace("::fields", ",\n".join(fields))
-
-    if len(where_clauses) > 0:
-        sql += "WHERE " + " AND ".join(where_clauses)
-
-    db.run_sql(sql, params)
-
-
-# from lookup_unit_intervals
-def update_timescale_unit_intervals(db, qtype="age", where_clauses: list[str] = None):
-    field_prefix = qtype
-    timescale_name = f"international {qtype}s"
-
-    print(f"Updating {qtype}s...")
-
-    where_clauses = [
-        # t = unit, i = matched interval
-        "t.fo_age > i.age_top",
-        "t.fo_age <= i.age_bottom",
-        "t.lo_age < i.age_bottom",
-        "t.lo_age >= i.age_top",
-    ]
-
-    age_fields = dict(
-        interval_name_field=Identifier(field_prefix),
-        interval_id_field=Identifier(field_prefix + "_id"),
-        table=Identifier("lookup_unit_intervals_new"),
-    )
-
-    update_intervals_lookup_units(
-        db, timescale=timescale_name, where_clauses=where_clauses, **age_fields
-    )
-
-
-def update_timescale_lookup_units(db, qtype="age"):
-    field_prefix = qtype
-    timescale_name = f"international {qtype}s"
-
-    print(f"Updating {qtype}s...")
-
-    age_fields = dict(
-        interval_name_field=Identifier(field_prefix),
-        interval_id_field=Identifier(field_prefix + "_id"),
-        table=Identifier("lookup_units_new"),
-    )
-
-    update_intervals_lookup_units(db, timescale=timescale_name, **age_fields)
-
-    # Coalesce IDs to mimic structure of fields in V1.
-    # Not ideal, but works
-    db.run_sql(
-        """
-        UPDATE {table} SET
-            {interval_id_field} = 0,
-            {interval_name_field} = ''
-        WHERE {interval_id_field} IS NULL
-        """,
-        age_fields,
-    )
-
 
 # ---------------------------------------------------------------------------
 # Scripts (unchanged logic, just consolidated)
 # ---------------------------------------------------------------------------
 
 
-class Autocomplete:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "autocomplete.sql")
+def autocomplete():
+    """autocomplete table"""
+    db = get_database()
+    db.run_sql(here / "sql" / "autocomplete.sql")
 
 
-class UnitBoundaries:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "unit-boundaries.sql")
+def unit_boundaries():
+    """Unit boundaries and age model"""
+    db = get_database()
+    db.run_sql(here / "sql" / "unit-boundaries.sql")
 
 
-class Stats:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "stats.sql")
+def stats():
+    """Project statistics"""
+    db = get_database()
+    db.run_sql(here / "sql" / "stats.sql")
 
 
-class StratNameFootprints:
-    def run(self):
-        db = get_database()
-        print("This create script takes 60m in prod and 23 min in development")
-        db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
-        db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
+def strat_name_footprints():
+    """Footprints for stratigraphic names"""
+    db = get_database()
+    print("This create script takes 60m in prod and 23 min in development")
+    db.run_sql(here / "sql" / "strat-name-footprints-01.sql")
+    db.run_sql(here / "sql" / "strat-name-footprints-02.sql")
 
 
-class LookupUnits:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "lookup-units-01.sql")
+def lookup_units():
+    """lookup_units table"""
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-units-01.sql")
 
-        for time_range in ("age", "epoch", "period", "era", "eon"):
-            update_timescale_lookup_units(db, time_range)
-        # We used to do a loop through all unts here to set age information and update intervals for each unit,
-        # but now we are doing it in bulk with the above queries. This presents a quick way to evolve to allow
-        # incremental updates on column changes, etc. if we want to do that in the future.
-        db.run_sql(here / "sql" / "lookup-units-02.sql")
-        # Validate results
-        data = db.run_query(
-            "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_units_new) lookup_units_count FROM units"
-        ).fetchone()
-        if data.units_count != data.lookup_units_count:
-            raise ValueError("Inconsistent units count in lookup_units_new table", data)
+    for time_range in ("age", "epoch", "period", "era", "eon"):
+        update_timescale_lookup_units(db, time_range)
+    # We used to do a loop through all unts here to set age information and update intervals for each unit,
+    # but now we are doing it in bulk with the above queries. This presents a quick way to evolve to allow
+    # incremental updates on column changes, etc. if we want to do that in the future.
+    db.run_sql(here / "sql" / "lookup-units-02.sql")
+    # Validate results
+    data = db.run_query(
+        "SELECT COUNT(*) units_count, (SELECT COUNT(*) FROM lookup_units_new) lookup_units_count FROM units"
+    ).fetchone()
+    if data.units_count != data.lookup_units_count:
+        raise ValueError("Inconsistent units count in lookup_units_new table", data)
 
-        copy_table_into_place(db, "lookup_units")
+    copy_table_into_place(db, "lookup_units")
 
 
-class LookupUnitIntervals:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "lookup-unit-intervals-01.sql")
+def lookup_unit_intervals():
+    """lookup_unit_intervals table"""
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-unit-intervals-01.sql")
 
-        for time_range in ("age", "epoch", "period", "era", "eon"):
-            update_timescale_unit_intervals(db, time_range)
+    for time_range in ("age", "epoch", "period", "era", "eon"):
+        update_timescale_unit_intervals(db, time_range)
 
-        shared = dict(
-            timescale="international ages",
-            table=Identifier("lookup_unit_intervals_new"),
+    shared = dict(
+        timescale="international ages",
+        table=Identifier("lookup_unit_intervals_new"),
+    )
+
+    # Uses fo_age and lo_age instead of t_age and b_age, to work at the interval level
+    # first overlap period (name only)
+    update_intervals_lookup_units(
+        db,
+        interval_name_field=Identifier("fo_period"),
+        where_clauses=["i.age_bottom >= t.fo_age", "i.age_top < t.fo_age"],
+        **shared,
+    )
+
+    # last overlap period (name only)
+    update_intervals_lookup_units(
+        db,
+        interval_name_field=Identifier("lo_period"),
+        where_clauses=["i.age_bottom > t.lo_age", "i.age_top <= t.lo_age"],
+        **shared,
+    )
+    db.run_sql(here / "sql" / "lookup-unit-intervals-02.sql")
+    ## validate results
+    res = db.run_query(
+        "SELECT count(*) units_count, (SELECT count(*) from lookup_unit_intervals_new) units_intervals_count from units"
+    ).one()
+    if res.units_count != res.units_intervals_count:
+        raise ValueError(
+            "Inconsistent unit count in lookup_unit_intervals_new table", res
         )
-
-        # Uses fo_age and lo_age instead of t_age and b_age, to work at the interval level
-        # first overlap period (name only)
-        update_intervals_lookup_units(
-            db,
-            interval_name_field=Identifier("fo_period"),
-            where_clauses=["i.age_bottom >= t.fo_age", "i.age_top < t.fo_age"],
-            **shared,
-        )
-
-        # last overlap period (name only)
-        update_intervals_lookup_units(
-            db,
-            interval_name_field=Identifier("lo_period"),
-            where_clauses=["i.age_bottom > t.lo_age", "i.age_top <= t.lo_age"],
-            **shared,
-        )
-        db.run_sql(here / "sql" / "lookup-unit-intervals-02.sql")
-        ## validate results
-        res = db.run_query(
-            "SELECT count(*) units_count, (SELECT count(*) from lookup_unit_intervals_new) units_intervals_count from units"
-        ).one()
-        if res.units_count != res.units_intervals_count:
-            raise ValueError(
-                "Inconsistent unit count in lookup_unit_intervals_new table", res
-            )
-        copy_table_into_place(db, "lookup_unit_intervals", schema="macrostrat")
+    copy_table_into_place(db, "lookup_unit_intervals", schema="macrostrat")
 
 
-class LookupUnitAttrsApi:
-    def run(self):
-        db = get_database()
-        db.run_sql(here / "sql" / "lookup-unit-attrs-api-01.sql")
-        validate_counts(db)
-        copy_table_into_place(db, "lookup_unit_attrs_api")
+def lookup_unit_attrs_api():
+    """Unit lithologies and attributes"""
+    db = get_database()
+    db.run_sql(here / "sql" / "lookup-unit-attrs-api-01.sql")
+    validate_counts(db)
+    copy_table_into_place(db, "lookup_unit_attrs_api")
 
 
-class LookupStratNames:
-    def run(self):
+class lookup_strat_names:
+    """Stratigraphic names lookup table"""
+
+    def __call__(self):
+        """lookup_strat_names table"""
+        # Allow this to emulate a function
         db = get_database()
         db.run_sql("SET SEARCH_PATH TO macrostrat, public;")
 
@@ -418,10 +265,10 @@ class LookupStratNames:
                       ON lsn_ref.{rank_id_col} = lsn2.strat_name_id
                      AND lsn_ref.rank::text = ANY(:child_ranks)
                     JOIN macrostrat.unit_strat_names usn ON usn.strat_name_id = lsn_ref.strat_name_id
-                    LEFT JOIN macrostrat.units_sections us ON us.unit_id = usn.unit_id  
-                    LEFT JOIN macrostrat.cols c ON c.id = us.col_id                     
+                    LEFT JOIN macrostrat.units_sections us ON us.unit_id = usn.unit_id
+                    LEFT JOIN macrostrat.cols c ON c.id = us.col_id
                     WHERE lsn2.rank::text = :rank
-                      AND (c.status_code = 'active')           
+                      AND (c.status_code = 'active')
                     GROUP BY lsn2.strat_name_id
                 ) sub
                 WHERE lsn.strat_name_id = sub.strat_name_id

@@ -30,6 +30,24 @@ chert = Lithology(name="chert", id=45)
 sand = Lithology(name="sand", id=3)
 mixed_carbonate = Lithology(name="mixed carbonate-siliciclastic", id=17)
 
+carbonate_test_case = {
+    Lithology(name="carbonate", id=18, attributes={LithAtt(name="lenticular", id=1)}),
+    Lithology(
+        name="carbonate",
+        id=18,
+        attributes={
+            LithAtt(name="bioclastic", id=145),
+            LithAtt(name="lenticular", id=1),
+        },
+    ),
+    Lithology(
+        name="carbonate",
+        id=18,
+        attributes={LithAtt(name="regularly bedded", id=6)},
+    ),
+}
+
+
 test_cases = [
     LithologyTestCase("sandstone", {sandstone}),
     LithologyTestCase("limestone; sandstone", {sandstone, limestone}),
@@ -84,10 +102,42 @@ test_cases = [
             ),
         },
     ),
+    LithologyTestCase(
+        "calcareous sandstone",
+        {
+            calcareous_sandstone := Lithology(
+                name="sandstone", id=10, attributes={LithAtt(name="calcareous", id=80)}
+            )
+        },
+    ),
+    LithologyTestCase(
+        "calcareous ooze",
+        {calcareous_ooze := Lithology(name="calcareous ooze", id=104)},
+    ),
+    # Synonyms
+    LithologyTestCase(
+        "cross-stratified grainstone",
+        {
+            cross_bedded_grainstone := Lithology(
+                name="grainstone",
+                id=23,
+                attributes={LithAtt(name="cross-bedded", id=17)},
+            )
+        },
+    ),
+    LithologyTestCase(
+        "lenticular carbonate; bioclastic lenticular carbonate; bedded carbonate",
+        carbonate_test_case,
+    ),
+    LithologyTestCase(
+        "lenticular carbonate; bioclastic, lenticular carbonate; regularly bedded carbonate",
+        carbonate_test_case,
+    ),
 ]
 
 
 @mark.parametrize("test_case", test_cases)
-def test_process_liths_text(test_case):
+def test_process_liths_text(db, test_case):
+    # We have to depend on the database to get the IDs for the lithologies
     liths = process_liths_text(test_case.input)
     assert liths == test_case.output

@@ -51,10 +51,13 @@ def cli_tests():
     name="all",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
-def all_tests(ctx: Context) -> None:
+def all_tests(ctx: Context, quick: bool = False) -> None:
     """Run all tests"""
     with working_directory(settings.srcroot):
-        run_pytest(ctx.args)
+        args = ctx.args
+        if quick:
+            args += ["--skip-slow", "--failed-first", "-x", "--capture=no"]
+        run_pytest(args)
 
 
 @cli.command(
