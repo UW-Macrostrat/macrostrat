@@ -15,6 +15,13 @@ from .intervals import (
 )
 from .lithologies import LithAbundance, Lithology, LithsProcessor
 
+from typing import Any
+from dataclasses import asdict
+
+from sqlalchemy.dialects.postgresql import insert
+
+from macrostrat.database import Database
+
 
 @dataclass
 class Unit:

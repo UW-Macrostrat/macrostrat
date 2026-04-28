@@ -117,6 +117,7 @@ def test_database_cluster(**kwargs):
     image_tag = kwargs.pop("image", "macrostrat.local/database:latest")
     build_context = kwargs.pop("context", settings.srcroot / "base-images" / "database")
     optimize = kwargs.pop("optimize", True)
+    driver = kwargs.pop("driver", None)
 
     if not optimize:
         should_build = True
@@ -136,39 +137,40 @@ def test_database_cluster(**kwargs):
 
     container = PostgresContainer(image_tag, **kwargs)
 
+    pg_config = {
+        "shared_preload_libraries": "pgaudit,pg_stat_statements",
+    }
+
     if optimize:
-        container = optimize_for_testing(container)
+        pg_config = {
+            **pg_config,
+            "synchronous_commit": "off",
+            "fsync": "off",
+            "wal_level": "minimal",
+            "max_wal_senders": "0",
+            "full_page_writes": "off",
+            "checkpoint_completion_target": "0.9",
+        }
+        container = container.with_kwargs(
+            tmpfs={
+                "/var/lib/postgresql/data": "rw",
+            }
+        ).with_env("POSTGRES_HOST_AUTH_METHOD", "trust")
+    container = container.with_command(build_postgres_command(pg_config))
     container.start()
     try:
-        _url = container.get_connection_url()
+        _url = container.get_connection_url(driver=driver)
         db = Database(_url)
         yield db
     finally:
         container.stop()
 
 
-def optimize_for_testing(container: PostgresContainer):
-    configs = {
-        "synchronous_commit": "off",
-        "fsync": "off",
-        "wal_level": "minimal",
-        "max_wal_senders": "0",
-        "full_page_writes": "off",
-        "checkpoint_completion_target": "0.9",
-    }
+def build_postgres_command(pg_config):
     cmd = "postgres"
-    for k, v in configs.items():
+    for k, v in pg_config.items():
         cmd += f" -c {k}={v}"
-
-    return (
-        container.with_kwargs(
-            tmpfs={
-                "/var/lib/postgresql/data": "rw",
-            }
-        )
-        .with_command(cmd)
-        .with_env("POSTGRES_HOST_AUTH_METHOD", "trust")
-    )
+    return cmd
 
 
 @contextmanager

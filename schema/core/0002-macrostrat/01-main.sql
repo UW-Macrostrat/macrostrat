@@ -1055,7 +1055,7 @@ CREATE TABLE macrostrat.intervals (
     interval_abbrev character varying(40) DEFAULT NULL::character varying,
     interval_type macrostrat.intervals_interval_type DEFAULT 'supereon'::macrostrat.intervals_interval_type,
     interval_color character varying(7) NOT NULL,
-    orig_color character varying(7) NOT NULL,
+    orig_color character varying(7),
     rank integer,
     CONSTRAINT idx_44157069_primary PRIMARY KEY (id)
 );
