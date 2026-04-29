@@ -143,6 +143,9 @@ CREATE TABLE maps.sources (
     description character varying
 );
 
+GRANT USAGE ON SCHEMA maps TO web_admin;
+GRANT SELECT ON TABLE maps.sources TO web_admin;
+
 ALTER TABLE ONLY maps.sources
   ADD CONSTRAINT sources_slug_key1 UNIQUE (slug);
 

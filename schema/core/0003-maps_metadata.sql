@@ -173,3 +173,4 @@ ADD CONSTRAINT ingest_process_slug_fkey
 FOREIGN KEY (slug)
 REFERENCES maps.sources(slug);
 
+GRANT USAGE ON SCHEMA maps_metadata TO web_admin;

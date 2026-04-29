@@ -974,6 +974,7 @@ CREATE VIEW macrostrat_api.map_ingest AS
    FROM maps_metadata.ingest_process;
 ALTER TABLE macrostrat_api.map_ingest OWNER TO macrostrat;
 
+
 CREATE VIEW macrostrat_api.map_ingest_metadata AS
  SELECT ingest_process.id,
     ingest_process.state,
@@ -2039,3 +2040,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRAN
 
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
 
+--this is important so that postgrest works for the ingest process
+GRANT USAGE ON SCHEMA macrostrat_api TO web_admin;
+GRANT INSERT, SELECT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA macrostrat_api
+TO web_admin;
+NOTIFY pgrst, 'reload schema';
