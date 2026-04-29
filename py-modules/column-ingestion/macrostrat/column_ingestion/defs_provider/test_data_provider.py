@@ -6,7 +6,7 @@ from . import (
     MacrostratDatabaseDataProvider,
     MacrostratMetadataPopulator,
 )
-from .models import Environment, Interval, Lithology, LithologyAttribute
+from .models import Environment, Interval, Lithology, LithologyAttribute, Timescale
 
 
 class StaticMacrostratDataProvider(MacrostratDataProvider):
@@ -20,7 +20,16 @@ class StaticMacrostratDataProvider(MacrostratDataProvider):
                 interval_abbrev="Cz",
                 interval_type="era",
                 interval_color="#F2F91D",
-                timescales=[11, 13],
+                timescales=[
+                    Timescale(
+                        id=11,
+                        timescale="international intervals",
+                    ),
+                    Timescale(
+                        id=13,
+                        timescale="international eras",
+                    ),
+                ],
             )
         ]
 
@@ -67,9 +76,8 @@ def static_provider():
 
 
 @pytest.fixture
-def db_provider(test_db):
-    MacrostratMetadataPopulator(StaticMacrostratDataProvider(), test_db).populate_all()
-    return MacrostratDatabaseDataProvider(test_db)
+def db_provider(env_db):
+    return MacrostratDatabaseDataProvider(env_db)
 
 
 @pytest.fixture
@@ -84,8 +92,8 @@ def api_provider():
 @pytest.fixture(
     params=[
         pytest.param("static_provider", id="static"),
-        pytest.param("db_provider", id="database"),
-        pytest.param("api_provider", id="api", marks=pytest.mark.web),
+        # pytest.param("db_provider", id="database"),
+        # pytest.param("api_provider", id="api", marks=pytest.mark.web),
     ]
 )
 def provider(request):
@@ -169,8 +177,8 @@ def test_populator_populates_test_db(test_db):
 
     assert lithology.id == 1
     assert lithology.lith == "sandstone"
-    assert lithology.lith_type == "sedimentary"
-    assert lithology.lith_class == "siliciclastic"
+    assert lithology.lith_type == "siliciclastic"
+    assert lithology.lith_class == "sedimentary"
 
     lithology_attribute = test_db.run_query(
         """

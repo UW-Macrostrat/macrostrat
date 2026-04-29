@@ -3,6 +3,16 @@ from decimal import Decimal
 
 
 @dataclass(frozen=True)
+class Timescale:
+    id: int
+    timescale: str
+    ref_id: int = 0
+
+    def __hash__(self):
+        return hash(self.id)
+
+
+@dataclass(frozen=True)
 class Interval:
     id: int
     age_bottom: Decimal | float | None
@@ -12,7 +22,7 @@ class Interval:
     interval_type: str | None = None
     interval_color: str | None = None
     rank: int | None = None
-    timescales: list[int] | None = None
+    timescales: list[Timescale] | None = None
 
 
 @dataclass(frozen=True)

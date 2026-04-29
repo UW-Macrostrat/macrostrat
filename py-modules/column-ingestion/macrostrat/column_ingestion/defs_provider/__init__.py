@@ -16,13 +16,17 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import row
 
 from ..database import get_macrostrat_table
-from macrostrat.database.postgresql import upsert
+from macrostrat.database.postgresql import upsert, OnConflictAction
+from macrostrat.utils import get_logger
 from .models import (
     Interval,
     Lithology,
     LithologyAttribute,
     Environment,
+    Timescale,
 )
+
+log = get_logger(__name__)
 
 T = TypeVar("T")
 
@@ -122,7 +126,8 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
                 interval_type=row.get("int_type"),
                 interval_color=row.get("color"),
                 timescales=[
-                    timescale["timescale_id"] for timescale in row.get("timescales", [])
+                    Timescale(timescale["timescale_id"], timescale["name"])
+                    for timescale in row.get("timescales", [])
                 ],
             )
             for row in rows
@@ -191,10 +196,20 @@ class MacrostratDatabaseDataProvider(MacrostratDataProvider):
                 i.interval_type,
                 i.interval_color,
                 i.rank,
-                array_remove(array_agg(ti.timescale_id), NULL) AS timescales
+                array_remove(
+                    array_agg(
+                        json_build_object(
+                            'id', t.id,
+                            'name', t.name
+                        )
+                    ),
+                    NULL
+                ) AS timescales
             FROM macrostrat.intervals i
             LEFT JOIN macrostrat.timescales_intervals ti
                 ON i.id = ti.interval_id
+            LEFT JOIN macrostrat.timescales t
+                ON ti.timescale_id = t.id
             GROUP BY
                 i.id,
                 i.age_bottom,
@@ -218,7 +233,7 @@ class MacrostratDatabaseDataProvider(MacrostratDataProvider):
                 interval_type=row.interval_type,
                 interval_color=row.interval_color,
                 rank=row.rank,
-                timescales=list(row.timescales or []),
+                timescales=[Timescale(v["id"], v["name"]) for v in row.timescales],
             )
             for row in rows
         ]
@@ -339,6 +354,7 @@ class MacrostratMetadataPopulator:
         )
 
         self.db.session.execute(stmt)
+        self.db.session.commit()
 
     def _insert_do_nothing(
         self,
@@ -357,19 +373,37 @@ class MacrostratMetadataPopulator:
         self.db.session.execute(stmt)
 
     def populate_intervals(self):
+        timescales_table = self._table("timescales")
+        intervals_table = self._table("intervals")
+
+        _intervals = self.provider.get_intervals()
+        all_timescales = set()
+        for interval in _intervals:
+            for timescale in getattr(interval, "timescales", []):
+                all_timescales.add(timescale)
+
+        for timescale in all_timescales:
+            stmt = upsert(timescales_table, asdict(timescale), ("id",))
+            self.db.session.execute(stmt)
+
         for interval in self.provider.get_intervals():
             values = asdict(interval)
             timescales = values.pop("timescales", [])
 
-            table = self._table("intervals")
+            log.info("populating interval %s", interval)
 
-            stmt = upsert(table, values, ("id",)).returning(table.c.id)
+            stmt = upsert(
+                intervals_table,
+                values,
+                ("id",),
+                on_conflict=OnConflictAction.DO_NOTHING,
+            ).returning(intervals_table.c.id)
             int_id = self.db.session.execute(stmt).scalar()
 
             for timescale in timescales:
-                self.db.run_sql(
-                    "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:timescale_id, :int_id) ON CONFLICT DO NOTHING",
-                    {"timescale_id": timescale, "int_id": int_id},
+                self.db.run_query(
+                    "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:id, :int_id) ON CONFLICT DO NOTHING",
+                    {"id": timescale["id"], "int_id": interval.id},
                 )
 
     # TODO: we set some values to NULLish when we should load them correctly in the future.
