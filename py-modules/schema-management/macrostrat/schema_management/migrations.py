@@ -12,8 +12,8 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
-from macrostrat.database.utils import OutputMode
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.database.query import OutputMode
+from macrostrat.dinosaur.cluster import database_cluster
 
 from .inspect_utils import *
 
@@ -226,23 +226,13 @@ def dry_run_migrations(wait=False, legacy=False):
 
 def _dry_run_migrations(legacy=False):
     # Spin up a docker container with a temporary database
-    image = settings.get("pg_database_container", "postgres:15")
-
-    client = docker.from_env()
-
     img_root = settings.srcroot / "base-images" / "database"
 
     # Build postgres pgaudit image
     img_tag = "macrostrat.local/database:latest"
 
-    client.images.build(path=str(img_root), tag=img_tag)
-
     # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        print(container)
-        url = f"postgresql://postgres@0.0.0.0:{port}/postgres"
-        db = Database(url)
+    with database_cluster(img_tag, context=img_root, build=True) as db:
         return _run_migrations_in_database(db, legacy=legacy)
 
 

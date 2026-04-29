@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-
 import docker
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
@@ -8,11 +6,11 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
-from macrostrat.utils import get_logger
+from macrostrat.utils.logs import get_logger, suppress_loggers
+from macrostrat.dinosaur.cluster import database_cluster
 
 import logging
 from contextlib import contextmanager
-from testcontainers.postgres import PostgresContainer
 
 log = get_logger(__name__)
 
@@ -56,22 +54,6 @@ def schema_dirs_for_environment(env: str):
         yield schema_dir / "local"
 
 
-@contextmanager
-def suppress_loggers(*loggers, level=logging.ERROR):
-    """Temporarily suppresses logs for a specific logger or the root logger."""
-    orig_level_map = {}
-    for logger_name in loggers:
-        logger = logging.getLogger(logger_name)
-        orig_level_map[logger_name] = logger.getEffectiveLevel()
-        logger.setLevel(level)
-    try:
-        yield
-    finally:
-        for logger_name, original_level in orig_level_map.items():
-            logger = logging.getLogger(logger_name)
-            logger.setLevel(original_level)
-
-
 def apply_schema_for_environment(
     db: Database,
     env: str,
@@ -110,64 +92,21 @@ def apply_schema_for_environment(
 @contextmanager
 def test_database_cluster(**kwargs):
     """Context manager to create a temporary database cluster"""
-    should_build = kwargs.pop("build", False)
     image_tag = kwargs.pop("image", "macrostrat.local/database:latest")
     build_context = kwargs.pop("context", settings.srcroot / "base-images" / "database")
-    optimize = kwargs.pop("optimize", True)
-    driver = kwargs.pop("driver", None)
-
-    if not optimize:
-        should_build = True
-
-    client = docker.from_env()
-    # Check if image exists locally to avoid build
-    if not should_build:
-        try:
-            client.images.get(image_tag)
-            log.info(f"Using existing image {image_tag}")
-        except docker.errors.ImageNotFound:
-            should_build = True
-
-    if should_build:
-        # Build postgres pgaudit image
-        client.images.build(path=str(build_context), tag=image_tag)
-
-    container = PostgresContainer(image_tag, **kwargs)
-
-    pg_config = {
+    optimize_for_testing = kwargs.pop("optimize", True)
+    config = {
         "shared_preload_libraries": "pgaudit,pg_stat_statements",
     }
 
-    if optimize:
-        pg_config = {
-            **pg_config,
-            "synchronous_commit": "off",
-            "fsync": "off",
-            "wal_level": "minimal",
-            "max_wal_senders": "0",
-            "full_page_writes": "off",
-            "checkpoint_completion_target": "0.9",
-        }
-        container = container.with_kwargs(
-            tmpfs={
-                "/var/lib/postgresql/data": "rw",
-            }
-        ).with_env("POSTGRES_HOST_AUTH_METHOD", "trust")
-    container = container.with_command(build_postgres_command(pg_config))
-    container.start()
-    try:
-        _url = container.get_connection_url(driver=driver)
-        db = Database(_url)
+    with database_cluster(
+        image_tag,
+        context=build_context,
+        optimize_for_testing=optimize_for_testing,
+        config=config,
+        **kwargs,
+    ) as db:
         yield db
-    finally:
-        container.stop()
-
-
-def build_postgres_command(pg_config):
-    cmd = "postgres"
-    for k, v in pg_config.items():
-        cmd += f" -c {k}={v}"
-    return cmd
 
 
 @contextmanager

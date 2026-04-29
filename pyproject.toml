@@ -56,8 +56,7 @@ markers = [
     "requires_gdal: marks tests as requiring GDAL",
 ]
 # Don't show captured logs by default
-log_cli = false
-show-capture = "no"
+addopts = "--show-capture=stdout"
 
 # Paths for default test discovery.
 # This allows 'pytest' to have the same discovery behavior
