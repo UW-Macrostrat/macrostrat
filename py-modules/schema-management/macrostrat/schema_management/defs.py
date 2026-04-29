@@ -59,7 +59,8 @@ def apply_schema_for_environment(
     env: str,
     *,
     recursive: bool = True,
-    statement_filter=lambda s, p: True,
+    statement_filter=None,
+    transform_statement=None,
     suppress_logging: bool = False,
     pattern: str = "*",
 ):
@@ -83,9 +84,13 @@ def apply_schema_for_environment(
                 "sqlalchemy.engine",
                 "macrostrat.database.utils",
             ]
+
         with suppress_loggers(*_suppressed_loggers):
             db.run_fixtures(
-                fixtures, recursive=recursive, statement_filter=statement_filter
+                fixtures,
+                recursive=recursive,
+                statement_filter=statement_filter,
+                transform_statement=transform_statement,
             )
 
 

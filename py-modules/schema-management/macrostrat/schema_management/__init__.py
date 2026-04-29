@@ -3,6 +3,7 @@ from datetime import datetime
 from sys import exit, stderr
 
 import click
+from macrostrat.database.query import StatementResult, StatementContext
 from results import db as results_db
 from results.dbdiff import Migration as DiffMigration
 from rich import print
@@ -293,9 +294,16 @@ def provision(pattern: str = Argument("*")):
     counter.print_report()
 
 
-def view_filter(statement, params):
-    stmt = statement.lower().strip()
-    return stmt.startswith("create view") or stmt.startswith("create or replace view")
+def view_transformer(ctx: StatementContext) -> list[StatementResult] | None:
+    txt = ctx.sql_text.lower().strip()
+    if txt.startswith("create or replace view"):
+        return None
+
+    if txt.startswith("create view"):
+        txt = txt.replace("create view", "CREATE OR REPLACE VIEW")
+        return [StatementResult(query=txt, params=ctx.params)]
+    # Don't run anything
+    return []
 
 
 @schema_app.command(rich_help_panel="Utils")
@@ -304,6 +312,6 @@ def rebuild_views():
     db = get_database()
     environment = settings.env
 
-    apply_schema_for_environment(db, environment, statement_filter=view_filter)
+    apply_schema_for_environment(db, environment, transform_statement=view_transformer)
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
