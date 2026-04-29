@@ -10,6 +10,10 @@ from macrostrat.core.config import settings
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
+import logging
+from contextlib import contextmanager
+from testcontainers.postgres import PostgresContainer
+
 log = get_logger(__name__)
 
 
@@ -50,10 +54,6 @@ def schema_dirs_for_environment(env: str):
 
     if env in ["local"]:
         yield schema_dir / "local"
-
-
-import logging
-from contextlib import contextmanager
 
 
 @contextmanager
@@ -105,9 +105,6 @@ def apply_schema_for_environment(
             db.run_fixtures(
                 fixtures, recursive=recursive, statement_filter=statement_filter
             )
-
-
-from testcontainers.postgres import PostgresContainer
 
 
 @contextmanager

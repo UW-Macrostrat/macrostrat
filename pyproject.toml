@@ -55,6 +55,10 @@ markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
 ]
+# Don't show captured logs by default
+log_cli = false
+show-capture = "no"
+
 # Paths for default test discovery.
 # This allows 'pytest' to have the same discovery behavior
 # as 'macrostrat test all'.
