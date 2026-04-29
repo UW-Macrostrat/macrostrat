@@ -13,8 +13,10 @@ from typing import Any, Callable, TypeVar
 from httpx import Client
 from macrostrat.database import Database
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import row
 
 from ..database import get_macrostrat_table
+from macrostrat.database.postgresql import upsert
 from .models import (
     Interval,
     Lithology,
@@ -357,34 +359,40 @@ class MacrostratMetadataPopulator:
     def populate_intervals(self):
         for interval in self.provider.get_intervals():
             values = asdict(interval)
-            values.pop("timescales", None)
+            timescales = values.pop("timescales", [])
 
-            self._upsert("intervals", values)
+            table = self._table("intervals")
 
-        self.populate_timescales_intervals()
+            stmt = upsert(table, values, ("id",)).returning(table.c.id)
+            int_id = self.db.session.execute(stmt).scalar()
 
-    def populate_timescales_intervals(self):
-        for interval in self.provider.get_intervals():
-            if not interval.timescales:
-                continue
-
-            for timescale_id in interval.timescales:
-                self._insert_do_nothing(
-                    "timescales_intervals",
-                    {
-                        "timescale_id": timescale_id,
-                        "interval_id": interval.id,
-                    },
+            for timescale in timescales:
+                self.db.run_sql(
+                    "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:timescale_id, :int_id) ON CONFLICT DO NOTHING",
+                    {"timescale_id": timescale, "int_id": int_id},
                 )
+
+    # TODO: we set some values to NULLish when we should load them correctly in the future.
 
     def populate_lithologies(self):
         for lithology in self.provider.get_lithologies():
-            self._upsert("liths", asdict(lithology))
+            # NOT NULL constraint on lithology.lith_equiv
+            row = asdict(lithology)
+            row.setdefault("lith_equiv", 0)
+            self._upsert(
+                "liths",
+                row,
+            )
 
     def populate_lithology_attributes(self):
         for attribute in self.provider.get_lithology_attributes():
-            self._upsert("lith_atts", asdict(attribute))
+            row = asdict(attribute)
+            # TODO: capture equivalence
+            row.setdefault("equiv", 0)
+            self._upsert("lith_atts", row)
 
     def populate_environments(self):
         for environment in self.provider.get_environments():
-            self._upsert("environs", asdict(environment))
+            row = asdict(environment)
+            row.setdefault("environ_fill", 0)
+            self._upsert("environs", row)

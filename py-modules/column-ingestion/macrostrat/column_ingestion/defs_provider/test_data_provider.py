@@ -29,8 +29,8 @@ class StaticMacrostratDataProvider(MacrostratDataProvider):
             Lithology(
                 id=1,
                 lith="sandstone",
-                lith_type="sedimentary",
-                lith_class="siliciclastic",
+                lith_type="siliciclastic",
+                lith_class="sedimentary",
                 lith_fill=1,
                 comp_coef=1,
                 initial_porosity=0.3,
@@ -44,7 +44,7 @@ class StaticMacrostratDataProvider(MacrostratDataProvider):
             LithologyAttribute(
                 id=1,
                 lith_att="calcareous",
-                att_type="composition",
+                att_type="lithology",
                 lith_att_fill=1,
             )
         ]
@@ -54,7 +54,7 @@ class StaticMacrostratDataProvider(MacrostratDataProvider):
             Environment(
                 id=1,
                 environ="marine",
-                environ_type="marine",
+                environ_type="",
                 environ_class="marine",
                 environ_color="#0000ff",
             )
@@ -186,7 +186,7 @@ def test_populator_populates_test_db(test_db):
 
     assert lithology_attribute.id == 1
     assert lithology_attribute.lith_att == "calcareous"
-    assert lithology_attribute.att_type == "composition"
+    assert lithology_attribute.att_type == "lithology"
 
     environment = test_db.run_query(
         """
@@ -203,7 +203,7 @@ def test_populator_populates_test_db(test_db):
 
     assert environment.id == 1
     assert environment.environ == "marine"
-    assert environment.environ_type == "marine"
+    assert environment.environ_type == ""
     assert environment.environ_class == "marine"
 
     timescale_links = test_db.run_query(
