@@ -851,6 +851,212 @@ def add_preferred_columns(
         console.print("[green]Done:[/green] preferred columns check/add complete")
 
 
+def replace_value_with_column(
+    target: TableTarget,
+    src: str,
+    dst: str,
+    dst_val: str,
+    dry_run: bool = False,
+) -> int:
+    """Replace a specific value in dst with the row-wise value from src.
+
+    Example:
+    - src=trend, dst=strike, dst_val=0
+    - For rows where strike::text = '0', set strike = trend.
+
+    Rules:
+    - validates src and dst columns exist
+    - only replaces rows where dst::text exactly matches dst_val
+    - skips null/blank/unknown/none source values
+    - returns count of rows still matching dst_val after the update
+    """
+    db = get_database()
+    src = validate_identifier(src, "source column")
+    dst = validate_identifier(dst, "destination column")
+    existing_cols = get_existing_columns(target)
+
+    if src not in existing_cols:
+        raise ValueError(
+            f"Source column '{src}' does not exist in {target.schema}.{target.table}"
+        )
+
+    if dst not in existing_cols:
+        raise ValueError(
+            f"Destination column '{dst}' does not exist in {target.schema}.{target.table}"
+        )
+
+    candidate_rows = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {dst}::text = :dst_val
+          AND {src} IS NOT NULL
+          AND trim({src}::text) <> ''
+          AND lower(trim({src}::text)) <> 'unknown'
+          AND lower(trim({src}::text)) <> 'none'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src=Identifier(src),
+            dst=Identifier(dst),
+            dst_val=dst_val,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to replace[/blue] "
+        f"[yellow]{dst}[/yellow] value [yellow]{dst_val}[/yellow] "
+        f"with row-wise values from [yellow]{src}[/yellow] "
+        f"in [bold]{target.schema}.{target.table}[/bold] "
+        f"across {candidate_rows} candidate row(s)"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return candidate_rows
+
+    db.run_sql(
+        """
+        UPDATE {table}
+        SET {dst} = {src}
+        WHERE {dst}::text = :dst_val
+          AND {src} IS NOT NULL
+          AND trim({src}::text) <> ''
+          AND lower(trim({src}::text)) <> 'unknown'
+          AND lower(trim({src}::text)) <> 'none'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src=Identifier(src),
+            dst=Identifier(dst),
+            dst_val=dst_val,
+        ),
+    )
+
+    remaining_matches = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {dst}::text = :dst_val
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            dst=Identifier(dst),
+            dst_val=dst_val,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[green]Done:[/green] replaced [yellow]{dst} = {dst_val}[/yellow] "
+        f"with row-wise values from [yellow]{src}[/yellow]. "
+        f"Remaining matching {dst} rows: {remaining_matches}"
+    )
+
+    return remaining_matches
+
+
+def remove_word_in_string(
+    target: TableTarget,
+    src: str,
+    word: str,
+    dry_run: bool = False,
+) -> int:
+    """Remove all occurrences of a word/string fragment from a text column.
+
+    Example:
+    - src=descrip
+    - word='Unknown; '
+    - 'Unknown; Unknown; Unit Boundary; Fault' -> 'Unit Boundary; Fault'
+
+    Rules:
+    - validates that src exists
+    - updates src in place
+    - skips NULL rows
+    - removes all occurrences of word
+    - trims leading/trailing whitespace after replacement
+    - converts empty strings back to NULL
+    - returns the number of rows still containing word after update
+    """
+    db = get_database()
+    src = validate_identifier(src, "source column")
+    existing_cols = get_existing_columns(target)
+
+    if src not in existing_cols:
+        raise ValueError(
+            f"Column '{src}' does not exist in {target.schema}.{target.table}"
+        )
+
+    if word == "":
+        raise ValueError("word cannot be empty")
+
+    candidate_rows = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {src} IS NOT NULL
+          AND {src}::text LIKE '%' || :word || '%'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src=Identifier(src),
+            word=word,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to remove[/blue] [yellow]{word}[/yellow] "
+        f"from column [yellow]{src}[/yellow] in "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"across {candidate_rows} candidate row(s)"
+    )
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return candidate_rows
+
+    db.run_sql(
+        """
+        UPDATE {table}
+        SET {src} = NULLIF(trim(replace({src}::text, :word, '')), '')
+        WHERE {src} IS NOT NULL
+          AND {src}::text LIKE '%' || :word || '%'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src=Identifier(src),
+            word=word,
+        ),
+    )
+
+    remaining_matches = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {src} IS NOT NULL
+          AND {src}::text LIKE '%' || :word || '%'
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            src=Identifier(src),
+            word=word,
+        ),
+    ).scalar()
+
+    console.print(
+        f"[green]Done:[/green] removed [yellow]{word}[/yellow] "
+        f"from [yellow]{src}[/yellow]. "
+        f"Remaining matching row(s): {remaining_matches}"
+    )
+
+    return remaining_matches
+
+
 def replace_column_value(
     target: TableTarget,
     column: str,
@@ -3509,6 +3715,47 @@ def normalize_replace_value(
         dry_run=dry_run,
     )
 
+@normalize_cli.command("replace-value-with-column")
+def normalize_replace_value_with_column(
+    src: str = Option(..., "--src", help="Source column to copy values from"),
+    dst: str = Option(..., "--dst", help="Destination column to update"),
+    dst_val: str = Option(
+        ...,
+        "--dst-val",
+        help="Value in dst to replace with the row-wise src value",
+    ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Replace a specific value in dst with the value from src in the same row.
+    """
+    target = get_current_target()
+    replace_value_with_column(
+        target=target,
+        src=src,
+        dst=dst,
+        dst_val=dst_val,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("remove-word-in-string")
+def normalize_remove_word_in_string(
+    src: str = Option(..., "--src", help="Column to clean in place"),
+    word: str = Option(..., "--word", help="String fragment to remove"),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Remove all occurrences of a word/string fragment from a column.
+    """
+    target = get_current_target()
+    remove_word_in_string(
+        target=target,
+        src=src,
+        word=word,
+        dry_run=dry_run,
+    )
+
 
 @normalize_cli.command("merge-column")
 def normalize_merge_column(
@@ -4258,5 +4505,8 @@ for slug in "${slugs[@]}"; do
 done
 
 """
+
+
+
 
 
