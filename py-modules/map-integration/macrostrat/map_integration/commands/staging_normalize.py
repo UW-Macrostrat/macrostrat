@@ -3715,6 +3715,7 @@ def normalize_replace_value(
         dry_run=dry_run,
     )
 
+
 @normalize_cli.command("replace-value-with-column")
 def normalize_replace_value_with_column(
     src: str = Option(..., "--src", help="Source column to copy values from"),
@@ -4505,8 +4506,3 @@ for slug in "${slugs[@]}"; do
 done
 
 """
-
-
-
-
-
