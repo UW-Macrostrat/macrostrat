@@ -338,21 +338,10 @@ class MacrostratMetadataPopulator:
     def _table(self, table_name: str):
         return get_macrostrat_table(self.db, table_name)
 
-    def _upsert(self, table_name: str, values: dict[str, Any], index_elements=("id",)):
+    def _upsert(self, table_name: str, values: dict[str, Any], index_elements=None):
         table = self._table(table_name)
 
-        stmt = insert(table).values(**values)
-        update_values = {
-            column.name: getattr(stmt.excluded, column.name)
-            for column in table.columns
-            if column.name in values and column.name not in index_elements
-        }
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=list(index_elements),
-            set_=update_values,
-        )
-
+        stmt = _upsert_core(table, values, index_elements=index_elements)
         self.db.session.execute(stmt)
         self.db.session.commit()
 
@@ -363,13 +352,7 @@ class MacrostratMetadataPopulator:
         index_elements: tuple[str, ...] | None = None,
     ):
         table = self._table(table_name)
-
-        stmt = insert(table).values(**values)
-        if index_elements is None:
-            stmt = stmt.on_conflict_do_nothing()
-        else:
-            stmt = stmt.on_conflict_do_nothing(index_elements=list(index_elements))
-
+        stmt = _upsert_core(table, values, index_elements=index_elements)
         self.db.session.execute(stmt)
 
     def populate_intervals(self):
@@ -382,9 +365,9 @@ class MacrostratMetadataPopulator:
             for timescale in getattr(interval, "timescales", []):
                 all_timescales.add(timescale)
 
-        for timescale in all_timescales:
-            stmt = upsert(timescales_table, asdict(timescale), ("id",))
-            self.db.session.execute(stmt)
+        timescale_vals = [asdict(timescale) for timescale in all_timescales]
+        stmt = _upsert_core(timescales_table, timescale_vals, index_elements=("id",))
+        self.db.session.execute(stmt)
 
         for interval in self.provider.get_intervals():
             values = asdict(interval)
@@ -430,3 +413,41 @@ class MacrostratMetadataPopulator:
             row = asdict(environment)
             row.setdefault("environ_fill", 0)
             self._upsert("environs", row)
+
+
+from typing import Sequence
+from macrostrat.database.postgresql import OnConflictAction
+
+
+def _upsert_core(
+    table,
+    values: dict[str, Any],
+    *,
+    index_elements: Sequence[str] | None = None,
+    on_conflict: OnConflictAction = OnConflictAction.DO_UPDATE,
+):
+    _index = index_elements
+    stmt = insert(table).values(values)
+    if on_conflict == "restrict":
+        return stmt
+
+    if on_conflict == "do-nothing":
+        return stmt.on_conflict_do_nothing(index_elements=_index)
+
+    if _index is None:
+        _index = table.primary_key.columns.keys()
+    _index = list(_index)
+
+    update_values = {
+        column.name: getattr(stmt.excluded, column.name)
+        for column in table.columns
+        if column.name not in _index
+    }
+
+    if len(update_values) == 0:
+        return stmt
+
+    return stmt.on_conflict_do_update(
+        index_elements=_index,
+        set_=update_values,
+    )
