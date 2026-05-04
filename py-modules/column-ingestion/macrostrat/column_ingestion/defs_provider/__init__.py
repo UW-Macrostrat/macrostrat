@@ -341,7 +341,7 @@ class MacrostratMetadataPopulator:
     def _upsert(self, table_name: str, values: dict[str, Any], index_elements=None):
         table = self._table(table_name)
 
-        stmt = _upsert_core(table, values, index_elements=index_elements)
+        stmt = upsert(table, values, index_elements=index_elements)
         self.db.session.execute(stmt)
         self.db.session.commit()
 
@@ -352,7 +352,7 @@ class MacrostratMetadataPopulator:
         index_elements: tuple[str, ...] | None = None,
     ):
         table = self._table(table_name)
-        stmt = _upsert_core(table, values, index_elements=index_elements)
+        stmt = upsert(table, values, index_elements=index_elements)
         self.db.session.execute(stmt)
 
     def populate_intervals(self):
@@ -366,7 +366,7 @@ class MacrostratMetadataPopulator:
                 all_timescales.add(timescale)
 
         timescale_vals = [asdict(timescale) for timescale in all_timescales]
-        stmt = _upsert_core(timescales_table, timescale_vals, index_elements=("id",))
+        stmt = upsert(timescales_table, timescale_vals)
         self.db.session.execute(stmt)
 
         for interval in self.provider.get_intervals():
@@ -378,7 +378,6 @@ class MacrostratMetadataPopulator:
             stmt = upsert(
                 intervals_table,
                 values,
-                ("id",),
                 on_conflict=OnConflictAction.DO_NOTHING,
             ).returning(intervals_table.c.id)
             int_id = self.db.session.execute(stmt).scalar()
@@ -413,41 +412,3 @@ class MacrostratMetadataPopulator:
             row = asdict(environment)
             row.setdefault("environ_fill", 0)
             self._upsert("environs", row)
-
-
-from typing import Sequence
-from macrostrat.database.postgresql import OnConflictAction
-
-
-def _upsert_core(
-    table,
-    values: dict[str, Any],
-    *,
-    index_elements: Sequence[str] | None = None,
-    on_conflict: OnConflictAction = OnConflictAction.DO_UPDATE,
-):
-    _index = index_elements
-    stmt = insert(table).values(values)
-    if on_conflict == "restrict":
-        return stmt
-
-    if on_conflict == "do-nothing":
-        return stmt.on_conflict_do_nothing(index_elements=_index)
-
-    if _index is None:
-        _index = table.primary_key.columns.keys()
-    _index = list(_index)
-
-    update_values = {
-        column.name: getattr(stmt.excluded, column.name)
-        for column in table.columns
-        if column.name not in _index
-    }
-
-    if len(update_values) == 0:
-        return stmt
-
-    return stmt.on_conflict_do_update(
-        index_elements=_index,
-        set_=update_values,
-    )

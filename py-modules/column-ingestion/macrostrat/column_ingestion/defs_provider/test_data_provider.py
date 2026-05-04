@@ -92,8 +92,8 @@ def api_provider():
 @pytest.fixture(
     params=[
         pytest.param("static_provider", id="static"),
-        # pytest.param("db_provider", id="database"),
-        # pytest.param("api_provider", id="api", marks=pytest.mark.web),
+        pytest.param("db_provider", id="database"),
+        pytest.param("api_provider", id="api", marks=pytest.mark.web),
     ]
 )
 def provider(request):

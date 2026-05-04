@@ -953,7 +953,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
     { name = "macrostrat-app-frame", specifier = ">=3.0.4,<4" },
-    { name = "macrostrat-database", specifier = ">=4.0.1,<5" },
+    { name = "macrostrat-database", specifier = ">=4.0.2,<5" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "sqlalchemy", specifier = ">=2.0.28,<3" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
@@ -961,7 +961,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.0.1"
+version = "4.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -975,9 +975,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/cc/f273aba5901ec0bb514746a51b75360b28e80c5163b7c586a332b16bdac4/macrostrat_database-4.0.1.tar.gz", hash = "sha256:4c06d18ea07ab8854267781fa3a47391eef38f42707af25d20fdf95f5bffcb9b", size = 19084, upload-time = "2026-04-29T15:32:25.762Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/f4/f1253baf5ad727277659dd95956f90fa940f62b62a1f95b63de25530bfe6/macrostrat_database-4.0.2.tar.gz", hash = "sha256:1d0be1e95553172243223d3c1157bd56128bff9f8626eba56376e008889f10f4", size = 19119, upload-time = "2026-05-04T11:01:12.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/5f/f7008260e431d0105940738601cd1ca0637171ec423602b8aa5ec0e81744/macrostrat_database-4.0.1-py3-none-any.whl", hash = "sha256:3c81e7017e74ab98cd208a9077b802be82177c6d0a3b440474bca7255ca5e284", size = 25610, upload-time = "2026-04-29T15:32:24.514Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/c6/06cf1a74344078993f7128b70f3da2e66112213146bb765e39e798e46d68/macrostrat_database-4.0.2-py3-none-any.whl", hash = "sha256:dc94d511a845afbf0ea1cd66ffc03e7436e58db968852f6fce41d09b82a2889c", size = 25658, upload-time = "2026-05-04T11:01:11.56Z" },
 ]
 
 [[package]]

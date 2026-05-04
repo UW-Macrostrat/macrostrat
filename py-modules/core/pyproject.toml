@@ -7,7 +7,7 @@ requires-python = ">=3.11,<4"
 dependencies = [
     "dynaconf>=3.1.12,<4",
     "macrostrat.app-frame>=3.0.4,<4",
-    "macrostrat.database>=4.0.1,<5",
+    "macrostrat.database>=4.0.2,<5",
     "python-dotenv>=1.0.0,<2",
     "sqlalchemy>=2.0.28,<3",
     "toml>=0.10.2,<0.11",
