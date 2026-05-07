@@ -3,7 +3,6 @@ from datetime import datetime
 from sys import exit, stderr
 
 import click
-from macrostrat.database.query import StatementResult, StatementContext
 from results import db as results_db
 from results.dbdiff import Migration as DiffMigration
 from rich import print
@@ -15,6 +14,7 @@ from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import engine_for_db_name, get_database
 from macrostrat.core.exc import MacrostratError
+from macrostrat.database.query import StatementContext, StatementResult
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger

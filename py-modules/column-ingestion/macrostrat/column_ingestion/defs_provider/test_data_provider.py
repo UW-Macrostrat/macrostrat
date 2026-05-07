@@ -2,8 +2,8 @@ import pytest
 
 from . import (
     MacrostratAPIDataProvider,
-    MacrostratDataProvider,
     MacrostratDatabaseDataProvider,
+    MacrostratDataProvider,
     MacrostratMetadataPopulator,
 )
 from .models import Environment, Interval, Lithology, LithologyAttribute, Timescale
