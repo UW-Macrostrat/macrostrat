@@ -56,7 +56,7 @@ def all_tests(ctx: Context, quick: bool = False) -> None:
     with working_directory(settings.srcroot):
         args = ctx.args
         if quick:
-            args += ["--skip-slow", "--failed-first", "-x", "--capture=no"]
+            args += ["--skip-slow", "--failed-first", "-x", "--show-capture=no"]
         run_pytest(args)
 
 

@@ -1,4 +1,4 @@
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 from sqlalchemy.exc import NoSuchTableError
 
 from ...utils import column_exists, table_exists

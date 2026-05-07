@@ -304,19 +304,21 @@ except ImportError as err:
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
-if subsystems.get("criticalmaas", False):
-    # TODO: add a hint somewhere for which subsystems are disabled
-    # - This could also provide ways to dynamically load them and report
-    #   errors etc.
-    from .subsystems.criticalmaas import app as criticalmaas_app
 
-    main.add_typer(
-        criticalmaas_app,
-        name="criticalmaas",
-        rich_help_panel="Integrations",
-        short_help="Tools for the CriticalMAAS program",
-        deprecated=True,
-    )
+# CRITICALMAAS subsystem depends on outdated python package. We could update this to re-enable
+# if subsystems.get("criticalmaas", False):
+#     # TODO: add a hint somewhere for which subsystems are disabled
+#     # - This could also provide ways to dynamically load them and report
+#     #   errors etc.
+#     from .subsystems.criticalmaas import app as criticalmaas_app
+#
+#     main.add_typer(
+#         criticalmaas_app,
+#         name="criticalmaas",
+#         rich_help_panel="Integrations",
+#         short_help="Tools for the CriticalMAAS program",
+#         deprecated=True,
+#     )
 
 
 if kube_namespace := getattr(settings, "kube_namespace", None):
