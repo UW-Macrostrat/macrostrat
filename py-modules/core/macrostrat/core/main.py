@@ -78,6 +78,11 @@ class StateManager:
     def set(self, key: str, value: str, wipe_others: bool = False):
         set_app_state(key, value, wipe_others=wipe_others)
 
+    def clear(self):
+        state_file = get_app_state_file()
+        if state_file.exists():
+            state_file.unlink()
+
 
 class MacrostratControlCommand(ControlCommand):
     def callback(

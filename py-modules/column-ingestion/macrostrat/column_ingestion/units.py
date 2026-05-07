@@ -1,12 +1,22 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 import polars as pl
 from sqlalchemy import and_
+from sqlalchemy.dialects.postgresql import insert
 
+from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
-from .lithologies import Lithology, process_liths_text
+from .intervals import (
+    Interval,
+    RelativeAge,
+    get_interval_by_id,
+    get_interval_from_text,
+    get_intervals,
+)
+from .lithologies import LithAbundance, Lithology, LithsProcessor
 
 
 @dataclass
@@ -21,27 +31,62 @@ class Unit:
     name: str | None = None
     color: str | None = None
 
+    # Relative age positioning
+    b_age: RelativeAge | None = None
+    t_age: RelativeAge | None = None
+
 
 log = get_logger(__name__)
 
 
+def rename_aliases(df, aliases):
+    """Rename or alias columns in a data frame"""
+    warnings = set()
+    for old_name, new_name in aliases.items():
+        if old_name in df.columns:
+            if new_name not in df.columns:
+                df = df.rename({old_name: new_name})
+            else:
+                warnings.add(
+                    f"Both '{old_name}' and '{new_name}' are present in the data frame."
+                )
+    return df, warnings
+
+
 def get_units(data_file) -> {str: list[Unit]}:
     df = pl.read_excel(data_file, sheet_name="units")
+    return get_units_from_df(df)
 
+
+def get_units_from_df(df) -> {str: list[Unit]}:
     # Rename some columns
-    df = df.rename(
+    df, warnings = rename_aliases(
+        df,
         {
+            "pos": "position",
             "position": "b_pos",
             "bottom_position": "b_pos",
             "height": "b_pos",
             "column": "col_id",
             "column_id": "col_id",
+            "unit_name": "name",
         },
-        strict=False,
     )
 
-    # Ensure b_pos is numeric
-    df = df.with_columns(pl.col("b_pos").cast(pl.Float64, strict=False))
+    for warning in warnings:
+        log.warning(warning)
+
+    # Ensure that either b_pos or t_pos is present
+    if "b_pos" not in df.columns and "t_pos" not in df.columns:
+        raise ValueError("Either b_pos or t_pos must be present in the data frame.")
+
+    # Create the columns that don't exist
+    for col in ["b_pos", "t_pos"]:
+        if col not in df.columns:
+            newcol = pl.lit(None).alias(col)
+        else:
+            newcol = pl.col(col).cast(pl.Float64, strict=False)
+        df = df.with_columns(newcol)
 
     # Split into groups by column_id
     groups = df.group_by(["col_id"])
@@ -57,21 +102,30 @@ def get_units(data_file) -> {str: list[Unit]}:
 
 def prepare_column_units(df) -> list[Unit]:
     # Sort by b_pos (descending if height)
+    # TODO: figure out how to switch conventions for depth
     df = df.sort("b_pos", descending=True)
-    # If the t_pos column does not exist, create it (empty for now)
-    if "t_pos" not in df.columns:
-        df = df.with_columns(pl.lit(None, float).alias("t_pos"))
-
-    # Create a column with default values for the top position of each unit
-    t_col = df["b_pos"].shift(1)
 
     # Fill in t_pos with the next b_pos value, unless it already exists
-    df = df.with_columns(
-        pl.when(pl.col("t_pos").is_null())
-        .then(t_col)
-        .otherwise(pl.col("t_pos"))
-        .alias("t_pos")
-    )
+    # Do the same for intervals and proportions
+    for suffix in ["pos", "prop", "int"]:
+        b_col = "b_" + suffix
+        t_col = "t_" + suffix
+        # If the t_pos column does not exist, create it (empty for now)
+
+        for col in [b_col, t_col]:
+            if col in df.columns:
+                continue
+            df = df.with_columns(pl.lit(None, float).alias(col))
+
+        # Create a column with default values for the top position of each unit
+        _t_col = df[b_col].shift(1)
+
+        df = df.with_columns(
+            pl.when(pl.col(t_col).is_null())
+            .then(_t_col)
+            .otherwise(pl.col(t_col))
+            .alias(t_col)
+        )
 
     n_rows = df.shape[0]
 
@@ -83,30 +137,45 @@ def prepare_column_units(df) -> list[Unit]:
     # Allow for one null at the top and one at the bottom
     assert n_rows_2 >= (n_rows - 2)
 
-    fill_specs = ["lithology", "color", "grainsize", "strat_name", "facies"]
-    cols = [
-        pl.col(spec).fill_null(strategy="backward").alias(spec)
-        for spec in fill_specs
-        if spec in df.columns
+    fill_specs = [
+        "lithology",
+        "minor_lith",
+        "color",
+        "grainsize",
+        "strat_name",
+        "facies",
+        "name",
     ]
-
-    # Fill lithology info upwards
-    df = df.with_columns(*cols)
+    for spec in fill_specs:
+        if spec not in df.columns:
+            continue
+        new_col = df[spec].fill_null(strategy="forward").alias(spec)
+        # Cast the new column to a string
+        new_col = new_col.cast(pl.Utf8)
+        df = df.with_columns(new_col)
+        # Fill 'none' values in the new column with nulls
+        df = df.with_columns(
+            pl.when(pl.col(spec) == "none")
+            .then(pl.lit(None))
+            .otherwise(pl.col(spec))
+            .alias(spec)
+        )
 
     # Get unique lithologies in the column
-    lithologies = df["lithology"].unique().to_list()
-    print_list("Lithologies", lithologies)
-
-    # Get strat names
-    strat_names = df["strat_name"].unique().to_list()
-    print_list("Strat_names", strat_names)
+    for col in ["lithology", "minor_lith", "strat_name"]:
+        if col not in df.columns:
+            continue
+        lithologies = df[col].unique().to_list()
+        if len(lithologies) > 0:
+            print_list(col, lithologies)
 
     res = []
+    liths_processor = LithsProcessor()
     for row in df.iter_rows(named=True):
         lith = row.get("lithology")
-        liths = set()
-        if lith is not None:
-            liths = process_liths_text(lith)
+        liths = liths_processor(lith, LithAbundance.DOMINANT)
+        # Process minor lithologies if they are present
+        liths |= liths_processor(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
 
         unit = Unit(
             section_id=row.get("section_id"),
@@ -117,8 +186,29 @@ def prepare_column_units(df) -> list[Unit]:
             lithology=liths,
             color=row.get("color"),
         )
+
+        # Only relative age positioning is supported for now
+        b_int = get_interval_from_text(row.get("b_int"))
+        if b_int is not None:
+            unit.b_age = RelativeAge(
+                interval=b_int, proportion=coalesce(row.get("b_prop"), 0)
+            )
+
+        t_int = get_interval_from_text(row.get("t_int"))
+        if t_int is not None:
+            unit.t_age = RelativeAge(
+                interval=t_int, proportion=coalesce(row.get("t_prop"), 1)
+            )
+
         res.append(unit)
+
     return res
+
+
+def coalesce(value, default):
+    if value is None:
+        return default
+    return value
 
 
 def write_units(db, units: list[Unit]):
@@ -130,6 +220,7 @@ def write_units(db, units: list[Unit]):
     # Get the set of sections and columns for which units should be overwrittem
     col_ids = set(unit.col_id for unit in units)
     section_ids = set(unit.section_id for unit in units)
+    # TODO: multiple sections per column are not handled yet
 
     # Delete existing units for the relevant sections and columns
     db.session.execute(
@@ -149,6 +240,13 @@ def write_units(db, units: list[Unit]):
             else None
         )
 
+        # TODO: Unit fields that could be added
+        # - covered
+        # - schematic (?) to handle cases where unit is not fully described, or age model should not be trusted.
+        #   Could render ages or heights with a tilde, for instance
+        # - hypothetical (?) to cover cases where the presence of a unit is inferred (e.g., possibly eroded material of a certain age)
+        # - descrip: similar to map polygon description, more specific than notes
+
         insert_stmt = (
             units_tbl.insert()
             .values(
@@ -158,7 +256,7 @@ def write_units(db, units: list[Unit]):
                 position_top=unit.t_pos,
                 max_thick=thickness or 0,
                 min_thick=thickness or 0,
-                outcrop="subsurface",
+                outcrop="surface",
                 # description=unit.description,
                 strat_name=unit.name or "default",
                 color="blue",
@@ -189,12 +287,16 @@ def write_units(db, units: list[Unit]):
         # Insert lithology associations for the unit
         n_liths = len(unit.lithology)
         for lith in unit.lithology:
+            dom = ""
+            if lith.dom is not None:
+                dom = lith.dom.value
+
             insert_lith_stmt = (
                 unit_liths.insert()
                 .values(
                     unit_id=unit.id,
                     lith_id=lith.id,
-                    dom="",
+                    dom=dom,
                     comp_prop=1 / n_liths,
                     mod_prop=1 / n_liths,
                     toc=0.0,
@@ -209,12 +311,12 @@ def write_units(db, units: list[Unit]):
                 )
             att_values = lith.attributes or set()
             for att in att_values:
-                vals = {
-                    "unit_lith_id": ulid,
-                    "lith_att_id": att.id,
-                }
-                insert_att_stmt = unit_liths_atts.insert().values(vals)
+                insert_att_stmt = unit_liths_atts.insert().values(
+                    unit_lith_id=ulid, lith_att_id=att.id, ref_id=0
+                )
                 db.session.execute(insert_att_stmt)
+    # Units with IDs set
+    return units
 
 
 def print_list(title, lst):

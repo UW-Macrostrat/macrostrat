@@ -4,9 +4,7 @@ from typing import Optional, Tuple
 import fiona
 import geopandas as G
 import pandas as pd
-import pyogrio
 
-from macrostrat.core.database import get_database
 from macrostrat.map_integration.utils.ingestion_utils import (
     get_age_interval_df,
     get_strat_names_df,

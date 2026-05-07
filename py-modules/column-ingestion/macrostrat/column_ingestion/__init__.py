@@ -2,6 +2,8 @@ from pathlib import Path
 
 from typer import Argument, Typer
 
+from .project_metadata import shanan_column_importer
+
 app = Typer(
     no_args_is_help=True,
     help="Column ingestion subsystem for Macrostrat",
@@ -12,7 +14,10 @@ app = Typer(
 def ingest_columns(
     data_file: Path = Argument(..., help="Path to the data file to ingest")
 ):
-    """Ingest columns tabular data."""
+    """Ingest columns from tabular data."""
     from .ingest import ingest_columns_from_file
 
     ingest_columns_from_file(data_file)
+
+
+app.command("ingest-shanan")(shanan_column_importer)

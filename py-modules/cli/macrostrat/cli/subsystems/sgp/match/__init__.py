@@ -116,7 +116,7 @@ def match_sgp_data(
     columns = get_columns_data_frame(db.macrostrat)
     sample_locs = samples.drop(columns=[i for i in samples.columns if i != "geom"])
 
-    join = sjoin(sample_locs, columns, how="left", op="intersects")
+    join = sjoin(sample_locs, columns, how="left", predicate="intersects")
     grouped = join.groupby("sample_id")
     counts = grouped.size().value_counts()
     res = grouped.aggregate("first")

@@ -3,10 +3,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
-import fiona
 import geopandas as G
 import pandas as P
-import pyogrio
 from geoalchemy2 import Geometry
 from rich.console import Console
 from rich.progress import Progress

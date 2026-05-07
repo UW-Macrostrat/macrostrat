@@ -69,9 +69,8 @@ def get_or_create_project(
     if create_if_not_exists:
         # Create a new project
         # Remove parentheticals from the project name for the slug
-        slug = None
-        if project.name is not None:
-
+        slug = project.slug
+        if project.name is not None and slug is None:
             simple_name = re.sub(r"\s*\(.*?\)\s*", "", project.name)
             simple_name = re.sub(r"\s+", " ", simple_name).strip()
             slug = simple_name.lower().replace(" ", "-")
@@ -84,6 +83,11 @@ def get_or_create_project(
             timescale_id=1,  # TODO: this should be set to a valid timescale ID
         )
         db.session.add(new_project)
+        # Get the ID of the newly created project
+        db.session.commit()
+        db.session.refresh(new_project)
+
+        print(f"Created project {new_project.id} ({new_project.slug})")
         return ProjectData(
             id=new_project.id,
             slug=new_project.slug,
@@ -103,3 +107,24 @@ def get_all_lith_attributes():
     """Get all lithology attributes from the database."""
     db = get_database()
     return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
+
+
+def get_all_intervals():
+    """Get all intervals from the database."""
+    db = get_database()
+    return db.run_query(
+        """
+        SELECT
+            i.id,
+            i.age_bottom,
+            i.age_top,
+            i.interval_name,
+            i.rank,
+            i.interval_type,
+            array_agg(ti.timescale_id) timescales
+        FROM macrostrat.intervals i
+        LEFT JOIN macrostrat.timescales_intervals ti
+        ON i.id = ti.interval_id
+        GROUP BY i.id, ti.timescale_id;
+    """
+    ).fetchall()
