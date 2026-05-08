@@ -75,7 +75,8 @@ CREATE TABLE macrostrat_kg.entity (
     run_id integer NOT NULL,
     id integer NOT NULL,
     entity_type_id integer NOT NULL,
-    str_match_type text NOT NULL
+    str_match_type text NOT NULL,
+    global_entity_id BIGINT
 );
 ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;
 
@@ -391,6 +392,9 @@ ALTER TABLE ONLY macrostrat_kg.relationship
 
 ALTER TABLE ONLY macrostrat_kg.entity
     ADD CONSTRAINT fk_model_run_id FOREIGN KEY (run_id) REFERENCES macrostrat_kg.all_runs(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY macrostrat_kg.entity
+    ADD CONSTRAINT fk_global_entity_id FOREIGN KEY (global_entity_id) REFERENCES macrostrat_kg.global_entity(lobal_entity_id) ;
 
 ALTER TABLE ONLY macrostrat_kg.relationship
     ADD CONSTRAINT fk_src_entity_id FOREIGN KEY (src_entity_id) REFERENCES macrostrat_kg.entity(id) ON DELETE CASCADE;
