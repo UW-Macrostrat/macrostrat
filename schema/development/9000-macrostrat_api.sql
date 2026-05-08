@@ -533,35 +533,25 @@ CREATE VIEW macrostrat_api.intervals AS
 ALTER TABLE macrostrat_api.intervals OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_entities AS
- WITH strat_names AS (
-         SELECT strat_names.id AS strat_name_id,
-            strat_names.concept_id,
-            strat_names.strat_name AS name,
-            strat_names.rank
-           FROM macrostrat.strat_names
-        ), liths AS (
-         SELECT liths.id AS lith_id,
-            liths.lith AS name,
-            liths.lith_color AS color
-           FROM macrostrat.liths
-        ), lith_atts AS (
-         SELECT lith_atts.id AS lith_att_id,
-            lith_atts.lith_att AS name
-           FROM macrostrat.lith_atts
-        )
- SELECT e.id,
-    et.id AS type,
-    e.name,
-    ARRAY[e.start_index, e.end_index] AS indices,
-    mr.id AS model_run,
-    mr.source_text_id AS source,
-    COALESCE(to_json(sn.*), to_json(l.*), to_json(la.*)) AS match
-   FROM (((((macrostrat_kg.entity e
-     JOIN macrostrat_kg.entity_type et ON ((et.id = e.entity_type_id)))
-     JOIN macrostrat_kg.model_run mr ON ((mr.id = e.run_id)))
-     LEFT JOIN strat_names sn ON ((sn.strat_name_id = e.strat_name_id)))
-     LEFT JOIN liths l ON ((l.lith_id = e.lith_id)))
-     LEFT JOIN lith_atts la ON ((la.lith_att_id = e.lith_att_id)));
+WITH matches AS (SELECT ge.global_entity_id,
+                        json_build_object(
+                                'global_entity_id', ge.global_entity_id,
+                                'entity_id', ge.entity_id,
+                                'entity_table', split_part(ge.entity_table, '.', 2),
+                                'name', ge.normalized_name
+                        ) AS match
+                 FROM macrostrat_kg.global_entity ge)
+SELECT e.id,
+       et.id                                                AS type,
+       e.name,
+       ARRAY [e.start_index, e.end_index]                   AS indices,
+       mr.id                                                AS model_run,
+       mr.source_text_id                                    AS source,
+       m.match
+FROM macrostrat_kg.entity e
+         JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
+         JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
+         LEFT JOIN matches m ON m.global_entity_id = e.global_entity_id;
 ALTER TABLE macrostrat_api.kg_entities OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_entity_tree AS
