@@ -385,7 +385,7 @@ ALTER TABLE ONLY macrostrat_kg.relationship
     ADD CONSTRAINT fk_dst_entity_id FOREIGN KEY (dst_entity_id) REFERENCES macrostrat_kg.entity(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat_kg.extraction_feedback
-    ADD CONSTRAINT fk_feedback_id FOREIGN KEY (feedback_id) REFERENCES macrostrat_kg.all_runs(id);
+    ADD CONSTRAINT fk_feedback_id FOREIGN KEY (feedback_id) REFERENCES macrostrat_kg.all_runs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat_kg.relationship
     ADD CONSTRAINT fk_model_run_id FOREIGN KEY (run_id) REFERENCES macrostrat_kg.all_runs(id) ON DELETE CASCADE;
