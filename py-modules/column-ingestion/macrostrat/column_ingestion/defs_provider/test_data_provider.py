@@ -41,9 +41,6 @@ class StaticMacrostratDataProvider(MacrostratDataProvider):
                 lith_type="siliciclastic",
                 lith_class="sedimentary",
                 lith_fill=1,
-                comp_coef=1,
-                initial_porosity=0.3,
-                bulk_density=2.2,
                 lith_color="#ffff00",
             )
         ]

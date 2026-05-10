@@ -46,6 +46,24 @@ default_api_config = MacrostratAPIConfig(base_url="https://macrostrat.org/api/v2
 
 
 class MacrostratDataProvider(ABC):
+    """
+    Provides an abstract interface for accessing Macrostrat data.
+
+    This class serves as a blueprint for implementing data providers that handle
+    the retrieval and caching of geological data, specifically intervals,
+    lithologies, lithology attributes, and environments. Subclasses are required
+    to implement the abstract methods to define the data loading logic.
+
+    :ivar intervals: Cached list of geological intervals.
+    :type intervals: list[Interval] | None
+    :ivar lithologies: Cached list of lithologies.
+    :type lithologies: list[Lithology] | None
+    :ivar lithology_attributes: Cached list of lithology attributes.
+    :type lithology_attributes: list[LithologyAttribute] | None
+    :ivar environments: Cached list of environments.
+    :type environments: list[Environment] | None
+    """
+
     def __init__(self):
         self._intervals: list[Interval] | None = None
         self._lithologies: list[Lithology] | None = None
@@ -149,9 +167,6 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
                 lith_type=row.get("type"),
                 lith_class=row.get("class"),
                 lith_fill=row.get("fill"),
-                comp_coef=row.get("comp_coef"),
-                initial_porosity=row.get("initial_porosity"),
-                bulk_density=row.get("bulk_density"),
                 lith_color=row.get("color"),
             )
             for row in rows
@@ -220,29 +235,13 @@ class MacrostratDatabaseDataProvider(MacrostratDataProvider):
                 lith_type,
                 lith_class,
                 lith_fill,
-                comp_coef,
-                initial_porosity,
-                bulk_density,
                 lith_color
             FROM macrostrat.liths
             ORDER BY lith
             """
-        ).fetchall()
+        ).mappings()
 
-        return [
-            Lithology(
-                id=row.id,
-                lith=row.lith,
-                lith_type=row.lith_type,
-                lith_class=row.lith_class,
-                lith_fill=row.lith_fill,
-                comp_coef=row.comp_coef,
-                initial_porosity=row.initial_porosity,
-                bulk_density=row.bulk_density,
-                lith_color=row.lith_color,
-            )
-            for row in rows
-        ]
+        return [Lithology(**row) for row in rows]
 
     def _load_lithology_attributes(self) -> list[LithologyAttribute]:
         rows = self.db.run_query(
@@ -255,17 +254,9 @@ class MacrostratDatabaseDataProvider(MacrostratDataProvider):
             FROM macrostrat.lith_atts
             ORDER BY lith_att
             """
-        ).fetchall()
+        ).mappings()
 
-        return [
-            LithologyAttribute(
-                id=row.id,
-                lith_att=row.lith_att,
-                att_type=row.att_type,
-                lith_att_fill=row.lith_att_fill,
-            )
-            for row in rows
-        ]
+        return [LithologyAttribute(**row) for row in rows]
 
     def _load_environments(self) -> list[Environment]:
         rows = self.db.run_query(
@@ -279,18 +270,9 @@ class MacrostratDatabaseDataProvider(MacrostratDataProvider):
             FROM macrostrat.environs
             ORDER BY environ
             """
-        ).fetchall()
+        ).mappings()
 
-        return [
-            Environment(
-                id=row.id,
-                environ=row.environ,
-                environ_type=row.environ_type,
-                environ_class=row.environ_class,
-                environ_color=row.environ_color,
-            )
-            for row in rows
-        ]
+        return [Environment(**row) for row in rows]
 
 
 class MacrostratMetadataPopulator:
@@ -345,9 +327,6 @@ class MacrostratMetadataPopulator:
         for interval in self.provider.get_intervals():
             values = asdict(interval)
             timescales = values.pop("timescales", [])
-
-            log.info("populating interval %s", interval)
-
             stmt = upsert(
                 intervals_table,
                 values,
@@ -365,9 +344,18 @@ class MacrostratMetadataPopulator:
 
     def populate_lithologies(self):
         for lithology in self.provider.get_lithologies():
-            # NOT NULL constraint on lithology.lith_equiv
+            # Don't include material properties and bulk information (for now)
+            _defaults = {
+                "lith_equiv": 0,
+                "comp_coef": 0,
+                "initial_porosity": 0,
+                "bulk_density": 0,
+            }
+
             row = asdict(lithology)
-            row.setdefault("lith_equiv", 0)
+            for k, v in _defaults.items():
+                row.setdefault(k, v)
+
             self._upsert(
                 "liths",
                 row,
