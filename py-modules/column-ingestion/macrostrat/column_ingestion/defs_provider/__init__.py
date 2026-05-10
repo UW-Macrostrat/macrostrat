@@ -324,6 +324,8 @@ class MacrostratMetadataPopulator:
         stmt = upsert(timescales_table, timescale_vals)
         self.db.session.execute(stmt)
 
+        linking_rows = []
+
         for interval in self.provider.get_intervals():
             values = asdict(interval)
             timescales = values.pop("timescales", [])
@@ -332,15 +334,19 @@ class MacrostratMetadataPopulator:
                 values,
                 on_conflict=OnConflictAction.DO_NOTHING,
             ).returning(intervals_table.c.id)
-            int_id = self.db.session.execute(stmt).scalar()
-
+            res = self.db.session.execute(stmt)
+            # For conflicted values, nothing is returned
+            int_id = res.scalar() or interval.id
             for timescale in timescales:
-                self.db.run_query(
-                    "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:id, :int_id) ON CONFLICT DO NOTHING",
-                    {"id": timescale["id"], "int_id": interval.id},
+                linking_rows.append(
+                    {"timescale_id": timescale["id"], "interval_id": int_id}
                 )
 
-    # TODO: we set some values to NULLish when we should load them correctly in the future.
+        self.db.run_query(
+            "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:timescale_id, :interval_id) ON CONFLICT DO NOTHING",
+            linking_rows,
+            use_instance_params=False,
+        )
 
     def populate_lithologies(self):
         for lithology in self.provider.get_lithologies():
