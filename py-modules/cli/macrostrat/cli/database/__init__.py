@@ -13,9 +13,9 @@ from typer import Argument, Option
 from macrostrat.core import app
 from macrostrat.core.database import get_database
 from macrostrat.database import Database
+from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database.query import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 

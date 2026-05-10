@@ -1,8 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from typing import Any
 
 import polars as pl
 from sqlalchemy import and_
+from sqlalchemy.dialects.postgresql import insert
 
+from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
 from .database import get_macrostrat_table
@@ -14,13 +17,6 @@ from .intervals import (
     get_intervals,
 )
 from .lithologies import LithAbundance, Lithology, LithsProcessor
-
-from typing import Any
-from dataclasses import asdict
-
-from sqlalchemy.dialects.postgresql import insert
-
-from macrostrat.database import Database
 
 
 @dataclass

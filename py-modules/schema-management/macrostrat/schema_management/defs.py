@@ -1,3 +1,6 @@
+import logging
+from contextlib import contextmanager
+
 import docker
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
@@ -6,11 +9,8 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
-from macrostrat.utils.logs import get_logger, suppress_loggers
 from macrostrat.dinosaur.cluster import database_cluster
-
-import logging
-from contextlib import contextmanager
+from macrostrat.utils.logs import get_logger, suppress_loggers
 
 log = get_logger(__name__)
 
