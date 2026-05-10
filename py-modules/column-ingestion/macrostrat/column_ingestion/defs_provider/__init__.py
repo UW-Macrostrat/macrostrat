@@ -8,16 +8,15 @@ and caches them for testing etc.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, Generator
+from pathlib import Path
 
 from httpx import Client
 from macrostrat.database import Database
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.engine import row
-
-from ..database import get_macrostrat_table
 from macrostrat.database.postgresql import upsert, OnConflictAction
 from macrostrat.utils import get_logger
+
+from ..database import get_macrostrat_table
 from .models import (
     Interval,
     Lithology,
@@ -29,6 +28,13 @@ from .models import (
 log = get_logger(__name__)
 
 T = TypeVar("T")
+
+
+__here__ = Path(__file__).parent
+
+
+def sql(name) -> str:
+    return (__here__ / "sql" / f"{name}.sql").read_text()
 
 
 @dataclass
@@ -179,64 +185,31 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
         ]
 
 
+def list_builder(fn):
+    """Decorator that converts a function that returns an iterable into one that returns a list"""
+
+    def wrapper(*args, **kwargs):
+        return list(fn(*args, **kwargs))
+
+    return wrapper
+
+
 class MacrostratDatabaseDataProvider(MacrostratDataProvider):
     def __init__(self, db: Database):
         super().__init__()
         self.db = db
 
-    def _load_intervals(self) -> list[Interval]:
-        rows = self.db.run_query(
-            """
-            SELECT
-                i.id,
-                i.age_bottom,
-                i.age_top,
-                i.interval_name,
-                i.interval_abbrev,
-                i.interval_type,
-                i.interval_color,
-                i.rank,
-                array_remove(
-                    array_agg(
-                        json_build_object(
-                            'id', t.id,
-                            'name', t.name
-                        )
-                    ),
-                    NULL
-                ) AS timescales
-            FROM macrostrat.intervals i
-            LEFT JOIN macrostrat.timescales_intervals ti
-                ON i.id = ti.interval_id
-            LEFT JOIN macrostrat.timescales t
-                ON ti.timescale_id = t.id
-            GROUP BY
-                i.id,
-                i.age_bottom,
-                i.age_top,
-                i.interval_name,
-                i.interval_abbrev,
-                i.interval_type,
-                i.interval_color,
-                i.rank
-            ORDER BY i.age_top, i.age_bottom
-            """
-        ).fetchall()
+    @list_builder
+    def _load_intervals(self):
+        rows = self.db.run_query(sql("load-intervals")).mappings()
+        for row in rows:
+            res = dict(row)
+            timescales = row.get("timescales")
+            if timescales is not None:
+                timescales = [Timescale(v["id"], v["name"]) for v in timescales]
+            res["timescales"] = timescales
 
-        return [
-            Interval(
-                id=row.id,
-                age_bottom=row.age_bottom,
-                age_top=row.age_top,
-                interval_name=row.interval_name,
-                interval_abbrev=row.interval_abbrev,
-                interval_type=row.interval_type,
-                interval_color=row.interval_color,
-                rank=row.rank,
-                timescales=[Timescale(v["id"], v["name"]) for v in row.timescales],
-            )
-            for row in rows
-        ]
+            yield Interval(**res)
 
     def _load_lithologies(self) -> list[Lithology]:
         rows = self.db.run_query(

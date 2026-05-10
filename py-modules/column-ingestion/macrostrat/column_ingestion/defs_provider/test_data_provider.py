@@ -133,7 +133,7 @@ def test_provider_cache_can_be_cleared(static_provider):
     assert first is not second
 
 
-def test_populator_populates_test_db(test_db):
+def test_populates_test_db(test_db):
     provider = StaticMacrostratDataProvider()
 
     MacrostratMetadataPopulator(provider, test_db).populate_all()

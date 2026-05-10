@@ -17,7 +17,9 @@ from .units import get_units, write_units
 
 def ingest_columns_from_file(data_file):
     # Get sheet names
-    workbook = load_workbook(data_file, read_only=True)
+    workbook = load_workbook(
+        data_file, read_only=True, data_only=True, keep_links=False
+    )
     sheet_names = workbook.sheetnames
 
     print(f"Sheets: {sheet_names}")
