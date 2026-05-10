@@ -321,26 +321,30 @@ class MacrostratMetadataPopulator:
                 all_timescales.add(timescale)
 
         timescale_vals = [asdict(timescale) for timescale in all_timescales]
+        
+        # First, add timescales
         stmt = upsert(timescales_table, timescale_vals)
         self.db.session.execute(stmt)
 
         linking_rows = []
-
+        intervals = []
         for interval in self.provider.get_intervals():
             values = asdict(interval)
             timescales = values.pop("timescales", [])
-            stmt = upsert(
-                intervals_table,
-                values,
-                on_conflict=OnConflictAction.DO_NOTHING,
-            ).returning(intervals_table.c.id)
-            res = self.db.session.execute(stmt)
-            # For conflicted values, nothing is returned
-            int_id = res.scalar() or interval.id
+            intervals.append(values)
             for timescale in timescales:
                 linking_rows.append(
-                    {"timescale_id": timescale["id"], "interval_id": int_id}
+                    {"timescale_id": timescale["id"], "interval_id": interval.id}
                 )
+
+        stmt = upsert(
+            intervals_table,
+            intervals,
+            on_conflict=OnConflictAction.DO_NOTHING,
+        )
+        self.db.session.execute(stmt)
+        # For conflicted values, nothing is returned
+        # int_id = res.scalar() or interval.id
 
         self.db.run_query(
             "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:timescale_id, :interval_id) ON CONFLICT DO NOTHING",
@@ -348,34 +352,44 @@ class MacrostratMetadataPopulator:
             use_instance_params=False,
         )
 
-    def populate_lithologies(self):
+    @list_builder
+    def _prepare_lithologies(self):
+        _defaults = {
+            "lith_equiv": 0,
+            "comp_coef": 0,
+            "initial_porosity": 0,
+            "bulk_density": 0,
+        }
         for lithology in self.provider.get_lithologies():
             # Don't include material properties and bulk information (for now)
-            _defaults = {
-                "lith_equiv": 0,
-                "comp_coef": 0,
-                "initial_porosity": 0,
-                "bulk_density": 0,
-            }
-
             row = asdict(lithology)
             for k, v in _defaults.items():
                 row.setdefault(k, v)
+            yield row
 
-            self._upsert(
-                "liths",
-                row,
-            )
-
-    def populate_lithology_attributes(self):
+    @list_builder
+    def _prepare_lithology_attributes(self):
         for attribute in self.provider.get_lithology_attributes():
             row = asdict(attribute)
             # TODO: capture equivalence
             row.setdefault("equiv", 0)
-            self._upsert("lith_atts", row)
+            yield row
 
-    def populate_environments(self):
+    @list_builder
+    def _prepare_environments(self):
         for environment in self.provider.get_environments():
             row = asdict(environment)
             row.setdefault("environ_fill", 0)
-            self._upsert("environs", row)
+            yield row
+
+    def populate_lithologies(self):
+        self._upsert(
+            "liths",
+            self._prepare_lithologies(),
+        )
+
+    def populate_lithology_attributes(self):
+        self._upsert("lith_atts", self._prepare_lithology_attributes())
+
+    def populate_environments(self):
+        self._upsert("environs", self._prepare_environments())
