@@ -314,41 +314,44 @@ class MacrostratMetadataPopulator:
         timescales_table = self._table("timescales")
         intervals_table = self._table("intervals")
 
-        _intervals = self.provider.get_intervals()
-        all_timescales = set()
-        for interval in _intervals:
-            for timescale in getattr(interval, "timescales", []):
-                all_timescales.add(timescale)
+        _timescales = set()
+        _intervals = []
+        _timescale_intervals = []
 
-        timescale_vals = [asdict(timescale) for timescale in all_timescales]
-        
-        # First, add timescales
-        stmt = upsert(timescales_table, timescale_vals)
-        self.db.session.execute(stmt)
-
-        linking_rows = []
-        intervals = []
         for interval in self.provider.get_intervals():
-            values = asdict(interval)
-            timescales = values.pop("timescales", [])
-            intervals.append(values)
+            timescales = getattr(interval, "timescales", [])
+
+            _interval = asdict(interval)
+            del _interval[
+                "timescales"
+            ]  # Don't need this, since we're using the linking table
+            _intervals.append(_interval)
             for timescale in timescales:
-                linking_rows.append(
-                    {"timescale_id": timescale["id"], "interval_id": interval.id}
+                _timescales.add(timescale)
+                _timescale_intervals.append(
+                    {"timescale_id": timescale.id, "interval_id": interval.id}
                 )
 
-        stmt = upsert(
-            intervals_table,
-            intervals,
-            on_conflict=OnConflictAction.DO_NOTHING,
-        )
-        self.db.session.execute(stmt)
+        _timescales = [asdict(timescale) for timescale in _timescales]
+
+        # Do inserts
+        # First, add timescales
+        queries = [
+            upsert(timescales_table, _timescales),
+            upsert(
+                intervals_table,
+                _intervals,
+                on_conflict=OnConflictAction.DO_NOTHING,
+            ),
+        ]
+        for query in queries:
+            self.db.session.execute(query)
         # For conflicted values, nothing is returned
         # int_id = res.scalar() or interval.id
 
         self.db.run_query(
             "INSERT INTO macrostrat.timescales_intervals (timescale_id, interval_id) VALUES (:timescale_id, :interval_id) ON CONFLICT DO NOTHING",
-            linking_rows,
+            _timescale_intervals,
             use_instance_params=False,
         )
 
