@@ -56,7 +56,7 @@ import psycopg2
 import requests
 from openpyxl import load_workbook
 
-from macrostrat.core.database import get_database
+from macrostrat.core.database import Database, get_database
 
 # -----------------------------
 # Engine utilities
@@ -2496,6 +2496,7 @@ def write_strat_name_audit_files(
 
 from pathlib import Path
 
+from typing import Any
 from typer import Argument, Option
 
 __here__ = Path(__file__).parent
@@ -2524,6 +2525,24 @@ def shanan_column_importer(
     #     "--no-audit", action="store_true", help="Disable writing audit artifacts"
     # )
     # args = parser.parse_args()
+    db = get_database()
+    _column_metadata_importer(
+        db,
+        excel_file,
+        audit_dir=audit_dir,
+        verify_project=verify_project,
+        do_audit=do_audit,
+    )
+
+
+def _column_metadata_importer(
+    db: Database,
+    excel_file: Path,
+    *,
+    audit_dir: Optional[Path] = None,
+    verify_project: bool = False,
+    do_audit: bool = False,
+):
 
     mapping_filename = str(__here__ / "macrostrat_mapping_v3.json")
     mapping = load_mapping(mapping_filename)
@@ -2571,7 +2590,6 @@ def shanan_column_importer(
     if verify_project:
         verify_project_id_via_api(project_id)
 
-    db = get_database()
     conn = connect_db(db.engine)
 
     try:
@@ -2709,7 +2727,6 @@ def shanan_column_importer(
 
         if do_audit:
             runstamp_compact, runstamp_iso = utc_runstamp()
-
             counts_manifest = {
                 "refs": refs_counts,
                 "col_groups": col_groups_counts,

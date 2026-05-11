@@ -319,12 +319,13 @@ class MacrostratMetadataPopulator:
         _timescale_intervals = []
 
         for interval in self.provider.get_intervals():
-            timescales = getattr(interval, "timescales", [])
+            timescales = getattr(interval, "timescales", None)
+            if timescales is None:
+                timescales = []
 
             _interval = asdict(interval)
-            del _interval[
-                "timescales"
-            ]  # Don't need this, since we're using the linking table
+            # Don't need this, since we're using the linking table
+            del _interval["timescales"]
             _intervals.append(_interval)
             for timescale in timescales:
                 _timescales.add(timescale)

@@ -10,3 +10,5 @@ macrostrat.toml
 .idea/data_source_mapping.xml
 
 macrostrat_staging_context.json
+
+~*.xlsx
