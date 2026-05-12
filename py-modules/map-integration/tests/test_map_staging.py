@@ -11,6 +11,13 @@ from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 
+# Override the test database fixture to use the full database with maps tables.
+@pytest.fixture
+def test_db(test_db_full):
+    """A test database session."""
+    yield test_db_full
+
+
 def test_maps_tables_exist(test_db):
     """Test that the tables exist in the database."""
     db = test_db

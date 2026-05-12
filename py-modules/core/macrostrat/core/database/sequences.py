@@ -1,9 +1,20 @@
 import re
+from dataclasses import dataclass
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from rich import print
 
 from macrostrat.database import Database
+
+# TODO: incorporate this into the macrostrat.database module
+
+
+@dataclass
+class ResetSequenceResult:
+    table: str
+    column: str
+    sequence: str
+    new_value: int
 
 
 def is_autoincrementing_column(col):
@@ -28,12 +39,20 @@ def sequence_name_for_column(col):
     return None
 
 
-def reset_sequences(db: Database, table: str, column: str | None = None):
+def reset_sequence(
+    db: Database,
+    table: str,
+    column: str | None = None,
+    *,
+    schema: str | None = None,
+    start_val: int = None,
+) -> ResetSequenceResult:
     """Helper to reset primary key or identity sequences for a given table. This can help ensure
     that primary key values can be generated correctly."""
 
     # separate table and schema name
-    schema = "public"
+    if schema is None:
+        schema = "public"
     if "." in table:
         schema, table = table.split(".", 1)
 
@@ -74,13 +93,17 @@ def reset_sequences(db: Database, table: str, column: str | None = None):
 
     full_table_name = f"{schema}.{table}" if schema else table
 
-    sql = "SELECT setval(:sequence_name, COALESCE((SELECT MAX({col_name}) FROM {table_name}), 0) + 1, false)"
+    sql = "SELECT setval(:sequence_name, COALESCE(:start_val, (SELECT MAX({col_name})+1 FROM {table_name}), 1), false)"
     res = db.run_query(
         sql,
-        dict(sequence_name=sequence_name, table_name=table_name, col_name=col_name),
+        dict(
+            sequence_name=sequence_name,
+            table_name=table_name,
+            col_name=col_name,
+            start_val=start_val,
+        ),
     ).scalar()
 
-    print(f"table:     [bold]{full_table_name}[/]")
-    print(f"column:    [bold]{_col_name}[/]")
-    print(f"sequence:  [bold]{sequence_name}[/]")
-    print(f"new value: [bold green]{res}[/]")
+    return ResetSequenceResult(
+        table=full_table_name, column=_col_name, sequence=sequence_name, new_value=res
+    )

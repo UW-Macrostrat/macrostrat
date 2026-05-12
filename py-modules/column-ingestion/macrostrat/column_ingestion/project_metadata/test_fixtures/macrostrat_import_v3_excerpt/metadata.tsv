@@ -1,0 +1,20 @@
+mapping_version	3.0
+project_name	Northern Eurasia
+organization	UW-Madison
+url
+project_id	13
+compile_date	5/11/26
+compiler_name	Evgeny Mazko
+compiler_orcid
+col_type	column
+axis_type	age
+b_int
+t_int
+b_prop
+t_prop
+rgeom
+position_unit	meters
+time_unit	Ma
+timescale	international intervals
+srid	EPSG:4326
+comments

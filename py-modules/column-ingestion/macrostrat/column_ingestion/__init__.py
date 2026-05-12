@@ -17,7 +17,8 @@ def ingest_columns(
     """Ingest columns from tabular data."""
     from .ingest import ingest_columns_from_file
 
-    ingest_columns_from_file(data_file)
+    db = get_database()
+    ingest_columns_from_file(db, data_file)
 
 
 app.command("ingest-shanan")(shanan_column_importer)

@@ -32,9 +32,6 @@ class Lithology:
     lith_type: str | None = None
     lith_class: str | None = None
     lith_fill: int | None = None
-    comp_coef: Decimal | float | None = None
-    initial_porosity: Decimal | float | None = None
-    bulk_density: Decimal | float | None = None
     lith_color: str | None = None
 
 

@@ -15,9 +15,11 @@ from .metadata import get_metadata
 from .units import get_units, write_units
 
 
-def ingest_columns_from_file(data_file):
+def ingest_columns_from_file(db, data_file):
     # Get sheet names
-    workbook = load_workbook(data_file, read_only=True)
+    workbook = load_workbook(
+        data_file, read_only=True, data_only=True, keep_links=False
+    )
     sheet_names = workbook.sheetnames
 
     print(f"Sheets: {sheet_names}")
@@ -41,7 +43,6 @@ def ingest_columns_from_file(data_file):
         if len(col.units) == 0:
             print(f"Warning: No units found for column {col.local_id}")
 
-    db = get_database()
     if project is None:
         raise ValueError("Project not found in the data file")
 

@@ -33,20 +33,12 @@ Audit:
   strat_name_lexicon_<project_id>_<timestamp>.tsv
   macrostrat_import_audit_<project_id>_<timestamp>.json
 
-Postgres connection:
-- Hard-coded credentials buried in def connect_db()
-	defaults set: dbname="macrostrat", user="postgres", password="", host="localhost", port="5432"
-
-Usage:
-  python macrostrat_import_3.py --mapping macrostrat_mapping_v3.json
 """
 
-import argparse
 import hashlib
 import json
 import os
 import re
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal, InvalidOperation
@@ -56,16 +48,12 @@ import psycopg2
 import requests
 from openpyxl import load_workbook
 
-from macrostrat.core.database import get_database
+from macrostrat.core.database import Database, get_database
+from macrostrat.core.exc import MacrostratError
 
 # -----------------------------
 # Engine utilities
 # -----------------------------
-
-
-def die(msg: str, code: int = 1) -> None:
-    print(msg)
-    sys.exit(code)
 
 
 def clean_cell_value(v: Any) -> Any:
@@ -99,7 +87,9 @@ def read_sheet_as_dicts(ws) -> Tuple[List[str], List[Dict[str, Any]]]:
     for h in rows[0]:
         h = clean_cell_value(h)
         if h is None:
-            die(f"ERROR: Sheet '{ws.title}' has empty header cells in first row.")
+            raise ColumnIngestionError(
+                f"Sheet '{ws.title}' has empty header cells in first row."
+            )
         headers.append(str(h).strip())
 
     out: List[Dict[str, Any]] = []
@@ -121,9 +111,13 @@ def read_sheet_as_dicts(ws) -> Tuple[List[str], List[Dict[str, Any]]]:
     return headers, out
 
 
+class ColumnIngestionError(MacrostratError):
+    pass
+
+
 def get_metadata_value(wb, sheet_name: str, key: str) -> Any:
     if sheet_name not in wb.sheetnames:
-        die(f"ERROR: Workbook does not contain a '{sheet_name}' tab.")
+        raise ColumnIngestionError(f"Workbook does not contain a '{sheet_name}' tab.")
     ws = wb[sheet_name]
     for row in ws.iter_rows(min_row=1, max_col=2, values_only=True):
         k = clean_cell_value(row[0] if len(row) > 0 else None)
@@ -138,15 +132,17 @@ def load_mapping(mapping_path: str) -> Dict[str, Any]:
         with open(mapping_path, "r", encoding="utf-8") as f:
             mapping = json.load(f)
     except FileNotFoundError:
-        die(f"ERROR: Mapping file not found: {mapping_path}")
+        raise ColumnIngestionError(f"Mapping file not found: {mapping_path}")
     except json.JSONDecodeError as e:
-        die(f"ERROR: Mapping file is not valid JSON: {e}")
+        raise ColumnIngestionError(f"Mapping file is not valid JSON: {e}")
 
     for k in ("mapping_version", "sheets", "entities"):
         if k not in mapping:
-            die(f"ERROR: Mapping file missing required field '{k}'.")
+            raise ColumnIngestionError(f"Mapping file missing required field '{k}'.")
     if not isinstance(mapping["entities"], dict) or not mapping["entities"]:
-        die("ERROR: Mapping file 'entities' must be a non-empty object.")
+        raise ColumnIngestionError(
+            "Mapping file 'entities' must be a non-empty object."
+        )
 
     return mapping
 
@@ -276,21 +272,21 @@ def verify_project_id_via_api(project_id: int) -> str:
         r.raise_for_status()
         j = r.json()
     except Exception as e:
-        die(f"ERROR: API request failed: {e}")
+        raise ColumnIngestionError(f"API request failed: {e}")
 
     try:
         success_obj = j["success"]
         data_array = success_obj["data"]
         if not data_array:
-            die("ERROR: API returned no data for that project_id.")
+            raise ColumnIngestionError("API returned no data for that project_id.")
         returned_project_id = data_array[0]["project_id"]
         returned_project_name = data_array[0]["project"]
     except (KeyError, IndexError, TypeError) as e:
-        die(f"ERROR: Unexpected API response structure: {e}")
+        raise ColumnIngestionError(f"Unexpected API response structure: {e}")
 
     if returned_project_id != project_id:
-        die(
-            f"ERROR: API returned project_id {returned_project_id}, expected {project_id}."
+        raise ColumnIngestionError(
+            f"API returned project_id {returned_project_id}, expected {project_id}."
         )
 
     print(f"API OK: project_id {project_id} ('{returned_project_name}')")
@@ -310,15 +306,17 @@ def connect_db(engine):
         conn.autocommit = False
         return conn
     except psycopg2.Error as e:
-        die(f"ERROR: Could not connect to local Postgres '{dbname}': {e}")
+        raise ColumnIngestionError(
+            f"Could not connect to local Postgres '{dbname}': {e}"
+        )
 
 
 def verify_project_id_in_db(conn, project_id: int) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM macrostrat.projects WHERE id = %s;", (project_id,))
         if cur.fetchone() is None:
-            die(
-                f"ERROR: project_id {project_id} not found in macrostrat.projects.id (local DB)."
+            raise ColumnIngestionError(
+                f"project_id {project_id} not found in macrostrat.projects.id (local DB)."
             )
     print(f"DB OK: project_id {project_id} exists in macrostrat.projects")
 
@@ -345,7 +343,9 @@ class SchemaInspector:
     @staticmethod
     def split_table(fqtn: str) -> Tuple[str, str]:
         if "." not in fqtn:
-            die(f"ERROR: Expected schema-qualified table name, got '{fqtn}'.")
+            raise ColumnIngestionError(
+                f"Expected schema-qualified table name, got '{fqtn}'."
+            )
         schema, table = fqtn.split(".", 1)
         return schema, table
 
@@ -373,8 +373,8 @@ class SchemaInspector:
             rows = cur.fetchall()
 
         if not rows:
-            die(
-                f"ERROR: Could not introspect columns for table {schema}.{table} (not found?)."
+            raise ColumnIngestionError(
+                f"Could not introspect columns for table {schema}.{table} (not found?)."
             )
 
         cols: Dict[str, ColumnInfo] = {}
@@ -405,12 +405,14 @@ def validate_mapping_against_schema(
 
         fields = ent.get("fields", {})
         if not isinstance(fields, dict) or not fields:
-            die(f"ERROR: Mapping entity '{ent_name}' must define non-empty 'fields'.")
+            raise ColumnIngestionError(
+                f"Mapping entity '{ent_name}' must define non-empty 'fields'."
+            )
 
         for db_col in fields.keys():
             if db_col not in db_cols:
-                die(
-                    f"ERROR: Mapping entity '{ent_name}' refers to missing column '{db_col}' on {fqtn}."
+                raise ColumnIngestionError(
+                    f"Mapping entity '{ent_name}' refers to missing column '{db_col}' on {fqtn}."
                 )
 
         for db_col, spec in fields.items():
@@ -422,8 +424,8 @@ def validate_mapping_against_schema(
                 )
                 has_default = "default" in spec
                 if not (has_source or has_default):
-                    die(
-                        f"ERROR: Entity '{ent_name}' column '{db_col}' is NOT NULL with no default in DB, "
+                    raise ColumnIngestionError(
+                        f"Entity '{ent_name}' column '{db_col}' is NOT NULL with no default in DB, "
                         f"but mapping provides no source/default."
                     )
 
@@ -450,8 +452,8 @@ def validate_cols_not_null_coverage(
             missing_required.append(name)
 
     if missing_required:
-        die(
-            "ERROR: macrostrat.cols has NOT NULL columns with no defaults that are not mapped.\n"
+        raise ColumnIngestionError(
+            "macrostrat.cols has NOT NULL columns with no defaults that are not mapped.\n"
             f"Missing in mapping: {missing_required}\n"
             "Update macrostrat_mapping.json (entity 'cols') to provide values/defaults."
         )
@@ -479,8 +481,8 @@ def validate_units_not_null_coverage(
             missing_required.append(name)
 
     if missing_required:
-        die(
-            "ERROR: macrostrat.units has NOT NULL columns with no defaults that are not mapped.\n"
+        raise ColumnIngestionError(
+            "macrostrat.units has NOT NULL columns with no defaults that are not mapped.\n"
             f"Missing in mapping: {missing_required}\n"
             "Update macrostrat_mapping_v3.0.json (entity 'units') to provide values/defaults."
         )
@@ -504,7 +506,7 @@ def apply_transform(value: Any, transform: Optional[str]) -> Any:
         return value
     if transform == "lower":
         return value.lower() if isinstance(value, str) else value
-    die(f"ERROR: Unknown transform '{transform}'.")
+    raise ColumnIngestionError(f"Unknown transform '{transform}'.")
 
 
 def eval_field_spec(
@@ -532,11 +534,13 @@ def eval_field_spec(
 
     if "handler" in spec:
         if handlers is None:
-            die("ERROR: handler specified but no handlers registry provided.")
+            raise ColumnIngestionError(
+                "Handler specified but no handlers registry provided."
+            )
         hname = spec["handler"]
         hfn = handlers.get(hname)
         if hfn is None:
-            die(f"ERROR: Unknown handler '{hname}'.")
+            raise ColumnIngestionError(f"Unknown handler '{hname}'.")
         value = hfn(excel_row, context)
 
     elif "const" in spec:
@@ -561,7 +565,7 @@ def eval_field_spec(
         fn_name = spec["expr"]
         fn = EXPR_FUNCS.get(fn_name)
         if fn is None:
-            die(f"ERROR: Unknown expr function '{fn_name}'.")
+            raise ColumnIngestionError(f"Unknown expr function '{fn_name}'.")
         args = []
         for a in spec.get("args", []):
             args.append(excel_row.get(a))
@@ -571,7 +575,7 @@ def eval_field_spec(
         value = {"__sql__": spec["sql"]}
 
     else:
-        die(f"ERROR: Unsupported field spec: {spec}")
+        raise ColumnIngestionError(f"Unsupported field spec: {spec}")
 
     value = apply_transform(value, spec.get("transform"))
 
@@ -639,20 +643,24 @@ def validate_refs_required(excel_row: Dict[str, Any]) -> None:
     r = excel_row
     excel_rownum = r["_excel_row"]
     if normalize_str(r.get("ref_id")) is None:
-        die(f"ERROR (refs row {excel_rownum}): missing required 'ref_id'.")
+        raise ColumnIngestionError(
+            f"(refs row {excel_rownum}): missing required 'ref_id'."
+        )
     date = r.get("date")
     if not isinstance(date, int) and not (isinstance(date, str) and date.isdigit()):
-        die(
-            f"ERROR (refs row {excel_rownum}): 'date' must be an integer year; got {date!r}"
+        raise ColumnIngestionError(
+            f"(refs row {excel_rownum}): 'date' must be an integer year; got {date!r}"
         )
     if normalize_str(r.get("title")) is None:
-        die(f"ERROR (refs row {excel_rownum}): 'title' must be non-empty.")
+        raise ColumnIngestionError(
+            f"(refs row {excel_rownum}): 'title' must be non-empty."
+        )
     if (
         normalize_str(r.get("authors")) is None
         and normalize_str(r.get("author")) is None
     ):
-        die(
-            f"ERROR (refs row {excel_rownum}): 'authors' (or 'author') must be non-empty."
+        raise ColumnIngestionError(
+            f"(refs row {excel_rownum}): 'authors' (or 'author') must be non-empty."
         )
 
 
@@ -663,15 +671,15 @@ def ingest_refs_mapping_driven(
     ws = wb[sheet_name]
     _, rows = read_sheet_as_dicts(ws)
     if not rows:
-        die(f"ERROR: '{sheet_name}' tab has no data rows.")
+        raise ColumnIngestionError(f"'{sheet_name}' tab has no data rows.")
 
     seen = set()
     for r in rows:
         validate_refs_required(r)
         rid = str(r.get("ref_id")).strip()
         if rid in seen:
-            die(
-                f"ERROR (refs row {r['_excel_row']}): duplicate 'ref_id' in refs tab: {rid}"
+            raise ColumnIngestionError(
+                f"(refs row {r['_excel_row']}): duplicate 'ref_id' in refs tab: {rid}"
             )
         seen.add(rid)
 
@@ -724,7 +732,7 @@ def ingest_col_groups_mapping_driven(
     ws = wb[sheet_name]
     _, rows = read_sheet_as_dicts(ws)
     if not rows:
-        die(f"ERROR: '{sheet_name}' tab has no data rows.")
+        raise ColumnIngestionError(f"'{sheet_name}' tab has no data rows.")
 
     distinct_field = mapping_entity["distinct_from_sheet_field"]
     distinct_vals = sorted(
@@ -735,7 +743,9 @@ def ingest_col_groups_mapping_driven(
         }
     )
     if not distinct_vals:
-        die(f"ERROR: '{sheet_name}' has no non-empty '{distinct_field}' values.")
+        raise ColumnIngestionError(
+            f"'{sheet_name}' has no non-empty '{distinct_field}' values."
+        )
 
     table = mapping_entity["table"]
     natural_key = mapping_entity["natural_key"]
@@ -813,13 +823,13 @@ def parse_decimal(x: Any, field_name: str, sheet: str, excel_row: int) -> Decima
     x = clean_cell_value(x)
     if x is None or (isinstance(x, str) and x.strip() == ""):
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): missing required decimal '{field_name}'."
+            f"({sheet} row {excel_row}): missing required decimal '{field_name}'."
         )
     try:
         return Decimal(str(x).strip())
     except (InvalidOperation, ValueError):
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): '{field_name}' must be a decimal; got {x!r}."
+            f"({sheet} row {excel_row}): '{field_name}' must be a decimal; got {x!r}."
         )
 
 
@@ -832,9 +842,7 @@ def quantize_lat_lng(d: Decimal) -> Decimal:
 def parse_ref_ids(cell: Any, sheet: str, excel_row: int) -> List[str]:
     cell = clean_cell_value(cell)
     if cell is None:
-        raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): missing required 'ref_ids'."
-        )
+        raise ValueError(f"({sheet} row {excel_row}): missing required 'ref_ids'.")
     if isinstance(cell, (int, float)):
         tokens = [str(int(cell))]
     else:
@@ -842,7 +850,7 @@ def parse_ref_ids(cell: Any, sheet: str, excel_row: int) -> List[str]:
     tokens = [t for t in tokens if t]
     if not tokens:
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): 'ref_ids' must include one or more comma-separated ids."
+            f"({sheet} row {excel_row}): 'ref_ids' must include one or more comma-separated ids."
         )
     return tokens
 
@@ -855,7 +863,9 @@ def validate_columns_rows(
     required_cols = {"col_id", "col_name", "col_group", "ref_ids", "col_type"}
     missing = [c for c in sorted(required_cols) if c not in headers]
     if missing:
-        die(f"ERROR (columns): missing required columns in header row: {missing}")
+        raise ColumnIngestionError(
+            f"(columns): missing required columns in header row: {missing}"
+        )
 
     has_col_column = "col" in headers
     col_column_values_raw: Dict[str, Any] = {}
@@ -874,43 +884,51 @@ def validate_columns_rows(
         if col_id_raw is None or (
             isinstance(col_id_raw, str) and col_id_raw.strip() == ""
         ):
-            die(f"ERROR (columns row {excel_row}): missing required 'col_id'.")
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): missing required 'col_id'."
+            )
         excel_col_id = str(col_id_raw).strip()
         if excel_col_id in seen_col_ids:
-            die(
-                f"ERROR (columns row {excel_row}): duplicate 'col_id' in columns tab: {excel_col_id}"
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): duplicate 'col_id' in columns tab: {excel_col_id}"
             )
         seen_col_ids.add(excel_col_id)
 
         col_name = normalize_str(r.get("col_name"))
         if not col_name:
-            die(f"ERROR (columns row {excel_row}): 'col_name' must be non-empty.")
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): 'col_name' must be non-empty."
+            )
 
         col_group = normalize_str(r.get("col_group"))
         if not col_group:
-            die(f"ERROR (columns row {excel_row}): 'col_group' must be non-empty.")
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): 'col_group' must be non-empty."
+            )
 
         ng_key = (col_name, col_group)
         if ng_key in seen_name_group:
-            die(
-                f"ERROR (columns row {excel_row}): duplicate (col_name, col_group) = {ng_key}"
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): duplicate (col_name, col_group) = {ng_key}"
             )
         seen_name_group.add(ng_key)
 
         col_type_raw = normalize_str(r.get("col_type"))
         if not col_type_raw:
-            die(f"ERROR (columns row {excel_row}): 'col_type' must be non-empty.")
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): 'col_type' must be non-empty."
+            )
         col_type = col_type_raw.lower()
         if col_type not in {"column", "section"}:
-            die(
-                f"ERROR (columns row {excel_row}): 'col_type' must be 'column' or 'section'; got {col_type_raw!r}"
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): 'col_type' must be 'column' or 'section'; got {col_type_raw!r}"
             )
 
         ref_excel_ids = parse_ref_ids(r.get("ref_ids"), "columns", excel_row)
         missing_refs = [rid for rid in ref_excel_ids if rid not in ref_map]
         if missing_refs:
-            die(
-                f"ERROR (columns row {excel_row}): ref_ids not found in refs tab: {missing_refs}"
+            raise ColumnIngestionError(
+                f"(columns row {excel_row}): ref_ids not found in refs tab: {missing_refs}"
             )
 
         lat_val = r.get("lat")
@@ -931,8 +949,8 @@ def validate_columns_rows(
         if has_geom:
             wkt = normalize_wkt(geom_val)
             if wkt in seen_geom:
-                die(
-                    f"ERROR (columns row {excel_row}): duplicate geom WKT in columns tab."
+                raise ColumnIngestionError(
+                    f"(columns row {excel_row}): duplicate geom WKT in columns tab."
                 )
             seen_geom.add(wkt)
             # If lat/lng are provided along with geom, require both and parse them.
@@ -947,15 +965,15 @@ def validate_columns_rows(
         else:
             # No geom: must have lat/lng
             if not has_lat_or_lng:
-                die(
-                    f"ERROR (columns row {excel_row}): must provide geom (WKT polygon) or lat/lng."
+                raise ColumnIngestionError(
+                    f"(columns row {excel_row}): must provide geom (WKT polygon) or lat/lng."
                 )
             lat = quantize_lat_lng(parse_decimal(lat_val, "lat", "columns", excel_row))
             lng = quantize_lat_lng(parse_decimal(lng_val, "lng", "columns", excel_row))
             ll_key = (lat, lng)
             if ll_key in seen_latlng:
-                die(
-                    f"ERROR (columns row {excel_row}): duplicate (lat,lng)=({lat},{lng}) in columns tab."
+                raise ColumnIngestionError(
+                    f"(columns row {excel_row}): duplicate (lat,lng)=({lat},{lng}) in columns tab."
                 )
             seen_latlng.add(ll_key)
         if has_col_column:
@@ -988,10 +1006,12 @@ def validate_wkt_polygon_in_db(cur, wkt: str, sheet_row: int) -> None:
     )
     is_valid, gtype = cur.fetchone()
     if not is_valid:
-        die(f"ERROR (columns row {sheet_row}): geom WKT is not a valid geometry.")
+        raise ColumnIngestionError(
+            f"(columns row {sheet_row}): geom WKT is not a valid geometry."
+        )
     if gtype not in ("POLYGON", "MULTIPOLYGON"):
-        die(
-            f"ERROR (columns row {sheet_row}): geom must be POLYGON or MULTIPOLYGON; got {gtype}."
+        raise ColumnIngestionError(
+            f"(columns row {sheet_row}): geom must be POLYGON or MULTIPOLYGON; got {gtype}."
         )
 
 
@@ -1015,8 +1035,8 @@ def validate_geom_matches_latlng_in_db(
     lat5, lng5 = cur.fetchone()
     # psycopg2 returns Decimal for numeric
     if lat5 != lat or lng5 != lng:
-        die(
-            f"ERROR (columns row {sheet_row}): geom + lat/lng are inconsistent.\n"
+        raise ColumnIngestionError(
+            f"(columns row {sheet_row}): geom + lat/lng are inconsistent.\n"
             f"  Provided lat,lng: {lat},{lng}\n"
             f"  Geom point-on-surface (5dp): {lat5},{lng5}\n"
             "  Fix the spreadsheet so they match (or omit lat/lng when geom is present)."
@@ -1033,16 +1053,16 @@ def compute_cols_col_values(
         for cr in cleaned_rows:
             raw = clean_cell_value(col_column_values_raw.get(cr.excel_col_id))
             if raw is None or (isinstance(raw, str) and raw.strip() == ""):
-                die(
-                    f"ERROR (columns row {cr.excel_row}): 'col' column exists but value is empty."
+                raise ColumnIngestionError(
+                    f"(columns row {cr.excel_row}): 'col' column exists but value is empty."
                 )
             try:
                 d = Decimal(str(raw).strip()).quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 )
             except (InvalidOperation, ValueError):
-                die(
-                    f"ERROR (columns row {cr.excel_row}): 'col' must be numeric; got {raw!r}."
+                raise ColumnIngestionError(
+                    f"(columns row {cr.excel_row}): 'col' must be numeric; got {raw!r}."
                 )
             out[cr.excel_col_id] = d
         return out
@@ -1112,12 +1132,12 @@ def make_cols_handlers(
     def h_col_group_id(excel_row: Dict[str, Any], context: Dict[str, Any]) -> Any:
         cg = normalize_str(excel_row.get("col_group"))
         if not cg:
-            die(
-                f"ERROR (columns row {excel_row['_excel_row']}): missing 'col_group' for col_group_id resolution."
+            raise ColumnIngestionError(
+                f"(columns row {excel_row['_excel_row']}): missing 'col_group' for col_group_id resolution."
             )
         if cg not in col_groups_map:
-            die(
-                f"ERROR (columns row {excel_row['_excel_row']}): col_group '{cg}' not present in resolved col_groups_map."
+            raise ColumnIngestionError(
+                f"(columns row {excel_row['_excel_row']}): col_group '{cg}' not present in resolved col_groups_map."
             )
         return col_groups_map[cg]
 
@@ -1125,8 +1145,8 @@ def make_cols_handlers(
         col_value_map = context.get("col_value_map", {})
         excel_col_id = str(excel_row.get("col_id")).strip()
         if excel_col_id not in col_value_map:
-            die(
-                f"ERROR (columns row {excel_row['_excel_row']}): unable to resolve cols.col value for col_id={excel_col_id}."
+            raise ColumnIngestionError(
+                f"(columns row {excel_row['_excel_row']}): unable to resolve cols.col value for col_id={excel_col_id}."
             )
         return float(col_value_map[excel_col_id])
 
@@ -1220,7 +1240,7 @@ def ingest_columns_plugin(
     ws = wb[sheet_name]
     headers, rows = read_sheet_as_dicts(ws)
     if not rows:
-        die(f"ERROR: '{sheet_name}' tab has no data rows.")
+        raise ColumnIngestionError(f"'{sheet_name}' tab has no data rows.")
 
     cleaned_rows, has_col_column, col_column_values_raw = validate_columns_rows(
         headers, rows, ref_map
@@ -1406,7 +1426,7 @@ def parse_optional_decimal(
         d = Decimal(str(x).strip())
     except (InvalidOperation, ValueError):
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): '{field_name}' must be numeric; got {x!r}."
+            f"({sheet} row {excel_row}): '{field_name}' must be numeric; got {x!r}."
         )
     return quantizer(d) if quantizer else d
 
@@ -1415,14 +1435,14 @@ def parse_required_int(x: Any, field_name: str, sheet: str, excel_row: int) -> i
     x = clean_cell_value(x)
     if x is None or (isinstance(x, str) and x.strip() == ""):
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): missing required integer '{field_name}'."
+            f"({sheet} row {excel_row}): missing required integer '{field_name}'."
         )
     if isinstance(x, int):
         return x
     if isinstance(x, str) and x.strip().isdigit():
         return int(x.strip())
     raise ValueError(
-        f"ERROR ({sheet} row {excel_row}): '{field_name}' must be an integer; got {x!r}."
+        f"({sheet} row {excel_row}): '{field_name}' must be an integer; got {x!r}."
     )
 
 
@@ -1449,13 +1469,13 @@ def parse_lookup_token_id_or_name(
         obj = by_id.get(int(token))
         if obj is None:
             raise ValueError(
-                f"ERROR ({sheet} row {excel_row}): {field_name} token id '{token}' not found in lookup table."
+                f"({sheet} row {excel_row}): {field_name} token id '{token}' not found in lookup table."
             )
         return obj
     obj = by_name.get(token.lower())
     if obj is None:
         raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): {field_name} token name '{token}' not found in lookup table."
+            f"({sheet} row {excel_row}): {field_name} token name '{token}' not found in lookup table."
         )
     return obj
 
@@ -1546,7 +1566,7 @@ def parse_strat_name_field(
             continue
         if len(names) > 8:
             raise ValueError(
-                f"ERROR ({sheet} row {excel_row}): strat_name hierarchy path exceeds 8 names: {raw_entry!r}"
+                f"({sheet} row {excel_row}): strat_name hierarchy path exceeds 8 names: {raw_entry!r}"
             )
         out.append(ParsedStratPath(raw_entry=raw_entry, names=names))
     return out
@@ -1573,9 +1593,7 @@ def resolve_interval(
 ) -> Dict[str, Any]:
     tok = normalize_str(token_val)
     if tok is None:
-        raise ValueError(
-            f"ERROR ({sheet} row {excel_row}): missing required '{field_name}'."
-        )
+        raise ValueError(f"({sheet} row {excel_row}): missing required '{field_name}'.")
     return parse_lookup_token_id_or_name(
         tok,
         lookups["intervals_by_id"],
@@ -1603,13 +1621,13 @@ def resolve_unit_positions(
         return pos, pos
 
     if t_pos is None or b_pos is None:
-        die(
-            f"ERROR (units row {excel_row}): must provide either 'position' or both 't_pos' and 'b_pos'."
+        raise ColumnIngestionError(
+            f"(units row {excel_row}): must provide either 'position' or both 't_pos' and 'b_pos'."
         )
 
     if b_pos < t_pos:
-        die(
-            f"ERROR (units row {excel_row}): require b_pos >= t_pos; got b_pos={b_pos}, t_pos={t_pos}."
+        raise ColumnIngestionError(
+            f"(units row {excel_row}): require b_pos >= t_pos; got b_pos={b_pos}, t_pos={t_pos}."
         )
 
     return b_pos, t_pos
@@ -1688,7 +1706,9 @@ def parse_validate_units_rows(
     }
     missing = [c for c in sorted(required_cols) if c not in headers]
     if missing:
-        die(f"ERROR (units): missing required columns in header row: {missing}")
+        raise ColumnIngestionError(
+            f"(units): missing required columns in header row: {missing}"
+        )
 
     if not rows:
         return []
@@ -1702,19 +1722,23 @@ def parse_validate_units_rows(
 
         excel_unit_id = normalize_str(r.get("unit_id"))
         if excel_unit_id is None:
-            die(f"ERROR (units row {excel_row}): missing required 'unit_id'.")
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): missing required 'unit_id'."
+            )
         if excel_unit_id in seen_unit_ids:
-            die(
-                f"ERROR (units row {excel_row}): duplicate 'unit_id' in units tab: {excel_unit_id}"
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): duplicate 'unit_id' in units tab: {excel_unit_id}"
             )
         seen_unit_ids.add(excel_unit_id)
 
         excel_col_id = normalize_str(r.get("col_id"))
         if excel_col_id is None:
-            die(f"ERROR (units row {excel_row}): missing required 'col_id'.")
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): missing required 'col_id'."
+            )
         if excel_col_id not in col_map:
-            die(
-                f"ERROR (units row {excel_row}): col_id '{excel_col_id}' not found in resolved columns map."
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): col_id '{excel_col_id}' not found in resolved columns map."
             )
         db_col_id = col_map[excel_col_id]
 
@@ -1724,7 +1748,9 @@ def parse_validate_units_rows(
 
         unit_name = normalize_str(r.get("unit_name"))
         if unit_name is None:
-            die(f"ERROR (units row {excel_row}): 'unit_name' must be non-empty.")
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): 'unit_name' must be non-empty."
+            )
 
         b_int_obj = resolve_interval(
             r.get("b_int"), "b_int", lookups, "units", excel_row
@@ -1734,8 +1760,8 @@ def parse_validate_units_rows(
         )
 
         if b_int_obj["age_bottom"] < t_int_obj["age_bottom"]:
-            die(
-                f"ERROR (units row {excel_row}): age_bottom(b_int) must be >= age_bottom(t_int); "
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): age_bottom(b_int) must be >= age_bottom(t_int); "
                 f"got b_int={b_int_obj['name']} ({b_int_obj['age_bottom']}), "
                 f"t_int={t_int_obj['name']} ({t_int_obj['age_bottom']})."
             )
@@ -1746,12 +1772,12 @@ def parse_validate_units_rows(
         t_prop = parse_optional_decimal(r.get("t_prop"), "t_prop", "units", excel_row)
 
         if b_prop is not None and not (Decimal("0") <= b_prop <= Decimal("1")):
-            die(
-                f"ERROR (units row {excel_row}): b_prop must be between 0 and 1; got {b_prop}."
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): b_prop must be between 0 and 1; got {b_prop}."
             )
         if t_prop is not None and not (Decimal("0") <= t_prop <= Decimal("1")):
-            die(
-                f"ERROR (units row {excel_row}): t_prop must be between 0 and 1; got {t_prop}."
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): t_prop must be between 0 and 1; got {t_prop}."
             )
         if (
             int(b_int_obj["id"]) == int(t_int_obj["id"])
@@ -1759,8 +1785,8 @@ def parse_validate_units_rows(
             and t_prop is not None
         ):
             if not (b_prop < t_prop):
-                die(
-                    f"ERROR (units row {excel_row}): when b_int == t_int, require b_prop < t_prop; "
+                raise ColumnIngestionError(
+                    f"(units row {excel_row}): when b_int == t_int, require b_prop < t_prop; "
                     f"got b_prop={b_prop}, t_prop={t_prop}."
                 )
 
@@ -1783,8 +1809,8 @@ def parse_validate_units_rows(
             and max_thickness is not None
             and max_thickness < min_thickness
         ):
-            die(
-                f"ERROR (units row {excel_row}): require max_thickness >= min_thickness; "
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): require max_thickness >= min_thickness; "
                 f"got max_thickness={max_thickness}, min_thickness={min_thickness}."
             )
 
@@ -1792,8 +1818,8 @@ def parse_validate_units_rows(
             r.get("lithology"), "dom", lookups, "units", excel_row
         )
         if not lith_entries:
-            die(
-                f"ERROR (units row {excel_row}): 'lithology' must resolve to one or more entries."
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): 'lithology' must resolve to one or more entries."
             )
 
         minor_lith_entries = parse_lith_field(
@@ -1814,8 +1840,8 @@ def parse_validate_units_rows(
             int(t_int_obj["id"]),
         )
         if identity_key in seen_unit_identity:
-            die(
-                f"ERROR (units row {excel_row}): duplicate normalized unit identity in units tab: "
+            raise ColumnIngestionError(
+                f"(units row {excel_row}): duplicate normalized unit identity in units tab: "
                 f"{identity_key}"
             )
         seen_unit_identity.add(identity_key)
@@ -2495,6 +2521,7 @@ def write_strat_name_audit_files(
 # -----------------------------
 
 from pathlib import Path
+from typing import Any
 
 from typer import Argument, Option
 
@@ -2511,19 +2538,39 @@ def shanan_column_importer(
     """
     Importer to ingest columns based on Shanan's code
     """
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--db-name", default="macrostrat")
-    # parser.add_argument("--db-user", default="postgres")
-    # parser.add_argument("--db-password", default="")
-    # parser.add_argument("--db-host", default="localhost")
-    # parser.add_argument("--db-port", default="5432")
-    # parser.add_argument(
-    #     "--audit-dir", default="./audit", help="Directory for audit artifacts"
-    # )
-    # parser.add_argument(
-    #     "--no-audit", action="store_true", help="Disable writing audit artifacts"
-    # )
-    # args = parser.parse_args()
+    db = get_database()
+
+    # Get the raw Psycopg connection
+    conn = connect_db(db.engine)
+
+    try:
+        _column_metadata_importer(
+            conn,
+            excel_file,
+            audit_dir=audit_dir,
+            verify_project=verify_project,
+            do_audit=do_audit,
+        )
+    except Exception as e:
+        conn.rollback()
+        raise ColumnIngestionError(
+            f"ingestion failed; rolled back transaction. Details: {e}"
+        )
+    finally:
+        conn.close()
+
+
+def _column_metadata_importer(
+    conn,
+    excel_file: Path,
+    *,
+    audit_dir: Optional[Path] = None,
+    verify_project: bool = False,
+    do_audit: bool = False,
+):
+    """Column metadata importer main function.
+    NOTE: This is not wrapped in transaction handling.
+    """
 
     mapping_filename = str(__here__ / "macrostrat_mapping_v3.json")
     mapping = load_mapping(mapping_filename)
@@ -2541,225 +2588,207 @@ def shanan_column_importer(
     try:
         wb = load_workbook(excel_file, data_only=True)
     except FileNotFoundError:
-        die(f"ERROR: File '{excel_file}' not found.")
+        raise ColumnIngestionError(f"File '{excel_file}' not found.")
     except Exception as e:
-        die(f"ERROR: Could not read Excel file: {e}")
+        raise ColumnIngestionError(f"Could not read Excel file: {e}")
 
     meta_sheet = sheets_map["metadata"]
     excel_mapping_version = get_metadata_value(wb, meta_sheet, "mapping_version")
     if excel_mapping_version is None:
-        die(
-            f"ERROR: Excel metadata missing 'mapping_version'. Expected {mapping_version}"
+        raise ColumnIngestionError(
+            f"Excel metadata missing 'mapping_version'. Expected {mapping_version}"
         )
     if str(excel_mapping_version).strip() != mapping_version:
-        die(
-            "ERROR: mapping_version mismatch.\n"
+        raise ColumnIngestionError(
+            "mapping_version mismatch.\n"
             f"  Excel metadata mapping_version: {str(excel_mapping_version).strip()}\n"
             f"  Mapping file mapping_version:   {mapping_version}"
         )
 
     project_id_val = get_metadata_value(wb, meta_sheet, "project_id")
     if project_id_val is None:
-        die("ERROR: Excel metadata missing 'project_id'.")
+        raise ColumnIngestionError("Excel metadata missing 'project_id'.")
     if isinstance(project_id_val, int):
         project_id = project_id_val
     elif isinstance(project_id_val, str) and project_id_val.isdigit():
         project_id = int(project_id_val)
     else:
-        die("ERROR: 'project_id' must be an integer.")
+        raise ColumnIngestionError("'project_id' must be an integer.")
 
     if verify_project:
         verify_project_id_via_api(project_id)
 
-    db = get_database()
-    conn = connect_db(db.engine)
+    verify_project_id_in_db(conn, project_id)
 
-    try:
-        verify_project_id_in_db(conn, project_id)
+    schema = SchemaInspector(conn)
+    validate_mapping_against_schema(schema, mapping)
 
-        schema = SchemaInspector(conn)
-        validate_mapping_against_schema(schema, mapping)
-
-        ents = mapping["entities"]
-        refs_ent = ents["refs"]
-        col_groups_ent = ents["col_groups"]
-        units_ent = ents.get("units")
-        cols_ent = ents.get("cols")
-        if cols_ent is None:
-            die("ERROR: Mapping missing required entity 'cols' for Phase 2.5.")
-
-        validate_cols_not_null_coverage(schema, cols_ent)
-        if units_ent is not None:
-            validate_units_not_null_coverage(schema, units_ent)
-
-        # These will be populated inside the committed transaction and then used for audit writing.
-        ref_map: Dict[str, int] = {}
-        col_map: Dict[str, int] = {}
-        unit_map: Dict[str, int] = {}
-        refs_counts: Dict[str, int] = {}
-        col_groups_counts: Dict[str, int] = {}
-        cols_counts: Dict[str, Any] = {}
-        units_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-            "skipped": True,
-        }
-        unit_liths_counts: Dict[str, Any] = {"processed": 0, "inserted": 0, "reused": 0}
-        unit_liths_atts_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-        }
-        unit_environs_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-        }
-        unit_notes_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-            "updated": 0,
-        }
-        sections_rebuild_counts: Dict[str, Any] = {
-            "affected_cols": 0,
-            "units_sections_deleted": 0,
-            "sections_deleted": 0,
-            "sections_inserted": 0,
-            "units_sections_inserted": 0,
-            "units_section_id_updated": 0,
-            "skipped": False,
-        }
-        strat_name_audit_counts: Dict[str, Any] = {
-            "unique_paths": 0,
-            "unit_path_assignments": 0,
-        }
-        cleaned_units: List[CleanUnitRow] = []
-
-        with conn:
-            ref_map, refs_counts = ingest_refs_mapping_driven(
-                conn, wb, refs_ent, sheets_map
-            )
-            col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(
-                conn, wb, col_groups_ent, sheets_map, project_id
-            )
-            cols_handlers = make_cols_handlers(col_groups_map)
-
-            columns_sheet = sheets_map["columns"]
-            col_map, cols_counts = ingest_columns_plugin(
-                conn,
-                wb,
-                columns_sheet,
-                project_id,
-                ref_map,
-                col_groups_map,
-                cols_ent,
-                cols_handlers,
-            )
-
-            if units_ent is not None:
-                units_sheet = sheets_map["units"]
-                units_lookups = load_units_lookups(conn)
-                cleaned_units = parse_validate_units_rows(
-                    wb=wb,
-                    sheet_name=units_sheet,
-                    col_map=col_map,
-                    lookups=units_lookups,
-                )
-                if cleaned_units:
-                    units_handlers = make_units_handlers()
-                    unit_map, units_counts = ingest_units_main(
-                        conn, cleaned_units, units_ent, units_handlers
-                    )
-                    unit_lith_map, unit_liths_counts = ingest_unit_liths(
-                        conn, cleaned_units, unit_map
-                    )
-                    unit_liths_atts_counts = ingest_unit_liths_atts(
-                        conn, cleaned_units, unit_map, unit_lith_map
-                    )
-                    unit_environs_counts = ingest_unit_environs(
-                        conn, cleaned_units, unit_map
-                    )
-                    unit_notes_counts = ingest_unit_notes(conn, cleaned_units, unit_map)
-                    if cols_counts["inserted"] == 0 and units_counts["inserted"] == 0:
-                        print(
-                            "sections_rebuild: skipping delete/rebuild because "
-                            "cols.inserted == 0 and units.inserted == 0."
-                        )
-                        sections_rebuild_counts = {
-                            "affected_cols": 0,
-                            "units_sections_deleted": 0,
-                            "sections_deleted": 0,
-                            "sections_inserted": 0,
-                            "units_sections_inserted": 0,
-                            "units_section_id_updated": 0,
-                            "skipped": True,
-                        }
-                    else:
-                        _section_map, sections_rebuild_counts = (
-                            rebuild_sections_and_units_sections(
-                                conn, cleaned_units, unit_map
-                            )
-                        )
-                else:
-                    print("units: processed=0 inserted=0 reused=0 skipped=True")
-
-        print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
-
-        if do_audit:
-            runstamp_compact, runstamp_iso = utc_runstamp()
-
-            counts_manifest = {
-                "refs": refs_counts,
-                "col_groups": col_groups_counts,
-                "cols": cols_counts,
-                "units": units_counts,
-                "unit_liths": unit_liths_counts,
-                "unit_liths_atts": unit_liths_atts_counts,
-                "unit_environs": unit_environs_counts,
-                "unit_notes": unit_notes_counts,
-                "sections_rebuild": sections_rebuild_counts,
-                "strat_name_audit": {"unique_paths": 0, "unit_path_assignments": 0},
-            }
-        strat_name_lexicon_filename = None
-        unit_strat_name_map_filename = None
-        strat_name_audit_counts = write_strat_name_audit_files(
-            audit_dir=audit_dir,
-            runstamp_compact=runstamp_compact,
-            project_id=project_id,
-            cleaned_units=cleaned_units if units_ent is not None else [],
-            unit_map=unit_map,
-        )
-        strat_name_lexicon_filename = strat_name_audit_counts.get(
-            "strat_name_lexicon_tsv"
-        )
-        unit_strat_name_map_filename = strat_name_audit_counts.get(
-            "unit_strat_name_map_tsv"
+    ents = mapping["entities"]
+    refs_ent = ents["refs"]
+    col_groups_ent = ents["col_groups"]
+    units_ent = ents.get("units")
+    cols_ent = ents.get("cols")
+    if cols_ent is None:
+        raise ColumnIngestionError(
+            "Mapping missing required entity 'cols' for Phase 2.5."
         )
 
-        # Write manifest so strat-name audit counts are included.
-        counts_manifest["strat_name_audit"] = strat_name_audit_counts
-        write_audit_artifacts(
-            audit_dir=audit_dir,
-            runstamp_compact=runstamp_compact,
-            runstamp_iso=runstamp_iso,
-            script_name=os.path.basename(__file__),
-            project_id=project_id,
-            mapping_version=mapping_version,
-            excel_file=os.path.basename(excel_file),
-            excel_sha256=excel_sha256,
-            ref_map=ref_map,
+    validate_cols_not_null_coverage(schema, cols_ent)
+    if units_ent is not None:
+        validate_units_not_null_coverage(schema, units_ent)
+
+    # These will be populated inside the committed transaction and then used for audit writing.
+    ref_map: Dict[str, int] = {}
+    col_map: Dict[str, int] = {}
+    unit_map: Dict[str, int] = {}
+    refs_counts: Dict[str, int] = {}
+    col_groups_counts: Dict[str, int] = {}
+    cols_counts: Dict[str, Any] = {}
+    units_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+        "skipped": True,
+    }
+    unit_liths_counts: Dict[str, Any] = {"processed": 0, "inserted": 0, "reused": 0}
+    unit_liths_atts_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+    }
+    unit_environs_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+    }
+    unit_notes_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+        "updated": 0,
+    }
+    sections_rebuild_counts: Dict[str, Any] = {
+        "affected_cols": 0,
+        "units_sections_deleted": 0,
+        "sections_deleted": 0,
+        "sections_inserted": 0,
+        "units_sections_inserted": 0,
+        "units_section_id_updated": 0,
+        "skipped": False,
+    }
+    strat_name_audit_counts: Dict[str, Any] = {
+        "unique_paths": 0,
+        "unit_path_assignments": 0,
+    }
+    cleaned_units: List[CleanUnitRow] = []
+
+    ref_map, refs_counts = ingest_refs_mapping_driven(conn, wb, refs_ent, sheets_map)
+    col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(
+        conn, wb, col_groups_ent, sheets_map, project_id
+    )
+    cols_handlers = make_cols_handlers(col_groups_map)
+
+    columns_sheet = sheets_map["columns"]
+    col_map, cols_counts = ingest_columns_plugin(
+        conn,
+        wb,
+        columns_sheet,
+        project_id,
+        ref_map,
+        col_groups_map,
+        cols_ent,
+        cols_handlers,
+    )
+
+    if units_ent is not None:
+        units_sheet = sheets_map["units"]
+        units_lookups = load_units_lookups(conn)
+        cleaned_units = parse_validate_units_rows(
+            wb=wb,
+            sheet_name=units_sheet,
             col_map=col_map,
-            counts=counts_manifest,
-            unit_map=unit_map,
-            strat_name_lexicon_filename=strat_name_lexicon_filename,
-            unit_strat_name_map_filename=unit_strat_name_map_filename,
+            lookups=units_lookups,
         )
-        print("SUCCESS: Phase 3 audit artifacts written.")
+        if cleaned_units:
+            units_handlers = make_units_handlers()
+            unit_map, units_counts = ingest_units_main(
+                conn, cleaned_units, units_ent, units_handlers
+            )
+            unit_lith_map, unit_liths_counts = ingest_unit_liths(
+                conn, cleaned_units, unit_map
+            )
+            unit_liths_atts_counts = ingest_unit_liths_atts(
+                conn, cleaned_units, unit_map, unit_lith_map
+            )
+            unit_environs_counts = ingest_unit_environs(conn, cleaned_units, unit_map)
+            unit_notes_counts = ingest_unit_notes(conn, cleaned_units, unit_map)
+            if cols_counts["inserted"] == 0 and units_counts["inserted"] == 0:
+                print(
+                    "sections_rebuild: skipping delete/rebuild because "
+                    "cols.inserted == 0 and units.inserted == 0."
+                )
+                sections_rebuild_counts = {
+                    "affected_cols": 0,
+                    "units_sections_deleted": 0,
+                    "sections_deleted": 0,
+                    "sections_inserted": 0,
+                    "units_sections_inserted": 0,
+                    "units_section_id_updated": 0,
+                    "skipped": True,
+                }
+            else:
+                _section_map, sections_rebuild_counts = (
+                    rebuild_sections_and_units_sections(conn, cleaned_units, unit_map)
+                )
+        else:
+            print("units: processed=0 inserted=0 reused=0 skipped=True")
 
-    except Exception as e:
-        conn.rollback()
-        die(f"ERROR: ingestion failed; rolled back transaction. Details: {e}")
-    finally:
-        conn.close()
+    print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
+
+    if do_audit:
+        runstamp_compact, runstamp_iso = utc_runstamp()
+        counts_manifest = {
+            "refs": refs_counts,
+            "col_groups": col_groups_counts,
+            "cols": cols_counts,
+            "units": units_counts,
+            "unit_liths": unit_liths_counts,
+            "unit_liths_atts": unit_liths_atts_counts,
+            "unit_environs": unit_environs_counts,
+            "unit_notes": unit_notes_counts,
+            "sections_rebuild": sections_rebuild_counts,
+            "strat_name_audit": {"unique_paths": 0, "unit_path_assignments": 0},
+        }
+    strat_name_lexicon_filename = None
+    unit_strat_name_map_filename = None
+    strat_name_audit_counts = write_strat_name_audit_files(
+        audit_dir=audit_dir,
+        runstamp_compact=runstamp_compact,
+        project_id=project_id,
+        cleaned_units=cleaned_units if units_ent is not None else [],
+        unit_map=unit_map,
+    )
+    strat_name_lexicon_filename = strat_name_audit_counts.get("strat_name_lexicon_tsv")
+    unit_strat_name_map_filename = strat_name_audit_counts.get(
+        "unit_strat_name_map_tsv"
+    )
+
+    # Write manifest so strat-name audit counts are included.
+    counts_manifest["strat_name_audit"] = strat_name_audit_counts
+    write_audit_artifacts(
+        audit_dir=audit_dir,
+        runstamp_compact=runstamp_compact,
+        runstamp_iso=runstamp_iso,
+        script_name=os.path.basename(__file__),
+        project_id=project_id,
+        mapping_version=mapping_version,
+        excel_file=os.path.basename(excel_file),
+        excel_sha256=excel_sha256,
+        ref_map=ref_map,
+        col_map=col_map,
+        counts=counts_manifest,
+        unit_map=unit_map,
+        strat_name_lexicon_filename=strat_name_lexicon_filename,
+        unit_strat_name_map_filename=unit_strat_name_map_filename,
+    )
+    print("SUCCESS: Phase 3 audit artifacts written.")

@@ -1,4 +1,6 @@
 CREATE SCHEMA maps_metadata;
+CREATE SCHEMA IF NOT EXISTS sources;
+
 ALTER SCHEMA maps_metadata OWNER TO macrostrat;
 
 CREATE OR REPLACE FUNCTION maps_metadata.maps_metadata_update_trigger() RETURNS trigger
