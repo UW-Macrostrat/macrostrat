@@ -11,6 +11,7 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.database import get_database
+from macrostrat.core.database.sequences import reset_sequence
 from macrostrat.database import Database
 from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
@@ -20,7 +21,6 @@ from macrostrat.utils.shell import run
 
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
-from macrostrat.core.database.sequences import reset_sequence
 
 # NOTE: right now, this is quite implicit.
 from .utils import engine_for_db_name, setup_postgrest_access

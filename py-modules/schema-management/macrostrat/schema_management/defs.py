@@ -1,5 +1,6 @@
 import logging
 from contextlib import contextmanager
+from pathlib import Path
 
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
@@ -10,7 +11,6 @@ from macrostrat.core.config import settings
 from macrostrat.database import Database
 from macrostrat.dinosaur.cluster import database_cluster
 from macrostrat.utils.logs import get_logger, suppress_loggers
-from pathlib import Path
 
 log = get_logger(__name__)
 

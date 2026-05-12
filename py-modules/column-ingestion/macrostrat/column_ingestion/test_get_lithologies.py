@@ -1,6 +1,7 @@
 from pytest import approx
-from .query_helpers import get_liths_for_unit
+
 from .lithologies import Lithology
+from .query_helpers import get_liths_for_unit
 
 
 def test_get_liths_for_existing_unit(env_db):

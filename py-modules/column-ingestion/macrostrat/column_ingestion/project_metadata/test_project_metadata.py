@@ -1,20 +1,21 @@
 from pathlib import Path
+from uuid import uuid4
+
 import polars as pl
-from macrostrat.utils import get_logger
+from pytest import fixture
 from xlsxwriter import Workbook
 
 from macrostrat.core.database.sequences import reset_sequence
+from macrostrat.database import Database, create_database, drop_database
+from macrostrat.utils import get_logger
+
+from ..ingest import ingest_columns_from_file
 from ..query_helpers import get_liths_for_unit
 from . import _column_metadata_importer
-from ..ingest import ingest_columns_from_file
-from uuid import uuid4
-from macrostrat.database import Database, create_database, drop_database
-
-from pytest import fixture
 
 __here__ = Path(__file__).parent
 
-from ..defs_provider import MacrostratMetadataPopulator, MacrostratDatabaseDataProvider
+from ..defs_provider import MacrostratDatabaseDataProvider, MacrostratMetadataPopulator
 
 
 @fixture(scope="class")

@@ -1,7 +1,6 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
-
 from pathlib import Path
 from typing import Optional
 

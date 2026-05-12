@@ -3,8 +3,9 @@ Helper functions for getting data from the database.
 Many of these may be moved to a Macrostrat data helpers library eventually.
 """
 
-from ..lithologies import LithAtt, Lithology
 from macrostrat.database import Database
+
+from ..lithologies import LithAtt, Lithology
 
 get_liths_sql = """
     SELECT

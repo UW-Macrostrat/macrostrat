@@ -7,23 +7,18 @@ and caches them for testing etc.
 # https://macrostrat.org/api/v2/defs/intervals
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
-from typing import Any, Callable, TypeVar, Generator
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any, Callable, Generator, TypeVar
 
 from httpx import Client
+
 from macrostrat.database import Database
-from macrostrat.database.postgresql import upsert, OnConflictAction
+from macrostrat.database.postgresql import OnConflictAction, upsert
 from macrostrat.utils import get_logger
 
 from ..database import get_macrostrat_table
-from .models import (
-    Interval,
-    Lithology,
-    LithologyAttribute,
-    Environment,
-    Timescale,
-)
+from .models import Environment, Interval, Lithology, LithologyAttribute, Timescale
 
 log = get_logger(__name__)
 

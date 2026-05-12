@@ -1,9 +1,10 @@
 import re
+from dataclasses import dataclass
+
 from psycopg.sql import Identifier
 from rich import print
 
 from macrostrat.database import Database
-from dataclasses import dataclass
 
 # TODO: incorporate this into the macrostrat.database module
 
