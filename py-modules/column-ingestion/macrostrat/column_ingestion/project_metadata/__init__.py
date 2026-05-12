@@ -39,7 +39,6 @@ import hashlib
 import json
 import os
 import re
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal, InvalidOperation
@@ -2539,37 +2538,39 @@ def shanan_column_importer(
     """
     Importer to ingest columns based on Shanan's code
     """
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--db-name", default="macrostrat")
-    # parser.add_argument("--db-user", default="postgres")
-    # parser.add_argument("--db-password", default="")
-    # parser.add_argument("--db-host", default="localhost")
-    # parser.add_argument("--db-port", default="5432")
-    # parser.add_argument(
-    #     "--audit-dir", default="./audit", help="Directory for audit artifacts"
-    # )
-    # parser.add_argument(
-    #     "--no-audit", action="store_true", help="Disable writing audit artifacts"
-    # )
-    # args = parser.parse_args()
     db = get_database()
-    _column_metadata_importer(
-        db,
-        excel_file,
-        audit_dir=audit_dir,
-        verify_project=verify_project,
-        do_audit=do_audit,
-    )
+
+    # Get the raw Psycopg connection
+    conn = connect_db(db.engine)
+
+    try:
+        _column_metadata_importer(
+            conn,
+            excel_file,
+            audit_dir=audit_dir,
+            verify_project=verify_project,
+            do_audit=do_audit,
+        )
+    except Exception as e:
+        conn.rollback()
+        raise ColumnIngestionError(
+            f"ingestion failed; rolled back transaction. Details: {e}"
+        )
+    finally:
+        conn.close()
 
 
 def _column_metadata_importer(
-    db: Database,
+    conn,
     excel_file: Path,
     *,
     audit_dir: Optional[Path] = None,
     verify_project: bool = False,
     do_audit: bool = False,
 ):
+    """Column metadata importer main function.
+    NOTE: This is not wrapped in transaction handling.
+    """
 
     mapping_filename = str(__here__ / "macrostrat_mapping_v3.json")
     mapping = load_mapping(mapping_filename)
@@ -2617,197 +2618,177 @@ def _column_metadata_importer(
     if verify_project:
         verify_project_id_via_api(project_id)
 
-    conn = connect_db(db.engine)
+    verify_project_id_in_db(conn, project_id)
 
-    try:
-        verify_project_id_in_db(conn, project_id)
+    schema = SchemaInspector(conn)
+    validate_mapping_against_schema(schema, mapping)
 
-        schema = SchemaInspector(conn)
-        validate_mapping_against_schema(schema, mapping)
-
-        ents = mapping["entities"]
-        refs_ent = ents["refs"]
-        col_groups_ent = ents["col_groups"]
-        units_ent = ents.get("units")
-        cols_ent = ents.get("cols")
-        if cols_ent is None:
-            raise ColumnIngestionError(
-                "Mapping missing required entity 'cols' for Phase 2.5."
-            )
-
-        validate_cols_not_null_coverage(schema, cols_ent)
-        if units_ent is not None:
-            validate_units_not_null_coverage(schema, units_ent)
-
-        # These will be populated inside the committed transaction and then used for audit writing.
-        ref_map: Dict[str, int] = {}
-        col_map: Dict[str, int] = {}
-        unit_map: Dict[str, int] = {}
-        refs_counts: Dict[str, int] = {}
-        col_groups_counts: Dict[str, int] = {}
-        cols_counts: Dict[str, Any] = {}
-        units_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-            "skipped": True,
-        }
-        unit_liths_counts: Dict[str, Any] = {"processed": 0, "inserted": 0, "reused": 0}
-        unit_liths_atts_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-        }
-        unit_environs_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-        }
-        unit_notes_counts: Dict[str, Any] = {
-            "processed": 0,
-            "inserted": 0,
-            "reused": 0,
-            "updated": 0,
-        }
-        sections_rebuild_counts: Dict[str, Any] = {
-            "affected_cols": 0,
-            "units_sections_deleted": 0,
-            "sections_deleted": 0,
-            "sections_inserted": 0,
-            "units_sections_inserted": 0,
-            "units_section_id_updated": 0,
-            "skipped": False,
-        }
-        strat_name_audit_counts: Dict[str, Any] = {
-            "unique_paths": 0,
-            "unit_path_assignments": 0,
-        }
-        cleaned_units: List[CleanUnitRow] = []
-
-        with conn:
-            ref_map, refs_counts = ingest_refs_mapping_driven(
-                conn, wb, refs_ent, sheets_map
-            )
-            col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(
-                conn, wb, col_groups_ent, sheets_map, project_id
-            )
-            cols_handlers = make_cols_handlers(col_groups_map)
-
-            columns_sheet = sheets_map["columns"]
-            col_map, cols_counts = ingest_columns_plugin(
-                conn,
-                wb,
-                columns_sheet,
-                project_id,
-                ref_map,
-                col_groups_map,
-                cols_ent,
-                cols_handlers,
-            )
-
-            if units_ent is not None:
-                units_sheet = sheets_map["units"]
-                units_lookups = load_units_lookups(conn)
-                cleaned_units = parse_validate_units_rows(
-                    wb=wb,
-                    sheet_name=units_sheet,
-                    col_map=col_map,
-                    lookups=units_lookups,
-                )
-                if cleaned_units:
-                    units_handlers = make_units_handlers()
-                    unit_map, units_counts = ingest_units_main(
-                        conn, cleaned_units, units_ent, units_handlers
-                    )
-                    unit_lith_map, unit_liths_counts = ingest_unit_liths(
-                        conn, cleaned_units, unit_map
-                    )
-                    unit_liths_atts_counts = ingest_unit_liths_atts(
-                        conn, cleaned_units, unit_map, unit_lith_map
-                    )
-                    unit_environs_counts = ingest_unit_environs(
-                        conn, cleaned_units, unit_map
-                    )
-                    unit_notes_counts = ingest_unit_notes(conn, cleaned_units, unit_map)
-                    if cols_counts["inserted"] == 0 and units_counts["inserted"] == 0:
-                        print(
-                            "sections_rebuild: skipping delete/rebuild because "
-                            "cols.inserted == 0 and units.inserted == 0."
-                        )
-                        sections_rebuild_counts = {
-                            "affected_cols": 0,
-                            "units_sections_deleted": 0,
-                            "sections_deleted": 0,
-                            "sections_inserted": 0,
-                            "units_sections_inserted": 0,
-                            "units_section_id_updated": 0,
-                            "skipped": True,
-                        }
-                    else:
-                        _section_map, sections_rebuild_counts = (
-                            rebuild_sections_and_units_sections(
-                                conn, cleaned_units, unit_map
-                            )
-                        )
-                else:
-                    print("units: processed=0 inserted=0 reused=0 skipped=True")
-
-        print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
-
-        if do_audit:
-            runstamp_compact, runstamp_iso = utc_runstamp()
-            counts_manifest = {
-                "refs": refs_counts,
-                "col_groups": col_groups_counts,
-                "cols": cols_counts,
-                "units": units_counts,
-                "unit_liths": unit_liths_counts,
-                "unit_liths_atts": unit_liths_atts_counts,
-                "unit_environs": unit_environs_counts,
-                "unit_notes": unit_notes_counts,
-                "sections_rebuild": sections_rebuild_counts,
-                "strat_name_audit": {"unique_paths": 0, "unit_path_assignments": 0},
-            }
-        strat_name_lexicon_filename = None
-        unit_strat_name_map_filename = None
-        strat_name_audit_counts = write_strat_name_audit_files(
-            audit_dir=audit_dir,
-            runstamp_compact=runstamp_compact,
-            project_id=project_id,
-            cleaned_units=cleaned_units if units_ent is not None else [],
-            unit_map=unit_map,
-        )
-        strat_name_lexicon_filename = strat_name_audit_counts.get(
-            "strat_name_lexicon_tsv"
-        )
-        unit_strat_name_map_filename = strat_name_audit_counts.get(
-            "unit_strat_name_map_tsv"
-        )
-
-        # Write manifest so strat-name audit counts are included.
-        counts_manifest["strat_name_audit"] = strat_name_audit_counts
-        write_audit_artifacts(
-            audit_dir=audit_dir,
-            runstamp_compact=runstamp_compact,
-            runstamp_iso=runstamp_iso,
-            script_name=os.path.basename(__file__),
-            project_id=project_id,
-            mapping_version=mapping_version,
-            excel_file=os.path.basename(excel_file),
-            excel_sha256=excel_sha256,
-            ref_map=ref_map,
-            col_map=col_map,
-            counts=counts_manifest,
-            unit_map=unit_map,
-            strat_name_lexicon_filename=strat_name_lexicon_filename,
-            unit_strat_name_map_filename=unit_strat_name_map_filename,
-        )
-        print("SUCCESS: Phase 3 audit artifacts written.")
-
-    except Exception as e:
-        conn.rollback()
+    ents = mapping["entities"]
+    refs_ent = ents["refs"]
+    col_groups_ent = ents["col_groups"]
+    units_ent = ents.get("units")
+    cols_ent = ents.get("cols")
+    if cols_ent is None:
         raise ColumnIngestionError(
-            f"ingestion failed; rolled back transaction. Details: {e}"
+            "Mapping missing required entity 'cols' for Phase 2.5."
         )
-    finally:
-        conn.close()
+
+    validate_cols_not_null_coverage(schema, cols_ent)
+    if units_ent is not None:
+        validate_units_not_null_coverage(schema, units_ent)
+
+    # These will be populated inside the committed transaction and then used for audit writing.
+    ref_map: Dict[str, int] = {}
+    col_map: Dict[str, int] = {}
+    unit_map: Dict[str, int] = {}
+    refs_counts: Dict[str, int] = {}
+    col_groups_counts: Dict[str, int] = {}
+    cols_counts: Dict[str, Any] = {}
+    units_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+        "skipped": True,
+    }
+    unit_liths_counts: Dict[str, Any] = {"processed": 0, "inserted": 0, "reused": 0}
+    unit_liths_atts_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+    }
+    unit_environs_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+    }
+    unit_notes_counts: Dict[str, Any] = {
+        "processed": 0,
+        "inserted": 0,
+        "reused": 0,
+        "updated": 0,
+    }
+    sections_rebuild_counts: Dict[str, Any] = {
+        "affected_cols": 0,
+        "units_sections_deleted": 0,
+        "sections_deleted": 0,
+        "sections_inserted": 0,
+        "units_sections_inserted": 0,
+        "units_section_id_updated": 0,
+        "skipped": False,
+    }
+    strat_name_audit_counts: Dict[str, Any] = {
+        "unique_paths": 0,
+        "unit_path_assignments": 0,
+    }
+    cleaned_units: List[CleanUnitRow] = []
+
+    ref_map, refs_counts = ingest_refs_mapping_driven(conn, wb, refs_ent, sheets_map)
+    col_groups_map, col_groups_counts = ingest_col_groups_mapping_driven(
+        conn, wb, col_groups_ent, sheets_map, project_id
+    )
+    cols_handlers = make_cols_handlers(col_groups_map)
+
+    columns_sheet = sheets_map["columns"]
+    col_map, cols_counts = ingest_columns_plugin(
+        conn,
+        wb,
+        columns_sheet,
+        project_id,
+        ref_map,
+        col_groups_map,
+        cols_ent,
+        cols_handlers,
+    )
+
+    if units_ent is not None:
+        units_sheet = sheets_map["units"]
+        units_lookups = load_units_lookups(conn)
+        cleaned_units = parse_validate_units_rows(
+            wb=wb,
+            sheet_name=units_sheet,
+            col_map=col_map,
+            lookups=units_lookups,
+        )
+        if cleaned_units:
+            units_handlers = make_units_handlers()
+            unit_map, units_counts = ingest_units_main(
+                conn, cleaned_units, units_ent, units_handlers
+            )
+            unit_lith_map, unit_liths_counts = ingest_unit_liths(
+                conn, cleaned_units, unit_map
+            )
+            unit_liths_atts_counts = ingest_unit_liths_atts(
+                conn, cleaned_units, unit_map, unit_lith_map
+            )
+            unit_environs_counts = ingest_unit_environs(conn, cleaned_units, unit_map)
+            unit_notes_counts = ingest_unit_notes(conn, cleaned_units, unit_map)
+            if cols_counts["inserted"] == 0 and units_counts["inserted"] == 0:
+                print(
+                    "sections_rebuild: skipping delete/rebuild because "
+                    "cols.inserted == 0 and units.inserted == 0."
+                )
+                sections_rebuild_counts = {
+                    "affected_cols": 0,
+                    "units_sections_deleted": 0,
+                    "sections_deleted": 0,
+                    "sections_inserted": 0,
+                    "units_sections_inserted": 0,
+                    "units_section_id_updated": 0,
+                    "skipped": True,
+                }
+            else:
+                _section_map, sections_rebuild_counts = (
+                    rebuild_sections_and_units_sections(conn, cleaned_units, unit_map)
+                )
+        else:
+            print("units: processed=0 inserted=0 reused=0 skipped=True")
+
+    print("SUCCESS: Phase 3.0 ingestion completed (transaction committed).")
+
+    if do_audit:
+        runstamp_compact, runstamp_iso = utc_runstamp()
+        counts_manifest = {
+            "refs": refs_counts,
+            "col_groups": col_groups_counts,
+            "cols": cols_counts,
+            "units": units_counts,
+            "unit_liths": unit_liths_counts,
+            "unit_liths_atts": unit_liths_atts_counts,
+            "unit_environs": unit_environs_counts,
+            "unit_notes": unit_notes_counts,
+            "sections_rebuild": sections_rebuild_counts,
+            "strat_name_audit": {"unique_paths": 0, "unit_path_assignments": 0},
+        }
+    strat_name_lexicon_filename = None
+    unit_strat_name_map_filename = None
+    strat_name_audit_counts = write_strat_name_audit_files(
+        audit_dir=audit_dir,
+        runstamp_compact=runstamp_compact,
+        project_id=project_id,
+        cleaned_units=cleaned_units if units_ent is not None else [],
+        unit_map=unit_map,
+    )
+    strat_name_lexicon_filename = strat_name_audit_counts.get("strat_name_lexicon_tsv")
+    unit_strat_name_map_filename = strat_name_audit_counts.get(
+        "unit_strat_name_map_tsv"
+    )
+
+    # Write manifest so strat-name audit counts are included.
+    counts_manifest["strat_name_audit"] = strat_name_audit_counts
+    write_audit_artifacts(
+        audit_dir=audit_dir,
+        runstamp_compact=runstamp_compact,
+        runstamp_iso=runstamp_iso,
+        script_name=os.path.basename(__file__),
+        project_id=project_id,
+        mapping_version=mapping_version,
+        excel_file=os.path.basename(excel_file),
+        excel_sha256=excel_sha256,
+        ref_map=ref_map,
+        col_map=col_map,
+        counts=counts_manifest,
+        unit_map=unit_map,
+        strat_name_lexicon_filename=strat_name_lexicon_filename,
+        unit_strat_name_map_filename=unit_strat_name_map_filename,
+    )
+    print("SUCCESS: Phase 3 audit artifacts written.")

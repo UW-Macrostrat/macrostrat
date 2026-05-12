@@ -12,11 +12,11 @@ from ..defs_provider import MacrostratMetadataPopulator, MacrostratDatabaseDataP
 
 
 class TestProjectMetadata:
-    def test_insert_project_metadata(self, env_db, test_db, tmp_path: Path):
+    def test_insert_project_metadata(self, db, test_db, tmp_path: Path):
         # Insert project ID 13 to align with the test data
 
         # Populate metadata (intervals, etc.) from the "live" Macrostrat database
-        _provider = MacrostratDatabaseDataProvider(env_db)
+        _provider = MacrostratDatabaseDataProvider(db)
         MacrostratMetadataPopulator(_provider, test_db).populate_all()
 
         # Temporarily make sections not required for units in order for tests to pass.
@@ -48,8 +48,10 @@ class TestProjectMetadata:
             __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
         )
 
+        conn = test_db.session.connection().connection
+
         _column_metadata_importer(
-            test_db,
+            conn,
             test_excel_file,
             audit_dir=tmp_path / "audit",
             do_audit=True,

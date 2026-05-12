@@ -147,7 +147,7 @@ def empty_db(request):
 
 
 @fixture(scope="session")
-def test_db(request, empty_db: Database):
+def test_db_base(request, empty_db: Database):
     """The database used for testing."""
     from macrostrat.core.config import settings
     from macrostrat.schema_management import apply_schema_for_environment
@@ -179,3 +179,9 @@ def test_db(request, empty_db: Database):
         suppress_logging=True,
     )
     return empty_db
+
+
+@fixture(scope="class")
+def test_db(test_db_base: Database):
+    with test_db_base.transaction(rollback=True):
+        yield test_db_base
