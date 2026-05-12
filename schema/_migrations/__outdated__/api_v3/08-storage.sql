@@ -1,11 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS storage;
 
-CREATE TABLE storage.object_group (
-    id serial primary key
-);
-
-ALTER TABLE storage.object_group OWNER TO macrostrat;
-
 CREATE TYPE storage.scheme AS ENUM (
     's3',
     'https'

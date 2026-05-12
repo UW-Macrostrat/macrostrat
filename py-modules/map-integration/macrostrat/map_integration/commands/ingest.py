@@ -183,17 +183,17 @@ def ingest_map(
     meta_table: str = "polygons",
     chunksize: int = 100,
 ) -> Tuple[str, str, str]:
-    """Ingest general GIS data formatted_filenames into the database.
+    """Ingest general GIS data files into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
-    but it doesn't upload formatted_filenames to S3 or check their existence.
+    but it doesn't upload files to S3 or check their existence.
     """
     db = get_database()
 
     console.print("[bold]Ingesting map data for source [bold blue]" + slug)
     # Read file with GeoPandas and dump to PostGIS
 
-    # We need to put multigeometries first, otherwise they might not be used in the
+    # We need to put multigeometries first
     frames = defaultdict(list)
 
     # Add to map-sources table

@@ -12,8 +12,6 @@ CREATE TABLE maps_metadata.ingest_process
         references maps.sources,
     access_group_id   integer
         references macrostrat_auth."group",
-    object_group_id   integer not null
-        references storage.object_group,
     created_on        timestamp with time zone default now() not null,
     completed_on      timestamp with time zone,
     map_id            text,

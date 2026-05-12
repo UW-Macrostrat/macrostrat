@@ -9,7 +9,6 @@ class Base(BaseModel):
     source: Optional[dict] = None
     mime_type: Optional[str] = None
     sha256_hash: Optional[str] = None
-    object_group_id: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -37,7 +36,6 @@ class GetSecureURL(Get):
 
 
 class Patch(Base):
-    object_group_id: Optional[int] = None
     created_on: Optional[datetime.datetime] = None
     updated_on: Optional[datetime.datetime] = None
     deleted_on: Optional[datetime.datetime] = None
