@@ -10,48 +10,68 @@ __here__ = Path(__file__).parent
 from ..defs_provider import MacrostratMetadataPopulator, MacrostratDatabaseDataProvider
 
 
-def test_insert_project_metadata(env_db, test_db, tmp_path: Path):
-    # Insert project ID 13 to align with the test data
+class TestProjectMetadata:
+    def test_insert_project_metadata(env_db, test_db, tmp_path: Path):
+        # Insert project ID 13 to align with the test data
 
-    # Populate metadata (intervals, etc.) from the "live" Macrostrat database
-    _provider = MacrostratDatabaseDataProvider(env_db)
-    MacrostratMetadataPopulator(_provider, test_db).populate_all()
+        # Populate metadata (intervals, etc.) from the "live" Macrostrat database
+        _provider = MacrostratDatabaseDataProvider(env_db)
+        MacrostratMetadataPopulator(_provider, test_db).populate_all()
 
-    # Temporarily make sections not required for units in order for tests to pass.
-    # We do this in a better way in the other importer.
-    test_db.run_sql(
-        "ALTER TABLE macrostrat.units ALTER COLUMN section_id DROP NOT NULL"
-    )
-    # Drop the foreign key constraint on units
-    test_db.run_sql(
-        "ALTER TABLE macrostrat.units DROP CONSTRAINT units_sections_fk",
-        raise_on_error=True,
-    )
-    test_db.session.commit()
+        # Temporarily make sections not required for units in order for tests to pass.
+        # We do this in a better way in the other importer.
+        test_db.run_sql(
+            "ALTER TABLE macrostrat.units ALTER COLUMN section_id DROP NOT NULL"
+        )
+        # Drop the foreign key constraint on units
+        test_db.run_sql(
+            "ALTER TABLE macrostrat.units DROP CONSTRAINT units_sections_fk",
+            raise_on_error=True,
+        )
+        test_db.session.commit()
 
-    test_db.run_query(
-        "INSERT INTO macrostrat.projects (id, slug, project, descrip, timescale_id) VALUES (:id, :slug, :project, :descrip, :timescale_id)",
-        {
-            "id": 13,
-            "slug": "test-project",
-            "project": "Test Project",
-            "descrip": "Test Description",
-            "timescale_id": 11,
-        },
-    )
-    test_db.session.commit()
+        test_db.run_query(
+            "INSERT INTO macrostrat.projects (id, slug, project, descrip, timescale_id) VALUES (:id, :slug, :project, :descrip, :timescale_id)",
+            {
+                "id": 13,
+                "slug": "test-project",
+                "project": "Test Project",
+                "descrip": "Test Description",
+                "timescale_id": 11,
+            },
+        )
+        test_db.session.commit()
 
-    test_excel_file = tmp_path / "test_excel_file.xlsx"
-    assemble_test_excel_file(
-        __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
-    )
+        test_excel_file = tmp_path / "test_excel_file.xlsx"
+        assemble_test_excel_file(
+            __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
+        )
 
-    _column_metadata_importer(
-        test_db,
-        test_excel_file,
-        audit_dir=tmp_path / "audit",
-        do_audit=True,
-    )
+        _column_metadata_importer(
+            test_db,
+            test_excel_file,
+            audit_dir=tmp_path / "audit",
+            do_audit=True,
+        )
+
+    def test_mazco_formation_liths(self, test_db):
+        """Test that the 'Mazco Formation' has the correct lithologies"""
+        # Get the unit_id of the Mazco Formation
+        unit_id = test_db.run_query(
+            "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazco Formation'"
+        ).scalar()
+        assert unit_id is not None
+
+        # Get lithologies and lith_atts for the Mazco Formation
+        # liths = test_db.run_query(
+        #     """SELECT l.lith_name, la.att_name, la.att_value
+        #     FROM macrostrat.units u
+        #     JOIN macrostrat.unit_liths ul ON u.id = ul.unit_id
+        #     JOIN macrostrat.unit_liths_atts ula ON ul
+        #     WHERE u.id = :unit_id
+        #     """,
+        #     {"unit_id": unit_id},
+        # ).fetchall()
 
 
 log = get_logger(__name__)
