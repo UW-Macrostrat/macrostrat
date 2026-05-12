@@ -87,26 +87,31 @@ class TestProjectMetadata:
         """Test that the correct number of units are inserted"""
         assert db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
 
-    def test_mazko_formation_liths(self, db):
-        """Test that the 'Mazko Formation' has the correct lithologies"""
-        # Get the unit_id of the Mazco Formation
-        unit_id = db.run_query(
-            "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazko Formation'"
-        ).scalar()
-        assert unit_id is not None
+    def test_lithologies(self, db):
+        """Test that the correct lithologies are inserted"""
+        _test_mazko_formation_liths(db)
 
-        liths = get_liths_for_unit(db, unit_id)
-        lith_names = {lith.name for lith in liths}
-        assert lith_names == {"sandstone", "siltstone"}
 
-        sandstone = next(filter(lambda x: x.name == "sandstone", liths))
-        assert sandstone.dom == "dom"
-        atts = {att.name for att in sandstone.attributes}
-        assert atts == {"tabular", "thickly bedded", "cross-bedded"}
+def _test_mazko_formation_liths(db):
+    """Test that the 'Mazko Formation' has the correct lithologies"""
+    # Get the unit_id of the Mazco Formation
+    unit_id = db.run_query(
+        "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazko Formation'"
+    ).scalar()
+    assert unit_id is not None
 
-        siltstone = next(filter(lambda x: x.name == "siltstone", liths))
-        atts = {att.name for att in siltstone.attributes}
-        assert atts == {"flute casts"}
+    liths = get_liths_for_unit(db, unit_id)
+    lith_names = {lith.name for lith in liths}
+    assert lith_names == {"sandstone", "siltstone"}
+
+    sandstone = next(filter(lambda x: x.name == "sandstone", liths))
+    assert sandstone.dom == "dom"
+    atts = {att.name for att in sandstone.attributes}
+    assert atts == {"tabular", "thickly bedded", "cross-bedded"}
+
+    siltstone = next(filter(lambda x: x.name == "siltstone", liths))
+    atts = {att.name for att in siltstone.attributes}
+    assert atts == {"flute casts"}
 
 
 class TestStandardImportProcess:
@@ -156,6 +161,14 @@ class TestStandardImportProcess:
             db,
             test_excel_file,
         )
+
+    def test_unit_count(self, db):
+        """Test that the correct number of units are inserted"""
+        assert db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
+
+    def test_lithologies(self, db):
+        """Test that the correct lithologies are inserted"""
+        _test_mazko_formation_liths(db)
 
 
 log = get_logger(__name__)

@@ -298,7 +298,9 @@ def write_units(db, units: list[Unit]):
                 .values(
                     unit_id=unit.id,
                     lith_id=lith.id,
+                    # TODO: dom and prop are equivalent for now
                     dom=dom,
+                    prop=dom,
                     comp_prop=1 / n_liths,
                     mod_prop=1 / n_liths,
                     toc=0.0,
