@@ -188,10 +188,6 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy" },
     { name = "typer" },
-]
-
-[package.dev-dependencies]
-dev = [
     { name = "xlsxwriter" },
 ]
 
@@ -205,10 +201,8 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "typer", specifier = ">=0.12.0,<0.25" },
+    { name = "xlsxwriter", specifier = ">=3.2.9" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "xlsxwriter", specifier = ">=3.2.9" }]
 
 [[package]]
 name = "macrostrat-core"

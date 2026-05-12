@@ -3,6 +3,7 @@ import polars as pl
 from macrostrat.utils import get_logger
 from xlsxwriter import Workbook
 
+from ..query_helpers import get_liths_for_unit
 from . import _column_metadata_importer
 
 __here__ = Path(__file__).parent
@@ -11,7 +12,7 @@ from ..defs_provider import MacrostratMetadataPopulator, MacrostratDatabaseDataP
 
 
 class TestProjectMetadata:
-    def test_insert_project_metadata(env_db, test_db, tmp_path: Path):
+    def test_insert_project_metadata(self, env_db, test_db, tmp_path: Path):
         # Insert project ID 13 to align with the test data
 
         # Populate metadata (intervals, etc.) from the "live" Macrostrat database
@@ -54,24 +55,30 @@ class TestProjectMetadata:
             do_audit=True,
         )
 
-    def test_mazco_formation_liths(self, test_db):
-        """Test that the 'Mazco Formation' has the correct lithologies"""
+    def test_unit_count(self, test_db):
+        """Test that the correct number of units are inserted"""
+        assert test_db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
+
+    def test_mazko_formation_liths(self, test_db):
+        """Test that the 'Mazko Formation' has the correct lithologies"""
         # Get the unit_id of the Mazco Formation
         unit_id = test_db.run_query(
-            "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazco Formation'"
+            "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazko Formation'"
         ).scalar()
         assert unit_id is not None
 
-        # Get lithologies and lith_atts for the Mazco Formation
-        # liths = test_db.run_query(
-        #     """SELECT l.lith_name, la.att_name, la.att_value
-        #     FROM macrostrat.units u
-        #     JOIN macrostrat.unit_liths ul ON u.id = ul.unit_id
-        #     JOIN macrostrat.unit_liths_atts ula ON ul
-        #     WHERE u.id = :unit_id
-        #     """,
-        #     {"unit_id": unit_id},
-        # ).fetchall()
+        liths = get_liths_for_unit(test_db, unit_id)
+        lith_names = {lith.name for lith in liths}
+        assert lith_names == {"sandstone", "siltstone"}
+
+        sandstone = next(filter(lambda x: x.name == "sandstone", liths))
+        assert sandstone.dom == "dom"
+        atts = {att.name for att in sandstone.attributes}
+        assert atts == {"tabular", "thickly bedded", "cross-bedded"}
+
+        siltstone = next(filter(lambda x: x.name == "siltstone", liths))
+        atts = {att.name for att in siltstone.attributes}
+        assert atts == {"flute casts"}
 
 
 log = get_logger(__name__)
