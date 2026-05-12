@@ -106,11 +106,11 @@ def _test_mazko_formation_liths(db):
 
     sandstone = next(filter(lambda x: x.name == "sandstone", liths))
     assert sandstone.dom == "dom"
-    atts = {att.name for att in sandstone.attributes}
+    atts = {att.name for att in sandstone.attributes or {}}
     assert atts == {"tabular", "thickly bedded", "cross-bedded"}
 
     siltstone = next(filter(lambda x: x.name == "siltstone", liths))
-    atts = {att.name for att in siltstone.attributes}
+    atts = {att.name for att in siltstone.attributes or {}}
     assert atts == {"flute casts"}
 
 

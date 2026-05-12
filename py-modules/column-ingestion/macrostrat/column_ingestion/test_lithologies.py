@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pytest import mark
 
@@ -6,9 +6,18 @@ from .lithologies import LithAtt, Lithology, LithsProcessor
 
 
 @dataclass
+class LithologyDescription:
+    name: str
+    attributes: set[str] = field(default_factory=set)
+
+    def __hash__(self):
+        return hash(self.name) + hash(frozenset(self.attributes))
+
+
+@dataclass
 class LithologyTestCase:
     input: str
-    output: set[Lithology]
+    output: set[Lithology | LithologyDescription]
     expect_error: bool = False
 
 
@@ -133,13 +142,62 @@ test_cases = [
         "lenticular carbonate; bioclastic, lenticular carbonate; regularly bedded carbonate",
         carbonate_test_case,
     ),
+    # Test cases that rely on the database to resolve ambiguities or get IDs for attributes
+    LithologyTestCase(
+        "tabular, thickly bedded, cross-bedded sandstone; flute casts siltstone",
+        output1 := {
+            LithologyDescription(
+                name="sandstone",
+                attributes={"tabular", "thickly bedded", "cross-bedded"},
+            ),
+            LithologyDescription(name="siltstone", attributes={"flute casts"}),
+        },
+    ),
+    # Be resilient to extra commas
+    LithologyTestCase(
+        "tabular, thickly bedded, cross-bedded, sandstone; flute casts, siltstone",
+        output1,
+    ),
 ]
 
 processor = LithsProcessor()
+
+
+def validate_lith_attribute(db, lith_att: str) -> LithAtt:
+    """Expand a LithAtt description to a full LithAtt object with ID, using the database."""
+    att_id = db.run_query(
+        "SELECT id FROM macrostrat.lith_atts WHERE lith_att = :lith_att",
+        dict(lith_att=lith_att),
+    ).scalar()
+    if att_id is None:
+        raise ValueError(f"Lithology attribute {lith_att} not found in database")
+    return LithAtt(name=lith_att, id=att_id)
+
+
+def validate_lithology_description(
+    db, lithology: Lithology | LithologyDescription
+) -> Lithology:
+    """Expand a LithologyDescription to a full Lithology object with ID and attributes, using the database."""
+    if isinstance(lithology, Lithology):
+        return lithology
+
+    lith_id = db.run_query(
+        "SELECT id FROM macrostrat.liths WHERE lith = :lith",
+        dict(lith=lithology.name),
+    ).scalar()
+    if lith_id is None:
+        raise ValueError(f"Lithology {lithology.name} not found in database")
+
+    attrs = {validate_lith_attribute(db, att_name) for att_name in lithology.attributes}
+    if len(attrs) == 0:
+        attrs = None
+
+    return Lithology(id=lith_id, name=lithology.name, attributes=attrs)
 
 
 @mark.parametrize("test_case", test_cases)
 def test_process_liths_text(db, test_case):
     # We have to depend on the database to get the IDs for the lithologies
     liths = processor.process_text(test_case.input)
-    assert liths == test_case.output
+    output = {validate_lithology_description(db, lith) for lith in test_case.output}
+    assert liths == output

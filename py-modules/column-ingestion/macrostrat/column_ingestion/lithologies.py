@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum
+from macrostrat.utils import get_logger
 
 from .database import get_all_lith_attributes, get_all_liths
+
+log = get_logger(__name__)
 
 
 @dataclass
@@ -88,22 +91,32 @@ class LithsProcessor:
         liths = set()
         atts = set()
 
+        log.debug(f"Processing lithology domain: {lith_text}")
+
         candidate_entities = [x.strip() for x in lith_text.split(",")]
 
         for entity in candidate_entities:
             # Start searching for attributes first, then lithologies
             remaining_text = entity
+            log.debug(f"Entity: {remaining_text}")
             while len(remaining_text) > 0:
                 att = None
                 lith, remaining_text1 = self.find_lith(remaining_text)
                 if lith is not None:
                     # If we find a lithology that consumes the entire remaining text, we can stop searching for attributes and just add the lithology.
                     # This handles special cases like "calcareous ooze" which is its own lithology, despite having the word "calcareous" which is also an attribute.
+                    if len(atts) > 0:
+                        lith.attributes = atts
+                        atts = set()  # reset attributes after applying to a lithology
                     liths.add(lith)
                     remaining_text = remaining_text1
+                    log.debug(
+                        "Found lith: %s, remaining text: %s", lith, remaining_text
+                    )
                 else:
                     # Otherwise, we search for attributes.
                     att, remaining_text0 = self.find_lith_attribute(remaining_text)
+                    log.debug("Found att: %s, remaining text: %s", att, remaining_text0)
 
                     remaining_text = remaining_text0
                     if att is not None:
