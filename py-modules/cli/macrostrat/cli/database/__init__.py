@@ -4,7 +4,6 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
-from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -21,7 +20,7 @@ from macrostrat.utils.shell import run
 
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
-from .sequences import reset_sequences
+from macrostrat.core.database.sequences import reset_sequence
 
 # NOTE: right now, this is quite implicit.
 from .utils import engine_for_db_name, setup_postgrest_access
@@ -202,8 +201,8 @@ def dump(
     asyncio.run(task)
 
 
-@db_app.command()
-def reset_sequence(
+@db_app.command(name="reset-sequence", rich_help_panel="Helpers")
+def _reset_sequence(
     table: str = Argument(..., help="Table to fix the identity sequence for"),
     database: str = Option(None, help="Database to connect to"),
     column: str = Option(None, help="Identity column to fix"),
@@ -211,7 +210,11 @@ def reset_sequence(
     """Fix an identity sequence for a given table and column"""
     engine = engine_for_db_name(database)
     db = Database(engine)
-    reset_sequences(db, table, column)
+    res = reset_sequence(db, table, column)
+    print(f"table:     [bold]{res.table}[/]")
+    print(f"column:    [bold]{res.column}[/]")
+    print(f"sequence:  [bold]{res.sequence}[/]")
+    print(f"new value: [bold green]{res.new_value}[/]")
 
 
 @db_app.command()

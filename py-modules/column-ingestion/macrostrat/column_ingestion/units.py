@@ -270,7 +270,9 @@ def write_units(db, units: list[Unit]):
         unit.id = db.session.execute(insert_stmt).scalar()
 
         # Insert into unit_sections table to link the unit to its section
-        log.info("unit:", unit.id, "col:", unit.col_id, "section:", unit.section_id)
+        log.info(
+            "unit: %s, col: %s, section: %s", unit.id, unit.col_id, unit.section_id
+        )
 
         units_sections_insert = (
             units_sections.insert()

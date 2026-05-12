@@ -3,6 +3,7 @@ import polars as pl
 from macrostrat.utils import get_logger
 from xlsxwriter import Workbook
 
+from macrostrat.core.database.sequences import reset_sequence
 from ..query_helpers import get_liths_for_unit
 from . import _column_metadata_importer
 from ..ingest import ingest_columns_from_file
@@ -140,18 +141,20 @@ class TestStandardImportProcess:
             __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
         )
 
-        conn = db.session.connection().connection
-        _column_metadata_importer(
-            conn,
-            test_excel_file,
-            audit_dir=tmp_path / "audit",
-            do_audit=True,
+        # We need to insert Macrostrat's default age model as a reference with ID=217
+        db.run_sql(
+            "INSERT INTO macrostrat.refs (id, pub_year, author, ref, compilation_code) VALUES (217, 2021, 'Peters, S.E. et al.', 'Macrostrat default age model', '')",
+            raise_on_error=True,
         )
+        db.session.commit()
+        # Ensure that the sequence is reset so that future inserts will not conflict with the manually inserted reference
+        reset_sequence(db, "macrostrat.refs", "id")
+        db.session.commit()
 
-        # ingest_columns_from_file(
-        #     db,
-        #     test_excel_file,
-        # )
+        ingest_columns_from_file(
+            db,
+            test_excel_file,
+        )
 
 
 log = get_logger(__name__)
