@@ -91,6 +91,7 @@ def apply_schema_for_environment(
                 recursive=recursive,
                 statement_filter=statement_filter,
                 transform_statement=transform_statement,
+                print_skipped=False,
             )
 
 

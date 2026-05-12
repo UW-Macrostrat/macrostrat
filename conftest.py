@@ -1,13 +1,15 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
-from os import environ
+
 from pathlib import Path
+from typing import Optional
 
 from pytest import fixture, mark, skip
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
+from macrostrat.database.query import StatementContext, StatementResult
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -150,34 +152,30 @@ def test_db(request, empty_db: Database):
     from macrostrat.core.config import settings
     from macrostrat.schema_management import apply_schema_for_environment
 
-    _filter = lambda s, p: True
-
+    transform_statement = None
     if request.config.getoption("--optimize-database"):
         # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
         # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
-        # indexes, constraints, and permissions that are not necessary for mist tests.
-        def _filter(statement: str, path: Path):
-            stmt = statement.strip().lower()
+        # indexes, constraints, and permissions that are not necessary for most tests.
+        def transform_statement(
+            ctx: StatementContext,
+        ) -> Optional[list[StatementResult]]:
+            stmt = ctx.sql_text.strip().lower()
             if (
                 stmt.startswith("create index")
                 or stmt.startswith("create unique index")
-                or statement.startswith("alter index")
+                or stmt.startswith("alter index")
+                or stmt.startswith("grant")
+                or (stmt.startswith("alter table") and "owner to" in stmt)
             ):
-                return False
+                return []
 
-            # Modify ownership of tables
-            if stmt.startswith("alter table") and "owner to" in stmt:
-                return False
-
-            if stmt.startswith("grant"):
-                return False
-
-            return True
+            return None
 
     apply_schema_for_environment(
         empty_db,
         env=settings.env or "development",
-        statement_filter=_filter,
+        transform_statement=transform_statement,
         suppress_logging=True,
     )
     return empty_db
