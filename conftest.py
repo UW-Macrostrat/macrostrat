@@ -146,14 +146,11 @@ def empty_db(request):
         yield db
 
 
-@fixture(scope="session")
-def test_db_base(request, empty_db: Database):
-    """The database used for testing."""
-    from macrostrat.core.config import settings
+def _apply_schema(db, *, target=None, env="development", optimize=True):
     from macrostrat.schema_management import apply_schema_for_environment
 
     transform_statement = None
-    if request.config.getoption("--optimize-database"):
+    if optimize:
         # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
         # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
         # indexes, constraints, and permissions that are not necessary for most tests.
@@ -173,15 +170,48 @@ def test_db_base(request, empty_db: Database):
             return None
 
     apply_schema_for_environment(
-        empty_db,
-        env=settings.env or "development",
+        db,
+        env=env,
         transform_statement=transform_statement,
         suppress_logging=True,
+        target=target,
     )
-    return empty_db
+    return db
+
+
+@fixture(scope="session")
+def test_db_macrostrat_schema_only(request, empty_db: Database):
+    """The database used for testing."""
+    from macrostrat.core.config import settings
+
+    return _apply_schema(
+        empty_db,
+        env=settings.env,
+        optimize=request.config.getoption("--optimize-database"),
+        target="macrostrat",
+    )
 
 
 @fixture(scope="class")
-def test_db(test_db_base: Database):
+def test_db(test_db_macrostrat_schema_only: Database):
+    db = test_db_macrostrat_schema_only
+    with db.transaction(rollback=True):
+        yield db
+
+
+@fixture(scope="session")
+def test_db_base(request, test_db_macrostrat_schema_only: Database):
+    """The database used for testing."""
+    from macrostrat.core.config import settings
+
+    return _apply_schema(
+        test_db_macrostrat_schema_only,
+        env=settings.env,
+        optimize=request.config.getoption("--optimize-database"),
+    )
+
+
+@fixture(scope="class")
+def test_db_full(test_db_base: Database):
     with test_db_base.transaction(rollback=True):
         yield test_db_base
