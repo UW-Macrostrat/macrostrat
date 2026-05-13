@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass
 
 from psycopg.sql import Identifier
-from rich import print
 
 from macrostrat.database import Database
 

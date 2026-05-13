@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,6 +8,7 @@ from xlsxwriter import Workbook
 
 from macrostrat.core.database.sequences import reset_sequence
 from macrostrat.database import Database, create_database, drop_database
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 
 from ..ingest import ingest_columns_from_file
@@ -19,12 +21,23 @@ from ..defs_provider import MacrostratDatabaseDataProvider, MacrostratMetadataPo
 
 
 @fixture(scope="class")
-def db(test_db_macrostrat_schema_only: Database):
+def db(test_db_macrostrat_schema_only: Database, env_db: Database):
     """A new test database created from a template of the test database and dropped afterwards.
     We use this pattern to ensure that we have a clean database for each test where isolation
     (beyond transaction isolation) is required.
     """
     db = test_db_macrostrat_schema_only
+
+    # Populate metadata (intervals, etc.) from the "live" Macrostrat database
+    _provider = MacrostratDatabaseDataProvider(env_db)
+    MacrostratMetadataPopulator(_provider, db).populate_all()
+
+    with template_database(db) as template_db:
+        yield template_db
+
+
+@contextmanager
+def template_database(db: Database):
     uid = str(uuid4())[:8]
     db_name = db.engine.url.database
     template_db_name = db_name + "_template_" + uid
@@ -32,18 +45,18 @@ def db(test_db_macrostrat_schema_only: Database):
     new_db_url = db.engine.url.set(database=template_db_name)
     db.session.close()
     db.engine.dispose()
-    create_database(new_db_url, template=db_name)
-    yield Database(new_db_url)
-    drop_database(new_db_url)
+    try:
+        create_database(new_db_url, template=db_name)
+        log.info(f"Created  database %s from template %s", new_db_url.database, db_name)
+        print("Temporary database URL:", raw_database_url(new_db_url))
+        yield Database(new_db_url)
+    finally:
+        drop_database(new_db_url)
 
 
 class TestProjectMetadata:
-    def test_insert_project_metadata(self, env_db, db, tmp_path: Path):
+    def test_insert_project_metadata(self, db, tmp_path: Path):
         # Insert project ID 13 to align with the test data
-
-        # Populate metadata (intervals, etc.) from the "live" Macrostrat database
-        _provider = MacrostratDatabaseDataProvider(env_db)
-        MacrostratMetadataPopulator(_provider, db).populate_all()
 
         # Temporarily make sections not required for units in order for tests to pass.
         # We do this in a better way in the other importer.
@@ -83,47 +96,35 @@ class TestProjectMetadata:
 
         # TODO: write artifacts somewhere we can see them
 
-    def test_unit_count(self, db):
-        """Test that the correct number of units are inserted"""
         assert db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
 
-    def test_mazko_formation_liths(self, db):
-        """Test that the 'Mazko Formation' has the correct lithologies"""
-        # Get the unit_id of the Mazco Formation
-        unit_id = db.run_query(
-            "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazko Formation'"
-        ).scalar()
-        assert unit_id is not None
+        _test_mazko_formation_liths(db)
 
-        liths = get_liths_for_unit(db, unit_id)
-        lith_names = {lith.name for lith in liths}
-        assert lith_names == {"sandstone", "siltstone"}
 
-        sandstone = next(filter(lambda x: x.name == "sandstone", liths))
-        assert sandstone.dom == "dom"
-        atts = {att.name for att in sandstone.attributes}
-        assert atts == {"tabular", "thickly bedded", "cross-bedded"}
+def _test_mazko_formation_liths(db):
+    """Test that the 'Mazko Formation' has the correct lithologies"""
+    # Get the unit_id of the Mazco Formation
+    unit_id = db.run_query(
+        "SELECT id FROM macrostrat.units WHERE strat_name = 'Mazko Formation'"
+    ).scalar()
+    assert unit_id is not None
 
-        siltstone = next(filter(lambda x: x.name == "siltstone", liths))
-        atts = {att.name for att in siltstone.attributes}
-        assert atts == {"flute casts"}
+    liths = get_liths_for_unit(db, unit_id)
+    lith_names = {lith.name for lith in liths}
+    assert lith_names == {"sandstone", "siltstone"}
+
+    sandstone = next(filter(lambda x: x.name == "sandstone", liths))
+    assert sandstone.dom == "dom"
+    atts = {att.name for att in sandstone.attributes or {}}
+    assert atts == {"tabular", "thickly bedded", "cross-bedded"}
+
+    siltstone = next(filter(lambda x: x.name == "siltstone", liths))
+    atts = {att.name for att in siltstone.attributes or {}}
+    assert atts == {"flute casts"}
 
 
 class TestStandardImportProcess:
-    def test_insert_project_metadata(self, env_db, db, tmp_path: Path):
-        _provider = MacrostratDatabaseDataProvider(env_db)
-        MacrostratMetadataPopulator(_provider, db).populate_all()
-
-        # Temporarily make sections not required for units in order for tests to pass.
-        # We do this in a better way in the other importer.
-        db.run_sql("ALTER TABLE macrostrat.units ALTER COLUMN section_id DROP NOT NULL")
-        # Drop the foreign key constraint on units
-        db.run_sql(
-            "ALTER TABLE macrostrat.units DROP CONSTRAINT units_sections_fk",
-            raise_on_error=True,
-        )
-        db.session.commit()
-
+    def test_insert_project_metadata(self, db, tmp_path: Path):
         # TODO: this shares state with the previous test, but we should fix that
         db.run_query(
             "INSERT INTO macrostrat.projects (id, slug, project, descrip, timescale_id) VALUES (:id, :slug, :project, :descrip, :timescale_id)",
@@ -156,6 +157,10 @@ class TestStandardImportProcess:
             db,
             test_excel_file,
         )
+
+        assert db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
+
+        _test_mazko_formation_liths(db)
 
 
 log = get_logger(__name__)

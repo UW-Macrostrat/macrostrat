@@ -12,10 +12,13 @@ from .columns import (
 )
 from .database import get_or_create_project
 from .metadata import get_metadata
-from .units import get_units, write_units
+from .units import PositionAxisType, get_units, write_units
 
 
-def ingest_columns_from_file(db, data_file):
+def ingest_columns_from_file(
+    db,
+    data_file,
+):
     # Get sheet names
     workbook = load_workbook(
         data_file, read_only=True, data_only=True, keep_links=False
@@ -36,7 +39,12 @@ def ingest_columns_from_file(db, data_file):
     if "columns" in sheet_names:
         columns = get_column_data(data_file, meta)
 
-    units = get_units(data_file)
+    # Interpret positions as ordinal if the axis type is age
+    position = PositionAxisType.HEIGHT
+    if meta.axis_type == "age":
+        position = PositionAxisType.ORDINAL
+
+    units = get_units(data_file, position=position, fill_values=meta.fill_values)
 
     for col in columns:
         col.units = units.get(col.local_id, [])

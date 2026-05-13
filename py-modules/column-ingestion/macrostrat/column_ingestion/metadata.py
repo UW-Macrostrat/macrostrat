@@ -41,6 +41,7 @@ class Metadata:
     # Default column type
     col_type: str = "column"
     fill_values: bool = False
+    axis_type: str = "age"
     rgeom: str | None = None
 
 
@@ -87,10 +88,16 @@ def get_metadata(data_file) -> Metadata:
 
     project = ProjectIdentifier(id=project_id, slug=project_slug, name=project_name)
 
+    col_type = metadata.get("col_type", "column")
+
+    default_axis_type = "age" if col_type == "column" else "height"
+    axis_type = metadata.get("axis_type", default_axis_type)
+
     return Metadata(
         project=project,
         compiler=metadata.get("compiler_name"),
-        col_type=metadata.get("col_type", "column"),
+        col_type=col_type,
+        axis_type=axis_type,
         fill_values=metadata.get("fill_values", "n").lower() in ["y", "yes", "true"],
         rgeom=metadata.get("rgeom"),
     )

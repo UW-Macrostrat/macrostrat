@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import Any
 
 import polars as pl
@@ -53,12 +54,20 @@ def rename_aliases(df, aliases):
     return df, warnings
 
 
-def get_units(data_file) -> {str: list[Unit]}:
+class PositionAxisType(str, Enum):
+    HEIGHT = "height"
+    DEPTH = "depth"
+    ORDINAL = "ordinal"
+
+
+def get_units(data_file, **kwargs) -> {str: list[Unit]}:
     df = pl.read_excel(data_file, sheet_name="units")
-    return get_units_from_df(df)
+    return get_units_from_df(df, **kwargs)
 
 
-def get_units_from_df(df) -> {str: list[Unit]}:
+def get_units_from_df(
+    df, *, position: PositionAxisType = PositionAxisType.HEIGHT, fill_values=False
+) -> {str: list[Unit]}:
     # Rename some columns
     df, warnings = rename_aliases(
         df,
@@ -95,12 +104,31 @@ def get_units_from_df(df) -> {str: list[Unit]}:
 
     for (col_id,), group in groups:
         print(f"Column ID: {col_id}")
-        units = prepare_column_units(group)
+        # Set section_id to 1 if not present, or if all values are null
+        if "section_id" not in group.columns or group["section_id"].is_null().all():
+            group = group.with_columns(pl.lit(1).alias("section_id"))
+
+        units = prepare_column_units(group, position=position, fill_values=fill_values)
         res[str(col_id)] = units
     return res
 
 
-def prepare_column_units(df) -> list[Unit]:
+def prepare_column_units(df, **kwargs) -> list[Unit]:
+    # Group by section_id
+    sections = df.group_by(["section_id"])
+    units = []
+    for (section_id,), group in sections:
+        print(f"Section ID: {section_id}")
+        units.extend(prepare_section_units(group, **kwargs))
+    return units
+
+
+def prepare_section_units(
+    df,
+    *,
+    position: PositionAxisType = PositionAxisType.HEIGHT,
+    fill_values: bool = True,
+) -> list[Unit]:
     # Sort by b_pos (descending if height)
     # TODO: figure out how to switch conventions for depth
     df = df.sort("b_pos", descending=True)
@@ -119,6 +147,10 @@ def prepare_column_units(df) -> list[Unit]:
 
         # Create a column with default values for the top position of each unit
         _t_col = df[b_col].shift(1)
+
+        if position == PositionAxisType.ORDINAL and t_col == "t_pos":
+            # If ordinal, set the top position to the bottom position + 1 where it is unset
+            _t_col = pl.when(_t_col.is_null()).then(df[b_col] + 1).otherwise(_t_col)
 
         df = df.with_columns(
             pl.when(pl.col(t_col).is_null())
@@ -147,6 +179,8 @@ def prepare_column_units(df) -> list[Unit]:
         "name",
     ]
     for spec in fill_specs:
+        if not fill_values:
+            continue
         if spec not in df.columns:
             continue
         new_col = df[spec].fill_null(strategy="forward").alias(spec)
@@ -298,7 +332,9 @@ def write_units(db, units: list[Unit]):
                 .values(
                     unit_id=unit.id,
                     lith_id=lith.id,
+                    # TODO: dom and prop are equivalent for now
                     dom=dom,
+                    prop=dom,
                     comp_prop=1 / n_liths,
                     mod_prop=1 / n_liths,
                     toc=0.0,
