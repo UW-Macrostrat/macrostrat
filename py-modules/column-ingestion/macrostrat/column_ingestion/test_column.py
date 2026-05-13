@@ -18,12 +18,10 @@ col_id|pos|name|lith|b_int|b_prop
 1|0|Brubaker Formation|shale|Cambrian|0.1
 """
 
-basic_units_fobj = StringIO(basic_units_csv)
-
 
 def test_ingest_units():
     """Ingest basic column into the Macrostrat database"""
-    df = read_csv(basic_units_fobj, separator="|")
+    df = read_df(basic_units_csv)
     assert df.shape == (3, 6)
     col_units = get_units_from_df(df)
 
@@ -52,3 +50,54 @@ def test_db_ingest_units(test_db):
     assert df[0] == 1
     # res = test_db.run_query("SELECT count(*) FROM macrostrat.cols").scalar()
     # assert res == 0
+
+
+multi_section_units_csv = """
+col_id|section_id|pos|name|lith|b_int|b_prop
+1|2|450|||Ordovician|0.2
+1|2|350|Guildenstern Formation|sandstone||
+1|2|300|Macbeth Formation|shale|Ordovician|0.1
+1|1|200|||Cambrian|0.2
+1|1|100|Silex Formation|sandstone||
+1|1|0|Brubaker Formation|shale|Cambrian|0.1
+"""
+
+
+def test_ingest_multi_section_units():
+    """Ingest basic column into the Macrostrat database"""
+    df = read_df(
+        multi_section_units_csv,
+    )
+    assert df.shape == (6, 7)
+    col_units = get_units_from_df(df)
+    assert len(col_units) == 1
+    assert "1" in col_units
+    units = col_units["1"]
+    assert len(units) == 4
+
+
+# Overlapping units with ordinal heights
+overlapping_units_csv = """
+col_id|pos|name|lith
+1|2|Upper Formation|shale
+1|2|Upper Formation 2|limestone
+1|1|Middle Formation|sandstone
+1|0|Lower Formation|sandstone
+"""
+
+
+def test_ingest_overlapping_units():
+    """Ingest basic column into the Macrostrat database"""
+    df = read_df(overlapping_units_csv)
+    assert df.shape == (4, 4)
+    col_units = get_units_from_df(df, ordinal=True)
+    assert len(col_units) == 1
+    assert "1" in col_units
+    units = col_units["1"]
+    assert len(units) == 4
+
+
+def read_df(obj: str):
+    """Read a basic pipe-separated data into a Polars DataFrame"""
+    fobj = StringIO(obj)
+    return read_csv(fobj, separator="|")
