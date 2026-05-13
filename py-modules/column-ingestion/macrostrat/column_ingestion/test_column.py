@@ -6,7 +6,7 @@ from io import StringIO
 
 from polars import read_csv
 
-from .units import get_units_from_df
+from .units import get_units_from_df, PositionAxisType
 
 # Wkt for a basic point-based stratigraphic column
 basic_column_wkt = "POINT (0 0)"  # null island
@@ -90,7 +90,7 @@ def test_ingest_overlapping_units():
     """Ingest basic column into the Macrostrat database"""
     df = read_df(overlapping_units_csv)
     assert df.shape == (4, 4)
-    col_units = get_units_from_df(df, ordinal=True)
+    col_units = get_units_from_df(df, position=PositionAxisType.ORDINAL)
     assert len(col_units) == 1
     assert "1" in col_units
     units = col_units["1"]

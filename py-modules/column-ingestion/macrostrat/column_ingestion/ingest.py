@@ -3,6 +3,7 @@ from openpyxl import load_workbook
 from macrostrat.core.database import get_database
 from macrostrat.database import on_conflict
 
+from .units import PositionAxisType
 from .age_model import build_age_model
 from .columns import (
     get_column_data,
@@ -40,9 +41,11 @@ def ingest_columns_from_file(
         columns = get_column_data(data_file, meta)
 
     # Interpret positions as ordinal if the axis type is age
-    ordinal = meta.axis_type == "age"
+    position = PositionAxisType.HEIGHT
+    if meta.axis_type == "age":
+        position = PositionAxisType.ORDINAL
 
-    units = get_units(data_file, ordinal=ordinal, fill_values=False)
+    units = get_units(data_file, position=position, fill_values=meta.fill_values)
 
     for col in columns:
         col.units = units.get(col.local_id, [])
