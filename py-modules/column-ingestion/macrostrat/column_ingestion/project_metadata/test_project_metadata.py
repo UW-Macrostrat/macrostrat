@@ -3,12 +3,12 @@ from pathlib import Path
 from uuid import uuid4
 
 import polars as pl
-from macrostrat.database.transfer.utils import raw_database_url
 from pytest import fixture
 from xlsxwriter import Workbook
 
 from macrostrat.core.database.sequences import reset_sequence
 from macrostrat.database import Database, create_database, drop_database
+from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 
 from ..ingest import ingest_columns_from_file

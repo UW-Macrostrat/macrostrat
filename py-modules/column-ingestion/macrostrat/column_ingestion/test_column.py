@@ -6,7 +6,7 @@ from io import StringIO
 
 from polars import read_csv
 
-from .units import get_units_from_df, PositionAxisType
+from .units import PositionAxisType, get_units_from_df
 
 # Wkt for a basic point-based stratigraphic column
 basic_column_wkt = "POINT (0 0)"  # null island

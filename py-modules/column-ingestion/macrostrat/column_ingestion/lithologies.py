@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+
 from macrostrat.utils import get_logger
 
 from .database import get_all_lith_attributes, get_all_liths

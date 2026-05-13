@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass, field
-from typing import Any
 from enum import Enum
+from typing import Any
 
 import polars as pl
 from sqlalchemy import and_
