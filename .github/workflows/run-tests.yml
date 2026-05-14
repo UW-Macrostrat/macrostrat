@@ -27,10 +27,10 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install system dependencies (GDAL)
-      run: |
-        sudo apt update
-        sudo apt install -y gdal-bin libgdal-dev python3-dev
+#    - name: Install system dependencies (GDAL)
+#      run: |
+#        sudo apt update
+#        sudo apt install -y gdal-bin libgdal-dev python3-dev
 
     - name: Install dependencies and build macrostrat
       run: make all
