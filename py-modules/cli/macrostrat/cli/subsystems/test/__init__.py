@@ -4,8 +4,6 @@ Basic wrapper for PyTest to run Macrostrat tests.
 """
 
 from pathlib import Path
-
-from pytest import main
 from typer import Context, Typer
 
 from macrostrat.core.config import settings
@@ -13,7 +11,6 @@ from macrostrat.utils import working_directory
 
 cli = Typer(
     short_help="Macrostrat tests",
-    no_args_is_help=True,
     add_completion=False,
     help="""
     Run Macrostrat tests.
@@ -28,7 +25,13 @@ cli = Typer(
 
 __here__ = Path(__file__).parent
 
-run_pytest = main
+
+def run_pytest(args):
+    from pytest import main
+
+    res = main(args)
+    if res != 0:
+        raise SystemExit(res)
 
 
 @cli.command(name="runtime")
