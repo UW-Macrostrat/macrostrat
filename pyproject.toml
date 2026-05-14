@@ -54,6 +54,7 @@ extend_skip = ["__archive", "submodules"]
 markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
+    "slow: marks tests as slow-running",
 ]
 # Don't show captured logs by default
 addopts = "--show-capture=stdout"
