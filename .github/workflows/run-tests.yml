@@ -9,8 +9,16 @@ on:
 jobs:
   install-and-test:
     runs-on: ubuntu-latest
-
+    env:
+      FORCE_COLOR: "1"
     steps:
+
+    - name: Install system dependencies (GDAL)
+      run: |
+        sudo apt update
+        sudo apt install -y gdal-bin libgdal-dev python3-dev
+      with:
+        enable-cache: true
 
     - name: Checkout code
       uses: actions/checkout@v5
@@ -26,11 +34,6 @@ jobs:
       uses: astral-sh/setup-uv@v6
       with:
         enable-cache: true
-
-#    - name: Install system dependencies (GDAL)
-#      run: |
-#        sudo apt update
-#        sudo apt install -y gdal-bin libgdal-dev python3-dev
 
     - name: Install dependencies and build macrostrat
       run: make all

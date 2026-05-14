@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from pytest import mark, fixture
+from pytest import fixture, mark
 
 from .lithologies import LithAtt, Lithology, LithsProcessor
 
