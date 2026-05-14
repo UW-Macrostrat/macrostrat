@@ -3,7 +3,7 @@
 import importlib
 from pathlib import Path
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from pytest import fixture, mark
 from typer.testing import CliRunner
 
@@ -58,9 +58,12 @@ def test_cli_no_config():
 
 
 @mark.docker
-def test_database_migrations(test_db_base):w
+def test_database_migrations(test_db_base):
     """Test that no database migrations are needed to reach the optimal database state."""
 
+    # NOTE: we need to use readiness_level=ReadinessState.GA here because when running
+    # in CI, we don't preload the development schema adjustments. We could potentially change
+    # this.
     res = _run_migrations_in_database(
         test_db_base, legacy=False, raise_errors=True, readiness_level=ReadinessState.GA
     )
