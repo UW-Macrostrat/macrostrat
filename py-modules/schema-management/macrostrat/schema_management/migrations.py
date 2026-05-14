@@ -236,7 +236,7 @@ def _dry_run_migrations(legacy=False):
         return _run_migrations_in_database(db, legacy=legacy)
 
 
-def _run_migrations_in_database(db, legacy=False):
+def _run_migrations_in_database(db, *, legacy=False, raise_errors=False):
     t_start = time()
 
     _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
@@ -247,6 +247,8 @@ def _run_migrations_in_database(db, legacy=False):
 
         if _migrations == _next_migrations:
             print("No changes in applyable migrations, exiting")
+            if raise_errors:
+                raise ValueError("No migrations to apply")
             break
 
         _migrations = _next_migrations
