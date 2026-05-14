@@ -5,6 +5,7 @@ from graphlib import TopologicalSorter
 from os import environ
 from time import time
 from typing import Optional, Union
+from functools import total_ordering
 
 import docker
 from pydantic import BaseModel
@@ -37,10 +38,24 @@ _MIN_READINESS_BY_ENV = {"dev": "alpha", "staging": "beta", "prod": "ga"}
 _READINESS_ORDER = {"alpha": 0, "beta": 1, "ga": 2}
 
 
+@total_ordering
 class ReadinessState(Enum):
     ALPHA = "alpha"
     BETA = "beta"
     GA = "ga"
+
+    def __gt__(self, other):
+        if not isinstance(other, ReadinessState):
+            return NotImplemented
+        return _READINESS_ORDER[self.value] > _READINESS_ORDER[other.value]
+
+    def __eq__(self, other):
+        if not isinstance(other, ReadinessState):
+            return NotImplemented
+        return self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)
 
 
 # based on set_env in macrostrat/cli/macrostrat/cli/entrypoint.py
@@ -236,10 +251,14 @@ def _dry_run_migrations(legacy=False):
         return _run_migrations_in_database(db, legacy=legacy)
 
 
-def _run_migrations_in_database(db, *, legacy=False, raise_errors=False):
+def _run_migrations_in_database(
+    db, *, legacy=False, raise_errors=False, readiness_level=None
+):
     t_start = time()
 
-    _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
+    _migrations = applyable_migrations(
+        db, allow_destructive=True, legacy=legacy, readiness_level=ReadinessState.GA
+    )
     _next_migrations = None
     n_total = 0
     n_migrations = len(_migrations)
@@ -274,10 +293,13 @@ def _run_migrations_in_database(db, *, legacy=False, raise_errors=False):
 
 
 @lru_cache(10)
-def _get_all_migrations(legacy: bool = False):
+def _get_all_migrations(
+    *, legacy: bool = False, readiness_level: ReadinessState = None
+):
     """
     Get all migrations in the system
     :param legacy: Include legacy migrations
+    :param readiness_level: Include migrations with readiness level greater than or equal to this value
     :return: List of migration instances
     """
 
@@ -302,6 +324,17 @@ def _get_all_migrations(legacy: bool = False):
         for cls in migrations
         if (legacy or not getattr(cls, "legacy", False)) and hasattr(cls, "name")
     ]
+
+    _state = lambda s: ReadinessState(s) if not isinstance(s, ReadinessState) else s
+
+    if readiness_level is not None:
+        expected_level = _state(readiness_level)
+        instances = [
+            inst
+            for inst in instances
+            if _state(getattr(inst, "readiness_state", "alpha")) >= expected_level
+        ]
+
     graph = {inst.name: inst.depends_on for inst in instances}
     order = list(TopologicalSorter(graph).static_order())
     instances.sort(key=lambda i: order.index(i.name))
@@ -428,10 +461,12 @@ def _run_migrations(
     return run_counter, set(completed_migrations)
 
 
-def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[str]:
+def applyable_migrations(
+    db, *, allow_destructive=False, legacy=False, readiness_level=None
+) -> set[str]:
     """Check if there are any migrations that can be applied"""
     _res = set()
-    migrations = _get_all_migrations(legacy=legacy)
+    migrations = _get_all_migrations(legacy=legacy, readiness_level=readiness_level)
     for _migration in migrations:
         if _migration.destructive and not allow_destructive:
             continue
