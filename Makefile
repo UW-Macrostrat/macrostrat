@@ -19,7 +19,7 @@ format:
 test:
 	# These tests may fail due to an older GDAL version in use.
 	# We need to figure out how to bundle GDAL or run in a Docker context
-	uv run macrostrat test all --skip-env -s --maxfail=1 --color=yes
+	uv run macrostrat test all --skip-env -s -x
 
 test-ci:
 	# We need a fairly recent version of GDAL (3.10) for map integration tests to pass.
