@@ -19,11 +19,11 @@ col_id|pos|name|lith|b_int|b_prop
 """
 
 
-def test_ingest_units():
+def test_ingest_units(test_db):
     """Ingest basic column into the Macrostrat database"""
     df = read_df(basic_units_csv)
     assert df.shape == (3, 6)
-    col_units = get_units_from_df(df)
+    col_units = get_units_from_df(test_db, df)
 
     assert len(col_units) == 1
     assert "1" in col_units
@@ -63,13 +63,13 @@ col_id|section_id|pos|name|lith|b_int|b_prop
 """
 
 
-def test_ingest_multi_section_units():
+def test_ingest_multi_section_units(test_db):
     """Ingest basic column into the Macrostrat database"""
     df = read_df(
         multi_section_units_csv,
     )
     assert df.shape == (6, 7)
-    col_units = get_units_from_df(df)
+    col_units = get_units_from_df(test_db, df)
     assert len(col_units) == 1
     assert "1" in col_units
     units = col_units["1"]
@@ -86,11 +86,11 @@ col_id|pos|name|lith
 """
 
 
-def test_ingest_overlapping_units():
+def test_ingest_overlapping_units(test_db):
     """Ingest basic column into the Macrostrat database"""
     df = read_df(overlapping_units_csv)
     assert df.shape == (4, 4)
-    col_units = get_units_from_df(df, position=PositionAxisType.ORDINAL)
+    col_units = get_units_from_df(test_db, df, position=PositionAxisType.ORDINAL)
     assert len(col_units) == 1
     assert "1" in col_units
     units = col_units["1"]

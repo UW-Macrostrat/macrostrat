@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from pytest import mark
+from pytest import mark, fixture
 
 from .lithologies import LithAtt, Lithology, LithsProcessor
 
@@ -160,7 +160,10 @@ test_cases = [
     ),
 ]
 
-processor = LithsProcessor()
+
+@fixture(scope="module")
+def processor(env_db):
+    yield LithsProcessor(env_db)
 
 
 def validate_lith_attribute(db, lith_att: str) -> LithAtt:
@@ -196,7 +199,7 @@ def validate_lithology_description(
 
 
 @mark.parametrize("test_case", test_cases)
-def test_process_liths_text(db, test_case):
+def test_process_liths_text(processor, db, test_case):
     # We have to depend on the database to get the IDs for the lithologies
     liths = processor.process_text(test_case.input)
     output = {validate_lithology_description(db, lith) for lith in test_case.output}
