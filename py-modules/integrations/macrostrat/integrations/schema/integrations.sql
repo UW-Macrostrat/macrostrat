@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS integrations.dataset (
   updated_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Needed for CI tests to pass
+CREATE SCHEMA IF NOT EXISTS macrostrat_api;
+
 -- Create a view to expose the integration datasets to the API
 CREATE OR REPLACE VIEW macrostrat_api.dataset AS
   SELECT d.*,
