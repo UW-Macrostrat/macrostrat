@@ -1,11 +1,10 @@
 import inspect
 from enum import Enum
-from functools import lru_cache
+from functools import lru_cache, total_ordering
 from graphlib import TopologicalSorter
 from os import environ
 from time import time
 from typing import Optional, Union
-from functools import total_ordering
 
 import docker
 from pydantic import BaseModel

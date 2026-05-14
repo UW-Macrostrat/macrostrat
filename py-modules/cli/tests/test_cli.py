@@ -8,8 +8,8 @@ from pytest import fixture, mark
 from typer.testing import CliRunner
 
 from macrostrat.schema_management.migrations import (
-    _run_migrations_in_database,
     ReadinessState,
+    _run_migrations_in_database,
 )
 from macrostrat.utils import override_environment
 
