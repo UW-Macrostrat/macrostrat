@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
+
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -178,17 +179,42 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
     return db
 
 
+from macrostrat.column_ingestion.defs_provider import (
+    MacrostratAPIDataProvider,
+    MacrostratDatabaseDataProvider,
+    MacrostratMetadataPopulator,
+    MacrostratAPIConfig,
+)
+
+
+def load_defs(settings, db):
+    # Add data using Macrostrat defs loader, if available
+    base_url = settings.base_url
+    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
+    data_provider = MacrostratAPIDataProvider(cfg)
+    # if settings.pg_database is not None:
+    #     source_db = Database(settings.pg_database)
+    #     data_provider = MacrostratDatabaseDataProvider(source_db)
+    #     log.info("Loading defs from database: %s", settings.pg_database)
+    # else:
+    #     log.info("Loading defs from API: %s", cfg.base_url)
+    loader = MacrostratMetadataPopulator(data_provider, db)
+    loader.populate_all()
+
+
 @fixture(scope="session")
 def test_db_macrostrat_schema_only(request, empty_db: Database):
     """The database used for testing."""
     from macrostrat.core.config import settings
 
-    return _apply_schema(
+    db = _apply_schema(
         empty_db,
         env=settings.env,
         optimize=request.config.getoption("--optimize-database"),
         target="macrostrat",
     )
+    load_defs(settings, db)
+    return db
 
 
 @fixture(scope="class")
