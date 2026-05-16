@@ -37,4 +37,6 @@ jobs:
       run: make all
 
     - name: Run macrostrat tests
-      run: make test
+      run: |
+        curl -I https://macrostrat.org/api/v2/
+        make test
