@@ -20,6 +20,8 @@ dependencies = [
     "python-magic>=0.4.27,<0.5",
     "pyyaml~=6.0",
     "shapely>=2.1.2,<3",
+    "pyogrio>=0.12.1,<0.13",
+    "psycopg>=3.0.0,<4",
     "macrostrat.core",
 ]
 

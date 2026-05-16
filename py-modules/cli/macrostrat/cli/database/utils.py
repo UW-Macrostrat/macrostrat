@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import Optional
 from uuid import uuid4
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from rich import print
 from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.engine.url import URL, make_url

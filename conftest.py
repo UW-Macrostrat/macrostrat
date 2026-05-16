@@ -75,9 +75,7 @@ def env_config(request):
     if request.config.getoption("--skip-env"):
         skip("skipping environment tests")
 
-    kwargs = {
-        "NO_COLOR": "1",
-    }
+    kwargs = {}
     env = request.config.getoption("--env")
     if env is not None:
         log.info("Overriding environment to %s", env)
@@ -104,20 +102,28 @@ def env_config(request):
 @fixture(scope="session")
 def env_db(env_config):
     """The actually operational database for the current environment."""
+    try:
+        log.info("Connecting to environment database: %s", env_config.pg_database)
+        yield _env_db(env_config)
+    except RuntimeError as e:
+        skip(str(e))
 
+
+def _env_db(env_config):
+    """Helper function to get the environment database without the fixture wrapper."""
     if env_config is None:
-        skip("No environment configured")
+        raise RuntimeError("No environment configured")
 
     if env_config.pg_database is None:
-        skip("No database configured for this environment")
+        raise RuntimeError("No database configured for this environment")
 
+    log.info("Connecting to database: %s", env_config.pg_database)
     db = Database(env_config.pg_database)
 
     # Change the user on the connection to a read-only user
     # TODO: verify read-only
     db.run_sql("SET ROLE web_anon;")
-
-    yield db
+    return db
 
 
 @fixture(scope="class")
@@ -168,6 +174,7 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
 
             return None
 
+    log.info("Applying schema for environment %s to database %s", env, db.engine.url)
     apply_schema_for_environment(
         db,
         env=env,
@@ -178,17 +185,52 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
     return db
 
 
+from macrostrat.column_ingestion.defs_provider import (
+    MacrostratAPIConfig,
+    MacrostratAPIDataProvider,
+    MacrostratDatabaseDataProvider,
+    MacrostratMetadataPopulator,
+)
+
+
+def load_defs(settings, _db, source_db: Optional[Database] = None):
+    # Add data using Macrostrat defs loader, if available
+    base_url = settings.base_url
+    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
+    data_provider = MacrostratAPIDataProvider(cfg)
+    if source_db is not None:
+        data_provider = MacrostratDatabaseDataProvider(source_db)
+        log.info("Loading defs from database: %s", source_db.engine.url)
+    else:
+        log.info("Loading defs from API: %s", cfg.base_url)
+    loader = MacrostratMetadataPopulator(data_provider, _db)
+    loader.populate_all()
+
+
 @fixture(scope="session")
 def test_db_macrostrat_schema_only(request, empty_db: Database):
     """The database used for testing."""
+    from macrostrat.core import get_database
     from macrostrat.core.config import settings
 
-    return _apply_schema(
+    db = _apply_schema(
         empty_db,
         env=settings.env,
         optimize=request.config.getoption("--optimize-database"),
         target="macrostrat",
     )
+
+    source_db = None
+    log.info("Attempting to connect to database %s", settings.pg_database)
+    if not request.config.getoption("--skip-env"):
+        try:
+            source_db = get_database()
+        except RuntimeError as e:
+            log.warning("Could not connect to environment database: %s", e)
+            log.warning("Defs will not be loaded from the API configuration")
+
+    load_defs(settings, db, source_db=source_db)
+    return db
 
 
 @fixture(scope="class")

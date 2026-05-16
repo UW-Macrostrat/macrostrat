@@ -147,6 +147,7 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
                 timescales=[
                     Timescale(timescale["timescale_id"], timescale["name"])
                     for timescale in row.get("timescales", [])
+                    if timescale["timescale_id"] is not None
                 ],
             )
             for row in rows
@@ -362,23 +363,26 @@ class MacrostratMetadataPopulator:
         for lithology in self.provider.get_lithologies():
             # Don't include material properties and bulk information (for now)
             row = asdict(lithology)
-            for k, v in _defaults.items():
-                row.setdefault(k, v)
+            set_defaults(row, _defaults)
             yield row
 
     @list_builder
     def _prepare_lithology_attributes(self):
+        _defaults = {
+            "equiv": 0,
+            "lith_att_fill": 0,
+        }  # null values in lith_att_fill should be allowed
         for attribute in self.provider.get_lithology_attributes():
             row = asdict(attribute)
             # TODO: capture equivalence
-            row.setdefault("equiv", 0)
+            set_defaults(row, _defaults)
             yield row
 
     @list_builder
     def _prepare_environments(self):
         for environment in self.provider.get_environments():
             row = asdict(environment)
-            row.setdefault("environ_fill", 0)
+            set_defaults(row, {"environ_fill": 0})
             yield row
 
     def populate_lithologies(self):
@@ -392,3 +396,12 @@ class MacrostratMetadataPopulator:
 
     def populate_environments(self):
         self._upsert("environs", self._prepare_environments())
+
+
+def set_defaults(_dict, _defaults):
+    for key, default in _defaults.items():
+        if key not in _dict:
+            _dict[key] = default
+        if _dict[key] is None:
+            _dict[key] = default
+    return _dict

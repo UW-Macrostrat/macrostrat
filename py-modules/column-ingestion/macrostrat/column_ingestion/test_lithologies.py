@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from pytest import mark
+from pytest import fixture, mark
 
 from .lithologies import LithAtt, Lithology, LithsProcessor
 
@@ -39,22 +39,35 @@ chert = Lithology(name="chert", id=45)
 sand = Lithology(name="sand", id=3)
 mixed_carbonate = Lithology(name="mixed carbonate-siliciclastic", id=17)
 
+lenticular = LithAtt(name="lenticular", id=1)
+regularly_bedded = LithAtt(name="regularly bedded", id=6)
+bioclastic = LithAtt(name="bioclastic", id=145)
+
 carbonate_test_case = {
-    Lithology(name="carbonate", id=18, attributes={LithAtt(name="lenticular", id=1)}),
+    Lithology(name="carbonate", id=18, attributes={lenticular}),
     Lithology(
         name="carbonate",
         id=18,
         attributes={
-            LithAtt(name="bioclastic", id=145),
-            LithAtt(name="lenticular", id=1),
+            bioclastic,
+            lenticular,
         },
     ),
     Lithology(
         name="carbonate",
         id=18,
-        attributes={LithAtt(name="regularly bedded", id=6)},
+        attributes={regularly_bedded},
     ),
 }
+
+
+@mark.parametrize("lith_att", [lenticular, regularly_bedded, bioclastic])
+def test_lith_atts_found(test_db, lith_att):
+    name = test_db.run_query(
+        "SELECT lith_att FROM macrostrat.lith_atts WHERE id = :lith_att_id",
+        dict(lith_att_id=lith_att.id),
+    ).scalar()
+    assert name == lith_att.name
 
 
 test_cases = [
@@ -160,12 +173,15 @@ test_cases = [
     ),
 ]
 
-processor = LithsProcessor()
+
+@fixture(scope="class")
+def processor(test_db):
+    yield LithsProcessor(test_db)
 
 
-def validate_lith_attribute(db, lith_att: str) -> LithAtt:
+def validate_lith_attribute(test_db, lith_att: str) -> LithAtt:
     """Expand a LithAtt description to a full LithAtt object with ID, using the database."""
-    att_id = db.run_query(
+    att_id = test_db.run_query(
         "SELECT id FROM macrostrat.lith_atts WHERE lith_att = :lith_att",
         dict(lith_att=lith_att),
     ).scalar()
@@ -196,8 +212,10 @@ def validate_lithology_description(
 
 
 @mark.parametrize("test_case", test_cases)
-def test_process_liths_text(db, test_case):
+def test_process_liths_text(processor, test_db, test_case):
     # We have to depend on the database to get the IDs for the lithologies
     liths = processor.process_text(test_case.input)
-    output = {validate_lithology_description(db, lith) for lith in test_case.output}
+    output = {
+        validate_lithology_description(test_db, lith) for lith in test_case.output
+    }
     assert liths == output
