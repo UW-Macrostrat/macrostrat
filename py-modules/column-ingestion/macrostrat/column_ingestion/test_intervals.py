@@ -7,9 +7,9 @@ from pytest import mark
 from .intervals import IntervalID, get_interval_from_text, get_intervals
 
 
-def test_get_intervals(db):
+def test_get_intervals(test_db):
     """Test that get_all_intervals returns the correct intervals"""
-    intervals = get_intervals(db)
+    intervals = get_intervals(test_db)
     assert len(intervals) > 0
 
 
@@ -47,7 +47,7 @@ test_cases = [
 
 
 @mark.parametrize("test_case", test_cases)
-def test_get_interval(db, test_case: IntervalTestCase):
+def test_get_interval(test_db, test_case: IntervalTestCase):
     # We have to depend on the database to get the IDs for the intervals
     # Test that all intervals are matched and return the most specific
-    assert get_interval_from_text(db, test_case.text) == test_case.expected
+    assert get_interval_from_text(test_db, test_case.text) == test_case.expected

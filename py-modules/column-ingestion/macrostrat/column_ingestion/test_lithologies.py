@@ -39,22 +39,35 @@ chert = Lithology(name="chert", id=45)
 sand = Lithology(name="sand", id=3)
 mixed_carbonate = Lithology(name="mixed carbonate-siliciclastic", id=17)
 
+lenticular = LithAtt(name="lenticular", id=1)
+regularly_bedded = LithAtt(name="regularly bedded", id=6)
+bioclastic = LithAtt(name="bioclastic", id=145)
+
 carbonate_test_case = {
-    Lithology(name="carbonate", id=18, attributes={LithAtt(name="lenticular", id=1)}),
+    Lithology(name="carbonate", id=18, attributes={lenticular}),
     Lithology(
         name="carbonate",
         id=18,
         attributes={
-            LithAtt(name="bioclastic", id=145),
-            LithAtt(name="lenticular", id=1),
+            bioclastic,
+            lenticular,
         },
     ),
     Lithology(
         name="carbonate",
         id=18,
-        attributes={LithAtt(name="regularly bedded", id=6)},
+        attributes={regularly_bedded},
     ),
 }
+
+
+@mark.parametrize("lith_att", [lenticular, regularly_bedded, bioclastic])
+def test_lith_atts_found(test_db, lith_att):
+    name = test_db.run_query(
+        "SELECT lith_att FROM macrostrat.lith_atts WHERE id = :lith_att_id",
+        dict(lith_att_id=lith_att.id),
+    ).scalar()
+    assert name == lith_att.name
 
 
 test_cases = [
@@ -161,9 +174,9 @@ test_cases = [
 ]
 
 
-@fixture(scope="session")
-def processor(test_db_macrostrat_schema_only):
-    yield LithsProcessor(test_db_macrostrat_schema_only)
+@fixture(scope="class")
+def processor(test_db):
+    yield LithsProcessor(test_db)
 
 
 def validate_lith_attribute(test_db, lith_att: str) -> LithAtt:

@@ -1,5 +1,6 @@
 import pytest
 
+from ..project_metadata.test_project_metadata import template_database
 from . import (
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
@@ -131,16 +132,30 @@ def test_provider_cache_can_be_cleared(static_provider):
 
 
 def test_test_database_is_already_populated(test_db):
-    assert test_db.run_query("SELECT count(*) FROM macrostrat.intervals").scalar() > 0
-    assert test_db.run_query("SELECT count(*) FROM macrostrat.liths").scalar() > 0
+    assert test_db.run_query("SELECT count(*) FROM macrostrat.intervals").scalar() > 100
+    assert test_db.run_query("SELECT count(*) FROM macrostrat.liths").scalar() > 100
 
 
-def test_populates_test_db(test_db):
+from macrostrat.database import Database
+
+
+@pytest.fixture(scope="class")
+def isolated_db(empty_db: Database):
+    """A new test database created from a template of the test database and dropped afterwards.
+    We use this pattern to ensure that we have a clean database for each test where isolation
+    (beyond transaction isolation) is required.
+    """
+    with template_database(empty_db) as template_db:
+        yield template_db
+
+
+def test_populates_test_db(isolated_db):
     provider = StaticMacrostratDataProvider()
+    db = isolated_db
 
-    MacrostratMetadataPopulator(provider, test_db).populate_all()
+    MacrostratMetadataPopulator(provider, db).populate_all()
 
-    interval = test_db.run_query(
+    interval = db.run_query(
         """
         SELECT
             id,
@@ -160,7 +175,7 @@ def test_populates_test_db(test_db):
     assert interval.interval_abbrev == "Cz"
     assert interval.interval_type == "era"
 
-    lithology = test_db.run_query(
+    lithology = db.run_query(
         """
         SELECT
             id,
@@ -182,7 +197,7 @@ def test_populates_test_db(test_db):
     assert lithology.lith_type == "siliciclastic"
     assert lithology.lith_class == "sedimentary"
 
-    lithology_attribute = test_db.run_query(
+    lithology_attribute = db.run_query(
         """
         SELECT
             id,
@@ -198,7 +213,7 @@ def test_populates_test_db(test_db):
     assert lithology_attribute.lith_att == "calcareous"
     assert lithology_attribute.att_type == "lithology"
 
-    environment = test_db.run_query(
+    environment = db.run_query(
         """
         SELECT
             id,
@@ -216,7 +231,7 @@ def test_populates_test_db(test_db):
     assert environment.environ_type == ""
     assert environment.environ_class == "marine"
 
-    timescale_links = test_db.run_query(
+    timescale_links = db.run_query(
         """
         SELECT timescale_id, interval_id
         FROM macrostrat.timescales_intervals
@@ -231,37 +246,31 @@ def test_populates_test_db(test_db):
     ]
 
 
-def test_populator_is_idempotent(test_db):
+def test_populator_is_idempotent(isolated_db):
     provider = StaticMacrostratDataProvider()
-    populator = MacrostratMetadataPopulator(provider, test_db)
+    db = isolated_db
+    populator = MacrostratMetadataPopulator(provider, db)
 
     populator.populate_all()
     populator.populate_all()
 
     assert (
-        test_db.run_query(
-            "SELECT count(*) FROM macrostrat.intervals WHERE id = 1"
-        ).scalar()
+        db.run_query("SELECT count(*) FROM macrostrat.intervals WHERE id = 1").scalar()
         == 1
     )
     assert (
-        test_db.run_query("SELECT count(*) FROM macrostrat.liths WHERE id = 1").scalar()
+        db.run_query("SELECT count(*) FROM macrostrat.liths WHERE id = 1").scalar() == 1
+    )
+    assert (
+        db.run_query("SELECT count(*) FROM macrostrat.lith_atts WHERE id = 1").scalar()
         == 1
     )
     assert (
-        test_db.run_query(
-            "SELECT count(*) FROM macrostrat.lith_atts WHERE id = 1"
-        ).scalar()
+        db.run_query("SELECT count(*) FROM macrostrat.environs WHERE id = 1").scalar()
         == 1
     )
     assert (
-        test_db.run_query(
-            "SELECT count(*) FROM macrostrat.environs WHERE id = 1"
-        ).scalar()
-        == 1
-    )
-    assert (
-        test_db.run_query(
+        db.run_query(
             """
             SELECT count(*)
             FROM macrostrat.timescales_intervals
