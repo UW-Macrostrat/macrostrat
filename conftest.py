@@ -9,7 +9,6 @@ from typer.testing import CliRunner
 
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
-
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -187,10 +186,10 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
 
 
 from macrostrat.column_ingestion.defs_provider import (
+    MacrostratAPIConfig,
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
     MacrostratMetadataPopulator,
-    MacrostratAPIConfig,
 )
 
 
@@ -211,8 +210,8 @@ def load_defs(settings, _db, source_db: Optional[Database] = None):
 @fixture(scope="session")
 def test_db_macrostrat_schema_only(request, empty_db: Database):
     """The database used for testing."""
-    from macrostrat.core.config import settings
     from macrostrat.core import get_database
+    from macrostrat.core.config import settings
 
     db = _apply_schema(
         empty_db,
