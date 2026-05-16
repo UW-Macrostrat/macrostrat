@@ -161,14 +161,14 @@ test_cases = [
 ]
 
 
-@fixture(scope="module")
-def processor(env_db):
-    yield LithsProcessor(env_db)
+@fixture(scope="session")
+def processor(test_db_macrostrat_schema_only):
+    yield LithsProcessor(test_db_macrostrat_schema_only)
 
 
-def validate_lith_attribute(db, lith_att: str) -> LithAtt:
+def validate_lith_attribute(test_db, lith_att: str) -> LithAtt:
     """Expand a LithAtt description to a full LithAtt object with ID, using the database."""
-    att_id = db.run_query(
+    att_id = test_db.run_query(
         "SELECT id FROM macrostrat.lith_atts WHERE lith_att = :lith_att",
         dict(lith_att=lith_att),
     ).scalar()
@@ -199,8 +199,10 @@ def validate_lithology_description(
 
 
 @mark.parametrize("test_case", test_cases)
-def test_process_liths_text(processor, db, test_case):
+def test_process_liths_text(processor, test_db, test_case):
     # We have to depend on the database to get the IDs for the lithologies
     liths = processor.process_text(test_case.input)
-    output = {validate_lithology_description(db, lith) for lith in test_case.output}
+    output = {
+        validate_lithology_description(test_db, lith) for lith in test_case.output
+    }
     assert liths == output

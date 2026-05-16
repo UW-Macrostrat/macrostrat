@@ -212,6 +212,7 @@ def load_defs(settings, _db, source_db: Optional[Database] = None):
 def test_db_macrostrat_schema_only(request, empty_db: Database):
     """The database used for testing."""
     from macrostrat.core.config import settings
+    from macrostrat.core import get_database
 
     db = _apply_schema(
         empty_db,
@@ -222,13 +223,14 @@ def test_db_macrostrat_schema_only(request, empty_db: Database):
 
     source_db = None
     log.info("Attempting to connect to database %s", settings.pg_database)
-    try:
-        source_db = _env_db(settings)
-    except RuntimeError as e:
-        log.warning("Could not connect to environment database: %s", e)
-        log.warning("Defs will not be loaded from the API configuration")
+    if not request.config.getoption("--skip-env"):
+        try:
+            source_db = get_database()
+        except RuntimeError as e:
+            log.warning("Could not connect to environment database: %s", e)
+            log.warning("Defs will not be loaded from the API configuration")
 
-    # load_defs(settings, db, source_db=source_db)
+    load_defs(settings, db, source_db=source_db)
     return db
 
 

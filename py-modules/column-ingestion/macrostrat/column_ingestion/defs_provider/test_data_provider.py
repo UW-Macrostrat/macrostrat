@@ -130,6 +130,11 @@ def test_provider_cache_can_be_cleared(static_provider):
     assert first is not second
 
 
+def test_test_database_is_already_populated(test_db):
+    assert test_db.run_query("SELECT count(*) FROM macrostrat.intervals").scalar() > 0
+    assert test_db.run_query("SELECT count(*) FROM macrostrat.liths").scalar() > 0
+
+
 def test_populates_test_db(test_db):
     provider = StaticMacrostratDataProvider()
 
