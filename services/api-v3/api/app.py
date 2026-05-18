@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 import dotenv
 import uvicorn
-from api.routes.dev_routes.convert import convert_router
+from api.routes.dev_routes import convert_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

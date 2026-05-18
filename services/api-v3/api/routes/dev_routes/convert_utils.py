@@ -1,34 +1,19 @@
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Union
 
 import dotenv
-import httpx
 from fastapi import (
     APIRouter,
     Body,
-    Depends,
     HTTPException,
     Query,
-    Request,
-    Response,
-    status,
 )
-from slugify import slugify
-from sqlalchemy import func, insert, select, update
-from sqlalchemy.exc import NoResultFound, NoSuchTableError
 
 dotenv.load_dotenv()
 
 from datetime import datetime, timezone
 from typing import Optional
 
-from api.database import (
-    get_async_session,
-    get_engine,
-    get_table,
-    patch_sources_sub_table,
-    select_sources_sub_table,
-)
-from api.models.field_site import (
+from api.routes.dev_routes.field_site import (
     BeddingFacing,
     FieldSite,
     Location,
@@ -36,14 +21,8 @@ from api.models.field_site import (
     Photo,
     PlanarOrientation,
 )
-from api.query_parser import ParserException
-from api.routes.security import has_access
 
-convert_router = APIRouter(
-    prefix="/convert",
-    tags=["convert"],
-    responses={404: {"description": "Not found"}},
-)
+
 
 
 # _____________________HELPERS_________________________________
@@ -633,41 +612,3 @@ def checkin_to_spot(payload: Union[dict, List[dict]] = Body(...)) -> dict:
     return multiple_fieldsite_to_spot(fieldsites)
 
 
-# _________________________________API ROUTE___________________________________
-@convert_router.post("/field-site")
-async def convert_field_site(
-    payload: Union[dict, List[dict]] = Body(...),
-    in_: str = Query(..., alias="in"),
-    out: str = Query(..., alias="out"),
-    bulk: bool = Query(False, alias="bulk"),
-) -> Any:
-    key = (in_.lower(), out.lower())
-    if key == ("spot", "fieldsite"):
-        return multiple_spot_to_fieldsite(payload)
-    # output a b
-    if key == ("checkin", "fieldsite"):
-        return multiple_checkin_to_fieldsite(payload)
-    if key == ("fieldsite", "checkin"):
-        if isinstance(payload, list):
-            if len(payload) == 1:
-                return fieldsite_to_rockd_checkin(payload[0])
-            return multiple_fieldsite_to_rockd_checkin(payload)
-        return fieldsite_to_rockd_checkin(payload)
-    if key == ("fieldsite", "spot"):
-        if isinstance(payload, list):
-            return multiple_fieldsite_to_spot(payload)
-        return fieldsite_to_spot(payload)
-    if key == ("checkin", "spot"):
-        if bulk:
-            return checkin_to_spot(payload)
-        else:
-            return checkin_to_spot_single(payload)
-    if key == ("spot", "checkin"):
-        if bulk:
-            return spot_to_checkin(payload)
-        else:
-            return spot_to_checkin_single(payload)
-    raise HTTPException(
-        status_code=400,
-        detail="Unsupported conversion. Use in=[spot|fieldsite|checkin], out=[fieldsite|checkin|spot].",
-    )
