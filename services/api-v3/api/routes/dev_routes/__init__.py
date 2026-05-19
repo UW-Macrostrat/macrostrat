@@ -17,6 +17,8 @@ convert_router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+@convert_router.post("/image")
+
 
 @convert_router.post("/field-site")
 async def convert_field_site(
