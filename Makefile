@@ -36,4 +36,4 @@ reset:
 
 v3-local:
 	docker build -t macrostrat-api-v3 -f services/api-v3/Dockerlocal .
-	docker run --rm -p 8080:80 --env-file services/api-v3/.env macrostrat-api-v3
+	docker run --rm -p 80:80 --env-file services/api-v3/.env macrostrat-api-v3
