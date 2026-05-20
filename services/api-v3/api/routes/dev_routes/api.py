@@ -9,7 +9,11 @@ Endpoints defined here:
 """
 
 from typing import Any, List, Optional, Union
+
 from fastapi import APIRouter, Body, Header, HTTPException, Query
+
+# Import the request body models defined in __init__.py
+from . import ImageSyncRequest, SyncCheckinsRequest
 
 # Import the conversion helper functions from their respective modules
 from .convert_utils import (
@@ -23,9 +27,6 @@ from .convert_utils import (
 from .image_utils import sync_checkin_image_to_strabospot
 from .strabospot_setup_utils import provision_strabospot_resources
 from .sync_to_strabo_pipeline import sync_checkins_to_strabospot
-
-# Import the request body models defined in __init__.py
-from . import ImageSyncRequest, SyncCheckinsRequest
 
 # Create the router that groups all these endpoints under the /convert prefix
 convert_router = APIRouter(

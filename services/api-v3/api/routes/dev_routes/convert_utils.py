@@ -12,22 +12,16 @@ Helper functions at the bottom of this file handle small reusable tasks
 like validating coordinates or parsing dates.
 """
 
-from typing import Any, Iterable, List, Optional, Union
 from datetime import datetime, timezone
+from typing import Any, Iterable, List, Optional, Union
+
 import dotenv
 
 dotenv.load_dotenv()
 
-from . import (
-    BeddingFacing,
-    FieldSite,
-    Location,
-    Observation,
-    Photo,
-    PlanarOrientation,
-)
 from fastapi import HTTPException
 
+from . import BeddingFacing, FieldSite, Location, Observation, Photo, PlanarOrientation
 
 # ── Spot to FieldSite ─────────────────────────────────────────────────────────
 

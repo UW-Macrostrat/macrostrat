@@ -9,10 +9,13 @@ Syncs a batch of Rockd checkins into StraboSpot. Per checkin:
 
 import httpx
 from fastapi import HTTPException
+
 from .convert_utils import checkin_to_spot
 from .image_utils import sync_checkin_image_to_strabospot
 
-STRABOSPOT_DATASET_SINGLE_SPOT_ENDPOINT = "https://strabospot.org/jwtdb/datasetsinglespot"
+STRABOSPOT_DATASET_SINGLE_SPOT_ENDPOINT = (
+    "https://strabospot.org/jwtdb/datasetsinglespot"
+)
 
 
 async def sync_checkins_to_strabospot(

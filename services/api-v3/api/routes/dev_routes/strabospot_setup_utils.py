@@ -10,8 +10,9 @@ At the end the dataset is linked to the project inside StraboSpot.
 The IDs for both are returned to the client to be saved in localStorage.
 """
 
-from typing import Any
 from datetime import datetime, timezone
+from typing import Any
+
 import httpx
 from fastapi import HTTPException
 
@@ -55,9 +56,7 @@ async def provision_strabospot_resources(strabo_token: str) -> dict:
         datasets: list[dict] = datasets_body.get("datasets") or []
 
         # Look for an existing dataset with the right name
-        dataset = next(
-            (d for d in datasets if d.get("name") == "Rockd Checkins"), None
-        )
+        dataset = next((d for d in datasets if d.get("name") == "Rockd Checkins"), None)
 
         if dataset is None:
             # Generate a unique ID that does not clash with any existing dataset IDs

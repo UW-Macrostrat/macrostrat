@@ -11,10 +11,11 @@ The photo download is a two step process because Rockd redirects to a pre-signed
 S3 URL. The Authorization header must not be forwarded to S3 or the request fails.
 """
 
-from typing import Optional
-from datetime import datetime, timezone
-import httpx
 import os
+from datetime import datetime, timezone
+from typing import Optional
+
+import httpx
 from fastapi import HTTPException
 
 # The StraboSpot endpoint that accepts image uploads
@@ -246,9 +247,7 @@ async def _upload_photo_to_strabospot(
             # Form fields that StraboSpot requires alongside the image file
             data={
                 "id": str(photo_id),
-                "modified_timestamp": str(
-                    int(datetime.now(timezone.utc).timestamp())
-                ),
+                "modified_timestamp": str(int(datetime.now(timezone.utc).timestamp())),
             },
             # The image file itself, named with the photo ID and a jpg extension
             files={"image_file": (f"{photo_id}.jpg", image_bytes, content_type)},
