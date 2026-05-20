@@ -3,7 +3,7 @@ from pathlib import Path
 from geopandas import GeoDataFrame, sjoin
 from sqlalchemy.sql import text
 
-from macrostrat.cli.database import get_db
+from macrostrat.core import get_database
 
 from .utils import get_sgp_db, get_sgp_samples, write_to_file
 
@@ -11,7 +11,7 @@ from .utils import get_sgp_db, get_sgp_samples, write_to_file
 def compute_paleo_positions(out_file: Path = None, sample: int = None):
     """Compute paleogeographic positions for all SGP samples"""
 
-    M = get_db()
+    M = get_database()
 
     model_name = "Wright2013"
 

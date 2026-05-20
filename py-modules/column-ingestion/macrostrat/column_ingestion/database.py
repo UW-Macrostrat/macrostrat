@@ -97,21 +97,18 @@ def get_or_create_project(
     return None
 
 
-def get_all_liths():
+def get_all_liths(db):
     """Get all lithologies from the database."""
-    db = get_database()
     return db.run_query("SELECT id, lith name FROM macrostrat.liths").fetchall()
 
 
-def get_all_lith_attributes():
+def get_all_lith_attributes(db):
     """Get all lithology attributes from the database."""
-    db = get_database()
     return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
 
 
-def get_all_intervals():
+def get_all_intervals(db):
     """Get all intervals from the database."""
-    db = get_database()
     return db.run_query(
         """
         SELECT

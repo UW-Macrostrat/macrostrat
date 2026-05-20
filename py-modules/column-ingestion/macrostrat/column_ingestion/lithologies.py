@@ -58,9 +58,9 @@ class LithsProcessor:
         "regularly bedded": ["bedded"],
     }
 
-    def __init__(self):
-        self.liths = get_all_liths()
-        self.atts = get_all_lith_attributes()
+    def __init__(self, db):
+        self.liths = get_all_liths(db)
+        self.atts = get_all_lith_attributes(db)
 
     def __call__(self, lith_text: str | None, type=None) -> set[Lithology]:
         return self.process_text(lith_text, type)
@@ -206,8 +206,6 @@ def _find_target(text, target_list) -> tuple[Lithology | LithAtt | None, str]:
     # Return None if no match was found, along with an empty string for remaining text
     return None, text
 
-
-liths_processor = LithsProcessor()
 
 split_words = {"and", "or"}
 

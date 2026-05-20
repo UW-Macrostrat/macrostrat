@@ -9,7 +9,7 @@ from .database import get_all_intervals
 interval_cache = ContextVar("interval_cache", default=None)
 
 
-def get_intervals():
+def get_intervals(db):
     _interval_cache = interval_cache.get()
     if _interval_cache is not None:
         return _interval_cache
@@ -23,16 +23,16 @@ def get_intervals():
             row.interval_type,
             row.timescales,
         )
-        for row in get_all_intervals()
+        for row in get_all_intervals(db)
     ]
     interval_cache.set(_interval_cache)
     return _interval_cache
 
 
-def get_interval_by_id(id: int | None):
+def get_interval_by_id(db, id: int | None):
     if id is None:
         return None
-    return next((i for i in get_intervals() if i.id == id), None)
+    return next((i for i in get_intervals(db) if i.id == id), None)
 
 
 @dataclass
@@ -95,12 +95,12 @@ def split_text(text: str):
     return [x.strip() for x in res if x.strip()]
 
 
-def get_interval_from_text(text: str | None):
+def get_interval_from_text(db, text: str | None):
     """Get the interval for a given text"""
     if text is None:
         return None
 
-    all_intervals = get_intervals()
+    all_intervals = get_intervals(db)
 
     ints = []
     for _int in split_text(text):

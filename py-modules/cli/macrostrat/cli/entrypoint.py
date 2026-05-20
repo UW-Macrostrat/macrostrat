@@ -365,7 +365,7 @@ main.add_typer(
 app.subsystems.add(MacrostratAPISubsystem(app))
 
 if sgp_url := getattr(settings, "sgp_database", None):
-    from .subsystems.sgp import sgp
+    from macrostrat.integrations.sgp import sgp
 
     main.add_typer(sgp, rich_help_panel="Integrations")
 
@@ -392,7 +392,7 @@ main.add_typer(
 )
 
 ## Testing subsystem
-from .subsystems.test import cli as test_app
+from .test_runner import cli as test_app
 
 main.add_typer(test_app, name="test", rich_help_panel="Subsystems")
 

@@ -104,8 +104,8 @@ class AgeModelSurface:
         return hash(self.position, self.relative_age)
 
 
-def timescale_intervals(timescale_id: int):
-    intervals = get_intervals()
+def timescale_intervals(db, timescale_id: int):
+    intervals = get_intervals(db)
     return [i for i in intervals if timescale_id in i.timescales]
 
 
@@ -115,7 +115,7 @@ class AgeModel:
     # Intervals that can be used for linking new relative surfaces
     _match_intervals: list[Interval]
 
-    def __init__(self, surfaces: list[AgeModelSurface], timescale=11):
+    def __init__(self, db, surfaces: list[AgeModelSurface], timescale=11):
         self.surfaces = sorted(surfaces, key=lambda s: s.position)
 
         # Get all intervals defined in surfaces
@@ -126,7 +126,7 @@ class AgeModel:
         # Sort intervals by age span (smallest first)
         self._match_intervals = sorted(self._match_intervals, key=lambda i: i.age_span)
         self._match_intervals += sorted(
-            timescale_intervals(timescale), key=lambda i: i.age_span
+            timescale_intervals(db, timescale), key=lambda i: i.age_span
         )
 
     @property
@@ -216,7 +216,8 @@ def build_section_age_model(db, units: list[Unit]):
         for pos, units in surfaces.items()
     ]
 
-    model = AgeModel(surfaces)
+    # TODO: we only need the db to grab timescale intervals
+    model = AgeModel(db, surfaces)
 
     if not model.has_valid_age_model:
         print("[red bold]Invalid age model, skipping unit_boundaries")

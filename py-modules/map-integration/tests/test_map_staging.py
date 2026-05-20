@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields

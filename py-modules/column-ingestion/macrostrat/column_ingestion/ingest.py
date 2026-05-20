@@ -44,7 +44,7 @@ def ingest_columns_from_file(
     if meta.axis_type == "age":
         position = PositionAxisType.ORDINAL
 
-    units = get_units(data_file, position=position, fill_values=meta.fill_values)
+    units = get_units(db, data_file, position=position, fill_values=meta.fill_values)
 
     for col in columns:
         col.units = units.get(col.local_id, [])

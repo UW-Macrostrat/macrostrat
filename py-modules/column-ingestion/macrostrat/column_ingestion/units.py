@@ -60,13 +60,13 @@ class PositionAxisType(str, Enum):
     ORDINAL = "ordinal"
 
 
-def get_units(data_file, **kwargs) -> {str: list[Unit]}:
+def get_units(db, data_file, **kwargs) -> {str: list[Unit]}:
     df = pl.read_excel(data_file, sheet_name="units")
-    return get_units_from_df(df, **kwargs)
+    return get_units_from_df(db, df, **kwargs)
 
 
 def get_units_from_df(
-    df, *, position: PositionAxisType = PositionAxisType.HEIGHT, fill_values=False
+    db, df, *, position: PositionAxisType = PositionAxisType.HEIGHT, fill_values=False
 ) -> {str: list[Unit]}:
     # Rename some columns
     df, warnings = rename_aliases(
@@ -108,22 +108,25 @@ def get_units_from_df(
         if "section_id" not in group.columns or group["section_id"].is_null().all():
             group = group.with_columns(pl.lit(1).alias("section_id"))
 
-        units = prepare_column_units(group, position=position, fill_values=fill_values)
+        units = prepare_column_units(
+            db, group, position=position, fill_values=fill_values
+        )
         res[str(col_id)] = units
     return res
 
 
-def prepare_column_units(df, **kwargs) -> list[Unit]:
+def prepare_column_units(db, df, **kwargs) -> list[Unit]:
     # Group by section_id
     sections = df.group_by(["section_id"])
     units = []
     for (section_id,), group in sections:
         print(f"Section ID: {section_id}")
-        units.extend(prepare_section_units(group, **kwargs))
+        units.extend(prepare_section_units(db, group, **kwargs))
     return units
 
 
 def prepare_section_units(
+    db,
     df,
     *,
     position: PositionAxisType = PositionAxisType.HEIGHT,
@@ -204,7 +207,7 @@ def prepare_section_units(
             print_list(col, lithologies)
 
     res = []
-    liths_processor = LithsProcessor()
+    liths_processor = LithsProcessor(db)
     for row in df.iter_rows(named=True):
         lith = row.get("lithology")
         liths = liths_processor(lith, LithAbundance.DOMINANT)
@@ -222,13 +225,13 @@ def prepare_section_units(
         )
 
         # Only relative age positioning is supported for now
-        b_int = get_interval_from_text(row.get("b_int"))
+        b_int = get_interval_from_text(db, row.get("b_int"))
         if b_int is not None:
             unit.b_age = RelativeAge(
                 interval=b_int, proportion=coalesce(row.get("b_prop"), 0)
             )
 
-        t_int = get_interval_from_text(row.get("t_int"))
+        t_int = get_interval_from_text(db, row.get("t_int"))
         if t_int is not None:
             unit.t_age = RelativeAge(
                 interval=t_int, proportion=coalesce(row.get("t_prop"), 1)

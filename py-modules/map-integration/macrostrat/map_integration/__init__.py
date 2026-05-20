@@ -2,13 +2,12 @@ import os
 from typing import Required
 
 os.environ["USE_PYGEOS"] = "0"
-os.environ["USE_PYGEOS"] = "0"
 
 import re
 from pathlib import Path
 from sys import stdin
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from rich.console import Console
 from typer import Argument, Option
 
