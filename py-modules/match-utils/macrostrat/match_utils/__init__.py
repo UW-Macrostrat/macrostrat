@@ -261,6 +261,22 @@ def standardize_names(source_text):
 
     return tuple(sorted(deduplicate_strat_names(res)))
 
+def standardize_names_from_id(db, strat_name_id: int, concept_id: int | None):
+    """Look up a strat name by ID and convert it to standardized names."""
+    if concept_id is None:
+        result = db.run_query(
+            "SELECT strat_name FROM macrostrat.strat_names WHERE id = :id",
+            {"id": strat_name_id},
+        ).first()
+    else:
+        result = db.run_query(
+            "SELECT strat_name FROM macrostrat.strat_names WHERE concept_id = :concept_id",
+            {"concept_id": concept_id},
+        ).first()
+    if result is None:
+        raise ValueError(f"No stratigraphic name found for strat_name_id={strat_name_id}")
+    return standardize_names(result.strat_name)
+
 
 def format_names(strat_names, **kwargs):
     # Ignore nan values

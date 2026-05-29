@@ -33,7 +33,7 @@ def test_basic_match_units(client, case):
         params={
             "lat": case.xy[1],
             "lng": case.xy[0],
-            "match_text": case.match_text,
+            "strat_name": case.strat_name,
         },
     )
     assert response.status_code == 200
@@ -55,7 +55,7 @@ def test_no_match_units(client):
         params={
             "lat": 0.0,
             "lng": 0.0,
-            "match_text": "Null Island Basalt",
+            "strat_name": "Null Island Basalt",
         },
     )
     assert response.status_code == 200
@@ -73,7 +73,7 @@ def test_multi_match_units(client):
             {
                 "lat": case.xy[1],
                 "lng": case.xy[0],
-                "match_text": case.match_text,
+                "strat_name": case.strat_name,
             }
             for case in cases
         ],
@@ -105,7 +105,7 @@ def test_match_units_ambiguous_column(client):
         params={
             "lat": 53.11400,
             "lng": -120.90900,
-            "match_text": "Kaza",
+            "strat_name": "Kaza",
         },
     )
     assert response.status_code == 200
@@ -133,7 +133,7 @@ def test_match_units_time_limited(client):
         params={
             "lat": pos[1],
             "lng": pos[0],
-            "match_text": "Jelm Formation",
+            "strat_name": "Jelm Formation",
             "max_age": 250.0,
             "min_age": 200.0,
         },
@@ -157,7 +157,7 @@ def test_match_units_wrong_time_period(client):
         params={
             "lat": pos[1],
             "lng": pos[0],
-            "match_text": "Jelm Formation",
+            "strat_name": "Jelm Formation",
             "b_age": 200.0,
             "t_age": 100.0,
         },
@@ -176,7 +176,7 @@ def test_age_constraints(db):
     data = MatchQuery(
         lat=40.9,
         lng=-105.6,
-        match_text="Jelm Formation",
+        strat_name="Jelm Formation",
         b_age=250.0,
         t_age=200.0,
     )
@@ -192,7 +192,7 @@ def test_age_constraints_interval(client):
         params={
             "lat": pos[1],
             "lng": pos[0],
-            "match_text": "Jelm Formation",
+            "strat_name": "Jelm Formation",
             "interval": "Triassic",
         },
     )
@@ -219,7 +219,7 @@ def test_invalid_age_constraints(client):
         params={
             "lat": 40.0,
             "lng": -105.0,
-            "match_text": "Some Formation",
+            "strat_name": "Some Formation",
             "b_interval": "Oligocene",
             "t_age": 200.0,
         },
@@ -239,7 +239,7 @@ def test_match_types(client):
         "/strat-names",
         params={
             "col_id": 490,
-            "match_text": "Brady Butte Pluton",
+            "strat_name": "Brady Butte Pluton",
         },
     )
     assert response.status_code == 200

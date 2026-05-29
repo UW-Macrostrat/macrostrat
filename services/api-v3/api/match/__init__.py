@@ -15,6 +15,7 @@ from macrostrat.match_utils import (
     get_columns_for_location,
     get_match_types,
     standardize_names,
+    standardize_names_from_id
 )
 from macrostrat.match_utils.strat_names import get_ignore_list
 
@@ -70,8 +71,8 @@ class AbsoluteAgeConstraint(BaseModel):
 
 
 class MatchQuery(BaseModel):
-    match_text: str = Field(
-        ...,
+    strat_name: str | None = Field(
+        None,
         description="Text containing a stratigraphic name to match.",
         examples=[
             "Navajo Sandstone",
@@ -83,6 +84,20 @@ class MatchQuery(BaseModel):
             "Morrison Fm",
             "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
         ],
+    )
+    concept_name: str | None = Field(None,
+        description="Text containing a concept name to match.",
+        examples=[
+            "Navajo",
+            "Dakota",
+            "Morrison",
+            "Kayenta",
+        ],)
+    strat_name_id: int | None = Field(
+        None, description="A Macrostrat stratigraphic name ID to match directly."
+    )
+    concept_id: int | None = Field(
+        None, description="A Macrostrat concept ID to match directly."
     )
     identifier: str | int | None = Field(
         None, description="An optional identifier to associate with this query."
@@ -114,6 +129,13 @@ class MatchQuery(BaseModel):
             raise ValueError("Lat and lng must both be provided.")
         if self.col_id is None and (self.lat is None or self.lng is None):
             raise ValueError("Either col_id or lat/lng must be provided.")
+        return self
+
+    @model_validator(mode="after")
+    def validate_match_input(self):
+        """Ensure that either strat_name or strat_name_id is provided."""
+        if self.strat_name is None and self.strat_name_id is None and self.concept_id is None and self.concept_name is None:
+            raise ValueError("Either strat_name/concept_name or strat_name_id/concept_id must be provided.")
         return self
 
     def get_age_range(self) -> AbsoluteAgeConstraint:
@@ -333,7 +355,12 @@ def build_match_data(db, params):
     results: list[MatchResult] = []
     messages: list[MatchMessage] = []
     for col_id in col_ids:
-        names = standardize_names(params.match_text)
+        if params.strat_name is not None:
+            names = standardize_names(params.strat_name)
+        elif params.concept_name is not None:
+            names = standardize_names(params.concept_name)
+        else:
+            names = standardize_names_from_id(db, params.strat_name_id, params.concept_id)
         with db.engine.connect() as conn:
             rows = get_all_matched_units(
                 conn,
