@@ -18,6 +18,97 @@ from .utils import stored_procedure
 
 _column_unit_index = {}
 
+MATCH_STRAT_NAMES_INFO = {
+    "success": {
+        "v": 2,
+        "license": "CC-BY 4.0",
+        "description": "Match stratigraphic names to Macrostrat columns and units. "
+                       "Accepts a stratigraphic name string, ID, or concept and returns "
+                       "matched Macrostrat units with associated metadata.",
+        "options": {
+             "_rules": [
+                    "Provide one of: strat_name, concept_name, strat_name_id, concept_id",
+                    "Provide one of: col_id, lat and lng",
+                ],
+            "parameters": {
+                "strat_name": "string, stratigraphic name text to match (e.g. 'Navajo Sandstone'). "
+                              "Supports multiple names separated by semicolons.",
+                "concept_name": "string, concept name text to match (e.g. 'Navajo'). "
+                                "Alternative to strat_name.",
+                "strat_name_id": "integer, a Macrostrat stratigraphic name ID to match directly. "
+                                 "Alternative to strat_name.",
+                "concept_id": "integer, a Macrostrat concept ID to match directly. "
+                              "Alternative to concept_name. Can be combined with strat_name_id "
+                              "to filter by concept.",
+                "lat": "number, latitude of the query location. Must be used with lng.",
+                "lng": "number, longitude of the query location. Must be used with lat.",
+                "col_id": "integer, a specific Macrostrat column ID. "
+                          "Can be used instead of lat/lng.",
+                "project_id": "integer, limit search to a specific Macrostrat project. "
+                              "Useful when columns overlap across projects.",
+                "interval": "string or integer, geologic time interval name or ID to constrain "
+                            "matches (e.g. 'Triassic'). Derives both b_age and t_age from the interval.",
+                "b_interval": "string or integer, early/lower interval name or ID. "
+                              "Derives b_age from the bottom of this interval.",
+                "t_interval": "string or integer, late/upper interval name or ID. "
+                              "Derives t_age from the top of this interval.",
+                "b_age": "number, early/lower age constraint in millions of years (Ma). "
+                         "Must be greater than t_age.",
+                "t_age": "number, late/upper age constraint in millions of years (Ma). "
+                         "Must be less than b_age.",
+                "identifier": "string or integer, optional identifier to tag a query (e.g. a "
+                              "collection ID). Passed through to the response for correlation.",
+                "comparison": "string, string comparison strategy to use when matching names. "
+                              "One of: exact | included | bidirectional | fuzzy. "
+                              "Default: included.",
+                "basis": "string, matching strategies to use. One or more of: "
+                         "column-units | adjacent-cols | concepts | synonyms | footprint-index. "
+                         "Default: all strategies enabled.",
+            },
+            "output_formats": ["json"],
+            "methods": {
+                "GET": "Single query via URL parameters.",
+                "POST": "Batch query — accepts a JSON array of up to 100 query objects. "
+                        "MatchOptions (comparison, basis) are passed as query parameters.",
+            },
+            "examples": [
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&interval=Triassic",
+                "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_age=250.0&t_age=200.0",
+                "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_interval=Triassic&t_interval=Jurassic",
+                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&comparison=exact",
+                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&comparison=fuzzy",
+                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&basis=column-units",
+                "/dev/match/strat-names?strat_name=Kaza&lat=53.114&lng=-120.909&project_id=1",
+                "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905&identifier=sample-001",
+                "/dev/match/strat-names?strat_name_id=3361&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?concept_id=1234&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name_id=3361&concept_id=1234&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?concept_name=Navajo&lat=35.951&lng=-109.905",
+            ],
+            "response_fields": {
+                "strat_name_id": "integer, Macrostrat stratigraphic name ID",
+                "strat_name": "string, stratigraphic name",
+                "strat_rank": "string, stratigraphic rank (e.g. Fm, Mbr, Gp)",
+                "parent_id": "integer, parent stratigraphic name ID in the hierarchy",
+                "concept_id": "integer, Macrostrat concept ID linked to this name",
+                "unit_id": "integer, Macrostrat unit ID",
+                "col_id": "integer, Macrostrat column ID",
+                "project_id": "integer, Macrostrat project ID",
+                "depth": "integer, hierarchy traversal depth (negative = parent, positive = child)",
+                "basis": "string, matching strategy that produced this result "
+                         "(column unit | concept | synonym | footprint index)",
+                "spatial_basis": "string, spatial relationship of the match "
+                                 "(containing column | adjacent column)",
+                "t_age": "number, continuous time age model estimated for truncation, in Ma",
+                "b_age": "number, continuous time age model estimated for initiation, in Ma",
+                "priority": "number, match priority — 0 is the most direct match, "
+                            "higher numbers indicate less direct matches",
+            },
+        },
+    }
+}
 
 def get_match_types(types: list[MatchType] | None) -> list[MatchType]:
     if types is None:

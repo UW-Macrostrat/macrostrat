@@ -15,7 +15,8 @@ from macrostrat.match_utils import (
     get_columns_for_location,
     get_match_types,
     standardize_names,
-    standardize_names_from_id
+    standardize_names_from_id,
+    MATCH_STRAT_NAMES_INFO
 )
 from macrostrat.match_utils.strat_names import get_ignore_list
 
@@ -122,20 +123,19 @@ class MatchQuery(BaseModel):
     b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
     t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
 
-    # Enforce one of col_id or lat/lng
+    @model_validator(mode="after")
+    def validate_match_input(self):
+        """Ensure that either strat_name or strat_name_id is provided."""
+        if self.strat_name is None and self.strat_name_id is None and self.concept_id is None and self.concept_name is None:
+            raise ValueError("Either strat_name/concept_name or strat_name_id/concept_id must be provided.")
+        return self
+
     @model_validator(mode="after")
     def validate_position_info(self):
         if (self.lat is None) != (self.lng is None):
             raise ValueError("Lat and lng must both be provided.")
         if self.col_id is None and (self.lat is None or self.lng is None):
             raise ValueError("Either col_id or lat/lng must be provided.")
-        return self
-
-    @model_validator(mode="after")
-    def validate_match_input(self):
-        """Ensure that either strat_name or strat_name_id is provided."""
-        if self.strat_name is None and self.strat_name_id is None and self.concept_id is None and self.concept_name is None:
-            raise ValueError("Either strat_name/concept_name or strat_name_id/concept_id must be provided.")
         return self
 
     def get_age_range(self) -> AbsoluteAgeConstraint:
@@ -192,7 +192,8 @@ class MatchMessage(BaseModel):
         return hash((self.type, self.message, self.details))
 
 
-class MatchData(MatchQuery):
+class MatchData(BaseModel):
+    best_match: Optional[MatchResult] = None
     matches: list[MatchResult]
     messages: list[MatchMessage]
 
@@ -223,6 +224,26 @@ class MatchOptions(BaseModel):
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
+def find_best_match(matches: list[MatchResult], params: MatchQuery) -> Optional[MatchResult]:
+    for match in matches:
+        if params.strat_name is not None:
+            if match.strat_name.lower() != params.strat_name.lower():
+                continue
+        if params.strat_name_id is not None:
+            if match.strat_name_id != params.strat_name_id:
+                continue
+        if params.concept_id is not None:
+            if match.concept_id != params.concept_id:
+                continue
+        if params.b_age is not None:
+            if match.b_age < params.b_age:
+                continue
+        if params.t_age is not None:
+            if match.t_age > params.t_age:
+                continue
+        return match
+    return None
+
 
 def get_interval(interval: int | str) -> Optional[Interval]:
     """Retrieve interval information by ID or name."""
@@ -237,7 +258,10 @@ def get_interval(interval: int | str) -> Optional[Interval]:
             return intv
     return None
 
-
+@router.get("/")
+def match_info():
+    """Return self-documenting info for the match API."""
+    return MATCH_STRAT_NAMES_INFO
 @router.get("/strat-names")
 def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
@@ -252,13 +276,13 @@ def match_units(
         opts.basis = set(get_match_types(None))
 
     db = get_database()
+    print("dbbbbb", db)
     setup_matcher()
 
     results = []
     match_data = build_match_data(db, params)
     if match_data is not None:
         results.append(match_data)
-
     return generate_response(results, opts)
 
 
@@ -381,5 +405,5 @@ def build_match_data(db, params):
                 type=MatchMessageType.Warning,
             )
         )
-
-    return MatchData(**res, matches=results, messages=messages)
+    best_match = find_best_match(results, params)
+    return MatchData(**res, best_match=best_match, matches=results, messages=messages)
