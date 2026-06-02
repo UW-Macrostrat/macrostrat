@@ -7,7 +7,6 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 
 from macrostrat.match_utils import (
-    MatchComparison,
     MatchResult,
     MatchType,
     create_ignore_list,
@@ -202,11 +201,8 @@ class MatchAPIResponse(BaseModel):
     version: str
     date_accessed: str
     results: list[MatchData]
-    basis: set[MatchType] = Field(
-        ..., description="The types of matches that were included in the result set."
-    )
-    comparison: MatchComparison = Field(
-        ..., description="The type of string comparison that was performed."
+    match_basis: set[str] = Field(
+        ..., description="The match basis values present in the result set."
     )
     messages: set[MatchMessage] | None = None
 
@@ -214,10 +210,6 @@ class MatchAPIResponse(BaseModel):
 class MatchOptions(BaseModel):
     basis: Optional[set[MatchType]] = Field(
         None, description="Types of matches to include."
-    )
-    comparison: MatchComparison = Field(
-        MatchComparison.Included,
-        description="Type of string comparison to perform.",
     )
 
 
@@ -318,7 +310,6 @@ def match_units_multi(
 def generate_response(
     results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
 ) -> MatchAPIResponse:
-    # Aggregate warnings across all results
     _messages: set[MatchMessage] = set()
     for result in results:
         if result.messages is None:
@@ -326,7 +317,6 @@ def generate_response(
         for msg in result.messages:
             _messages.add(msg)
 
-    # Could also raise an error/return a 404
     if len(results) == 0:
         _messages.add(MatchMessage(message="No matches found"))
 
@@ -334,13 +324,51 @@ def generate_response(
         for msg in messages:
             _messages.add(msg)
 
+    match_basis_values = {
+        match.match_basis
+        for result in results
+        for match in result.matches
+    }
+
     return MatchAPIResponse(
         version="0.0.1",
         date_accessed=datetime.now().isoformat(),
         results=results,
         messages=messages,
-        **opts.model_dump(),
+        match_basis=match_basis_values,
     )
+
+def _all_params_match(vals: dict, params: MatchQuery) -> bool:
+    """Check whether all user-supplied params match the row values."""
+    if params.strat_name_id is not None and vals.get("strat_name_id") != params.strat_name_id:
+        return False
+    if params.concept_id is not None and vals.get("concept_id") != params.concept_id:
+        return False
+    if params.b_age is not None and (vals.get("b_age") is None or vals["b_age"] < params.b_age):
+        return False
+    if params.t_age is not None and (vals.get("t_age") is None or vals["t_age"] > params.t_age):
+        return False
+    return True
+
+
+def compute_match_basis(vals: dict, is_exact_name_match: bool, params: MatchQuery) -> str:
+    """Compute the match_basis value for a result row."""
+    sql_basis = vals.get("basis", "")
+
+    if sql_basis == "concept":
+        return "concept"
+    if sql_basis == "synonym":
+        return "synonym"
+
+    depth = vals.get("depth") or 0
+    if depth == 0 and is_exact_name_match and _all_params_match(vals, params):
+        return "exact"
+    if depth > 0:
+        return "rank-down"
+    if depth < 0:
+        return "rank-up"
+
+    return "semi-exact"
 
 
 def build_match_data(db, params):
@@ -359,7 +387,6 @@ def build_match_data(db, params):
     if age_constraint.b_age < age_constraint.t_age:
         # Return an error result
         return MatchData(
-            **res,
             matches=[],
             messages=[
                 MatchMessage(
@@ -393,8 +420,15 @@ def build_match_data(db, params):
                 t_age=age_constraint.t_age,
                 b_age=age_constraint.b_age,
             )
-        results += [MatchResult.from_row(r) for r in rows]
-
+        for row, is_exact in rows:
+            vals = dict(row)
+            from pandas import isna
+            for key, val in vals.items():
+                if isna(val):
+                    vals[key] = None
+            vals["match_basis"] = compute_match_basis(vals, is_exact, params)
+            vals.pop("basis", None)
+            results.append(MatchResult(**vals))
     # TODO match based on lexicon footprints only if columns are not found.
 
     if len(col_ids) > 1:
@@ -406,4 +440,6 @@ def build_match_data(db, params):
             )
         )
     best_match = find_best_match(results, params)
-    return MatchData(**res, best_match=best_match, matches=results, messages=messages)
+    if best_match is not None:
+        best_match = best_match.model_copy(update={"match_basis": "exact"})
+    return MatchData(best_match=best_match, matches=results, messages=messages)

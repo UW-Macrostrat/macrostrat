@@ -7,7 +7,7 @@ from sqlalchemy.sql import text
 
 from macrostrat.database import Database
 
-from .models import MatchComparison, MatchResult, MatchType
+from .models import MatchResult, MatchType
 from .strat_names import (
     clean_strat_name,
     clean_strat_name_text,
@@ -199,17 +199,19 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
 
     types = get_match_types(types)
 
-    units_df = read_sql(
-        stored_procedure("column-strat-names"),
-        conn,
-        params=dict(
+    params=dict(
             col_id=col_id,
             use_concepts=MatchType.Concepts in types,
             use_synonyms=MatchType.Synonyms in types,
             use_adjacent_cols=MatchType.AdjacentCols in types,
             use_footprint_index=MatchType.FootprintIndex in types,
             use_column_units=MatchType.ColumnUnits in types,
-        ),
+        )
+    sql = stored_procedure("column-strat-names")
+    units_df = read_sql(
+        sql,
+        conn,
+        params=params,
         coerce_float=False,
     )
 
@@ -234,7 +236,6 @@ def get_matched_unit(
     col_id,
     strat_names,
     *,
-    comparison: MatchComparison = MatchComparison.Included,
     types: list[MatchType] = None,
 ):
     """
@@ -242,7 +243,7 @@ def get_matched_unit(
     Macrostrat column.
     """
     rows = get_all_matched_units(
-        conn, col_id, strat_names, comparison=comparison, types=types, n_results=1
+        conn, col_id, strat_names, types=types, n_results=1
     )
     if len(rows) == 0:
         return None
@@ -268,18 +269,16 @@ def get_all_matched_units(
     col_id,
     strat_names,
     *,
-    comparison: MatchComparison = MatchComparison.Included,
     types: list[MatchType] = None,
     n_results: int | None = None,
     t_age: float | None = None,
     b_age: float | None = None,
-):
+) -> list[tuple]:
     """
-    Return all units and stratigraphic names that match the given col_id
+    Return all units and stratigraphic names that match the given col_id.
+    Returns list of (row, is_exact_name_match) tuples.
     """
-
     units = get_column_units(conn, col_id, types=types)
-    # Units matching age constraints only
     if b_age is not None:
         units = units.loc[units.t_age <= b_age]
     if t_age is not None:
@@ -288,51 +287,38 @@ def get_all_matched_units(
     u1 = units[units.strat_name_clean.notnull()]
 
     matched_rows = []
-    # The max number of results to return
     n_results = n_results or len(u1)
 
-    # Perform matching in stages
     for ix, row in u1.iterrows():
-        matches, _ = match_row(row, strat_names, comparison)
-        if not matches:
+        matched, is_exact = match_row(row, strat_names)
+        if not matched:
             continue
-        matched_rows.append(row)
+        matched_rows.append((row, is_exact))
         if len(matched_rows) >= n_results:
             return matched_rows
     return matched_rows
 
 
-def match_row(row, strat_names, comparison) -> tuple[bool, MatchComparison | None]:
-    # We don't support fuzzy matching yet
-    if comparison == MatchComparison.Fuzzy:
-        raise NotImplementedError("Fuzzy matching not implemented")
-
+def match_row(row, strat_names) -> tuple[bool, bool]:
+    """
+    Returns (matched, is_exact_name_match).
+    Always uses 'included' logic — exact is tried first, then included.
+    """
     name = row["strat_name_clean"]
     if name is None:
-        return False, None
-    # First try exact match, in all cases
+        return False, False
+
+    # Try exact match first
     for strat_name in strat_names:
         if strat_name.name == name:
-            return True, MatchComparison.Exact
-    if comparison == MatchComparison.Exact:
-        return False, None
+            return True, True
 
-    # Name is a subset of the strat name
+    # Fall back to included match
     for strat_name in strat_names:
-        # Try for a "like" match, which might catch verbatim strat names better
         if name in strat_name.name:
-            return True, MatchComparison.Included
+            return True, False
 
-    if comparison == MatchComparison.Included:
-        return False, None
-
-    # "Bidirectional" matching: strat name can be either a subset or superset of the cleaned name
-    for strat_name in strat_names:
-        # Finally check that our cleaned strat name does not include the cleaned name as a subset
-        if strat_name.name in name:
-            return True, MatchComparison.Bidirectional
-
-    return False, None
+    return False, False
 
 
 def standardize_names(source_text):

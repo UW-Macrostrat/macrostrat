@@ -15,7 +15,7 @@ class MatchResult(BaseModel):
     col_id: Optional[int]
     project_id: Optional[int]
     depth: Optional[int]
-    basis: str
+    match_basis: str
     spatial_basis: str
     t_age: float
     b_age: float
