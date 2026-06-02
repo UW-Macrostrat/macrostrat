@@ -192,7 +192,6 @@ class MatchMessage(BaseModel):
 
 
 class MatchData(BaseModel):
-    best_match: Optional[MatchResult] = None
     matches: list[MatchResult]
     messages: list[MatchMessage]
 
@@ -216,25 +215,36 @@ class MatchOptions(BaseModel):
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
-def find_best_match(matches: list[MatchResult], params: MatchQuery) -> Optional[MatchResult]:
-    for match in matches:
-        if params.strat_name is not None:
-            if match.strat_name.lower() != params.strat_name.lower():
-                continue
-        if params.strat_name_id is not None:
-            if match.strat_name_id != params.strat_name_id:
-                continue
-        if params.concept_id is not None:
-            if match.concept_id != params.concept_id:
-                continue
-        if params.b_age is not None:
-            if match.b_age < params.b_age:
-                continue
-        if params.t_age is not None:
-            if match.t_age > params.t_age:
-                continue
-        return match
-    return None
+PRIORITY_ORDER = [
+    ("exact",     "containing column"),
+    ("exact",     "adjacent column"),
+    ("concept",   "containing column"),
+    ("rank-down", "containing column"),
+    ("concept",   "adjacent column"),
+    ("rank-down", "adjacent column"),
+    ("rank-up",   "containing column"),
+    ("rank-up",   "adjacent column"),
+    ("synonym",   "containing column"),
+    ("synonym",   "adjacent column"),
+]
+
+def assign_priorities(results: list[MatchResult]) -> list[MatchResult]:
+    """Assign consecutive priorities based on match_basis/spatial_basis combinations present."""
+    # Find which combinations exist in results, in ranked order
+    present = []
+    for combo in PRIORITY_ORDER:
+        if any(r.match_basis == combo[0] and r.spatial_basis == combo[1] for r in results):
+            if combo not in present:
+                present.append(combo)
+
+    # Assign priority based on position in present list
+    updated = []
+    for r in results:
+        combo = (r.match_basis, r.spatial_basis)
+        priority = float(present.index(combo)) if combo in present else float(len(present))
+        updated.append(r.model_copy(update={"priority": priority}))
+    return sorted(updated, key=lambda r: r.priority)
+
 
 
 def get_interval(interval: int | str) -> Optional[Interval]:
@@ -439,7 +449,5 @@ def build_match_data(db, params):
                 type=MatchMessageType.Warning,
             )
         )
-    best_match = find_best_match(results, params)
-    if best_match is not None:
-        best_match = best_match.model_copy(update={"match_basis": "exact"})
-    return MatchData(best_match=best_match, matches=results, messages=messages)
+    results = assign_priorities(results)
+    return MatchData(matches=results, messages=messages)

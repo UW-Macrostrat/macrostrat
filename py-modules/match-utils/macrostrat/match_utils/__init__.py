@@ -296,6 +296,7 @@ def get_all_matched_units(
         matched_rows.append((row, is_exact))
         if len(matched_rows) >= n_results:
             return matched_rows
+        print(matched_rows)
     return matched_rows
 
 
