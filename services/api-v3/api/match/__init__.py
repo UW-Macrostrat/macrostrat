@@ -192,7 +192,7 @@ class MatchMessage(BaseModel):
 
 
 class MatchData(BaseModel):
-    matches: list[MatchResult]
+    unit_matches: list[MatchResult]
     messages: list[MatchMessage]
 
 
@@ -200,7 +200,7 @@ class MatchAPIResponse(BaseModel):
     version: str
     date_accessed: str
     results: list[MatchData]
-    name_basis: set[str] = Field(
+    name_bases: set[str] = Field(
         ..., description="The match basis values present in the result set."
     )
     messages: set[MatchMessage] | None = None
@@ -325,7 +325,7 @@ def generate_response(
     if not opts.all:
         results = [
             MatchData(
-                matches=[m for m in result.matches if m.priority == 0.0],
+                unit_matches=[m for m in result.unit_matches if m.priority == 0.0],
                 messages=result.messages,
             )
             for result in results
@@ -348,7 +348,7 @@ def generate_response(
     name_basis_values = {
         match.name_basis
         for result in results
-        for match in result.matches
+        for match in result.unit_matches
     }
 
     return MatchAPIResponse(
@@ -356,7 +356,7 @@ def generate_response(
         date_accessed=datetime.now().isoformat(),
         results=results,
         messages=messages,
-        name_basis=name_basis_values,
+        name_bases=name_basis_values,
     )
 
 def _all_params_match(vals: dict, params: MatchQuery) -> bool:
@@ -408,7 +408,7 @@ def build_match_data(db, params):
     if params.strat_name is not None and params.concept_name is not None:
         # Return an error result
         return MatchData(
-            matches=[],
+            unit_matches=[],
             messages=[
                 MatchMessage(
                     message="Please input either a valid strat_name OR concept_name. Both are not accepted. ",
@@ -421,7 +421,7 @@ def build_match_data(db, params):
     if age_constraint.b_age < age_constraint.t_age:
         # Return an error result
         return MatchData(
-            matches=[],
+            unit_matches=[],
             messages=[
                 MatchMessage(
                     message="Inconsistent age constraints: b_age < t_age",
@@ -491,4 +491,4 @@ def build_match_data(db, params):
             )
         )
     results = assign_priorities(results)
-    return MatchData(matches=results, messages=messages)
+    return MatchData(unit_matches=results, messages=messages)
