@@ -200,7 +200,7 @@ class MatchAPIResponse(BaseModel):
     version: str
     date_accessed: str
     results: list[MatchData]
-    match_basis: set[str] = Field(
+    name_basis: set[str] = Field(
         ..., description="The match basis values present in the result set."
     )
     messages: set[MatchMessage] | None = None
@@ -210,6 +210,8 @@ class MatchOptions(BaseModel):
     basis: Optional[set[MatchType]] = Field(
         None, description="Types of matches to include."
     )
+    all: bool = Field(False, description="Return all matches. If false, only return the best priority match.")
+
 
 
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
@@ -229,18 +231,18 @@ PRIORITY_ORDER = [
 ]
 
 def assign_priorities(results: list[MatchResult]) -> list[MatchResult]:
-    """Assign consecutive priorities based on match_basis/spatial_basis combinations present."""
+    """Assign consecutive priorities based on name_basis/spatial_basis combinations present."""
     # Find which combinations exist in results, in ranked order
     present = []
     for combo in PRIORITY_ORDER:
-        if any(r.match_basis == combo[0] and r.spatial_basis == combo[1] for r in results):
+        if any(r.name_basis == combo[0] and r.spatial_basis == combo[1] for r in results):
             if combo not in present:
                 present.append(combo)
 
     # Assign priority based on position in present list
     updated = []
     for r in results:
-        combo = (r.match_basis, r.spatial_basis)
+        combo = (r.name_basis, r.spatial_basis)
         priority = float(present.index(combo)) if combo in present else float(len(present))
         updated.append(r.model_copy(update={"priority": priority}))
     return sorted(updated, key=lambda r: r.priority)
@@ -278,13 +280,13 @@ def match_units(
         opts.basis = set(get_match_types(None))
 
     db = get_database()
-    print("dbbbbb", db)
     setup_matcher()
 
     results = []
     match_data = build_match_data(db, params)
     if match_data is not None:
         results.append(match_data)
+        print("Match data results", results)
     return generate_response(results, opts)
 
 
@@ -320,7 +322,16 @@ def match_units_multi(
 def generate_response(
     results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
 ) -> MatchAPIResponse:
+    if not opts.all:
+        results = [
+            MatchData(
+                matches=[m for m in result.matches if m.priority == 0.0],
+                messages=result.messages,
+            )
+            for result in results
+        ]
     _messages: set[MatchMessage] = set()
+
     for result in results:
         if result.messages is None:
             continue
@@ -334,8 +345,8 @@ def generate_response(
         for msg in messages:
             _messages.add(msg)
 
-    match_basis_values = {
-        match.match_basis
+    name_basis_values = {
+        match.name_basis
         for result in results
         for match in result.matches
     }
@@ -345,7 +356,7 @@ def generate_response(
         date_accessed=datetime.now().isoformat(),
         results=results,
         messages=messages,
-        match_basis=match_basis_values,
+        name_basis=name_basis_values,
     )
 
 def _all_params_match(vals: dict, params: MatchQuery) -> bool:
@@ -361,8 +372,8 @@ def _all_params_match(vals: dict, params: MatchQuery) -> bool:
     return True
 
 
-def compute_match_basis(vals: dict, is_exact_name_match: bool, params: MatchQuery) -> str:
-    """Compute the match_basis value for a result row."""
+def compute_name_basis(vals: dict, is_exact_name_match: bool, params: MatchQuery) -> str:
+    """Compute the name_basis value for a result row."""
     sql_basis = vals.get("basis", "")
 
     if sql_basis == "concept":
@@ -378,20 +389,33 @@ def compute_match_basis(vals: dict, is_exact_name_match: bool, params: MatchQuer
     if depth < 0:
         return "rank-up"
 
-    return "semi-exact"
+    return "concept"
 
 
 def build_match_data(db, params):
     """Build MatchData for a single MatchQuery."""
 
     age_constraint = params.get_age_range()
-
+    print("age_constraint", age_constraint)
     res = params.model_dump()
     # Add resolved numeric age constraints to context if provided
     if age_constraint.t_age >= 0:
         res["t_age"] = age_constraint.t_age
     if age_constraint.b_age < 4600:
         res["b_age"] = age_constraint.b_age
+    print("params dumped into a model dict", res)
+
+    if params.strat_name is not None and params.concept_name is not None:
+        # Return an error result
+        return MatchData(
+            matches=[],
+            messages=[
+                MatchMessage(
+                    message="Please input either a valid strat_name OR concept_name. Both are not accepted. ",
+                    type=MatchMessageType.Error,
+                )
+            ],
+        )
 
     # Validate age constraint
     if age_constraint.b_age < age_constraint.t_age:
@@ -409,19 +433,26 @@ def build_match_data(db, params):
     col_id = params.col_id
     if col_id is None:
         cols = get_columns_for_location(db, (params.lng, params.lat))
+        print("validate cols against pydantic model", cols)
         col_ids = [col.col_id for col in cols]
     else:
         col_ids = [col_id]
 
     results: list[MatchResult] = []
     messages: list[MatchMessage] = []
+    print("here are the found col_ids", col_ids)
     for col_id in col_ids:
         if params.strat_name is not None:
             names = standardize_names(params.strat_name)
+            print("standardized strat_name from user", names)
+            include_concept = False
         elif params.concept_name is not None:
             names = standardize_names(params.concept_name)
+            include_concept = True
         else:
-            names = standardize_names_from_id(db, params.strat_name_id, params.concept_id)
+            names, include_concept = standardize_names_from_id(db, params.strat_name_id, params.concept_id)
+            print("standardized strat_name from user's strat_name_id parameter", names)
+
         with db.engine.connect() as conn:
             rows = get_all_matched_units(
                 conn,
@@ -430,17 +461,27 @@ def build_match_data(db, params):
                 t_age=age_constraint.t_age,
                 b_age=age_constraint.b_age,
             )
+        raw_name = (params.strat_name or params.concept_name or "").strip().lower()
         for row, is_exact in rows:
             vals = dict(row)
+            db_name = (vals.get("strat_name") or "").strip().lower();
+            is_exact = (False if raw_name != db_name else is_exact)
+            print("raw name", raw_name, "db_name", db_name, "is_exact", is_exact)
             from pandas import isna
             for key, val in vals.items():
                 if isna(val):
                     vals[key] = None
-            vals["match_basis"] = compute_match_basis(vals, is_exact, params)
+            if not include_concept and vals["basis"] == 'concept':
+                continue
+            if vals["basis"] == 'synonym':
+                continue
+            vals["name_basis"] = compute_name_basis(vals, is_exact, params)
             vals.pop("basis", None)
             results.append(MatchResult(**vals))
-    # TODO match based on lexicon footprints only if columns are not found.
 
+        print("results!", results)
+    # TODO match based on lexicon footprints only if columns are not found.
+    #organize in order to priorize
     if len(col_ids) > 1:
         messages.append(
             MatchMessage(

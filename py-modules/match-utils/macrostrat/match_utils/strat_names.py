@@ -89,6 +89,7 @@ def _clean_name(name, confidence=Confidence.NotIndicated):
     rank = None
     tokens = name.split()
     collected_text = []
+    print(tokens)
     for token in tokens[::-1]:
         if token.endswith("?"):
             confidence = Confidence.Low
@@ -104,7 +105,7 @@ def _clean_name(name, confidence=Confidence.NotIndicated):
         if token in stop_words:
             # Reset to form another stratigraphic name
             should_reset = True
-
+        #determine rank from provided strat_name query parameter
         token_rank = get_rank_signifier(token)
         if rank is None and token_rank is not None:
             # Intepret as rank and continue
