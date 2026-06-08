@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 
 from macrostrat.match_utils import (
+    MATCH_STRAT_NAMES_INFO,
     MatchResult,
     MatchType,
     create_ignore_list,
@@ -15,7 +16,6 @@ from macrostrat.match_utils import (
     get_match_types,
     standardize_names,
     standardize_names_from_id,
-    MATCH_STRAT_NAMES_INFO
 )
 from macrostrat.match_utils.strat_names import get_ignore_list
 
@@ -85,14 +85,16 @@ class MatchQuery(BaseModel):
             "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
         ],
     )
-    concept_name: str | None = Field(None,
+    concept_name: str | None = Field(
+        None,
         description="Text containing a concept name to match.",
         examples=[
             "Navajo",
             "Dakota",
             "Morrison",
             "Kayenta",
-        ],)
+        ],
+    )
     strat_name_id: int | None = Field(
         None, description="A Macrostrat stratigraphic name ID to match directly."
     )
@@ -125,8 +127,15 @@ class MatchQuery(BaseModel):
     @model_validator(mode="after")
     def validate_match_input(self):
         """Ensure that either strat_name or strat_name_id is provided."""
-        if self.strat_name is None and self.strat_name_id is None and self.concept_id is None and self.concept_name is None:
-            raise ValueError("Either strat_name/concept_name or strat_name_id/concept_id must be provided.")
+        if (
+            self.strat_name is None
+            and self.strat_name_id is None
+            and self.concept_id is None
+            and self.concept_name is None
+        ):
+            raise ValueError(
+                "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
+            )
         return self
 
     @model_validator(mode="after")
@@ -210,32 +219,38 @@ class MatchOptions(BaseModel):
     basis: Optional[set[MatchType]] = Field(
         None, description="Types of matches to include."
     )
-    all: bool = Field(False, description="Return all matches. If false, only return the best priority match.")
-
+    all: bool = Field(
+        False,
+        description="Return all matches. If false, only return the best priority match.",
+    )
 
 
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
+
 PRIORITY_ORDER = [
-    ("exact",     "containing column"),
-    ("exact",     "adjacent column"),
-    ("concept",   "containing column"),
+    ("exact", "containing column"),
+    ("exact", "adjacent column"),
+    ("concept", "containing column"),
     ("rank-down", "containing column"),
-    ("concept",   "adjacent column"),
+    ("concept", "adjacent column"),
     ("rank-down", "adjacent column"),
-    ("rank-up",   "containing column"),
-    ("rank-up",   "adjacent column"),
-    ("synonym",   "containing column"),
-    ("synonym",   "adjacent column"),
+    ("rank-up", "containing column"),
+    ("rank-up", "adjacent column"),
+    ("synonym", "containing column"),
+    ("synonym", "adjacent column"),
 ]
+
 
 def assign_priorities(results: list[MatchResult]) -> list[MatchResult]:
     """Assign consecutive priorities based on name_basis/spatial_basis combinations present."""
     # Find which combinations exist in results, in ranked order
     present = []
     for combo in PRIORITY_ORDER:
-        if any(r.name_basis == combo[0] and r.spatial_basis == combo[1] for r in results):
+        if any(
+            r.name_basis == combo[0] and r.spatial_basis == combo[1] for r in results
+        ):
             if combo not in present:
                 present.append(combo)
 
@@ -243,10 +258,11 @@ def assign_priorities(results: list[MatchResult]) -> list[MatchResult]:
     updated = []
     for r in results:
         combo = (r.name_basis, r.spatial_basis)
-        priority = float(present.index(combo)) if combo in present else float(len(present))
+        priority = (
+            float(present.index(combo)) if combo in present else float(len(present))
+        )
         updated.append(r.model_copy(update={"priority": priority}))
     return sorted(updated, key=lambda r: r.priority)
-
 
 
 def get_interval(interval: int | str) -> Optional[Interval]:
@@ -262,10 +278,13 @@ def get_interval(interval: int | str) -> Optional[Interval]:
             return intv
     return None
 
+
 @router.get("/")
 def match_info():
     """Return self-documenting info for the match API."""
     return MATCH_STRAT_NAMES_INFO
+
+
 @router.get("/strat-names")
 def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
@@ -346,9 +365,7 @@ def generate_response(
             _messages.add(msg)
 
     name_basis_values = {
-        match.name_basis
-        for result in results
-        for match in result.unit_matches
+        match.name_basis for result in results for match in result.unit_matches
     }
 
     return MatchAPIResponse(
@@ -359,20 +376,30 @@ def generate_response(
         name_bases=name_basis_values,
     )
 
+
 def _all_params_match(vals: dict, params: MatchQuery) -> bool:
     """Check whether all user-supplied params match the row values."""
-    if params.strat_name_id is not None and vals.get("strat_name_id") != params.strat_name_id:
+    if (
+        params.strat_name_id is not None
+        and vals.get("strat_name_id") != params.strat_name_id
+    ):
         return False
     if params.concept_id is not None and vals.get("concept_id") != params.concept_id:
         return False
-    if params.b_age is not None and (vals.get("b_age") is None or vals["b_age"] < params.b_age):
+    if params.b_age is not None and (
+        vals.get("b_age") is None or vals["b_age"] < params.b_age
+    ):
         return False
-    if params.t_age is not None and (vals.get("t_age") is None or vals["t_age"] > params.t_age):
+    if params.t_age is not None and (
+        vals.get("t_age") is None or vals["t_age"] > params.t_age
+    ):
         return False
     return True
 
 
-def compute_name_basis(vals: dict, is_exact_name_match: bool, params: MatchQuery) -> str:
+def compute_name_basis(
+    vals: dict, is_exact_name_match: bool, params: MatchQuery
+) -> str:
     """Compute the name_basis value for a result row."""
     sql_basis = vals.get("basis", "")
 
@@ -450,7 +477,9 @@ def build_match_data(db, params):
             names = standardize_names(params.concept_name)
             include_concept = True
         else:
-            names, include_concept = standardize_names_from_id(db, params.strat_name_id, params.concept_id)
+            names, include_concept = standardize_names_from_id(
+                db, params.strat_name_id, params.concept_id
+            )
             print("standardized strat_name from user's strat_name_id parameter", names)
 
         with db.engine.connect() as conn:
@@ -464,16 +493,17 @@ def build_match_data(db, params):
         raw_name = (params.strat_name or params.concept_name or "").strip().lower()
         for row, is_exact in rows:
             vals = dict(row)
-            db_name = (vals.get("strat_name") or "").strip().lower();
-            is_exact = (False if raw_name != db_name else is_exact)
+            db_name = (vals.get("strat_name") or "").strip().lower()
+            is_exact = False if raw_name != db_name else is_exact
             print("raw name", raw_name, "db_name", db_name, "is_exact", is_exact)
             from pandas import isna
+
             for key, val in vals.items():
                 if isna(val):
                     vals[key] = None
-            if not include_concept and vals["basis"] == 'concept':
+            if not include_concept and vals["basis"] == "concept":
                 continue
-            if vals["basis"] == 'synonym':
+            if vals["basis"] == "synonym":
                 continue
             vals["name_basis"] = compute_name_basis(vals, is_exact, params)
             vals.pop("basis", None)
@@ -481,7 +511,7 @@ def build_match_data(db, params):
 
         print("results!", results)
     # TODO match based on lexicon footprints only if columns are not found.
-    #organize in order to priorize
+    # organize in order to priorize
     if len(col_ids) > 1:
         messages.append(
             MatchMessage(

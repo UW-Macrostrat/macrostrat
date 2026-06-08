@@ -105,7 +105,7 @@ def _clean_name(name, confidence=Confidence.NotIndicated):
         if token in stop_words:
             # Reset to form another stratigraphic name
             should_reset = True
-        #determine rank from provided strat_name query parameter
+        # determine rank from provided strat_name query parameter
         token_rank = get_rank_signifier(token)
         if rank is None and token_rank is not None:
             # Intepret as rank and continue

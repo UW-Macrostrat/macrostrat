@@ -5,9 +5,9 @@ The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
 
+from pandas import isna
 from pydantic import BaseModel
 from pytest import mark
-from pandas import isna
 
 from . import (
     ensure_single,
@@ -160,9 +160,7 @@ def test_spatial_basis_containing_column(db):
     names = standardize_names("Navajo Sandstone")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
-    containing = [
-        row for row, _ in rows if row["spatial_basis"] == "containing column"
-    ]
+    containing = [row for row, _ in rows if row["spatial_basis"] == "containing column"]
     assert len(containing) > 0
 
 

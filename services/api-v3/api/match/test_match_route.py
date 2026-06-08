@@ -260,7 +260,12 @@ def test_all_true_returns_multiple_matches(client):
     """With all=true, multiple priority levels should be present."""
     resp = client.get(
         "/strat-names",
-        params={"strat_name": "Navajo Sandstone", "lat": 35.951, "lng": -109.905, "all": True},
+        params={
+            "strat_name": "Navajo Sandstone",
+            "lat": 35.951,
+            "lng": -109.905,
+            "all": True,
+        },
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -276,7 +281,12 @@ def test_response_has_name_bases(client):
     """Response must include name_bases set."""
     resp = client.get(
         "/strat-names",
-        params={"strat_name": "Navajo Sandstone", "lat": 35.951, "lng": -109.905, "all": True},
+        params={
+            "strat_name": "Navajo Sandstone",
+            "lat": 35.951,
+            "lng": -109.905,
+            "all": True,
+        },
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -288,7 +298,12 @@ def test_concept_name_excluded_without_concept_param(client):
     """When strat_name is used (not concept_name), concept basis rows are excluded."""
     resp = client.get(
         "/strat-names",
-        params={"strat_name": "Navajo Sandstone", "lat": 35.951, "lng": -109.905, "all": True},
+        params={
+            "strat_name": "Navajo Sandstone",
+            "lat": 35.951,
+            "lng": -109.905,
+            "all": True,
+        },
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -327,7 +342,9 @@ def test_strat_name_and_concept_name_returns_error(client):
     assert resp.status_code == 200
     data = resp.json()
     messages = data["results"][0]["messages"]
-    assert any("strat_name" in m["message"] or "concept_name" in m["message"] for m in messages)
+    assert any(
+        "strat_name" in m["message"] or "concept_name" in m["message"] for m in messages
+    )
 
 
 def test_unit_matches_sorted_by_priority(client):
@@ -361,7 +378,12 @@ def test_match_result_has_concept_name(client):
     """Each match result should include concept_name field."""
     resp = client.get(
         "/strat-names",
-        params={"strat_name": "Navajo Sandstone", "lat": 35.951, "lng": -109.905, "all": True},
+        params={
+            "strat_name": "Navajo Sandstone",
+            "lat": 35.951,
+            "lng": -109.905,
+            "all": True,
+        },
     )
     assert resp.status_code == 200
     data = resp.json()

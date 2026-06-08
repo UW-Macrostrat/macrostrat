@@ -23,8 +23,8 @@ MATCH_STRAT_NAMES_INFO = {
         "v": 2,
         "license": "CC-BY 4.0",
         "description": "Match stratigraphic names to Macrostrat columns and units. "
-                       "Accepts a stratigraphic name string, ID, or concept and returns "
-                       "matched Macrostrat units with associated metadata.",
+        "Accepts a stratigraphic name string, ID, or concept and returns "
+        "matched Macrostrat units with associated metadata.",
         "options": {
             "_rules": [
                 "Provide one of: strat_name, concept_name, strat_name_id, concept_id",
@@ -32,43 +32,43 @@ MATCH_STRAT_NAMES_INFO = {
             ],
             "parameters": {
                 "strat_name": "string, stratigraphic name text to match (e.g. 'Navajo Sandstone'). "
-                              "Supports multiple names separated by semicolons.",
+                "Supports multiple names separated by semicolons.",
                 "concept_name": "string, concept name text to match (e.g. 'Navajo'). "
-                                "Alternative to strat_name. Enables concept-based matching.",
+                "Alternative to strat_name. Enables concept-based matching.",
                 "strat_name_id": "integer, a Macrostrat stratigraphic name ID to match directly. "
-                                 "Alternative to strat_name.",
+                "Alternative to strat_name.",
                 "concept_id": "integer, a Macrostrat concept ID to match directly. "
-                              "Alternative to concept_name. Can be combined with strat_name_id "
-                              "to filter by concept.",
+                "Alternative to concept_name. Can be combined with strat_name_id "
+                "to filter by concept.",
                 "lat": "number, latitude of the query location. Must be used with lng.",
                 "lng": "number, longitude of the query location. Must be used with lat.",
                 "col_id": "integer, a specific Macrostrat column ID. "
-                          "Can be used instead of lat/lng.",
+                "Can be used instead of lat/lng.",
                 "project_id": "integer, limit search to a specific Macrostrat project. "
-                              "Useful when columns overlap across projects.",
+                "Useful when columns overlap across projects.",
                 "interval": "string or integer, geologic time interval name or ID to constrain "
-                            "matches (e.g. 'Triassic'). Derives both b_age and t_age from the interval.",
+                "matches (e.g. 'Triassic'). Derives both b_age and t_age from the interval.",
                 "b_interval": "string or integer, early/lower interval name or ID. "
-                              "Derives b_age from the bottom of this interval.",
+                "Derives b_age from the bottom of this interval.",
                 "t_interval": "string or integer, late/upper interval name or ID. "
-                              "Derives t_age from the top of this interval.",
+                "Derives t_age from the top of this interval.",
                 "b_age": "number, early/lower age constraint in millions of years (Ma). "
-                         "Must be greater than t_age.",
+                "Must be greater than t_age.",
                 "t_age": "number, late/upper age constraint in millions of years (Ma). "
-                         "Must be less than b_age.",
+                "Must be less than b_age.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
-                              "collection ID). Passed through to the response for correlation.",
+                "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
-                       "If false (default), return only the highest priority match (priority=0.0).",
+                "If false (default), return only the highest priority match (priority=0.0).",
                 "basis": "string, matching strategies to use. One or more of: "
-                         "column-units | adjacent-cols | concepts | synonyms | footprint-index. "
-                         "Default: all strategies enabled.",
+                "column-units | adjacent-cols | concepts | synonyms | footprint-index. "
+                "Default: all strategies enabled.",
             },
             "output_formats": ["json"],
             "methods": {
                 "GET": "Single query via URL parameters.",
                 "POST": "Batch query — accepts a JSON array of up to 100 query objects. "
-                        "MatchOptions (all, basis) are passed as query parameters.",
+                "MatchOptions (all, basis) are passed as query parameters.",
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
@@ -101,20 +101,21 @@ MATCH_STRAT_NAMES_INFO = {
                 "project_id": "integer, Macrostrat project ID",
                 "depth": "integer, hierarchy traversal depth (0=direct, negative=parent/rank-up, positive=child/rank-down)",
                 "name_basis": "string, matching strategy that produced this result. "
-                              "One of: exact | concept | rank-up | rank-down | synonym",
+                "One of: exact | concept | rank-up | rank-down | synonym",
                 "spatial_basis": "string, spatial relationship of the match. "
-                                 "One of: containing column | adjacent column",
+                "One of: containing column | adjacent column",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
                 "priority": "number, match priority — 0.0 is the best match, "
-                            "higher numbers indicate less direct matches. "
-                            "Priority order: exact/containing, exact/adjacent, concept/containing, "
-                            "rank-down/containing, concept/adjacent, rank-down/adjacent, "
-                            "rank-up/containing, rank-up/adjacent, synonym/containing, synonym/adjacent.",
+                "higher numbers indicate less direct matches. "
+                "Priority order: exact/containing, exact/adjacent, concept/containing, "
+                "rank-down/containing, concept/adjacent, rank-down/adjacent, "
+                "rank-up/containing, rank-up/adjacent, synonym/containing, synonym/adjacent.",
             },
         },
     }
 }
+
 
 def get_match_types(types: list[MatchType] | None) -> list[MatchType]:
     if types is None:
@@ -205,17 +206,17 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     if col_id in unit_index:
         print(unit_index[col_id])
         return unit_index[col_id]
-    #TODO need to update the match types model to exact, concept, rank-up, rank-down
+    # TODO need to update the match types model to exact, concept, rank-up, rank-down
     types = get_match_types(types)
 
-    params=dict(
-            col_id=col_id,
-            use_concepts=MatchType.Concepts in types,
-            use_synonyms=MatchType.Synonyms in types,
-            use_adjacent_cols=MatchType.AdjacentCols in types,
-            use_footprint_index=MatchType.FootprintIndex in types,
-            use_column_units=MatchType.ColumnUnits in types,
-        )
+    params = dict(
+        col_id=col_id,
+        use_concepts=MatchType.Concepts in types,
+        use_synonyms=MatchType.Synonyms in types,
+        use_adjacent_cols=MatchType.AdjacentCols in types,
+        use_footprint_index=MatchType.FootprintIndex in types,
+        use_column_units=MatchType.ColumnUnits in types,
+    )
     sql = stored_procedure("column-strat-names")
     print("sql", sql)
     print("params", params)
@@ -256,9 +257,7 @@ def get_matched_unit(
     Get a unit that matches a given stratigraphic name within a given
     Macrostrat column.
     """
-    rows = get_all_matched_units(
-        conn, col_id, strat_names, types=types, n_results=1
-    )
+    rows = get_all_matched_units(conn, col_id, strat_names, types=types, n_results=1)
     if len(rows) == 0:
         return None
 
@@ -307,7 +306,7 @@ def get_all_matched_units(
     for ix, row in u1.iterrows():
         # Matches all units found from the col_id's to the provided strat_name
         matched, is_exact = match_row(row, strat_names)
-        #true, true is exact match and true, false is concept/included match.
+        # true, true is exact match and true, false is concept/included match.
         if not matched:
             continue
         matched_rows.append((row, is_exact))
@@ -357,6 +356,7 @@ def standardize_names(source_text):
 
     return tuple(sorted(deduplicate_strat_names(res)))
 
+
 def standardize_names_from_id(db, strat_name_id: int, concept_id: int | None):
     """Look up a strat name by ID and convert it to standardized names."""
     if concept_id is None:
@@ -372,7 +372,9 @@ def standardize_names_from_id(db, strat_name_id: int, concept_id: int | None):
         ).first()
         include_concept = True
     if result is None:
-        raise ValueError(f"No stratigraphic name found for strat_name_id={strat_name_id}")
+        raise ValueError(
+            f"No stratigraphic name found for strat_name_id={strat_name_id}"
+        )
     return standardize_names(result.strat_name), include_concept
 
 

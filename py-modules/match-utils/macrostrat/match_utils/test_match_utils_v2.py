@@ -5,9 +5,8 @@ Tests for the v2 match API response structure and batch endpoint.
 from pydantic import BaseModel
 from pytest import mark
 
-from . import standardize_names, get_all_matched_units, get_columns_for_location
+from . import get_all_matched_units, get_columns_for_location, standardize_names
 from .models import MatchResult, MatchType
-
 
 # -- Batch input test data --------------------------------------------------
 
@@ -70,15 +69,28 @@ test_input = [
 expected_response_keys = {"version", "date_accessed", "results", "name_bases"}
 expected_result_keys = {"unit_matches", "messages"}
 expected_match_keys = {
-    "strat_name_id", "strat_name", "strat_rank", "parent_id",
-    "concept_id", "concept_name", "unit_id", "col_id", "project_id",
-    "depth", "name_basis", "spatial_basis", "t_age", "b_age", "priority",
+    "strat_name_id",
+    "strat_name",
+    "strat_rank",
+    "parent_id",
+    "concept_id",
+    "concept_name",
+    "unit_id",
+    "col_id",
+    "project_id",
+    "depth",
+    "name_basis",
+    "spatial_basis",
+    "t_age",
+    "b_age",
+    "priority",
 }
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
 valid_spatial_bases = {"containing column", "adjacent column"}
 
 
 # -- Unit tests for response structure -------------------------------------
+
 
 def test_match_result_fields():
     """MatchResult must have all expected fields."""
@@ -89,6 +101,7 @@ def test_match_result_fields():
 def test_match_result_name_basis_values():
     """name_basis must be one of the known values."""
     from pandas import isna
+
     result = MatchResult(
         strat_name_id=1,
         strat_name="Test",
@@ -119,4 +132,3 @@ def test_priority_ascending_order(db):
     # Priorities from the raw rows (SQL priority column, pre-reassignment)
     priorities = [row["priority"] for row, _ in rows]
     assert priorities == sorted(priorities)
-
