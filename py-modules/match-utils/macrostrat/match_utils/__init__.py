@@ -26,15 +26,15 @@ MATCH_STRAT_NAMES_INFO = {
                        "Accepts a stratigraphic name string, ID, or concept and returns "
                        "matched Macrostrat units with associated metadata.",
         "options": {
-             "_rules": [
-                    "Provide one of: strat_name, concept_name, strat_name_id, concept_id",
-                    "Provide one of: col_id, lat and lng",
-                ],
+            "_rules": [
+                "Provide one of: strat_name, concept_name, strat_name_id, concept_id",
+                "Provide one of: col_id, lat and lng",
+            ],
             "parameters": {
                 "strat_name": "string, stratigraphic name text to match (e.g. 'Navajo Sandstone'). "
                               "Supports multiple names separated by semicolons.",
                 "concept_name": "string, concept name text to match (e.g. 'Navajo'). "
-                                "Alternative to strat_name.",
+                                "Alternative to strat_name. Enables concept-based matching.",
                 "strat_name_id": "integer, a Macrostrat stratigraphic name ID to match directly. "
                                  "Alternative to strat_name.",
                 "concept_id": "integer, a Macrostrat concept ID to match directly. "
@@ -58,9 +58,8 @@ MATCH_STRAT_NAMES_INFO = {
                          "Must be less than b_age.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
                               "collection ID). Passed through to the response for correlation.",
-                "comparison": "string, string comparison strategy to use when matching names. "
-                              "One of: exact | included | bidirectional | fuzzy. "
-                              "Default: included.",
+                "all": "boolean, if true return all matches ordered by priority. "
+                       "If false (default), return only the highest priority match (priority=0.0).",
                 "basis": "string, matching strategies to use. One or more of: "
                          "column-units | adjacent-cols | concepts | synonyms | footprint-index. "
                          "Default: all strategies enabled.",
@@ -69,41 +68,49 @@ MATCH_STRAT_NAMES_INFO = {
             "methods": {
                 "GET": "Single query via URL parameters.",
                 "POST": "Batch query — accepts a JSON array of up to 100 query objects. "
+                        "MatchOptions (all, basis) are passed as query parameters.",
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&all=true",
                 "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?concept_name=Navajo&lat=35.951&lng=-109.905",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&interval=Triassic",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_age=250.0&t_age=200.0",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_interval=Triassic&t_interval=Jurassic",
-                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&comparison=exact",
-                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&comparison=fuzzy",
                 "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&basis=column-units",
                 "/dev/match/strat-names?strat_name=Kaza&lat=53.114&lng=-120.909&project_id=1",
                 "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905&identifier=sample-001",
                 "/dev/match/strat-names?strat_name_id=3361&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_id=1234&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?strat_name_id=3361&concept_id=1234&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_name=Navajo&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?concept_id=9491&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name_id=3361&concept_id=9491&lat=35.951&lng=-109.905",
             ],
             "response_fields": {
+                "results": "array, list of match result objects, one per query.",
+                "results[].unit_matches": "array, matched units ordered by ascending priority.",
+                "results[].messages": "array, any warnings or errors for this query.",
+                "name_bases": "set of strings, the name_basis values present across all results.",
                 "strat_name_id": "integer, Macrostrat stratigraphic name ID",
                 "strat_name": "string, stratigraphic name",
                 "strat_rank": "string, stratigraphic rank (e.g. Fm, Mbr, Gp)",
                 "parent_id": "integer, parent stratigraphic name ID in the hierarchy",
                 "concept_id": "integer, Macrostrat concept ID linked to this name",
+                "concept_name": "string, concept name linked to this stratigraphic name",
                 "unit_id": "integer, Macrostrat unit ID",
                 "col_id": "integer, Macrostrat column ID",
                 "project_id": "integer, Macrostrat project ID",
-                "depth": "integer, hierarchy traversal depth (negative = parent, positive = child)",
-                "basis": "string, matching strategy that produced this result "
-                         "(column unit | concept | synonym | footprint index)",
-                "spatial_basis": "string, spatial relationship of the match "
-                                 "(containing column | adjacent column)",
-                "t_age": "number, continuous time age model estimated for truncation, in Ma",
-                "b_age": "number, continuous time age model estimated for initiation, in Ma",
-                "priority": "number, match priority — 0 is the most direct match, "
-                            "higher numbers indicate less direct matches",
+                "depth": "integer, hierarchy traversal depth (0=direct, negative=parent/rank-up, positive=child/rank-down)",
+                "name_basis": "string, matching strategy that produced this result. "
+                              "One of: exact | concept | rank-up | rank-down | synonym",
+                "spatial_basis": "string, spatial relationship of the match. "
+                                 "One of: containing column | adjacent column",
+                "t_age": "number, continuous time age model estimated top age, in Ma",
+                "b_age": "number, continuous time age model estimated bottom age, in Ma",
+                "priority": "number, match priority — 0.0 is the best match, "
+                            "higher numbers indicate less direct matches. "
+                            "Priority order: exact/containing, exact/adjacent, concept/containing, "
+                            "rank-down/containing, concept/adjacent, rank-down/adjacent, "
+                            "rank-up/containing, rank-up/adjacent, synonym/containing, synonym/adjacent.",
             },
         },
     }
