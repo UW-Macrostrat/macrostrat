@@ -10,12 +10,13 @@ class MatchResult(BaseModel):
     strat_name: str
     strat_rank: Optional[str]
     parent_id: Optional[int]
+    concept_name: Optional[str]
     concept_id: Optional[int]
     unit_id: Optional[int]
     col_id: Optional[int]
     project_id: Optional[int]
     depth: Optional[int]
-    basis: str
+    name_basis: str
     spatial_basis: str
     t_age: float
     b_age: float
