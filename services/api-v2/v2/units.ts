@@ -42,7 +42,7 @@ export async function handleUnitsRoute(req, res, next) {
     );
   } catch (error) {
     larkin.trace(error);
-    return larkin.error(req, res, next, error.message);
+    return larkin.error(req, res, next, error.message, 500);
   }
 }
 
@@ -84,12 +84,15 @@ export function getColumnFilters(
   }
   whereClauses.push("cols.status_code::text = ANY(:status_code::text[])");
 
-  const [projectFilters, projectParams] = buildProjectsFilter(
-    req,
-    "cols.project_id",
-  );
-  whereClauses.push(...projectFilters);
-  params = { ...params, ...projectParams };
+  //only include ANY(macrostrat.core_project_ids()) filter when both col_id and project_id parameters are provided
+  if (req.query.project_id && req.query.col_id) {
+    const [projectFilters, projectParams] = buildProjectsFilter(
+        req,
+        "cols.project_id",
+    );
+    whereClauses.push(...projectFilters);
+    params = {...params, ...projectParams};
+  }
 
   let adjacentsColumnName: string;
   switch (spatialTable) {
