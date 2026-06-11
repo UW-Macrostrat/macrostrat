@@ -29,7 +29,7 @@ export function buildProjectsFilter(
       );
       params["project_id"] = larkin.parseMultipleIds(req.query.project_id);
     }
-  } else {
+  } else if (req.query.col_id == null ) { //skips core project filter when col_id is provided without project_id.
     // Default to active projects only
     whereClauses.push(field + " = ANY(macrostrat.core_project_ids())");
   }
