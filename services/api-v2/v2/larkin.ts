@@ -94,8 +94,15 @@ enum APICapability {
       }
     }
 
+
+
+    //logs any pool connection problems so pod network issues can be identified
     if (!connectionPoolStore[dbName]) {
-      connectionPoolStore[dbName] = new Pool(connectionDetails);
+      const pool = new Pool({ ...connectionDetails, connectionTimeoutMillis: 10000 });
+      pool.on("error", (err) => {
+        larkin.log("error", `Unexpected error on idle pool client: ${err.message}`);
+      });
+      connectionPoolStore[dbName] = pool;
     }
 
     const pool = connectionPoolStore[dbName];
@@ -133,11 +140,7 @@ enum APICapability {
             done();
             if (err) {
               larkin.log("error", err);
-              if (err.message.includes(errorMessage)) {
-                callback(null, { rows: [] });
-              } else {
                 callback(err);
-              }
             } else {
               callback(null, result);
             }
@@ -201,13 +204,19 @@ enum APICapability {
         .send(JSON.stringify(outgoing.data, null, 0));
     }
 
+    //added error handling if refs query returns an error
     if (options.refs) {
-      larkin.getRefs(options.refs, outgoing.data, function (refs) {
+      larkin.getRefs(options.refs, outgoing.data, function (error, refs) {
+        if (error) {
+          larkin.log("error", error);
+          return larkin.error(req, res, next, error.message, 500);
+        }
+
         outgoing.refs = refs;
-        larkin.finishSend(req, res, next, options, outgoing);
+        return larkin.finishSend(req, res, next, options, outgoing);
       });
     } else {
-      larkin.finishSend(req, res, next, options, outgoing);
+      return larkin.finishSend(req, res, next, options, outgoing);
     }
   };
 
@@ -611,8 +620,12 @@ enum APICapability {
         { ref_id: ref_ids },
         function (error, data) {
           var refs = {};
-          if (!data.rows) {
-            return callback(null);
+          if (error) {
+            larkin.log("error", error);
+            return callback(error);
+          }
+          if (!data || !data.rows) {
+            return callback(null, null);
           }
           for (var i = 0; i < data.rows.length; i++) {
             refs[data.rows[i]["ref_id"]] =
@@ -622,7 +635,7 @@ enum APICapability {
               larkin.normalizeRefField(data.rows[i].doi) +
               larkin.normalizeRefField(data.rows[i].url);
           }
-          callback(refs);
+          callback(null, refs);
         },
       );
 
@@ -652,7 +665,7 @@ enum APICapability {
               larkin.normalizeRefField(result.rows[i].ref_source);
           }
 
-          callback(refs);
+          callback(null, refs);
         },
       );
     }

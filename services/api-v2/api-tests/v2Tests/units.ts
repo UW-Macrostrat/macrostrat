@@ -247,6 +247,76 @@ it("should accept a project_id", function (done) {
     });
 });
 
+it("should return units for a col_id even when the column is outside core projects", function (done) {
+  this.timeout(10000);
+  request(settings.host)
+    .get("/units?col_id=4320&response=long")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .expect(function (res: { body: { success: { data: any[] } } }) {
+      res.body.success.data.forEach(function (d) {
+        if (d.col_id !== 4320) {
+          throw new Error("Wrong col_id returned when filtering by col_id");
+        }
+        if (d.project_id !== 3) {
+          throw new Error("Wrong project_id returned for col_id=4320");
+        }
+      });
+    })
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
+});
+
+it("should return units when col_id and the correct project_id are both provided", function (done) {
+  this.timeout(10000);
+  request(settings.host)
+    .get("/units?col_id=4320&project_id=3&response=long")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .expect(function (res: { body: { success: { data: any[] } } }) {
+      res.body.success.data.forEach(function (d) {
+        if (d.col_id !== 4320 || d.project_id !== 3) {
+          throw new Error("Wrong units returned when filtering by col_id and project_id");
+        }
+      });
+    })
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
+});
+
+it("should return an empty response when col_id and project_id do not match", async function () {
+  const uri = "/units?col_id=4320&project_id=4&response=long";
+  await request(settings.host)
+    .get(uri)
+    .expect(validators.returnsNoItems);
+});
+
+it("should limit units to the specified project_id when project_id is provided without col_id", function (done) {
+  this.timeout(15000);
+  request(settings.host)
+    .get("/units?project_id=3&response=long")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .expect(function (res: { body: { success: { data: any[] } } }) {
+      res.body.success.data.forEach(function (d) {
+        if (d.project_id !== 3) {
+          throw new Error("Units route did not limit results to project_id=3");
+        }
+      });
+    })
+    .end(function (error: any, res: any) {
+      if (error) return done(error);
+      done();
+    });
+});
+
 //fixed api this test works now
 it("should accept a strat_name parameter", function (done) {
   request(settings.host)
