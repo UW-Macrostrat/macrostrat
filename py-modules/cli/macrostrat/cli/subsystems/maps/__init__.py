@@ -227,9 +227,10 @@ def prepare_map_topo_features(db, _map):
     db.session.commit()
     elapsed = time.time() - t_start
     total = res.inserted + res.existing
-    print(f"Processing {total} [cyan]map_topo[/cyan] features")
-    print(f"  inserted: {res.inserted}, existing: {res.existing}")
-    print(f"  {elapsed:.3f} seconds")
+    if res.inserted > 0:
+        print(f"Processing {total} [cyan]map_topo[/cyan] features")
+        print(f"  inserted: {res.inserted}, existing: {res.existing}")
+    print(f"{total} features,  {elapsed:.3f} seconds")
 
 
 def _remove_map_topo_elements(db, source_id: int):
@@ -323,7 +324,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
         JOIN map_bounds.map_area
         USING (source_id)
         WHERE t.topology_error IS NOT NULL
-        ORDER BY t.source_id
+        ORDER BY t.source_id, ST_GeoHash(t.geometry)
     """
     ).all()
 
