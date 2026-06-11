@@ -66,8 +66,8 @@ def extract_strat_name_candidates(
     index = defaultdict(list)
 
     for row in res:
-        if row.rank_name is not None and row.match_text is not None:
-            index[row.match_text].append(row.rank_name)
+        if row.rank_name is not None and row.strat_name is not None:
+            index[row.strat_name].append(row.rank_name)
 
     where_clause = SQL("strat_name IS NULL")
     if overwrite:
@@ -84,12 +84,12 @@ def extract_strat_name_candidates(
             """
             UPDATE {match_table}
             SET strat_name = :rank_names
-            WHERE {match_field} = :match_text
+            WHERE {match_field} = :strat_name
               AND {where_clause}
             """,
             {
                 **params,
-                "match_text": match_text,
+                "strat_name": match_text,
                 "rank_names": rank_names,
                 "where_clause": where_clause,
             },
