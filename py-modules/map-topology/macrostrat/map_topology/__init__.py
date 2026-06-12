@@ -8,18 +8,11 @@ from typer import Argument, Typer
 
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
+from mapboard.topology_manager.commands.clean_topology import _clean_topology
 
-from ...database._legacy import get_db
-from ...database.utils import engine_for_db_name
-from ..base import MacrostratSubsystem
+from macrostrat.core.database import get_database
 
 __dir__ = Path(__file__).parent
-
-
-class MapsTopologySubsystem(MacrostratSubsystem):
-    """Placeholder for when this becomes a bit more formalized..."""
-
-    name = "maps"
 
 
 cli = Typer(no_args_is_help=True)
@@ -38,7 +31,7 @@ proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 @cli.command("create")
 def create_fixtures(reset: bool = False):
     """Create topology fixtures"""
-    db = get_db()
+    db = get_database()
 
     if reset:
         drop()
@@ -49,14 +42,14 @@ def create_fixtures(reset: bool = False):
 @cli.command("drop")
 def drop():
     """Drop topology fixtures"""
-    db = get_db()
+    db = get_database()
     db.run_fixtures(proc("drop-tables"))
 
 
 @cli.command("reset")
 def reset():
     """Reset topogeometry creation"""
-    db = get_db()
+    db = get_database()
     db.run_fixtures(proc("reset-topology"))
 
 
@@ -81,7 +74,7 @@ def filter_maps(all_maps, map_ids: list[str]):
 @cli.command("remove")
 def _remove(maps: list[str] = Argument(None)):
     """Remove topology fixtures"""
-    db = get_db()
+    db = get_database()
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, filter_by=maps)
@@ -104,19 +97,24 @@ def _clean(db):
     db.session.commit()
     print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
 
-    res = db.run_query(
-        """
-        SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', null)
-        """,
-    ).scalar()
-    db.session.commit()
-    print(f"Removed {res} orphaned topology primitives")
+    from mapboard.topology_manager.database import Database
+
+    mdb = Database(db.engine)
+
+    mdb.set_params(
+        data_schema="map_bounds",
+        topo_schema="map_bounds_topology",
+        srid=4326,
+        tolerance=0.0001,
+    )
+
+    _clean_topology(db)
 
 
 @cli.command("clean")
 def clean():
     """Clean topology fixtures"""
-    db = get_db()
+    db = get_database()
     _clean(db)
 
 
@@ -127,7 +125,7 @@ def update(
     remove: bool = False,
 ):
     """Update topology fixtures"""
-    db = get_db()
+    db = get_database()
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
@@ -281,7 +279,8 @@ def add_topogeometries(db, source_id: int):
 
 @cli.command("summary")
 def summary():
-    db = get_db()
+    """Summarize the topology"""
+    db = get_database()
     res = db.run_query("SELECT TopologySummary('map_bounds_topology');").scalar()
     print(res)
 
@@ -289,7 +288,7 @@ def summary():
 @cli.command("errors")
 def errors(maps: list[str] = Argument(None), fix: bool = False):
     """Show topology errors"""
-    db = get_db()
+    db = get_database()
 
     # Get and fix errors
     res = db.run_query(
@@ -351,7 +350,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
 
 
 def _fix_error(id: int):
-    db = get_db()
+    db = get_database()
     densify: int = 1
     err = "Unknown error"
     while err is not None and densify <= 100:
@@ -378,12 +377,13 @@ def test():
     """Test topology fixtures"""
     from macrostrat.core import app
 
-    db_engine = engine_for_db_name("map_topology_test")
-    db_url = raw_database_url(db_engine.url)
+    db_url = raw_database_url(
+        get_database().engine.url.set(database="map_topology_test")
+    )
 
     environ["TOPO_TESTING_DATABASE_URL"] = db_url
 
     srcroot = app.settings.srcroot
-    topo_mgr = srcroot / "deps/topology-manager"
+    topo_mgr = srcroot / "submodules/topology-manager"
     with working_directory(topo_mgr):
         run(["pytest", "-s"])

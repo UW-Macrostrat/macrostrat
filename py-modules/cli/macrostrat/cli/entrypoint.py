@@ -15,7 +15,6 @@ from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
 from .subsystems.dev import dev_app
-from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
@@ -193,10 +192,10 @@ def environments():
 
 main.add_typer(cfg_app)
 
-from .subsystems.maps import cli as maps_cli
+from macrostrat.map_topology import cli as topo_cli
 
 main.add_typer(
-    maps_cli,
+    topo_cli,
     name="topo",
     rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat maps topology",
@@ -342,16 +341,6 @@ main.add_typer(
 )
 
 
-from .subsystems.mapboard import MapboardSubsystem
-
-if subsystems.get("mapboard", False):
-    if mapboard_url := getattr(settings, "mapboard_database", None):
-        app.subsystems.add(MapboardSubsystem(app))
-    else:
-        app.console.print(
-            "Mapboard subsystem enabled, but no mapboard_database setting found"
-        )
-
 from macrostrat.integrations import app as integrations_app
 
 main.add_typer(
@@ -361,8 +350,6 @@ main.add_typer(
     rich_help_panel="Integrations",
 )
 
-
-app.subsystems.add(MacrostratAPISubsystem(app))
 
 if sgp_url := getattr(settings, "sgp_database", None):
     from macrostrat.integrations.sgp import sgp

@@ -8,6 +8,15 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "addict"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/ef/fd7649da8af11d93979831e8f1f8097e85e82d5bfeabc8c68b39175d8e75/addict-2.4.0.tar.gz", hash = "sha256:b3b2210e0e067a281f5646c8c5db92e99b7231ea8b0eb5f74dbdf9e259d4e494", size = 9186, upload-time = "2020-11-21T16:21:31.416Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/00/b08f23b7d7e1e14ce01419a467b583edbb93c6cdb8654e54a9cc579cd61f/addict-2.4.0-py3-none-any.whl", hash = "sha256:249bb56bbfd3cdc2a004ea0ff4c2b6ddc84d53bc2194761636eb314d5cfa5dfc", size = 3832, upload-time = "2020-11-21T16:21:29.588Z" },
+]
+
+[[package]]
 name = "aiofiles"
 version = "23.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -825,10 +834,10 @@ dependencies = [
     { name = "macrostrat-dinosaur" },
     { name = "macrostrat-integrations" },
     { name = "macrostrat-map-integration" },
+    { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-schema-management" },
     { name = "macrostrat-utils" },
-    { name = "mapboard-topology-manager" },
     { name = "numpy" },
     { name = "openpyxl" },
     { name = "paramiko" },
@@ -874,16 +883,16 @@ requires-dist = [
     { name = "macrostrat-integrations", editable = "py-modules/integrations" },
     { name = "macrostrat-map-integration", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "py-modules/map-integration" },
+    { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
-    { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
     { name = "numpy", specifier = ">=2.0.0,<3" },
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "paramiko", specifier = ">=3.4.0,<4" },
     { name = "pymysql", specifier = ">=1.0.2,<2" },
     { name = "pyproj", specifier = ">=3.4.0,<4" },
-    { name = "pytest", specifier = ">=8.3.4,<9" },
+    { name = "pytest", specifier = ">=8.3.4,<10" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "requests", specifier = ">=2.28.1,<3" },
@@ -897,7 +906,7 @@ requires-dist = [
     { name = "tiletanic", specifier = ">=1.1.0,<2" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
     { name = "tqdm", specifier = ">=4.65.0,<5" },
-    { name = "typer", specifier = ">=0.12,<0.26" },
+    { name = "typer", specifier = ">=0.12,<0.27" },
 ]
 provides-extras = ["gis"]
 
@@ -963,7 +972,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.0.2"
+version = "4.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -977,9 +986,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/f4/f1253baf5ad727277659dd95956f90fa940f62b62a1f95b63de25530bfe6/macrostrat_database-4.0.2.tar.gz", hash = "sha256:1d0be1e95553172243223d3c1157bd56128bff9f8626eba56376e008889f10f4", size = 19119, upload-time = "2026-05-04T11:01:12.893Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/7a/1cf3e3cd59da4fa59bc0ed417115ee4a6dfba5535959a0e3159d2570c87e/macrostrat_database-4.1.1.tar.gz", hash = "sha256:1a2f1da90057335187652ebb6452ff5b0104c6291e3130648f39b30759b14eec", size = 19323, upload-time = "2026-06-12T07:20:59.183Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/c6/06cf1a74344078993f7128b70f3da2e66112213146bb765e39e798e46d68/macrostrat_database-4.0.2-py3-none-any.whl", hash = "sha256:dc94d511a845afbf0ea1cd66ffc03e7436e58db968852f6fce41d09b82a2889c", size = 25658, upload-time = "2026-05-04T11:01:11.56Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/b6/cea3528186a386c20a2199fa3d019bf9fb58ab088f439da70cbf649dede4/macrostrat_database-4.1.1-py3-none-any.whl", hash = "sha256:f13f11fd39339593760217ef519aede2ac4b815927dd9adcf0abc8667d8afb37", size = 25843, upload-time = "2026-06-12T07:20:58.096Z" },
 ]
 
 [[package]]
@@ -1081,6 +1090,23 @@ dev = [
     { name = "isort", specifier = ">=5.13.2,<6" },
     { name = "mypy", specifier = ">=1.8.0,<2" },
     { name = "pylint", specifier = ">=3.1.0,<4" },
+]
+
+[[package]]
+name = "macrostrat-map-topology"
+version = "0.1.0"
+source = { editable = "py-modules/map-topology" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "mapboard-topology-manager" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-database", specifier = ">=4.0.0" },
+    { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
+    { name = "pytest", specifier = ">=8.3.4,<10" },
 ]
 
 [[package]]
@@ -1195,9 +1221,10 @@ wheels = [
 
 [[package]]
 name = "mapboard-topology-manager"
-version = "4.0.0"
+version = "5.0.0"
 source = { editable = "submodules/topology-manager" }
 dependencies = [
+    { name = "addict" },
     { name = "macrostrat-database" },
     { name = "macrostrat-utils" },
     { name = "pytest-profiling" },
@@ -1208,12 +1235,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "macrostrat-database", specifier = ">=4.0.0,<5.0.0" },
-    { name = "macrostrat-utils", specifier = ">=1.2.1,<2.0.0" },
-    { name = "pytest-profiling", specifier = ">=1.7.0,<2.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.1,<2.0.0" },
-    { name = "rich", specifier = ">=13.7.1,<16.0.0" },
-    { name = "typer", specifier = ">0.12,<0.26" },
+    { name = "addict", specifier = ">=2.4.0,<3" },
+    { name = "macrostrat-database", specifier = ">=4.1.1,<5" },
+    { name = "macrostrat-utils", specifier = ">=1.2.1,<2" },
+    { name = "pytest-profiling", specifier = ">=1.7.0,<2" },
+    { name = "python-dotenv", specifier = ">=1.0.1,<2" },
+    { name = "rich", specifier = ">=13.7.1,<16" },
+    { name = "typer", specifier = ">=0.12.0,<0.27.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=24.3.0,<27" },
+    { name = "isort", specifier = ">=5.13.2,<9" },
+    { name = "pytest", specifier = ">=8.1.1,<10" },
+    { name = "shapely", specifier = ">=2.1.2,<3" },
 ]
 
 [[package]]
