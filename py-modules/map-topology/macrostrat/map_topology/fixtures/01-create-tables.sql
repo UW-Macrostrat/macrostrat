@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_area (
   area_km double precision
 );
 
+/** Store polygonal parts of a map area. This exists to allow for more incremental
+  maintenance for map faces
+*/
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   source_id integer REFERENCES map_bounds.map_area(source_id) ON DELETE CASCADE,

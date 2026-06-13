@@ -3,12 +3,16 @@ from os import environ
 from pathlib import Path
 from subprocess import run
 
+import typer
 from rich import print
 from typer import Argument, Typer
 
 from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database import Database
 from macrostrat.utils import working_directory
 from mapboard.topology_manager.commands.clean_topology import _clean_topology
+from mapboard.topology_manager.commands import create_tables
+from mapboard.topology_manager.config import create_context
 
 from macrostrat.core.database import get_database
 
@@ -28,15 +32,33 @@ config = dict(
 proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 
 
-@cli.command("create")
-def create_fixtures(reset: bool = False):
-    """Create topology fixtures"""
-    db = get_database()
+def create_topo_context(db: Database):
+    return create_context(
+        db,
+        data_schema="map_bounds",
+        topo_schema="map_bounds_topology",
+        srid=4326,
+        tolerance=0.0001,
+        in_macrostrat_mode=True,
+        notify_triggers=False,
+    )
 
+
+def create_fixtures(db, reset: bool = False):
     if reset:
         drop()
 
+    # Create fixtures for mapboard topology manager
+    ctx = create_topo_context(db)
     db.run_fixtures(__dir__ / "fixtures")
+    create_tables(ctx)
+
+
+@cli.command("create")
+def _create_fixtures(reset: bool = False):
+    """Create topology fixtures"""
+    db = get_database()
+    create_fixtures(db, reset)
 
 
 @cli.command("drop")
@@ -97,18 +119,8 @@ def _clean(db):
     db.session.commit()
     print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
 
-    from mapboard.topology_manager.database import Database
-
-    mdb = Database(db.engine)
-
-    mdb.set_params(
-        data_schema="map_bounds",
-        topo_schema="map_bounds_topology",
-        srid=4326,
-        tolerance=0.0001,
-    )
-
-    _clean_topology(db)
+    ctx = create_topo_context(db)
+    _clean_topology(ctx)
 
 
 @cli.command("clean")
@@ -372,8 +384,10 @@ def _fix_error(id: int):
     return err
 
 
-@cli.command("test")
-def test():
+@cli.command(
+    "test", context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def test(ctx: typer.Context):
     """Test topology fixtures"""
     from macrostrat.core import app
 
@@ -386,4 +400,4 @@ def test():
     srcroot = app.settings.srcroot
     topo_mgr = srcroot / "submodules/topology-manager"
     with working_directory(topo_mgr):
-        run(["pytest", "-s"])
+        run(["pytest", *ctx.args])
