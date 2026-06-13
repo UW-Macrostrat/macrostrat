@@ -36,6 +36,19 @@ CREATE TABLE macrostrat_xdd.lookup_extraction_type (
 );
 ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO macrostrat_admin;
 
+CREATE TABLE macrostrat_xdd.global_entity (
+    global_entity_id BIGSERIAL PRIMARY KEY,
+    entity_table TEXT NOT NULL,
+    entity_id INTEGER NOT NULL,
+
+    name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+
+    CONSTRAINT unique_entity UNIQUE (entity_table, entity_id)
+);
+
+ALTER TABLE macrostrat_xdd.global_entity OWNER TO xdd_writer;
+
 CREATE TABLE macrostrat_xdd.all_runs (
     user_id uuid,
     "timestamp" timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -45,8 +58,10 @@ CREATE TABLE macrostrat_xdd.all_runs (
     model_job_id text,
     extraction_pipeline_id text,
     source_text_id integer NOT NULL,
-    supersedes integer
+    supersedes integer,
+    root_id BIGINT
 );
+
 ALTER TABLE macrostrat_xdd.all_runs OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity (
@@ -397,6 +412,9 @@ ALTER TABLE ONLY macrostrat_xdd.source_text
 
 ALTER TABLE ONLY macrostrat_xdd.all_runs
     ADD CONSTRAINT user_id_check FOREIGN KEY (user_id) REFERENCES macrostrat_xdd.users(internal_user_id);
+
+ALTER TABLE ONLY macrostrat_xdd.all_runs
+    ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_xdd.global_entity(global_entity_id) ON DELETE SET NULL;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_xdd.extraction_feedback TO web_anon;
 
