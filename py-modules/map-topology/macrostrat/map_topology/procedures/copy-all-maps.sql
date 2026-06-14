@@ -9,5 +9,4 @@ FROM maps.sources
 WHERE rgeom IS NOT NULL
   AND is_finalized
   AND status_code = 'active'
-ON CONFLICT (source_id)
-DO NOTHING;
+ON CONFLICT (source_id) DO NOTHING;

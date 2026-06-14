@@ -138,6 +138,12 @@ def update(
 ):
     """Update topology fixtures"""
     db = get_database()
+    update_maps(db, maps, remove)
+
+
+def update_maps(db, maps: list[str] = None, remove: bool = False):
+    # Copy all maps into the schema
+    db.run_sql(proc("copy-all-maps"))
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)

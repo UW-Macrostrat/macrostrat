@@ -7,8 +7,15 @@
     }
  */
 
-CREATE TABLE IF NOT EXISTS map_bounds.compilation (
+CREATE TABLE IF NOT EXISTS map_bounds.map_layer (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL,
+  description text,
+  -- These are inherited columns that may not be necessary
+  parent integer CHECK (id != parent) REFERENCES map_bounds.map_layer(id),
+  topological boolean DEFAULT true,
+  editable boolean DEFAULT true,
+  composited_from integer[],
   slug text UNIQUE,
   name text,
   min_zoom integer,
@@ -17,14 +24,17 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
 );
 
 CREATE TABLE IF NOT EXISTS map_bounds.map_compilation (
-  compilation_id integer REFERENCES map_bounds.compilation(id) ON DELETE CASCADE,
+  layer_id integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
   source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   priority integer,
   /** Cached bounds for the map's contribution to the compilation. */
-  geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (compilation_id, source_id)
+  --geometry Geometry(MultiPolygon, 4326),
+  PRIMARY KEY (layer_id, source_id)
 );
 
+
+/**
+  TODO: this essentially takes the role of the map_topoly.map_face layer table
 SELECT topology.AddTopoGeometryColumn('map_bounds_topology', 'map_bounds','map_compilation', 'topo','POLYGON')
 WHERE NOT EXISTS (
   SELECT 1
@@ -36,23 +46,24 @@ WHERE NOT EXISTS (
     AND topology.layer.table_name = 'map_compilation'
     AND topology.layer.feature_column = 'topo'
 );
+ */
 
-CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_source_id_idx ON map_bounds.map_compilation (source_id);
-CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_priority_idx ON map_bounds.map_compilation (priority);
+--CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_source_id_idx ON map_bounds.map_compilation (source_id);
+-- CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_priority_idx ON map_bounds.map_compilation (priority);
 CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_geometry_idx ON map_bounds.map_compilation USING gist (geometry);
 
 -- Fill map compliation table for carto layers
 
-INSERT INTO map_bounds.compilation (slug, name, min_zoom, max_zoom, bounds)
+INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds)
 VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
         ('carto-small', 'Carto small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
         ('carto-medium', 'Carto medium', 0, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
         ('carto-large', 'Carto large', 0, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)))
 ON CONFLICT (slug) DO NOTHING;
 
-CREATE OR REPLACE FUNCTION map_bounds.compilation_id(_slug text)
+CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
 RETURNS integer AS $$
-  SELECT id FROM map_bounds.compilation WHERE slug = _slug;
+  SELECT id FROM map_bounds.map_layer WHERE slug = _slug;
 $$ LANGUAGE SQL IMMUTABLE;
 
 
@@ -84,28 +95,28 @@ INSERT INTO map_bounds.map_compilation (
     priority
 )
 SELECT
-  map_bounds.compilation_id('carto-tiny'),
+  map_bounds.layer_id('carto-tiny'),
   source_id,
   priority
 FROM map_bounds.scale_priority
 WHERE scale = 'tiny'
 UNION ALL
 SELECT
-  map_bounds.compilation_id('carto-small'),
+  map_bounds.layer_id('carto-small'),
   source_id,
   priority
 FROM map_bounds.scale_priority
 WHERE scale IN ('tiny', 'small')
 UNION ALL
 SELECT
-  map_bounds.compilation_id('carto-medium'),
+  map_bounds.layer_id('carto-medium'),
   source_id,
   priority
 FROM map_bounds.scale_priority
 WHERE scale IN ('small', 'medium')
 UNION ALL
 SELECT
-  map_bounds.compilation_id('carto-large'),
+  map_bounds.layer_id('carto-large'),
   source_id,
   priority
 FROM map_bounds.scale_priority

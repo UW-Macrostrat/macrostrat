@@ -13,7 +13,7 @@ WHERE NOT EXISTS (
   WHERE name = 'map_bounds_topology'
 );
 
-
+/** The area of full maps in the topology */
 CREATE TABLE IF NOT EXISTS map_bounds.map_area (
   source_id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
