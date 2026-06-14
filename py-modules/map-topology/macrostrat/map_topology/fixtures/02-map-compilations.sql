@@ -7,29 +7,13 @@
     }
  */
 
-CREATE TABLE IF NOT EXISTS map_bounds.map_layer (
-  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  name text NOT NULL,
-  description text,
-  -- These are inherited columns that may not be necessary
-  parent integer CHECK (id != parent) REFERENCES map_bounds.map_layer(id),
-  topological boolean DEFAULT true,
-  editable boolean DEFAULT true,
-  composited_from integer[],
-  slug text UNIQUE,
-  name text,
-  min_zoom integer,
-  max_zoom integer,
-  bounds Geometry(MultiPolygon, 4326) -- approximate bounds for the compilation
-);
-
 CREATE TABLE IF NOT EXISTS map_bounds.map_compilation (
-  layer_id integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
+  map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
   source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   priority integer,
   /** Cached bounds for the map's contribution to the compilation. */
   --geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (layer_id, source_id)
+  PRIMARY KEY (map_layer, source_id)
 );
 
 

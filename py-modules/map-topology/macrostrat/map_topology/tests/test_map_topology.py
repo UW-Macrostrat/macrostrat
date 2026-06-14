@@ -1,4 +1,5 @@
-from macrostrat.map_topology import create_fixtures, update_maps
+from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
+from mapboard.topology_manager.tests.helpers import TopologyInspector
 
 
 class TestMapTopology:
@@ -27,3 +28,12 @@ class TestMapTopology:
 
         # Check that we have two maps in the map_area table
         assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
+
+    def test_process_maps(self, test_db):
+        # Check that we have the appropriate number of faces
+
+        update_maps(test_db)
+        ctx = create_topo_context(test_db)
+        insp = TopologyInspector(ctx)
+        assert insp.n_face_primitives() == 3
+        assert insp.n_faces() == 2

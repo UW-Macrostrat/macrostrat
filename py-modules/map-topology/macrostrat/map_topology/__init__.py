@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 from os import environ
 from pathlib import Path
 from subprocess import run
@@ -208,36 +209,7 @@ def prepare_map_topo_features(db, _map):
 
     t_start = time.time()
     res = db.run_query(
-        """
-        WITH existing_count AS (
-            SELECT COUNT(*) as n
-            FROM map_bounds.map_topo
-            WHERE source_id = :source_id
-        ), ins AS (
-            INSERT INTO map_bounds.map_topo (source_id, geometry)
-            SELECT
-                a.source_id,
-                -- We have to remove snapping behavior to make sure that the geometry is valid.
-                ST_Multi(ST_Subdivide(
-                    ST_MakeValid(
-                        ST_SimplifyPreserveTopology(
-                            ST_Multi(a.geometry),
-                            :simplify_amount
-                        )
-                    ),
-                    256,
-                    0.0001
-                ))
-            FROM map_bounds.map_area a
-            JOIN maps.sources_metadata m
-            USING (source_id)
-            WHERE a.source_id = :source_id
-              AND (SELECT n FROM existing_count) = 0
-            RETURNING id, source_id
-        )
-        SELECT count(*) as inserted, (SELECT n FROM existing_count) as existing
-        FROM ins
-        """,
+        proc("insert-map-topo-features"),
         dict(source_id=source_id, simplify_amount=simplify_amount),
     ).one()
     db.session.commit()
@@ -264,7 +236,15 @@ def _remove_map_topo_elements(db, source_id: int):
     print(f"Removed {len(res)} map_topo elements")
 
 
-def _do_update(db, source_id: int):
+@dataclass
+class TopoUpdateResult:
+    updated: int
+    failed: int
+    remaining: int
+    errors: list[str] | None
+
+
+def _do_update(db, source_id: int) -> TopoUpdateResult:
     t_start = time.time()
 
     batch_size = 100
@@ -283,16 +263,44 @@ def _do_update(db, source_id: int):
         print("  Errors:")
         for err in res.errors:
             print(f"   [dim]- [red]{err}")
-    return res.remaining
+    return TopoUpdateResult(
+        updated=res.updated,
+        failed=res.failed,
+        remaining=res.remaining,
+        errors=res.errors,
+    )
 
 
 def add_topogeometries(db, source_id: int):
     n_remaining = 1000
+    niter = 0
+    updated = 0
+    failed = 0
+    errors = []
     while n_remaining > 0:
-        n_remaining = _do_update(
+        res = _do_update(
             db,
             source_id,
         )
+        n_remaining = res.remaining
+
+        updated += res.updated
+        failed += res.failed
+        if res.errors is not None and len(res.errors) > 0:
+            errors.extend(res.errors)
+
+        niter += 1
+
+    if updated > 0:
+        # We actually did something...
+        # We need to create the topology
+        print("  Updating map_area topogeometry")
+        db.run_query(proc("create-source-topogeometry"), dict(source_id=source_id))
+        db.session.commit()
+    else:
+        print("[dim]  No topogeometries to add")
+
+    return TopoUpdateResult(updated, failed, 0, errors)
 
 
 @cli.command("summary")

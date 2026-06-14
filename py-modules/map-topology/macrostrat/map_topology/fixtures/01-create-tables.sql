@@ -6,6 +6,23 @@ CREATE SCHEMA IF NOT EXISTS map_bounds;
 
 -- Pick a relatively small tolerance to avoid gaps
 
+CREATE TABLE IF NOT EXISTS map_bounds.map_layer (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name text NOT NULL,
+  description text,
+  -- These are inherited columns that may not be necessary
+  parent integer CHECK (id != parent) REFERENCES map_bounds.map_layer(id),
+  topological boolean DEFAULT true,
+  editable boolean DEFAULT true,
+  composited_from integer[],
+  slug text UNIQUE,
+  min_zoom integer,
+  max_zoom integer,
+  bounds Geometry(MultiPolygon, 4326) -- approximate bounds for the compilation
+);
+
+
+
 SELECT topology.CreateTopology('map_bounds_topology', 4326, 0.0001)
 WHERE NOT EXISTS (
   SELECT 1
@@ -17,7 +34,21 @@ WHERE NOT EXISTS (
 CREATE TABLE IF NOT EXISTS map_bounds.map_area (
   source_id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
+  map_layer integer REFERENCES map_bounds.map_layer(id),
   area_km double precision
+);
+
+/** Create a topogeometry column for the area of full maps. */
+SELECT topology.AddTopoGeometryColumn('map_bounds_topology', 'map_bounds','map_area', 'topo','POLYGON')
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM topology.topology
+  JOIN topology.layer
+  ON topology.topology.id = topology.layer.topology_id
+  WHERE topology.name = 'map_bounds_topology'
+    AND topology.layer.schema_name = 'map_bounds'
+    AND topology.layer.table_name = 'map_area'
+    AND topology.layer.feature_column = 'topo'
 );
 
 /** Store polygonal parts of a map area. This exists to allow for more incremental
