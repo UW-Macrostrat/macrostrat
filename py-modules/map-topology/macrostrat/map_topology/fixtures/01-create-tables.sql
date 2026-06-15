@@ -6,21 +6,11 @@ CREATE SCHEMA IF NOT EXISTS map_bounds;
 
 -- Pick a relatively small tolerance to avoid gaps
 
-CREATE TABLE IF NOT EXISTS map_bounds.map_layer (
-  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  name text NOT NULL,
-  description text,
-  -- These are inherited columns that may not be necessary
-  parent integer CHECK (id != parent) REFERENCES map_bounds.map_layer(id),
-  topological boolean DEFAULT true,
-  editable boolean DEFAULT true,
-  composited_from integer[],
-  slug text UNIQUE,
-  min_zoom integer,
-  max_zoom integer,
-  bounds Geometry(MultiPolygon, 4326) -- approximate bounds for the compilation
-);
-
+ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS slug text UNIQUE;
+ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS min_zoom integer;
+ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS max_zoom integer;
+-- Approximate bounds for the layer
+ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS bounds Geometry(MultiPolygon, 4326);
 
 
 SELECT topology.CreateTopology('map_bounds_topology', 4326, 0.0001)
@@ -32,8 +22,10 @@ WHERE NOT EXISTS (
 
 /** The area of full maps in the topology */
 CREATE TABLE IF NOT EXISTS map_bounds.map_area (
-  source_id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
+  geometry_hash uuid,
+  topology_error text,
   map_layer integer REFERENCES map_bounds.map_layer(id),
   area_km double precision
 );
@@ -56,7 +48,7 @@ WHERE NOT EXISTS (
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  source_id integer REFERENCES map_bounds.map_area(source_id) ON DELETE CASCADE,
+  source_id integer REFERENCES map_bounds.map_area(id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
   -- For tracking whether the geometry and topology are in sync
   geometry_hash uuid,
@@ -136,3 +128,12 @@ $$
   END;
 $$
 LANGUAGE plpgsql VOLATILE;
+
+CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
+  RETURNS integer AS $$
+SELECT ml.id
+FROM map_bounds.map_layer ml
+WHERE ml.id = $1.map_layer
+  AND ml.composited_from IS NULL
+  AND ml.topological;
+$$ LANGUAGE SQL IMMUTABLE;

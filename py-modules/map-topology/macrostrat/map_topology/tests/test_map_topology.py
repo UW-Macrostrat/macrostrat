@@ -1,39 +1,53 @@
 from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
 from mapboard.topology_manager.tests.helpers import TopologyInspector
+from mapboard.topology_manager.commands.update import _update
 
 
 class TestMapTopology:
     def test_map_topology(self, test_db_base):
+        # Need to work on test isolation here...
         create_fixtures(test_db_base)
 
-    def test_create_map_bounds(self, test_db):
+    def test_create_map_bounds(self, test_db_base):
         """Insert a few test maps into the database
 
         They have overlapping bounds so we can test the logic for merging them into
         a composite layer.
         """
-        db = test_db
+        db = test_db_base
 
         # Insert some test map sources
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code)
+            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
             VALUES
-                (1, 'test_source', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active'),
-                (2, 'test_source_2', ST_MakeEnvelope(1, 1, 3, 3, 4326), true, 'active');
+                (1, 'test_source', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
+                (2, 'test_source_2', ST_MakeEnvelope(1, 1, 3, 3, 4326), true, 'active', 'large');
             """
         )
 
-        update_maps(db)
+        update_maps(db, clean=False)
 
         # Check that we have two maps in the map_area table
         assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
 
-    def test_process_maps(self, test_db):
+    def test_map_compilations(self, test_db_base):
+        db = test_db_base
+
+        # Check that we have two map compilations in the map_compilation table
+        assert (
+            db.run_query("SELECT count(*) FROM map_bounds.map_compilation").scalar()
+            == 2
+        )
+
+    def test_process_maps(self, test_db_base):
         # Check that we have the appropriate number of faces
 
-        update_maps(test_db)
-        ctx = create_topo_context(test_db)
+        ctx = create_topo_context(test_db_base)
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 3
+
+        # Update topology faces
+        _update(ctx)
+
         assert insp.n_faces() == 2

@@ -25,16 +25,18 @@ layer_info AS (
     AND feature_column = 'topo'
 ),
 topogeo AS (
-  SELECT topology.createTopoGeom('map_bounds', 3, (
+  SELECT topology.createTopoGeom('map_bounds_topology', 3, (
     SELECT layer_id
     FROM layer_info
   ), topo_element_array) AS topo
   FROM topo_elements
 )
 UPDATE map_bounds.map_area
-SET topo = topogeo.topo
+SET
+  topo = topogeo.topo,
+  geometry_hash = md5(ST_AsBinary(map_area.geometry))::uuid
 FROM topogeo
-WHERE map_area.source_id = :source_id
+WHERE map_area.id = :source_id
 
 
 

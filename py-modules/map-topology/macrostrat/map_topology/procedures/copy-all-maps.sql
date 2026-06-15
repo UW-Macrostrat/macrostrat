@@ -1,12 +1,13 @@
 SET search_path TO map_bounds, maps, public;
 
-INSERT INTO map_bounds.map_area (source_id, geometry, area_km)
+INSERT INTO map_bounds.map_area (id, geometry, area_km, map_layer)
 SELECT
   source_id,
   ST_Multi(rgeom),
-  ST_Area(rgeom::geography) / 1e6
+  ST_Area(rgeom::geography) / 1e6,
+  map_bounds.layer_id(scale::text || '-large')
 FROM maps.sources
 WHERE rgeom IS NOT NULL
   AND is_finalized
   AND status_code = 'active'
-ON CONFLICT (source_id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;

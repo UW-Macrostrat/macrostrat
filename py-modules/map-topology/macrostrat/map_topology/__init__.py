@@ -51,8 +51,11 @@ def create_fixtures(db, reset: bool = False):
 
     # Create fixtures for mapboard topology manager
     ctx = create_topo_context(db)
-    db.run_fixtures(__dir__ / "fixtures")
-    create_tables(ctx)
+
+    def create_data_tables(ctx: typer.Context):
+        db.run_fixtures(__dir__ / "fixtures")
+
+    create_tables(ctx, create_data_tables=create_data_tables)
 
 
 @cli.command("create")
@@ -142,9 +145,14 @@ def update(
     update_maps(db, maps, remove)
 
 
-def update_maps(db, maps: list[str] = None, remove: bool = False):
+def update_maps(
+    db, maps: list[str] = None, *, remove: bool = False, clean: bool = True
+):
     # Copy all maps into the schema
     db.run_sql(proc("copy-all-maps"))
+
+    # Associate maps with compilations
+    db.run_sql(proc("insert-map-compilations"))
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
@@ -156,7 +164,8 @@ def update_maps(db, maps: list[str] = None, remove: bool = False):
     for _map in all_maps:
         process_map(db, _map)
 
-    _clean(db)
+    if clean:
+        _clean(db)
 
     end_time = time.time()
 
@@ -167,13 +176,13 @@ def get_map_list(db, filter_by: list[str] = None):
     all_maps = db.run_query(
         """
         SELECT
-            a.source_id,
+            a.id source_id,
             slug,
             scale,
             area_km
         FROM map_bounds.map_area a
         JOIN maps.sources s
-        USING (source_id)
+          ON a.id = s.source_id
         ORDER BY area_km DESC
     """
     ).all()
@@ -256,6 +265,7 @@ def _do_update(db, source_id: int) -> TopoUpdateResult:
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
+    print(res)
     print(
         f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
     )
