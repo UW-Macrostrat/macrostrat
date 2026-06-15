@@ -93,7 +93,7 @@ def split_ids_and_slugs(map_ids):
 def filter_maps(all_maps, map_ids: list[str]):
     ids, slugs = split_ids_and_slugs(map_ids)
     for m in all_maps:
-        if m.source_id in ids or m.slug in slugs:
+        if m.map_id in ids or m.slug in slugs:
             yield m
 
 
@@ -111,9 +111,9 @@ def _remove(maps: list[str] = Argument(None)):
         raise Exception("User aborted")
 
     for _map in all_maps:
-        _print_source_info(_map, prefix="Removing map ")
+        _print_map_info(_map, prefix="Removing map ")
         print("Removing existing map topo elements")
-        _remove_map_topo_elements(db, _map.source_id)
+        _remove_map_topo_elements(db, _map.map_id)
 
     _clean(db)
 
@@ -176,7 +176,7 @@ def get_map_list(db, filter_by: list[str] = None):
     all_maps = db.run_query(
         """
         SELECT
-            a.id source_id,
+            a.id map_id,
             slug,
             scale,
             area_km
@@ -191,18 +191,18 @@ def get_map_list(db, filter_by: list[str] = None):
     return all_maps
 
 
-def _print_source_info(map, prefix="Processing map "):
+def _print_map_info(map, prefix="Processing map "):
     print(
-        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.source_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
     )
 
 
 def process_map(db, map):
-    _print_source_info(map, prefix="Processing map ")
+    _print_map_info(map, prefix="Processing map ")
 
     prepare_map_topo_features(db, map)
     print()
-    add_topogeometries(db, map.source_id)
+    add_topogeometries(db, map.map_id)
     print()
     print()
 
@@ -210,7 +210,7 @@ def process_map(db, map):
 def prepare_map_topo_features(db, _map):
     # Insert or update the map topo
 
-    source_id = _map.source_id
+    map_id = _map.map_id
     simplify_amount = 0.0001
     # Don't simplify the boundaries of fine-scale maps as much.
     if _map.scale == "large":
@@ -219,7 +219,7 @@ def prepare_map_topo_features(db, _map):
     t_start = time.time()
     res = db.run_query(
         proc("insert-map-topo-features"),
-        dict(source_id=source_id, simplify_amount=simplify_amount),
+        dict(map_id=map_id, simplify_amount=simplify_amount),
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
@@ -230,15 +230,15 @@ def prepare_map_topo_features(db, _map):
     print(f"{total} features,  {elapsed:.3f} seconds")
 
 
-def _remove_map_topo_elements(db, source_id: int):
+def _remove_map_topo_elements(db, map_id: int):
     res = list(
         db.run_query(
             """
         DELETE FROM map_bounds.map_topo
-        WHERE source_id = :source_id
+        WHERE map_id = :map_id
         RETURNING id
         """,
-            dict(source_id=source_id),
+            dict(map_id=map_id),
         )
     )
     db.session.commit()
@@ -253,7 +253,7 @@ class TopoUpdateResult:
     errors: list[str] | None
 
 
-def _do_update(db, source_id: int) -> TopoUpdateResult:
+def _do_update(db, map_id: int) -> TopoUpdateResult:
     t_start = time.time()
 
     batch_size = 100
@@ -261,11 +261,10 @@ def _do_update(db, source_id: int) -> TopoUpdateResult:
 
     res = db.run_query(
         proc("update-topology-row"),
-        dict(source_id=source_id, batch_size=batch_size, tolerance=tolerance),
+        dict(map_id=map_id, batch_size=batch_size, tolerance=tolerance),
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
-    print(res)
     print(
         f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
     )
@@ -281,7 +280,7 @@ def _do_update(db, source_id: int) -> TopoUpdateResult:
     )
 
 
-def add_topogeometries(db, source_id: int):
+def add_topogeometries(db, map_id: int):
     n_remaining = 1000
     niter = 0
     updated = 0
@@ -290,7 +289,7 @@ def add_topogeometries(db, source_id: int):
     while n_remaining > 0:
         res = _do_update(
             db,
-            source_id,
+            map_id,
         )
         n_remaining = res.remaining
 
@@ -305,7 +304,7 @@ def add_topogeometries(db, source_id: int):
         # We actually did something...
         # We need to create the topology
         print("  Updating map_area topogeometry")
-        db.run_query(proc("create-source-topogeometry"), dict(source_id=source_id))
+        db.run_query(proc("create-source-topogeometry"), dict(map_id=map_id))
         db.session.commit()
     else:
         print("[dim]  No topogeometries to add")
@@ -352,26 +351,26 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
     # Try to re-run errors
     all_maps = db.run_query(
         """
-        SELECT t.id, t.source_id, slug, area_km, t.topology_error
+        SELECT t.id, t.map_id, slug, area_km, t.topology_error
         FROM map_bounds.map_topo t
-        JOIN maps.sources_metadata
-        USING (source_id)
+        JOIN maps.sources_metadata m
+          ON t.map_id = m.source_id
         JOIN map_bounds.map_area
-        USING (source_id)
+        USING (map_id)
         WHERE t.topology_error IS NOT NULL
-        ORDER BY t.source_id, ST_GeoHash(t.geometry)
+        ORDER BY t.map_id, ST_GeoHash(t.geometry)
     """
     ).all()
 
     if maps is not None and len(maps) > 0:
         all_maps = list(filter_maps(all_maps, maps))
 
-    curr_source_id = None
+    curr_map_id = None
     for row in all_maps:
-        if curr_source_id != row.source_id:
+        if curr_map_id != row.map_id:
             print()
-            _print_source_info(row, prefix="Source ")
-            curr_source_id = row.source_id
+            _print_map_info(row, prefix="Source ")
+            curr_map_id = row.map_id
         err = row.topology_error
 
         print(f"[dim]- {row.id}: [/dim]", end="")

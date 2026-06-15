@@ -2,7 +2,7 @@
 
 INSERT INTO map_bounds.map_compilation (
   map_layer,
-  source_id,
+  map_id,
   priority
 )
 SELECT
@@ -32,4 +32,12 @@ SELECT
   priority
 FROM map_bounds.scale_priority
 WHERE scale IN ('medium', 'large')
-ON CONFLICT (map_layer, source_id) DO NOTHING;
+ON CONFLICT (map_layer, map_id) DO NOTHING;
+
+
+/** Temporary: associate maps directly with layers (means maps can only be in one layer) **/
+UPDATE map_bounds.map_area
+SET map_layer = map_bounds.layer_id('carto-' || s.scale)
+FROM maps.sources s
+WHERE map_bounds.map_area.id = s.source_id
+  AND s.scale IS NOT NULL;

@@ -31,6 +31,21 @@ class TestMapTopology:
         # Check that we have two maps in the map_area table
         assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
 
+    def test_dirty_faces(self, test_db_base):
+        db = test_db_base
+
+        assert (
+            db.run_query(
+                "SELECT count(topo) FROM map_bounds.map_area WHERE topo IS NOT NULL"
+            ).scalar()
+            == 2
+        )
+        # Check that we have three dirty faces in the dirty_face table
+        assert (
+            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
+            == 2
+        )
+
     def test_map_compilations(self, test_db_base):
         db = test_db_base
 
@@ -42,10 +57,19 @@ class TestMapTopology:
 
     def test_process_maps(self, test_db_base):
         # Check that we have the appropriate number of faces
-
-        ctx = create_topo_context(test_db_base)
+        db = test_db_base
+        ctx = create_topo_context(db)
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 3
+
+        # Force faces to dirty
+        db.run_sql(
+            """INSERT INTO map_bounds_topology.dirty_face (map_layer, id)
+            SELECT ml.id, face_id FROM map_bounds_topology.face
+            CROSS JOIN map_bounds.map_layer ml;
+            """
+        )
+        db.session.commit()
 
         # Update topology faces
         _update(ctx)

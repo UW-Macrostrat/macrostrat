@@ -2,7 +2,7 @@ WITH elements AS (
   SELECT
     (topo).*
   FROM map_bounds.map_topo
-  WHERE source_id = :source_id
+  WHERE map_id = :map_id
 ),
 face_ids AS (
   SELECT r.element_id face_id
@@ -36,7 +36,7 @@ SET
   topo = topogeo.topo,
   geometry_hash = md5(ST_AsBinary(map_area.geometry))::uuid
 FROM topogeo
-WHERE map_area.id = :source_id
+WHERE map_area.id = :map_id
 
 
 

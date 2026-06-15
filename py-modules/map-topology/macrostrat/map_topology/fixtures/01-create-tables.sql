@@ -12,6 +12,13 @@ ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS max_zoom integer;
 -- Approximate bounds for the layer
 ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS bounds Geometry(MultiPolygon, 4326);
 
+INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological)
+VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('carto-small', 'Carto small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('carto-medium', 'Carto medium', 0, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('carto-large', 'Carto large', 0, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true)
+ON CONFLICT (slug) DO NOTHING;
+
 
 SELECT topology.CreateTopology('map_bounds_topology', 4326, 0.0001)
 WHERE NOT EXISTS (
@@ -48,7 +55,7 @@ WHERE NOT EXISTS (
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  source_id integer REFERENCES map_bounds.map_area(id) ON DELETE CASCADE,
+  map_id integer REFERENCES map_bounds.map_area(id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
   -- For tracking whether the geometry and topology are in sync
   geometry_hash uuid,

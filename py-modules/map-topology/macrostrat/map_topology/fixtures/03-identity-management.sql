@@ -1,7 +1,7 @@
 ALTER TABLE map_bounds_topology.map_face
-  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 ALTER TABLE map_bounds_topology.face_identity
-  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 
 /*
 Get the map face that defines a polygon for a specific topology
@@ -12,10 +12,10 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
 )
   RETURNS integer AS $$
   -- Get maps that overlap the area
-  SELECT id INTO result
+  SELECT mc.map_id
   FROM map_bounds.map_area ma
   JOIN map_bounds.map_compilation mc
-    ON mc.source_id = ma.id
+    ON mc.map_id = ma.id
    AND mc.map_layer = _map_layer
   WHERE ST_Intersects(geom, ma.geometry)
   ORDER BY priority
@@ -23,10 +23,11 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
 $$ LANGUAGE sql;
 
 
+/** TODO: this has to be recreated here because the types are wrong **/
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
 SELECT
-  source_id
+  map_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds_topology.map_face f
   ON (f.topo).id = r.topogeo_id

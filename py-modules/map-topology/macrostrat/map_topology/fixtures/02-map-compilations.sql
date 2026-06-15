@@ -9,11 +9,11 @@
 
 CREATE TABLE IF NOT EXISTS map_bounds.map_compilation (
   map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
-  source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  map_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   priority integer,
   /** Cached bounds for the map's contribution to the compilation. */
   --geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (map_layer, source_id)
+  PRIMARY KEY (map_layer, map_id)
 );
 
 
@@ -34,16 +34,9 @@ WHERE NOT EXISTS (
 
 --CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_source_id_idx ON map_bounds.map_compilation (source_id);
 -- CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_priority_idx ON map_bounds.map_compilation (priority);
-CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_geometry_idx ON map_bounds.map_compilation USING gist (geometry);
+-- CREATE INDEX IF NOT EXISTS map_bounds_map_compilation_geometry_idx ON map_bounds.map_compilation USING gist (geometry);
 
 -- Fill map compliation table for carto layers
-
-INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds)
-VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
-        ('carto-small', 'Carto small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
-        ('carto-medium', 'Carto medium', 0, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))),
-        ('carto-large', 'Carto large', 0, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)))
-ON CONFLICT (slug) DO NOTHING;
 
 CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
 RETURNS integer AS $$

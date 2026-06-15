@@ -2,7 +2,7 @@ WITH update AS (
   SELECT
     map_bounds.update_topogeom(m) res
   FROM map_bounds.map_topo m
-  WHERE source_id = :source_id
+  WHERE map_id = :map_id
     AND topo IS NULL
     AND topology_error IS NULL
   LIMIT :batch_size
@@ -15,7 +15,7 @@ SELECT
   (
     SELECT count(*) n
     FROM map_bounds.map_topo
-    WHERE source_id = :source_id
+    WHERE map_id = :map_id
       AND topo IS NULL
       AND topology_error IS NULL
    )-count(*)  remaining,
