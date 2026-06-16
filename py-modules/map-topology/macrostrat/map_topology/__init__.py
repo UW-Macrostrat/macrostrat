@@ -151,6 +151,7 @@ def update_maps(
     *,
     remove: bool = False,
     clean: bool = True,
+    **kwargs,
 ):
     db = ctx.database
     # Copy all maps into the schema
@@ -167,7 +168,7 @@ def update_maps(
 
     start_time = time.time()
     for _map in all_maps:
-        process_map(db, _map)
+        process_map(db, _map, **kwargs)
 
     if clean:
         _clean(ctx)
@@ -202,17 +203,17 @@ def _print_map_info(map, prefix="Processing map "):
     )
 
 
-def process_map(db, map):
+def process_map(db, map, **kwargs):
     _print_map_info(map, prefix="Processing map ")
 
-    prepare_map_topo_features(db, map)
+    prepare_map_topo_features(db, map, **kwargs)
     print()
     add_topogeometries(db, map.map_id)
     print()
     print()
 
 
-def prepare_map_topo_features(db, _map):
+def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
     # Insert or update the map topo
 
     map_id = _map.map_id
@@ -224,7 +225,11 @@ def prepare_map_topo_features(db, _map):
     t_start = time.time()
     res = db.run_query(
         proc("insert-map-topo-features"),
-        dict(map_id=map_id, simplify_amount=simplify_amount),
+        dict(
+            map_id=map_id,
+            simplify_amount=simplify_amount,
+            subdivide_vertices=subdivide_vertices,
+        ),
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
@@ -285,7 +290,7 @@ def _do_update(db, map_id: int) -> TopoUpdateResult:
     )
 
 
-def add_topogeometries(db, map_id: int):
+def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
     n_remaining = 1000
     niter = 0
     updated = 0

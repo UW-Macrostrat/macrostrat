@@ -122,3 +122,26 @@ class TestMapTopology:
         assert len(face_list) == 3
 
         assert insp.n_faces() == 3
+
+    ## TODO, we could add test isolation here with a template_database fixture...
+    def test_add_another_layer_feature(self, ctx):
+        """Add overlapping feature to the 'medium' layer to check that it is not merged into the 'large' layer.
+
+        We use a large, circular feature to check whether we can also successfully work with maps that are subdivided
+        on input.
+        """
+        db = ctx.database
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            VALUES
+                (4, 'test_source_4', ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326), true, 'active', 'medium')
+            """
+        )
+
+        update_maps(ctx, subdivide_vertices=32)
+        _update(ctx)
+
+        insp = TopologyInspector(ctx)
+        assert insp.n_faces() == 4

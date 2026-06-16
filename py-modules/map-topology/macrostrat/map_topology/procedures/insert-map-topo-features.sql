@@ -14,8 +14,8 @@ WITH existing_count AS (
             :simplify_amount
           )
         ),
-        256,
-        0.0001
+        :subdivide_vertices,
+        :simplify_amount
                ))
     FROM map_bounds.map_area a
     JOIN maps.sources_metadata m
