@@ -1,7 +1,14 @@
 from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
 from mapboard.topology_manager.tests.helpers import TopologyInspector
 from mapboard.topology_manager.commands.update import _update
+from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
 from pytest import fixture
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+
+
+def geom(_shape, srid=4326):
+    return str(from_shape(_shape, srid, extended=True))
 
 
 @fixture
@@ -38,7 +45,7 @@ class TestMapTopology:
         # Check that we have three dirty faces in the dirty_face table
         assert (
             db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
-            == 2
+            == 3
         )
 
         # Check that we have two maps in the map_area table
@@ -85,3 +92,33 @@ class TestMapTopology:
         _update(ctx)
 
         assert insp.n_faces() == 2
+
+    def test_add_overlapping_map(self, ctx):
+        """Add a face that overlaps the other two"""
+        db = ctx.database
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            VALUES
+                (3, 'test_source_3', ST_MakeEnvelope(1, 1, 4, 4, 4326), true, 'active', 'large')
+            """
+        )
+        insp = TopologyInspector(ctx)
+
+        update_maps(ctx)
+
+        assert insp.n_face_primitives() == 5
+
+        _update(ctx)
+
+        # Get the face primitive in the center of the new face
+        center = geom(Point(2.5, 2.5))
+        face_id = insp.get_face_id(center)
+        map_layer = db.run_query(
+            "SELECT id FROM map_bounds.map_layer WHERE slug = 'carto-large'"
+        ).scalar()
+        face_list = get_adjacent_faces(db, face_id, map_layer)
+
+        assert len(face_list) == 3
+
+        assert insp.n_faces() == 3

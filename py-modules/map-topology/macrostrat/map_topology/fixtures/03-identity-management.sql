@@ -29,10 +29,26 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer
 SELECT
   map_id
 FROM map_bounds_topology.relation r
-JOIN map_bounds_topology.map_face f
+JOIN map_bounds.map_area f
   ON (f.topo).id = r.topogeo_id
+ AND f.map_layer = $2
+JOIN map_bounds.map_compilation mc
+  ON mc.map_id = f.id
+ AND mc.map_layer = $2
 WHERE element_id = $1
   AND element_type = 3
-  AND r.layer_id = map_bounds_topology.__map_face_layer_id()
-  AND f.map_layer = $2;
+ORDER BY priority, map_id DESC
+LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION map_bounds_topology.faces_are_joinable(f1 integer, f2 integer, map_layer integer)
+  RETURNS boolean AS $$
+DECLARE
+  id1 integer;
+  id2 integer;
+BEGIN
+  id1 := map_bounds_topology.identity_for_face(f1, map_layer);
+  id2 := map_bounds_topology.identity_for_face(f2, map_layer);
+  RETURN (id1 = id2);
+END
+$$ LANGUAGE plpgsql IMMUTABLE;
