@@ -23,17 +23,23 @@ class TestMapTopology:
         ctx = create_topo_context(test_db_base)
         db = ctx.database
 
-        # Insert some test map sources
+        # Insert two non-overlapping test sources
         db.run_query(
             """
             INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
             VALUES
-                (1, 'test_source', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
-                (2, 'test_source_2', ST_MakeEnvelope(1, 1, 3, 3, 4326), true, 'active', 'large');
+                (1, 'test_source_1', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
+                (2, 'test_source_2', ST_MakeEnvelope(3, 0, 5, 2, 4326), true, 'active', 'large');
             """
         )
 
         update_maps(ctx)
+
+        # Check that we have three dirty faces in the dirty_face table
+        assert (
+            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
+            == 2
+        )
 
         # Check that we have two maps in the map_area table
         assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
@@ -47,11 +53,10 @@ class TestMapTopology:
             ).scalar()
             == 2
         )
-        # Check that we have three dirty faces in the dirty_face table
-        assert (
-            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
-            == 3
-        )
+
+    def test_topology_is_valid(self, ctx):
+        insp = TopologyInspector(ctx)
+        assert insp.is_valid()
 
     def test_map_compilations(self, ctx):
         db = ctx.database
@@ -65,7 +70,7 @@ class TestMapTopology:
     def test_process_maps(self, ctx):
         # Check that we have the appropriate number of faces
         insp = TopologyInspector(ctx)
-        assert insp.n_face_primitives() == 3
+        assert insp.n_face_primitives() == 2
 
         # Force faces to dirty
         # db.run_sql(

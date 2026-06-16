@@ -46,7 +46,8 @@ WHERE NOT EXISTS (
     AND topology.layer.feature_column = 'topo'
 );
 
-/** Store polygonal parts of a map area. This exists to allow for more incremental
+/**
+  Store polygonal parts of a map area. This exists to allow for more incremental
   maintenance for map faces
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
