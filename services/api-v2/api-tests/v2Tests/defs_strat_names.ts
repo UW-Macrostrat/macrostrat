@@ -105,3 +105,49 @@ it("should output CSV", function (done) {
       done();
     });
 });
+
+it("should accept rule=all with a strat id", function (done) {
+  request(settings.host)
+    .get("/defs/strat_names?rule=all&strat_name_id=9992")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .expect(function (res) {
+      const hasRequestedStratName = res.body.success.data.some(function (d) {
+        return d.strat_name_id === 9992;
+      });
+
+      if (!hasRequestedStratName) {
+        throw new Error(
+          "defs/strat_names?rule=all&strat_name_id=9992 does not include the requested strat_name_id",
+        );
+      }
+    })
+    .end(function (error, res) {
+      if (error) return done(error);
+      done();
+    });
+});
+
+it("should accept rule=down with a concept id", function (done) {
+  request(settings.host)
+    .get("/defs/strat_names?strat_name_id=9992")
+    .expect(validators.aSuccessfulRequest)
+    .expect(validators.json)
+    .expect(validators.atLeastOneResult)
+    .end(function (error, res) {
+      if (error) return done(error);
+
+      const conceptId = res.body.success.data[0].concept_id;
+
+      request(settings.host)
+        .get("/defs/strat_names?rule=down&concept_id=" + conceptId)
+        .expect(validators.aSuccessfulRequest)
+        .expect(validators.json)
+        .expect(validators.atLeastOneResult)
+        .end(function (error, res) {
+          if (error) return done(error);
+          done();
+        });
+    });
+});

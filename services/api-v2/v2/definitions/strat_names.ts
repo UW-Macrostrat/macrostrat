@@ -26,7 +26,7 @@ module.exports = function (req, res, next, cb) {
         );
       } else if (req.query.concept_id) {
         where.push(
-          "parent IN (( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id = ANY(:concept_id) )) OR l.strat_name_id = ANY(( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id IN (:concept_id) ))",
+          "parent IN (( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id = ANY(:concept_id) )) OR l.strat_name_id = ANY(( SELECT DISTINCT strat_name_id FROM macrostrat.lookup_strat_names WHERE concept_id = ANY(:concept_id) ))",
         );
         params["concept_id"] = larkin.parseMultipleIds(req.query.concept_id);
       }
@@ -38,7 +38,7 @@ module.exports = function (req, res, next, cb) {
         params["strat_name"] = req.query.strat_name;
       } else if (req.query.strat_name_id) {
         where.push(
-          "tree = (SELECT tree FROM macrostrat.lookup_strat_names WHERE strat_name_id IN (:strat_name_id))",
+          "tree = (SELECT tree FROM macrostrat.lookup_strat_names WHERE strat_name_id = ANY(:strat_name_id))",
         );
         params["strat_name_id"] = larkin.parseMultipleIds(
           req.query.strat_name_id,
@@ -152,8 +152,8 @@ module.exports = function (req, res, next, cb) {
       if (cb) {
         cb(error);
       } else {
-        larkin.error(req, res, next, "Something went wrong");
-      }
+          larkin.error(req, res, next, error.message || "Internal server error", 500);
+        }
     } else {
       if (cb) {
         cb(null, response.rows);
