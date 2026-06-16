@@ -13,7 +13,7 @@ from macrostrat.database import Database
 from macrostrat.utils import working_directory
 from mapboard.topology_manager.commands.clean_topology import _clean_topology
 from mapboard.topology_manager.commands import create_tables
-from mapboard.topology_manager.config import create_context
+from mapboard.topology_manager.config import create_context, TopologyContext
 
 from macrostrat.core.database import get_database
 
@@ -45,12 +45,15 @@ def create_topo_context(db: Database):
     )
 
 
-def create_fixtures(db, reset: bool = False):
-    if reset:
-        drop()
+def get_topo_context():
+    db = get_database()
+    return create_topo_context(db)
 
-    # Create fixtures for mapboard topology manager
-    ctx = create_topo_context(db)
+
+def create_fixtures(ctx: TopologyContext, reset: bool = False):
+    db = ctx.database
+    if reset:
+        db.run_fixtures(proc("drop-tables"))
 
     def create_data_tables(ctx: typer.Context):
         db.run_fixtures(__dir__ / "fixtures")
@@ -61,22 +64,22 @@ def create_fixtures(db, reset: bool = False):
 @cli.command("create")
 def _create_fixtures(reset: bool = False):
     """Create topology fixtures"""
-    db = get_database()
-    create_fixtures(db, reset)
+    ctx = get_topo_context()
+    create_fixtures(ctx, reset)
 
 
 @cli.command("drop")
 def drop():
     """Drop topology fixtures"""
-    db = get_database()
-    db.run_fixtures(proc("drop-tables"))
+    ctx = get_topo_context()
+    ctx.database.run_fixtures(proc("drop-tables"))
 
 
 @cli.command("reset")
 def reset():
     """Reset topogeometry creation"""
-    db = get_database()
-    db.run_fixtures(proc("reset-topology"))
+    ctx = get_topo_context()
+    ctx.database.run_fixtures(proc("reset-topology"))
 
 
 def split_ids_and_slugs(map_ids):
@@ -115,23 +118,21 @@ def _remove(maps: list[str] = Argument(None)):
         print("Removing existing map topo elements")
         _remove_map_topo_elements(db, _map.map_id)
 
-    _clean(db)
+    _clean(ctx)
 
 
-def _clean(db):
+def _clean(ctx: TopologyContext):
+    db = ctx.database
     res = db.run_query(proc("clear-extra-topogeometries")).scalar()
     db.session.commit()
     print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
-
-    ctx = create_topo_context(db)
     _clean_topology(ctx)
 
 
 @cli.command("clean")
 def clean():
     """Clean topology fixtures"""
-    db = get_database()
-    _clean(db)
+    _clean(get_topo_context())
 
 
 @cli.command("update")
@@ -141,13 +142,17 @@ def update(
     remove: bool = False,
 ):
     """Update topology fixtures"""
-    db = get_database()
-    update_maps(db, maps, remove)
+    update_maps(get_topo_context(), maps, remove)
 
 
 def update_maps(
-    db, maps: list[str] = None, *, remove: bool = False, clean: bool = True
+    ctx: TopologyContext,
+    maps: list[str] = None,
+    *,
+    remove: bool = False,
+    clean: bool = True,
 ):
+    db = ctx.database
     # Copy all maps into the schema
     db.run_sql(proc("copy-all-maps"))
 
@@ -165,7 +170,7 @@ def update_maps(
         process_map(db, _map)
 
     if clean:
-        _clean(db)
+        _clean(ctx)
 
     end_time = time.time()
 

@@ -1,12 +1,18 @@
 from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
 from mapboard.topology_manager.tests.helpers import TopologyInspector
 from mapboard.topology_manager.commands.update import _update
+from pytest import fixture
+
+
+@fixture
+def ctx(test_db_base):
+    return create_topo_context(test_db_base)
 
 
 class TestMapTopology:
-    def test_map_topology(self, test_db_base):
-        # Need to work on test isolation here...
-        create_fixtures(test_db_base)
+    def test_map_topology(self, ctx):
+        # TODO: Need to work on test isolation here...
+        create_fixtures(ctx)
 
     def test_create_map_bounds(self, test_db_base):
         """Insert a few test maps into the database
@@ -14,7 +20,8 @@ class TestMapTopology:
         They have overlapping bounds so we can test the logic for merging them into
         a composite layer.
         """
-        db = test_db_base
+        ctx = create_topo_context(test_db_base)
+        db = ctx.database
 
         # Insert some test map sources
         db.run_query(
@@ -26,13 +33,13 @@ class TestMapTopology:
             """
         )
 
-        update_maps(db, clean=False)
+        update_maps(ctx)
 
         # Check that we have two maps in the map_area table
         assert db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar() == 2
 
-    def test_dirty_faces(self, test_db_base):
-        db = test_db_base
+    def test_dirty_faces(self, ctx):
+        db = ctx.database
 
         assert (
             db.run_query(
@@ -43,11 +50,11 @@ class TestMapTopology:
         # Check that we have three dirty faces in the dirty_face table
         assert (
             db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
-            == 2
+            == 3
         )
 
-    def test_map_compilations(self, test_db_base):
-        db = test_db_base
+    def test_map_compilations(self, ctx):
+        db = ctx.database
 
         # Check that we have two map compilations in the map_compilation table
         assert (
@@ -55,21 +62,19 @@ class TestMapTopology:
             == 2
         )
 
-    def test_process_maps(self, test_db_base):
+    def test_process_maps(self, ctx):
         # Check that we have the appropriate number of faces
-        db = test_db_base
-        ctx = create_topo_context(db)
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 3
 
         # Force faces to dirty
-        db.run_sql(
-            """INSERT INTO map_bounds_topology.dirty_face (map_layer, id)
-            SELECT ml.id, face_id FROM map_bounds_topology.face
-            CROSS JOIN map_bounds.map_layer ml;
-            """
-        )
-        db.session.commit()
+        # db.run_sql(
+        #     """INSERT INTO map_bounds_topology.dirty_face (map_layer, id)
+        #     SELECT ml.id, face_id FROM map_bounds_topology.face
+        #     CROSS JOIN map_bounds.map_layer ml;
+        #     """
+        # )
+        # db.session.commit()
 
         # Update topology faces
         _update(ctx)

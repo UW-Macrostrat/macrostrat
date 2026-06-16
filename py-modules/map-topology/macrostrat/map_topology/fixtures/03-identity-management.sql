@@ -18,7 +18,7 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
     ON mc.map_id = ma.id
    AND mc.map_layer = _map_layer
   WHERE ST_Intersects(geom, ma.geometry)
-  ORDER BY priority
+  ORDER BY priority, map_id DESC
   LIMIT 1;
 $$ LANGUAGE sql;
 
