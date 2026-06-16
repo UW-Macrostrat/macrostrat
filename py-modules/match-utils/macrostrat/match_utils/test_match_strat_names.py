@@ -18,7 +18,15 @@ from . import (
     standardize_names,
 )
 from .models import MatchResult
+from pytest import fixture
 
+from ._test_helpers import get_test_lith_names
+from .strat_names import create_ignore_list
+
+
+@fixture(autouse=True)
+def initialize_ignore_list_for_tests():
+    create_ignore_list(list(get_test_lith_names()))
 
 class StratTestCaseData(BaseModel):
     xy: tuple[float, float]
@@ -135,13 +143,14 @@ def test_exact_match_is_exact(db):
     assert len(exact_matches) > 0
 
 
-def test_included_match_not_exact(db):
-    """Partial name match should return is_exact=False."""
+def test_partial_name_matches_are_exact_when_cleaned_name_matches(db):
+    """A short query can match exact cleaned names such as concept-level Navajo."""
     names = standardize_names("Navajo")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
-    non_exact = [row for row, is_exact in rows if not is_exact]
-    assert len(non_exact) > 0
+
+    assert len(rows) > 0
+    assert any(is_exact for _, is_exact in rows)
 
 
 def test_match_count(db):

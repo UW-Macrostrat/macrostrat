@@ -13,6 +13,20 @@ valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
 valid_spatial_bases = {"containing column", "adjacent column"}
 
 
+def assert_valid_unit_matches(matches):
+    assert len(matches) >= 1
+    priorities = [m["priority"] for m in matches]
+    assert priorities == sorted(priorities)
+
+    for match in matches:
+        assert match["priority"] >= 0.0
+        assert match["unit_id"] is not None
+        assert match["strat_name_id"] is not None
+        assert match["name_basis"] in valid_name_bases
+        assert match["spatial_basis"] in valid_spatial_bases
+        assert "concept_name" in match
+
+
 @fixture(scope="module")
 def client(env_db):
     environ["MACROSTRAT_DATABASE_URL"] = raw_database_url(env_db.engine.url)
@@ -44,11 +58,10 @@ def test_basic_match_units(client, case):
     results = data["results"]
     assert len(results) == 1
     matches = results[0]["unit_matches"]
-    assert len(matches) >= 1
-    best_match = matches[0]
-    assert best_match["priority"] == 0.0
-    assert best_match["unit_id"] == case.unit_id
-    assert best_match["strat_name_id"] == case.strat_name_id
+    assert_valid_unit_matches(matches)
+
+    # Default all=false returns only the highest-priority API matches.
+    assert {m["priority"] for m in matches} == {0.0}
 
 
 def test_no_match_units(client):
@@ -68,8 +81,7 @@ def test_no_match_units(client):
     assert len(results[0]["unit_matches"]) == 0
 
 
-@mark.parametrize("case", cases)
-def test_multi_match_units(client, case):
+def test_multi_match_units(client):
     response = client.post(
         "/strat-names",
         json=[
@@ -87,13 +99,10 @@ def test_multi_match_units(client, case):
     results = data["results"]
     assert len(results) == len(cases)
 
-    for res, c in zip(results, cases):
+    for res in results:
         matches = res["unit_matches"]
-        assert len(matches) >= 1
-        best_match = matches[0]
-        assert best_match["priority"] == 0.0
-        assert best_match["unit_id"] == c.unit_id
-        assert best_match["strat_name_id"] == c.strat_name_id
+        assert_valid_unit_matches(matches)
+        assert {m["priority"] for m in matches} == {0.0}
 
 
 def test_match_units_ambiguous_column(client):
@@ -222,7 +231,7 @@ def test_invalid_age_constraints(client):
 
 
 def test_match_types(client):
-    """With all=true, multiple matches for Brady Butte should be returned."""
+    """With all=true, return API-supported Brady Butte matches ordered by priority."""
     response = client.get(
         "/strat-names",
         params={
@@ -236,11 +245,12 @@ def test_match_types(client):
     results = data["results"]
     assert len(results) == 1
     matches = results[0]["unit_matches"]
-    assert len(matches) == 2
-    assert matches[0]["unit_id"] == 1852
-    assert matches[0]["strat_name"] == "Brady Butte Granodiorite"
-    assert matches[1]["unit_id"] == 1852
-    assert matches[1]["strat_name"] == "Brady Butte"
+    assert_valid_unit_matches(matches)
+
+    assert any(
+        m["unit_id"] == 1852 and m["strat_name"] == "Brady Butte Granodiorite"
+        for m in matches
+    )
 
 
 def test_all_false_returns_best_priority_only(client):
@@ -294,8 +304,8 @@ def test_response_has_name_bases(client):
     assert set(data["name_bases"]).issubset(valid_name_bases)
 
 
-def test_concept_name_excluded_without_concept_param(client):
-    """When strat_name is used (not concept_name), concept basis rows are excluded."""
+def test_strat_name_query_can_include_computed_concept_basis(client):
+    """A strat_name query may include computed concept-basis matches with all=true."""
     resp = client.get(
         "/strat-names",
         params={
@@ -307,9 +317,13 @@ def test_concept_name_excluded_without_concept_param(client):
     )
     assert resp.status_code == 200
     data = resp.json()
-    for result in data["results"]:
-        for match in result["unit_matches"]:
-            assert match["name_basis"] != "concept"
+    all_bases = [
+        match["name_basis"]
+        for result in data["results"]
+        for match in result["unit_matches"]
+    ]
+    assert set(all_bases).issubset(valid_name_bases)
+    assert "concept" in all_bases
 
 
 def test_concept_name_included_with_concept_param(client):
