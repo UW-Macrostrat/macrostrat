@@ -7,7 +7,7 @@ Macrostrat's database.
 
 from pandas import isna
 from pydantic import BaseModel
-from pytest import mark
+from pytest import fixture, mark
 
 from . import (
     ensure_single,
@@ -17,16 +17,15 @@ from . import (
     get_matched_unit,
     standardize_names,
 )
-from .models import MatchResult
-from pytest import fixture
-
 from ._test_helpers import get_test_lith_names
+from .models import MatchResult
 from .strat_names import create_ignore_list
 
 
 @fixture(autouse=True)
 def initialize_ignore_list_for_tests():
     create_ignore_list(list(get_test_lith_names()))
+
 
 class StratTestCaseData(BaseModel):
     xy: tuple[float, float]

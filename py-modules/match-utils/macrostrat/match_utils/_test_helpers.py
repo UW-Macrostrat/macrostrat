@@ -3,7 +3,6 @@ from functools import lru_cache
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-
 LITHOLOGIES_URL = "https://dev.macrostrat.org/api/v2/defs/lithologies?all=true"
 
 
