@@ -1,5 +1,3 @@
-SET search_path TO map_bounds, maps, public;
-
 INSERT INTO map_bounds.map_area (id, geometry, area_km, map_layer)
 SELECT
   source_id,

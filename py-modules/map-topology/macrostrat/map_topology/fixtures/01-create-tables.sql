@@ -1,7 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "postgis";
-CREATE EXTENSION IF NOT EXISTS "postgis_topology";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 CREATE SCHEMA IF NOT EXISTS map_bounds;
 
 -- Pick a relatively small tolerance to avoid gaps

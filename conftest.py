@@ -53,6 +53,13 @@ def pytest_addoption(parser):
         help="optimize database for fast testing",
     )
 
+    parser.addoption(
+        "--no-optimize-database",
+        action="store_false",
+        dest="optimize_database",
+        help="do not optimize database for fast testing",
+    )
+
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--skip-slow"):

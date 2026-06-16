@@ -347,7 +347,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
     if fix:
         print("Cleaning topology")
         res = db.run_query(
-            "SELECT RemoveUnusedPrimitives('map_bounds_topology', :bbox);",
+            "SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', :bbox);",
             dict(bbox=None),
         ).scalar()
         print(f"Removed {res} orphaned topology elements")
