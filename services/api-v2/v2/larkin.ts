@@ -275,11 +275,12 @@ enum APICapability {
   };
 
   larkin.error = function (req, res, next, message, code) {
+    const statusCode = code || 500;
     var responseMessage = message
       ? message
       : "Something went wrong. Please contact the Macrostrat team.";
-    if ((code && code === 500) || code === 404) {
-      res.status(code ? code : 200).json({
+    if (statusCode === 500 || statusCode === 404) {
+      return res.status(statusCode).json({
         error: {
           message: responseMessage,
         },
@@ -291,7 +292,7 @@ enum APICapability {
         .replace(/\/$/, "")
         .replace("/v" + api.version, "");
       this.defineRoute(formatted, function (definition) {
-        res.status(code ? code : 200).json({
+        res.status(statusCode).json({
           error: {
             v: api.version,
             license: api.license,
