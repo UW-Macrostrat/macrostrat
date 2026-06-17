@@ -57,7 +57,7 @@ markers = [
     "slow: marks tests as slow-running",
 ]
 # Don't show captured logs by default
-addopts = "--show-capture=stdout"
+addopts = "--log-disable=sqlalchemy.engine.Engine"
 
 # Paths for default test discovery.
 # This allows 'pytest' to have the same discovery behavior

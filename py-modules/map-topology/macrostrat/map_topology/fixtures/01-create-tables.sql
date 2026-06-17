@@ -8,14 +8,6 @@ ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS max_zoom integer;
 -- Approximate bounds for the layer
 ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS bounds Geometry(MultiPolygon, 4326);
 
-INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological)
-VALUES ('carto-tiny', 'Carto tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('carto-small', 'Carto small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('carto-medium', 'Carto medium', 0, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('carto-large', 'Carto large', 0, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true)
-ON CONFLICT (slug) DO NOTHING;
-
-
 SELECT topology.CreateTopology('map_bounds_topology', 4326, 0.0001)
 WHERE NOT EXISTS (
   SELECT 1
@@ -141,3 +133,70 @@ WHERE ml.id = $1.map_layer
   AND ml.composited_from IS NULL
   AND ml.topological;
 $$ LANGUAGE SQL IMMUTABLE;
+
+
+/** Scale key for Carto compilations:
+      scaleIsIn = {
+        "tiny": ["tiny", "small"],
+        "small": ["small", "medium"],
+        "medium": ["medium", "large"],
+        "large": ["large"],
+    }
+ */
+
+CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
+  map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
+  map_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  priority integer,
+  /** Cached bounds for the map's contribution to the compilation. */
+  --geometry Geometry(MultiPolygon, 4326),
+  PRIMARY KEY (map_layer, map_id)
+);
+
+
+CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
+  RETURNS integer AS $$
+SELECT id FROM map_bounds.map_layer WHERE slug = _slug;
+$$ LANGUAGE SQL IMMUTABLE;
+
+/** View to adjust map priority based on scales
+  (higher-scale maps are always higher priority)
+ */
+CREATE OR REPLACE VIEW map_bounds.scale_priority AS
+SELECT
+  source_id,
+  priority base_priority,
+  scale,
+  CASE
+    WHEN scale = 'tiny' THEN priority - 20000
+    WHEN scale = 'small' THEN priority - 10000
+    WHEN scale = 'medium' THEN priority
+    WHEN scale = 'large' THEN priority + 10000
+    ELSE priority
+    END AS priority
+FROM maps.sources_metadata m
+WHERE is_finalized
+  AND status_code = 'active';
+
+/** Standard map compilations */
+INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological)
+VALUES
+  ('tiny', 'Tiny',  0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('small', 'Small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('medium', 'Medium', 8, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
+  ('large', 'Large', 12, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true)
+ON CONFLICT (slug) DO NOTHING;
+
+/** Composite compilations */
+INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological, editable, composited_from)
+VALUES
+ ('carto-small', 'Carto small', 4, 8,
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
+  ARRAY[map_bounds.layer_id('tiny'), map_bounds.layer_id('small')]),
+ ('carto-medium', 'Carto medium', 8, 12,
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
+  ARRAY[map_bounds.layer_id('small'), map_bounds.layer_id('medium')]),
+ ('carto-large', 'Carto large', 12, 18,
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
+  ARRAY[map_bounds.layer_id('medium'), map_bounds.layer_id('large')])
+ON CONFLICT (slug) DO NOTHING;

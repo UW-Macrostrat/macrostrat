@@ -65,13 +65,12 @@ class TestMapTopology:
         insp = TopologyInspector(ctx)
         assert insp.is_valid()
 
-    def test_map_compilations(self, ctx):
+    def test_map_priority(self, ctx):
         db = ctx.database
 
-        # Check that we have two map compilations in the map_compilation table
+        # Check that we have two maps in the priority table
         assert (
-            db.run_query("SELECT count(*) FROM map_bounds.map_compilation").scalar()
-            == 2
+            db.run_query("SELECT count(*) FROM map_bounds.map_priority").scalar() == 2
         )
 
     def test_process_maps(self, ctx):
@@ -109,19 +108,29 @@ class TestMapTopology:
 
         assert insp.n_face_primitives() == 5
 
-        _update(ctx)
+        _update(ctx, composite_layers=False)
 
         # Get the face primitive in the center of the new face
         center = geom(Point(2.5, 2.5))
         face_id = insp.get_face_id(center)
-        map_layer = db.run_query(
-            "SELECT id FROM map_bounds.map_layer WHERE slug = 'carto-large'"
-        ).scalar()
+        map_layer = insp.map_layer_id("Large")
         face_list = get_adjacent_faces(db, face_id, map_layer)
 
         assert len(face_list) == 3
 
         assert insp.n_faces() == 3
+
+    def test_maps_are_separately_identified(self, ctx):
+        """Check that the map faces have separate IDs"""
+        db = ctx.database
+        insp = TopologyInspector(ctx)
+        id = insp.map_layer_id("Large")
+        records = db.run_query(
+            "SELECT * FROM map_bounds_topology.map_face WHERE map_layer = :map_layer",
+            dict(map_layer=id),
+        ).all()
+        assert len(records) == 3
+        assert len(set(record.map_id for record in records)) == 3
 
     ## TODO, we could add test isolation here with a template_database fixture...
     def test_add_another_layer_feature(self, ctx):
@@ -141,7 +150,20 @@ class TestMapTopology:
         )
 
         update_maps(ctx, subdivide_vertices=32)
-        _update(ctx)
+        _update(ctx, composite_layers=False)
 
         insp = TopologyInspector(ctx)
         assert insp.n_faces() == 4
+        assert insp.n_faces(map_layer="Medium") == 1
+        assert insp.n_faces(map_layer="Large") == 3
+
+    def test_composite_layers(self, ctx):
+
+        _update(ctx, composite_layers=True)
+        insp = TopologyInspector(ctx)
+        assert insp.n_faces(map_layer="Large") == 3
+        assert insp.n_faces(map_layer="Medium") == 1
+        assert insp.n_faces(map_layer="Carto large") == 4
+        assert insp.n_faces(map_layer="Carto medium") == 1
+        assert insp.n_faces(map_layer="Carto small") == 0
+        assert insp.n_faces() == 4 + 4 + 1

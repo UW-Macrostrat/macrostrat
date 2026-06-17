@@ -103,7 +103,8 @@ def filter_maps(all_maps, map_ids: list[str]):
 @cli.command("remove")
 def _remove(maps: list[str] = Argument(None)):
     """Remove topology fixtures"""
-    db = get_database()
+    ctx = get_topo_context()
+    db = ctx.database
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, filter_by=maps)
@@ -158,7 +159,7 @@ def update_maps(
     db.run_sql(proc("copy-all-maps"))
 
     # Associate maps with compilations
-    db.run_sql(proc("insert-map-compilations"))
+    db.run_sql(proc("set-map-priority"))
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)

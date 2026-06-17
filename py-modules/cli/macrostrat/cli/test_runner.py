@@ -10,6 +10,8 @@ from typer import Context, Typer
 from macrostrat.core.config import settings
 from macrostrat.utils import working_directory
 
+from sqlalchemy.engine import Engine
+
 cli = Typer(
     short_help="Macrostrat tests",
     add_completion=False,
