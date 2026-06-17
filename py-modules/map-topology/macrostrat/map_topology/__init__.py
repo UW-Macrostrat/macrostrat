@@ -50,7 +50,7 @@ def get_topo_context():
     return create_topo_context(db)
 
 
-def create_fixtures(ctx: TopologyContext, reset: bool = False):
+def create_topo_fixtures(ctx: TopologyContext, reset: bool = False):
     db = ctx.database
     if reset:
         db.run_fixtures(proc("drop-tables"))
@@ -65,7 +65,7 @@ def create_fixtures(ctx: TopologyContext, reset: bool = False):
 def _create_fixtures(reset: bool = False):
     """Create topology fixtures"""
     ctx = get_topo_context()
-    create_fixtures(ctx, reset)
+    create_topo_fixtures(ctx, reset)
 
 
 @cli.command("drop")

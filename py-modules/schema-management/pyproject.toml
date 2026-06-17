@@ -22,10 +22,13 @@ dependencies = [
     "results>=1.4.0,<1.5.0",
     "testcontainers>=4.14.2",
     "httpx>=0.28.1",
+    "macrostrat.map-topology",
+    "macrostrat.core"
 ]
 
 [tool.uv.sources]
 "macrostrat.core" = { path = "../core", editable = true }
+"macrostrat.map-topology" = { path = "../map-topology", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

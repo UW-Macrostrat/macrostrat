@@ -68,8 +68,8 @@ def plan():
     out_file = outdir / f"{env}.plan.sql"
 
     with planning_database(env) as plan_db:
-        from_db = results_db(raw_database_url(url))
-        target_db = results_db(raw_database_url(plan_db.engine.url))
+        from_db = _get_results_db(db)
+        target_db = _get_results_db(plan_db)
 
         schemas = get_all_schemas(
             plan_db,
@@ -110,6 +110,13 @@ def plan():
                 # Extra newline after statements that span multiple lines
                 if "\n" in statement:
                     f.write("\n")
+
+
+def _get_results_db(db: Database) -> results_db:
+    url = db.engine.url
+    # Results does not tolerate the +psycopg modifier
+    url = url.set(drivername="postgresql")
+    return results_db(raw_database_url(url))
 
 
 @schema_app.command(rich_help_panel="Automated migrations")

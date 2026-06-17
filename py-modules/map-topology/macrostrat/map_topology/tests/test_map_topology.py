@@ -1,6 +1,10 @@
 from sqlalchemy.dialects.postgresql import insert
 
-from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
+from macrostrat.map_topology import (
+    create_topo_fixtures,
+    update_maps,
+    create_topo_context,
+)
 from mapboard.topology_manager.tests.helpers import TopologyInspector
 from mapboard.topology_manager.commands.update import _update
 from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
@@ -23,9 +27,9 @@ def ctx(test_db_base):
 
 
 class TestMapTopology:
-    def test_map_topology(self, ctx):
-        # TODO: Need to work on test isolation here...
-        create_fixtures(ctx)
+    # def test_map_topology(self, ctx):
+    #     # TODO: Need to work on test isolation here...
+    #     create_topo_fixtures(ctx)
 
     def test_create_map_bounds(self, ctx):
         """Insert a few test maps into the database
@@ -82,15 +86,6 @@ class TestMapTopology:
         # Check that we have the appropriate number of faces
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 2
-
-        # Force faces to dirty
-        # db.run_sql(
-        #     """INSERT INTO map_bounds_topology.dirty_face (map_layer, id)
-        #     SELECT ml.id, face_id FROM map_bounds_topology.face
-        #     CROSS JOIN map_bounds.map_layer ml;
-        #     """
-        # )
-        # db.session.commit()
 
         # Update topology faces
         _update(ctx)
