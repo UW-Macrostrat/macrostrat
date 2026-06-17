@@ -972,7 +972,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.1.1"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -986,9 +986,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/7a/1cf3e3cd59da4fa59bc0ed417115ee4a6dfba5535959a0e3159d2570c87e/macrostrat_database-4.1.1.tar.gz", hash = "sha256:1a2f1da90057335187652ebb6452ff5b0104c6291e3130648f39b30759b14eec", size = 19323, upload-time = "2026-06-12T07:20:59.183Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/3f/b96d0de2a3da7421a3eb807c7778cf9e521640a362455d58dfaa44c2d7e4/macrostrat_database-4.2.0.tar.gz", hash = "sha256:6adf909e08ea7a45f1f824056baca8369ba8de126b31cd365a66cd0ba3626196", size = 19563, upload-time = "2026-06-17T20:24:05.293Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/b6/cea3528186a386c20a2199fa3d019bf9fb58ab088f439da70cbf649dede4/macrostrat_database-4.1.1-py3-none-any.whl", hash = "sha256:f13f11fd39339593760217ef519aede2ac4b815927dd9adcf0abc8667d8afb37", size = 25843, upload-time = "2026-06-12T07:20:58.096Z" },
+    { url = "https://files.pythonhosted.org/packages/54/f4/e1ab0eab08578b1b9c0f375cd9c962a13b557cd8407b7682144f863d053e/macrostrat_database-4.2.0-py3-none-any.whl", hash = "sha256:feb83fefddb30d86305cc247f2352158cb13b4d084b47fd9117b3004c5b6a7ad", size = 26025, upload-time = "2026-06-17T20:24:06.139Z" },
 ]
 
 [[package]]
@@ -1097,6 +1097,7 @@ name = "macrostrat-map-topology"
 version = "0.1.0"
 source = { editable = "py-modules/map-topology" }
 dependencies = [
+    { name = "macrostrat-core" },
     { name = "macrostrat-database" },
     { name = "mapboard-topology-manager" },
     { name = "pytest" },
@@ -1104,7 +1105,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "macrostrat-database", specifier = ">=4.0.0" },
+    { name = "macrostrat-core", editable = "py-modules/core" },
+    { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
     { name = "pytest", specifier = ">=8.3.4,<10" },
 ]

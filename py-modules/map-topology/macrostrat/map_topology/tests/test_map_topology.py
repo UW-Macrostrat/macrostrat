@@ -1,3 +1,5 @@
+from sqlalchemy.dialects.postgresql import insert
+
 from macrostrat.map_topology import create_fixtures, update_maps, create_topo_context
 from mapboard.topology_manager.tests.helpers import TopologyInspector
 from mapboard.topology_manager.commands.update import _update
@@ -5,15 +7,19 @@ from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent
 from pytest import fixture
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
+from macrostrat.database.utils import template_database
+from macrostrat.database import Database
 
 
 def geom(_shape, srid=4326):
     return str(from_shape(_shape, srid, extended=True))
 
 
-@fixture
+@fixture(scope="class")
 def ctx(test_db_base):
-    return create_topo_context(test_db_base)
+    with template_database(test_db_base.engine) as engine:
+        db = Database(engine)
+        yield create_topo_context(db)
 
 
 class TestMapTopology:
@@ -21,13 +27,12 @@ class TestMapTopology:
         # TODO: Need to work on test isolation here...
         create_fixtures(ctx)
 
-    def test_create_map_bounds(self, test_db_base):
+    def test_create_map_bounds(self, ctx):
         """Insert a few test maps into the database
 
         They have overlapping bounds so we can test the logic for merging them into
         a composite layer.
         """
-        ctx = create_topo_context(test_db_base)
         db = ctx.database
 
         # Insert two non-overlapping test sources

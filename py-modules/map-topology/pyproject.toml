@@ -6,7 +6,7 @@ authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
-    "macrostrat.database>=4.0.0",
+    "macrostrat.database>=4.2.0",
     "macrostrat.core",
     "mapboard.topology-manager",
     "pytest>=8.3.4,<10",
