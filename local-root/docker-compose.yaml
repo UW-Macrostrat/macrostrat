@@ -3,6 +3,7 @@ services:
     image: caddy:2.9-alpine
     ports:
       - "8080:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:

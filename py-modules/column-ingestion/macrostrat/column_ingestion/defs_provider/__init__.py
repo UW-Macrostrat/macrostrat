@@ -35,6 +35,7 @@ def sql(name) -> str:
 @dataclass
 class MacrostratAPIConfig:
     base_url: str
+    verify_ssl: bool = True
 
 
 default_api_config = MacrostratAPIConfig(base_url="https://macrostrat.org/api/v2")
@@ -114,7 +115,7 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
     def __init__(self, config: MacrostratAPIConfig = default_api_config):
         super().__init__()
         self.config = config
-        self.client = Client(base_url=config.base_url)
+        self.client = Client(base_url=config.base_url, verify=config.verify_ssl)
 
     def close(self):
         self.client.close()
