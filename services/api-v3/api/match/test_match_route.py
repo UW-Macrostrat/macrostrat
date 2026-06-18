@@ -121,6 +121,7 @@ def test_multi_match_units(client):
         assert best_match["unit_id"] == case.unit_id
         assert best_match["strat_name_id"] == case.strat_name_id
 
+
 def test_match_units_ambiguous_column(client):
     response = client.get(
         "/strat-names",
@@ -275,8 +276,7 @@ def test_match_types_all_true(client):
 
     # Expected Brady Butte match should be included somewhere in the full result set.
     assert any(
-        m["unit_id"] == 1852
-        and m["strat_name"] == "Brady Butte Granodiorite"
+        m["unit_id"] == 1852 and m["strat_name"] == "Brady Butte Granodiorite"
         for m in matches
     )
 
@@ -384,7 +384,7 @@ def test_strat_name_query_excludes_concept_basis_for_exact_formation_name(client
     assert "concept" not in name_bases
     assert "concept" not in data["name_bases"]
 
-    #the exact Navajo Sandstone match should be returned
+    # the exact Navajo Sandstone match should be returned
     best_match = matches[0]
     assert best_match["priority"] == 0.0
     assert best_match["unit_id"] == 14623
@@ -418,14 +418,15 @@ def test_strat_name_query_can_include_concept_basis_for_short_name(client):
     assert "concept" in name_bases
     assert "concept" in data["name_bases"]
 
-    #the same Navajo Sandstone unit is returned as a concept match since the strat_name passed
-    #does not have any exact matches.
+    # the same Navajo Sandstone unit is returned as a concept match since the strat_name passed
+    # does not have any exact matches.
     best_match = matches[0]
     assert best_match["priority"] == 0.0
     assert best_match["unit_id"] == 14623
     assert best_match["strat_name_id"] == 3361
     assert best_match["strat_name"] == "Navajo Sandstone"
     assert best_match["name_basis"] == "concept"
+
 
 def test_concept_name_included_with_concept_param(client):
     """When concept_name is used, concept basis rows should be present."""
