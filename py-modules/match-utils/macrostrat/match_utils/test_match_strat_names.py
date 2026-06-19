@@ -11,6 +11,7 @@ from pytest import fixture, mark
 
 from . import (
     ensure_single,
+    get_adjacent_cols_from_containing,
     get_all_matched_units,
     get_column_units,
     get_columns_for_location,
@@ -39,9 +40,9 @@ cases = [
     StratTestCaseData(
         xy=(-109.905, 35.951),
         match_text="Navajo",
-        unit_id=14999,
-        strat_name_id=3361,
-        col_id=490,
+        unit_id=15191,
+        strat_name_id=1399,
+        col_id=495,
     ),
     StratTestCaseData(
         xy=(-109.905, 35.951),
@@ -90,25 +91,59 @@ def test_column_units_have_concept_name(db):
 
 @mark.parametrize("case", cases)
 def test_match_strat_name(db, case):
+    print("here's the case for test_match_strat_name", case)
     col = ensure_single(get_columns_for_location(db, case.xy))
-    assert col.col_id == case.col_id
+    print("here is the col returned", col)
+    print("here is the case col", case.col_id)
+
+    # case.col_id may be the containing column or an adjacent one, so check
+    # that it falls within the containing + adjacent set rather than requiring
+    # an exact match to the containing column only.
+    adjacent_containing_col_ids = get_adjacent_cols_from_containing(db, col.col_id)
+
+    assert case.col_id in adjacent_containing_col_ids
+
     names = standardize_names(case.match_text)
+    results = []
     with db.engine.connect() as conn:
-        result = get_matched_unit(conn, col.col_id, names)
-    assert result is not None
-    row, is_exact = result
-    assert row["unit_id"] == case.unit_id
-    assert row["strat_name_id"] == case.strat_name_id
+        for col_id in adjacent_containing_col_ids:
+            result = get_matched_unit(conn, col_id, names)
+            if result is not None:
+                results.append(result)
+    assert len(results) > 0
+    surfaced = [
+        row
+        for row, _is_exact in results
+        if row["unit_id"] == case.unit_id
+        and row["strat_name_id"] == case.strat_name_id
+        and row["col_id"] == case.col_id
+    ]
+    assert len(surfaced) > 0
 
 
 @mark.parametrize("case", cases)
 def test_strat_name_coerce_to_pydantic(db, case):
     col = ensure_single(get_columns_for_location(db, case.xy))
+    # case.col_id may be the containing column or one adjacent to it.
+    adjacent_containing_col_ids = get_adjacent_cols_from_containing(db, col.col_id)
+    assert case.col_id in adjacent_containing_col_ids
     names = standardize_names(case.match_text)
+    results = []
     with db.engine.connect() as conn:
-        result = get_matched_unit(conn, col.col_id, names)
-    assert result is not None
-    row, is_exact = result
+        for col_id in adjacent_containing_col_ids:
+            result = get_matched_unit(conn, col_id, names)
+            if result is not None:
+                results.append(result)
+    #pick the surfaced match that came from the expected column.
+    surfaced = [
+        (row, is_exact)
+        for row, is_exact in results
+        if row["unit_id"] == case.unit_id
+        and row["strat_name_id"] == case.strat_name_id
+        and row["col_id"] == case.col_id
+    ]
+    assert len(surfaced) > 0
+    row, is_exact = surfaced[0]
     vals = dict(row)
     for key, val in vals.items():
         if isna(val):

@@ -154,6 +154,7 @@ class ColumnInfo(BaseModel):
     }
 
 
+
 def get_columns_for_location(
     db, position, *, project_id=None, status_code="active"
 ) -> list[ColumnInfo]:
@@ -178,11 +179,41 @@ def get_columns_for_location(
         params["project_id"] = project_id
 
     sql = base_select + " WHERE " + " AND ".join(filters)
-    print("sql to find cols!!", sql)
-    print("params", params)
     cols = db.run_query(sql, params).all()
     return [ColumnInfo.model_validate(row) for row in cols]
 
+
+def get_adjacent_cols_from_containing(
+    db, col_id, *, use_adjacent_cols=True, buffer=0.01
+) -> list[int]:
+    """
+    Given the column returned by get_columns_for_location(), return the list of the adjacent columns.
+    Adjacent columns query comes from the column-strat-names sql.
+    """
+    sql = """
+    WITH RECURSIVE cols AS (
+        SELECT col_id, ST_SetSRID(ca.col_area, 4326) AS col_area
+        FROM macrostrat.col_areas ca
+        JOIN macrostrat.cols c ON c.id = ca.col_id
+        WHERE c.status_code = 'active'
+    ),
+    selected_col AS (
+        SELECT * FROM cols WHERE col_id = :col_id
+    ),
+    adjacent_cols AS (
+        SELECT cols.col_id, cols.col_id = sel.col_id AS selected
+        FROM cols
+        JOIN selected_col sel
+            ON ST_Intersects(cols.col_area, ST_Buffer(sel.col_area, :buffer))
+        WHERE :use_adjacent_cols OR cols.col_id = sel.col_id
+    )
+    --containing column first, then adjacent
+    SELECT col_id FROM adjacent_cols
+    ORDER BY selected DESC, col_id
+    """
+    params = dict(col_id=col_id, use_adjacent_cols=use_adjacent_cols, buffer=buffer)
+    rows = db.run_query(sql, params).all()
+    return [row.col_id for row in rows]
 
 def ensure_single(col_ids, entity="column"):
     if len(col_ids) == 0:
@@ -202,9 +233,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     Get a unit that matches a given stratigraphic name
     """
     unit_index = column_unit_index.get()
-    print("unit index", unit_index)
     if col_id in unit_index:
-        print(unit_index[col_id])
         return unit_index[col_id]
     # TODO need to update the match types model to exact, concept, rank-up, rank-down
     types = get_match_types(types)
@@ -218,16 +247,12 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         use_column_units=MatchType.ColumnUnits in types,
     )
     sql = stored_procedure("column-strat-names")
-    print("sql", sql)
-    print("params", params)
     units_df = read_sql(
         sql,
         conn,
         params=params,
         coerce_float=False,
     )
-    print("units df found!", units_df)
-
     # Insert column strat_name_clean after strat_name
     ix = units_df.columns.get_loc("strat_name")
     units_df.insert(
@@ -239,10 +264,8 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
 
     # Set the index to a shared cache
     unit_index = column_unit_index.get()
-    print("unit index", unit_index)
     unit_index[col_id] = units_df
     column_unit_index.set(unit_index)
-    print("resetting unit index")
     return units_df
 
 
@@ -292,14 +315,12 @@ def get_all_matched_units(
     Returns list of (row, is_exact_name_match) tuples.
     """
     units = get_column_units(conn, col_id, types=types)
-    print("units found", units, "for col_id", col_id)
     if b_age is not None:
         units = units.loc[units.t_age <= b_age]
     if t_age is not None:
         units = units.loc[units.b_age >= t_age]
 
     u1 = units[units.strat_name_clean.notnull()]
-    print("adding strat name clean?", u1)
     matched_rows = []
     n_results = n_results or len(u1)
 
@@ -312,7 +333,6 @@ def get_all_matched_units(
         matched_rows.append((row, is_exact))
         if len(matched_rows) >= n_results:
             return matched_rows
-    print(matched_rows)
     return matched_rows
 
 

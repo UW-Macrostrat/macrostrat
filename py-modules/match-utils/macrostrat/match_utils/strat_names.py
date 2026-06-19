@@ -89,7 +89,6 @@ def _clean_name(name, confidence=Confidence.NotIndicated):
     rank = None
     tokens = name.split()
     collected_text = []
-    print(tokens)
     for token in tokens[::-1]:
         if token.endswith("?"):
             confidence = Confidence.Low

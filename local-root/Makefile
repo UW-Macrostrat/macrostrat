@@ -8,7 +8,7 @@ start-database:
 	#uv pip install "GDAL==$(shell gdal-config --version)"
 	macrostrat compose up -d database storage
 
-restart-gateway:
+start-gateway:
 	macrostrat compose up -d --force-recreate gateway
 
 start-services:

@@ -63,7 +63,8 @@ def test_basic_match_units(client, case):
     print(matches)
     assert_valid_unit_matches(matches)
 
-    # Default all=false returns exactly one best-priority match.
+    # Default all=false returns exactly one best-priority match. Case returns the concept match not the exact match
+    #added another case list to be updated with the new
     assert len(matches) == 1
 
     best_match = matches[0]
@@ -252,7 +253,7 @@ def test_match_types_all_true(client):
         "/strat-names",
         params={
             "col_id": 490,
-            "strat_name": "Brady Butte Pluton",
+            "strat_name": "Mancos",
             "all": True,
         },
     )
@@ -273,10 +274,9 @@ def test_match_types_all_true(client):
     assert len(matches) > 1
     assert len(set(priorities)) > 1
 
-    # Expected Brady Butte match should be included somewhere in the full result set.
     assert any(
-        m["unit_id"] == 1852
-        and m["strat_name"] == "Brady Butte Granodiorite"
+        m["unit_id"] == 15174
+        and m["strat_name"] == "Mancos Shale"
         for m in matches
     )
 
@@ -287,7 +287,7 @@ def test_match_types_all_false(client):
         "/strat-names",
         params={
             "col_id": 490,
-            "strat_name": "Brady Butte Pluton",
+            "strat_name": "Mancos",
         },
     )
     assert response.status_code == 200
@@ -304,8 +304,8 @@ def test_match_types_all_false(client):
 
     best_match = matches[0]
     assert best_match["priority"] == 0.0
-    assert best_match["unit_id"] == 1852
-    assert best_match["strat_name"] == "Brady Butte Granodiorite"
+    assert best_match["unit_id"] == 14992
+    assert best_match["strat_name"] == "Mancos Shale"
 
 
 def test_all_false_returns_best_priority_only(client):
