@@ -35,11 +35,7 @@ def get_test_lith_names():
         provider.close()
 
     lith_names = sorted(
-        {
-            lithology.lith.lower()
-            for lithology in lithologies
-            if lithology.lith
-        }
+        {lithology.lith.lower() for lithology in lithologies if lithology.lith}
     )
 
     if not lith_names:
