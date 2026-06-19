@@ -47,7 +47,12 @@ def wrap_command(command_func):
     """Decorator to wrap command functions with logging and permission granting"""
 
     def wrapper():
-        command_func()
+        result = command_func()
+
+        # Handles callable class-based rebuild scripts like lookup_strat_names
+        if callable(result):
+            result()
+
         console.print(f"[dim]  granting permissions...[/]")
         grant_permissions(get_database())
         console.print(f"[green]✓ done[/]\n")

@@ -30,6 +30,26 @@ SET c_interval = (
   ORDER BY age_bottom - age_top
   LIMIT 1
 );
+-- Normalize missing lookup IDs/counts to 0 for legacy v2 API/Sift compatibility.
+-- The v2 /defs/strat_names endpoint returns these fields directly from
+-- macrostrat.lookup_strat_names, so nulls here can break legacy hierarchy rendering
+UPDATE macrostrat.lookup_strat_names_new
+SET
+    concept_id = COALESCE(concept_id, 0),
+    bed_id = COALESCE(bed_id, 0),
+    mbr_id = COALESCE(mbr_id, 0),
+    fm_id = COALESCE(fm_id, 0),
+    subgp_id = COALESCE(subgp_id, 0),
+    gp_id = COALESCE(gp_id, 0),
+    t_units = COALESCE(t_units, 0)
+WHERE
+    concept_id IS NULL OR
+    bed_id IS NULL OR
+    mbr_id IS NULL OR
+    fm_id IS NULL OR
+    subgp_id IS NULL OR
+    gp_id IS NULL OR
+    t_units IS NULL;
 
 ALTER TABLE macrostrat.lookup_strat_names
   RENAME TO lookup_strat_names_old;
