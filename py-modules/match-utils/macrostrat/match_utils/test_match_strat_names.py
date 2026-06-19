@@ -134,7 +134,7 @@ def test_strat_name_coerce_to_pydantic(db, case):
             result = get_matched_unit(conn, col_id, names)
             if result is not None:
                 results.append(result)
-    #pick the surfaced match that came from the expected column.
+    # pick the surfaced match that came from the expected column.
     surfaced = [
         (row, is_exact)
         for row, is_exact in results

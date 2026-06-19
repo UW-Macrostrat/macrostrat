@@ -154,7 +154,6 @@ class ColumnInfo(BaseModel):
     }
 
 
-
 def get_columns_for_location(
     db, position, *, project_id=None, status_code="active"
 ) -> list[ColumnInfo]:
@@ -214,6 +213,7 @@ def get_adjacent_cols_from_containing(
     params = dict(col_id=col_id, use_adjacent_cols=use_adjacent_cols, buffer=buffer)
     rows = db.run_query(sql, params).all()
     return [row.col_id for row in rows]
+
 
 def ensure_single(col_ids, entity="column"):
     if len(col_ids) == 0:
