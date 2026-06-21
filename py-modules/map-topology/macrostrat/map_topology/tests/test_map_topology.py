@@ -1,13 +1,8 @@
-from sqlalchemy.dialects.postgresql import insert
-
 from macrostrat.map_topology import (
-    create_topo_fixtures,
     update_maps,
     create_topo_context,
 )
-from mapboard.topology_manager.tests.helpers import TopologyInspector
-from mapboard.topology_manager.commands.update import _update
-from mapboard.topology_manager.commands.update_faces.helpers import get_adjacent_faces
+from mapboard.topology_manager import TopologyInspector, TopologyManager
 from pytest import fixture
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
@@ -21,9 +16,7 @@ def geom(_shape, srid=4326):
 
 @fixture(scope="class")
 def ctx(test_db_base):
-    with template_database(test_db_base.engine) as engine:
-        db = Database(engine)
-        yield create_topo_context(db)
+    yield create_topo_context(test_db_base)
 
 
 class TestMapTopology:
@@ -86,9 +79,10 @@ class TestMapTopology:
         # Check that we have the appropriate number of faces
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 2
+        mgr = TopologyManager(ctx)
 
         # Update topology faces
-        _update(ctx)
+        mgr.update()
 
         assert insp.n_faces() == 2
 
@@ -108,13 +102,14 @@ class TestMapTopology:
 
         assert insp.n_face_primitives() == 5
 
-        _update(ctx, composite_layers=False)
+        mgr = TopologyManager(ctx)
+        mgr.update(composite_layers=False)
 
         # Get the face primitive in the center of the new face
         center = geom(Point(2.5, 2.5))
         face_id = insp.get_face_id(center)
         map_layer = insp.map_layer_id("Large")
-        face_list = get_adjacent_faces(db, face_id, map_layer)
+        face_list = insp.get_adjacent_faces(face_id, map_layer)
 
         assert len(face_list) == 3
 
@@ -150,7 +145,8 @@ class TestMapTopology:
         )
 
         update_maps(ctx, subdivide_vertices=32)
-        _update(ctx, composite_layers=False)
+        mgr = TopologyManager(ctx)
+        mgr.update(composite_layers=False)
 
         insp = TopologyInspector(ctx)
         assert insp.n_faces() == 4
@@ -159,7 +155,8 @@ class TestMapTopology:
 
     def test_composite_layers(self, ctx):
 
-        _update(ctx, composite_layers=True)
+        mgr = TopologyManager(ctx)
+        mgr.update(composite_layers=True)
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1

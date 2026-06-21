@@ -11,9 +11,12 @@ from typer import Argument, Typer
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.database import Database
 from macrostrat.utils import working_directory
-from mapboard.topology_manager.commands.clean_topology import _clean_topology
-from mapboard.topology_manager.commands import create_tables
-from mapboard.topology_manager.config import create_context, TopologyContext
+from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.config import (
+    create_context,
+    TopologyContext,
+    IdentityStrategy,
+)
 
 from macrostrat.core.database import get_database
 
@@ -33,6 +36,14 @@ config = dict(
 proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 
 
+IDENTITY_STRATEGY = IdentityStrategy(
+    identity_column="map_id",
+    install=lambda ctx: ctx.database.run_fixtures(
+        __dir__ / "fixtures" / "03-identity-management.sql"
+    ),
+)
+
+
 def create_topo_context(db: Database):
     return create_context(
         db,
@@ -40,14 +51,22 @@ def create_topo_context(db: Database):
         topo_schema="map_bounds_topology",
         srid=4326,
         tolerance=0.0001,
-        in_macrostrat_mode=True,
+        identity_strategy=IDENTITY_STRATEGY,
+        boundary_table="map_area",
+        create_data_tables=lambda ctx: db.run_fixtures(
+            __dir__ / "fixtures" / "01-create-tables.sql"
+        ),
         notify_triggers=False,
     )
 
 
-def get_topo_context():
+def get_topo_manager():
     db = get_database()
-    return create_topo_context(db)
+    return TopologyManager(create_topo_context(db))
+
+
+def get_topo_context():
+    return get_topo_manager().context
 
 
 def create_topo_fixtures(ctx: TopologyContext, reset: bool = False):
@@ -55,24 +74,22 @@ def create_topo_fixtures(ctx: TopologyContext, reset: bool = False):
     if reset:
         db.run_fixtures(proc("drop-tables"))
 
-    def create_data_tables(ctx: typer.Context):
-        db.run_fixtures(__dir__ / "fixtures")
-
-    create_tables(ctx, create_data_tables=create_data_tables)
+    mgr = TopologyManager(ctx)
+    mgr.create_tables()
 
 
 @cli.command("create")
 def _create_fixtures(reset: bool = False):
     """Create topology fixtures"""
-    ctx = get_topo_context()
-    create_topo_fixtures(ctx, reset)
+    mgr = get_topo_manager()
+    mgr.create_tables()
 
 
 @cli.command("drop")
 def drop():
     """Drop topology fixtures"""
-    ctx = get_topo_context()
-    ctx.database.run_fixtures(proc("drop-tables"))
+    mgr = get_topo_manager()
+    mgr.database.run_fixtures(proc("drop-tables"))
 
 
 @cli.command("reset")
@@ -103,8 +120,8 @@ def filter_maps(all_maps, map_ids: list[str]):
 @cli.command("remove")
 def _remove(maps: list[str] = Argument(None)):
     """Remove topology fixtures"""
-    ctx = get_topo_context()
-    db = ctx.database
+    mgr = get_topo_manager()
+    db = mgr.database
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, filter_by=maps)
@@ -119,21 +136,28 @@ def _remove(maps: list[str] = Argument(None)):
         print("Removing existing map topo elements")
         _remove_map_topo_elements(db, _map.map_id)
 
-    _clean(ctx)
+    _clean(mgr)
 
 
-def _clean(ctx: TopologyContext):
-    db = ctx.database
-    res = db.run_query(proc("clear-extra-topogeometries")).scalar()
-    db.session.commit()
+def _clean(mgr: TopologyManager):
+    res = mgr.db.run_query(proc("clear-extra-topogeometries")).scalar()
+    mgr.db.session.commit()
     print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
-    _clean_topology(ctx)
+    mgr.clean_topology()
 
 
 @cli.command("clean")
 def clean():
     """Clean topology fixtures"""
     _clean(get_topo_context())
+
+
+@cli.command("rebuild")
+def rebuild():
+    """Rebuild topology fixtures"""
+    mgr = get_topo_manager()
+    mgr.create_tables()
+    mgr.rebuild_edge_relations()
 
 
 @cli.command("update")
@@ -143,7 +167,9 @@ def update(
     remove: bool = False,
 ):
     """Update topology fixtures"""
-    update_maps(get_topo_context(), maps, remove)
+    mgr = get_topo_manager()
+    update_maps(mgr.context, maps, remove=remove)
+    mgr.update(incremental=True)
 
 
 def update_maps(
@@ -172,7 +198,8 @@ def update_maps(
         process_map(db, _map, **kwargs)
 
     if clean:
-        _clean(ctx)
+        mgr = TopologyManager(ctx)
+        _clean(mgr)
 
     end_time = time.time()
 
@@ -215,7 +242,10 @@ def process_map(db, map, **kwargs):
 
 
 def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
-    # Insert or update the map topo
+    """
+    The map_topo update loop allows large/complex map_area features to be written and error-checked incrementally.
+    This dramatically speeds up initial insertion of certain maps into the topology tables.
+    """
 
     map_id = _map.map_id
     simplify_amount = 0.0001
@@ -311,7 +341,12 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
 
         niter += 1
 
-    if updated > 0:
+    has_topogeometry = db.run_query(
+        "SELECT EXISTS (SELECT 1 FROM map_bounds.map_area WHERE id = :map_id AND (topo IS NOT NULL OR topology_error IS NOT NULL))",
+        dict(map_id=map_id),
+    ).scalar()
+
+    if updated > 0 or not has_topogeometry:
         # We actually did something...
         # We need to create the topology
         print("  Updating map_area topogeometry")
@@ -369,7 +404,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
         JOIN map_bounds.map_area
         USING (map_id)
         WHERE t.topology_error IS NOT NULL
-        ORDER BY t.map_id, ST_GeoHash(t.geometry)
+        ORDER BY t.map_id, ST_GeoHash(t.geometry::geography)
     """
     ).all()
 

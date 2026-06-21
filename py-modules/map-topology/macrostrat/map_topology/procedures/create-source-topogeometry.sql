@@ -12,6 +12,7 @@ face_ids AS (
     AND t.id = r.topogeo_id
     AND t.type = r.element_type
     AND r.element_type = 3
+  GROUP BY r.element_id
 ),
 topo_elements AS (
   SELECT array_agg(ARRAY[face_id, 3]) topo_element_array

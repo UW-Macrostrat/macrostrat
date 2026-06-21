@@ -121,6 +121,10 @@ def apply_schema_for_environment(
 
         db._applied_fixtures = db._applied_fixtures | set(fixtures)
 
+    if target is not None:
+        return db
+
+    # Post-processing for non-SQL-file fixtures
     if env not in ["staging", "production"]:
         # Create topology fixtures. We have to do this as a separate step because these
         # fixtures are created in Python code and not SQL. We will unify this in the future.

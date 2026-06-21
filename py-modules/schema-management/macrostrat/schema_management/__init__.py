@@ -73,7 +73,7 @@ def plan():
 
         schemas = get_all_schemas(
             plan_db,
-            excluded_schemas=["topology", "sources", "tiger", "tiger_data"],
+            excluded_schemas=["sources", "tiger", "tiger_data"],
         )
 
         m = DiffMigration(

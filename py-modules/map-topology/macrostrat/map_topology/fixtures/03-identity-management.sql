@@ -1,8 +1,3 @@
-ALTER TABLE map_bounds_topology.map_face
-  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
-ALTER TABLE map_bounds_topology.face_identity
-  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
-
 /*
 Get the map face that defines a polygon for a specific topology
 */
@@ -50,7 +45,7 @@ DECLARE
 BEGIN
   id1 := map_bounds_topology.identity_for_face(f1, map_layer);
   id2 := map_bounds_topology.identity_for_face(f2, map_layer);
-  RETURN (id1 = id2);
+  RETURN id1 IS NOT DISTINCT FROM id2;
 END
 $$ LANGUAGE plpgsql IMMUTABLE;
 

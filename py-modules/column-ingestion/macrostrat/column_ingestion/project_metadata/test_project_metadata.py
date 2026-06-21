@@ -1,15 +1,12 @@
-from contextlib import contextmanager
 from pathlib import Path
-from uuid import uuid4
 
 import polars as pl
 from pytest import fixture
 from xlsxwriter import Workbook
 
-from macrostrat.core.database.sequences import reset_sequence
-from macrostrat.database import Database, create_database, drop_database
-from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.database import reset_sequence, Database
 from macrostrat.utils import get_logger
+from macrostrat.database.utils import template_database
 
 from ..ingest import ingest_columns_from_file
 from ..query_helpers import get_liths_for_unit
@@ -34,24 +31,6 @@ def db(test_db_macrostrat_schema_only: Database, env_db: Database):
 
     with template_database(db) as template_db:
         yield template_db
-
-
-@contextmanager
-def template_database(db: Database):
-    uid = str(uuid4())[:8]
-    db_name = db.engine.url.database
-    template_db_name = db_name + "_template_" + uid
-    # Close connection to the database so we can create a new one based on the template
-    new_db_url = db.engine.url.set(database=template_db_name)
-    db.session.close()
-    db.engine.dispose()
-    try:
-        create_database(new_db_url, template=db_name)
-        log.info(f"Created  database %s from template %s", new_db_url.database, db_name)
-        print("Temporary database URL:", raw_database_url(new_db_url))
-        yield Database(new_db_url)
-    finally:
-        drop_database(new_db_url)
 
 
 class TestProjectMetadata:
