@@ -168,8 +168,8 @@ def update(
 ):
     """Update topology fixtures"""
     mgr = get_topo_manager()
-    update_maps(mgr.context, maps, remove=remove)
-    mgr.update(incremental=True)
+    update_maps(mgr.ctx, maps, remove=remove)
+    mgr.update(incremental=True, composite_layers=True)
 
 
 def update_maps(
