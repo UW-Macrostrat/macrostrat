@@ -5,13 +5,13 @@ description = "Macrostrat tile server"
 authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
 requires-python = ">=3.11, <4"
 dependencies = [
-    "fastapi>=0.111.0,<0.112",
+    "fastapi>=0.111.0,<0.140",
     "macrostrat.database~=3.0",
     "macrostrat.utils>=1.2.0,<2",
-    "pytest>=7.2.1,<8",
+    "pytest>=7.2.1,<10",
     "python-dotenv>=1.0.0,<2",
-    "typer>=0.12,<0.25",
-    "uvicorn>=0.34.2,<0.35",
+    "typer>=0.12,<0.27",
+    "uvicorn>=0.34.2,<0.50",
     "titiler>=0.18.5,<0.19",
     "httpx>=0.27.2,<0.28",
     "mapbox-vector-tile>=2.1.0,<3",
@@ -22,8 +22,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "isort>=5.12.0,<6",
-    "black>=24.8.0,<25",
-    "macrostrat-dinosaur>=3.1.1,<4",
+    "black>=24.8.0,<25"
 ]
 
 [tool.uv]
