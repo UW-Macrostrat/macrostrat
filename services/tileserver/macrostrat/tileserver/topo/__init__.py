@@ -44,6 +44,24 @@ async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = No
         return VectorTileResponse(data, headers={"cache-control": "no-cache"})
 
 
+@router.get("/maps/{z}/{x}/{y}")
+@router.get("/maps/{map_layer}/{z}/{x}/{y}")
+async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = None):
+    """All maps associated with the map layer"""
+    pool = request.app.state.pool
+
+    sql_file = "all-maps.sql"
+    if map_layer is not None:
+        sql_file = "maps.sql"
+
+    sql = get_sql(__here__ / sql_file)
+    query, params = render(sql, z=z, x=x, y=y, map_layer=map_layer)
+
+    async with pool.acquire() as con:
+        data = await con.fetchval(query, *params)
+        return VectorTileResponse(data, headers={"cache-control": "no-cache"})
+
+
 GET_MAP_LAYERS = """
 SELECT id,
     name,
