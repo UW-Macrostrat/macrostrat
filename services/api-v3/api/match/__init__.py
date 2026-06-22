@@ -1,7 +1,7 @@
 import enum
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Annotated, Optional, Literal
+from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
@@ -124,9 +124,9 @@ class MatchQuery(BaseModel):
     b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
     t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
     priority: Literal["strat_name", "location"] = Field(
-    "strat_name",
-    description="Priority ordering scheme: 'strat_name' (default) or 'location' "
-    "(favor containing-column matches before adjacent columns).",
+        "strat_name",
+        description="Priority ordering scheme: 'strat_name' (default) or 'location' "
+        "(favor containing-column matches before adjacent columns).",
     )
 
     @model_validator(mode="after")
@@ -247,7 +247,7 @@ PRIORITY_ORDER = [
     ("synonym", "adjacent column"),
 ]
 
-PRIORITY_ORDER_LOCATION= [
+PRIORITY_ORDER_LOCATION = [
     ("exact", "containing column"),
     ("concept", "containing column"),
     ("rank-down", "containing column"),
@@ -261,7 +261,9 @@ PRIORITY_ORDER_LOCATION= [
 ]
 
 
-def assign_priorities(results: list[MatchResult], priority: str = "strat_name") -> list[MatchResult]:
+def assign_priorities(
+    results: list[MatchResult], priority: str = "strat_name"
+) -> list[MatchResult]:
     """Assign consecutive priorities based on name_basis/spatial_basis combinations present."""
     # Find which combinations exist in results, in ranked order
     order = PRIORITY_ORDER_LOCATION if priority == "location" else PRIORITY_ORDER

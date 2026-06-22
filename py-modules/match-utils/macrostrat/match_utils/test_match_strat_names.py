@@ -4,6 +4,7 @@ Match stratigraphic names to Macrostrat columns.
 The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
+
 from typing import Optional
 
 from pandas import isna

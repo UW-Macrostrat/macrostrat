@@ -69,6 +69,7 @@ def test_basic_match_units(client, case):
     assert best_match["unit_id"] == case.unit_id
     assert best_match["strat_name_id"] == case.strat_name_id
 
+
 @mark.parametrize("case", cases_location_priority)
 def test_basic_match_units_location_priority(client, case):
     response = client.get(
