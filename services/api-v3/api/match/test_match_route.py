@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from pytest import fixture, mark
 
 from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.match_utils.test_match_strat_names import cases
+from macrostrat.match_utils.test_match_strat_names import cases, cases_location_priority
 
 from . import MatchQuery, router, setup_intervals
 
@@ -56,19 +56,42 @@ def test_basic_match_units(client, case):
     assert response.status_code == 200
     data = response.json()
     assert "results" in data
-    print(data)
     results = data["results"]
     assert len(results) == 1
     matches = results[0]["unit_matches"]
-    print(matches)
     assert_valid_unit_matches(matches)
 
     # Default all=false returns exactly one best-priority match. Case returns the concept match not the exact match
     # added another case list to be updated with the new
     assert len(matches) == 1
-
     best_match = matches[0]
-    print(best_match)
+    assert best_match["priority"] == 0.0
+    assert best_match["unit_id"] == case.unit_id
+    assert best_match["strat_name_id"] == case.strat_name_id
+
+@mark.parametrize("case", cases_location_priority)
+def test_basic_match_units_location_priority(client, case):
+    response = client.get(
+        "/strat-names",
+        params={
+            "lat": case.xy[1],
+            "lng": case.xy[0],
+            "strat_name": case.match_text,
+            "priority": "location",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+    results = data["results"]
+    assert len(results) == 1
+    matches = results[0]["unit_matches"]
+    assert_valid_unit_matches(matches)
+
+    # Default all=false returns exactly one best-priority match. Case returns the concept match not the exact match
+    # added another case list to be updated with the new
+    assert len(matches) == 1
+    best_match = matches[0]
     assert best_match["priority"] == 0.0
     assert best_match["unit_id"] == case.unit_id
     assert best_match["strat_name_id"] == case.strat_name_id

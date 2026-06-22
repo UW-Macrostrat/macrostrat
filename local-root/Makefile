@@ -9,13 +9,19 @@ start-database:
 	macrostrat compose up -d database storage
 
 start-gateway:
-	macrostrat compose up -d --force-recreate gateway
+	macrostrat compose up -d gateway
+
+build-restart:
+	macrostrat compose build api_v3
+	macrostrat compose up -d --force-recreate api_v3
 
 start-services:
 	macrostrat compose up -d gateway postgrest api_v2 api_v3 tileserver_core tileserver_legacy tileserver_cache
 stop-services:
 	#macrostrat compose stop postgrest api_v3 tileserver_core tileserver_legacy tileserver_cache gateway
 	macrostrat compose stop postgrest api_v2 api_v3 tileserver_core tileserver_legacy tileserver_cache gateway
+stop-gateway:
+	macrostrat compose stop gateway
 test:
 	macrostrat compose exec database psql -U macrostrat_admin -d macrostrat
 	macrostrat compose ps

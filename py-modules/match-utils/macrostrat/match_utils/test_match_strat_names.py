@@ -4,6 +4,7 @@ Match stratigraphic names to Macrostrat columns.
 The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
+from typing import Optional
 
 from pandas import isna
 from pydantic import BaseModel
@@ -43,6 +44,23 @@ cases = [
         unit_id=15191,
         strat_name_id=1399,
         col_id=495,
+    ),
+    StratTestCaseData(
+        xy=(-109.905, 35.951),
+        match_text="Halgaito Member",
+        unit_id=15021,
+        strat_name_id=7036,
+        col_id=490,
+    ),
+]
+
+cases_location_priority = [
+    StratTestCaseData(
+        xy=(-109.905, 35.951),
+        match_text="Navajo",
+        unit_id=14999,
+        strat_name_id=3361,
+        col_id=490,
     ),
     StratTestCaseData(
         xy=(-109.905, 35.951),
