@@ -194,6 +194,10 @@ from .carto_new import router as carto_router
 
 app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
 
+from .topo import router as topo_router
+
+app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
