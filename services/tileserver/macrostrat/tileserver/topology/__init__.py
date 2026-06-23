@@ -30,10 +30,14 @@ async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = No
     return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
 
 
+@router.get("/faces/{z}/{x}/{y}")
 @router.get("/faces/{map_layer}/{z}/{x}/{y}")
-async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str):
+async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = None):
     """Get a tile from the tileserver."""
     sql = get_query("map-faces")
+    if map_layer is None:
+        sql = get_query("map-face-primitives")
+
     return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
 
 
