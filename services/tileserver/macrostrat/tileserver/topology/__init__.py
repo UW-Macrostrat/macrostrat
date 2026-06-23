@@ -3,7 +3,6 @@ from typing import Any
 
 from buildpg import render
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
 
 from macrostrat.tileserver_utils import VectorTileResponse
 
@@ -80,27 +79,28 @@ async def get_layers(request: Request):
         return [dict(row) for row in data]
 
 
-class LngLat(BaseModel):
-    lng: float
-    lat: float
-
-
 @router.get("/info")
 async def get_info(
     request: Request,
-    location: LngLat,
+    lng: float,
+    lat: float,
     map_layer: str = None,
 ):
-    """Get information for a location or topological face"""
-    query = get_query("info")
+    """Get information about the maps and topological faces at a location.
+
+    Returns one row per map covering the point, ordered by descending priority.
+    ``map_face_id`` is null where the location isn't covered by a built
+    topological face for the corresponding layer.
+    """
+    sql = get_query("info")
+    # ``::where_clauses`` is a raw template slot filled in here, before buildpg
+    # renders the value parameters (:lng, :lat, :map_layer) below.
     if map_layer is None:
-        query = query.replace("::where_clauses", "true")
+        sql = sql.replace("::where_clauses", "true")
     else:
-        query = query.replace("::where_clauses", f"ml.slug = :map_layer")
+        sql = sql.replace("::where_clauses", "ml.slug = :map_layer")
 
-    query.replace(":geometry", "ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)")
-
+    query, params = render(sql, lng=lng, lat=lat, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:
-        return await con.fetchval(
-            query, lng=location.lng, lat=location.lat, map_layer=map_layer
-        )
+        rows = await con.fetch(query, *params)
+        return [dict(row) for row in rows]

@@ -1,5 +1,5 @@
 WITH loc AS (
-  SELECT :geometry AS geometry
+  SELECT ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geometry
 )
 SELECT
     mp.map_id source_id,
