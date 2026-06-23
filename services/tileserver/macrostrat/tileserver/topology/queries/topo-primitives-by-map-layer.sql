@@ -17,10 +17,6 @@ WITH tile AS (
     JOIN map_bounds_topology.__edge_relation er
       ON er.edge_id = e.edge_id
     WHERE er.map_layer = map_bounds.layer_id(:map_layer)
-      OR er.map_layer = ANY(
-        SELECT composited_from FROM map_bounds.map_layer
-        WHERE id = map_bounds.layer_id(:map_layer)
-      )
   ),
   n0 AS (
     SELECT

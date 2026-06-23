@@ -17,6 +17,7 @@ dependencies = [
     "mapbox-vector-tile>=2.1.0,<3",
     "timvt",
     "macrostrat.tileserver-utils",
+    "pydantic>=2.11.7",
 ]
 
 [dependency-groups]
