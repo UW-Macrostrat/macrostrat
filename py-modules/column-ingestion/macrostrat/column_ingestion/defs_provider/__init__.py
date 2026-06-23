@@ -9,16 +9,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-from macrostrat.database import Database
-from macrostrat.database.postgresql import OnConflictAction, upsert
-from macrostrat.utils import get_logger
 from macrostrat.core.defs_provider import (
     MacrostratAPIConfig,
     MacrostratAPIDataProvider,
     MacrostratDataProvider,
     default_api_config,
 )
-from ..database import get_macrostrat_table
 from macrostrat.core.defs_provider_models import (
     Environment,
     Interval,
@@ -26,6 +22,11 @@ from macrostrat.core.defs_provider_models import (
     LithologyAttribute,
     Timescale,
 )
+from macrostrat.database import Database
+from macrostrat.database.postgresql import OnConflictAction, upsert
+from macrostrat.utils import get_logger
+
+from ..database import get_macrostrat_table
 
 log = get_logger(__name__)
 

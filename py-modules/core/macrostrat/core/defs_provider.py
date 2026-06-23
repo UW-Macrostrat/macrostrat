@@ -23,6 +23,7 @@ class MacrostratAPIConfig:
 
 default_api_config = MacrostratAPIConfig(base_url="https://macrostrat.org/api/v2")
 
+
 class MacrostratDataProvider(ABC):
     """
     Provides an abstract interface for accessing Macrostrat data.
@@ -177,4 +178,3 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
             )
             for row in rows
         ]
-
