@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from pytest import fixture, mark
 
 from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.match_utils.test_match_strat_names import cases, cases_location_priority
+from macrostrat.match_utils.test_match_strat_names import cases, cases_strat_name_priority
 
 from . import MatchQuery, router, setup_intervals
 
@@ -70,15 +70,15 @@ def test_basic_match_units(client, case):
     assert best_match["strat_name_id"] == case.strat_name_id
 
 
-@mark.parametrize("case", cases_location_priority)
-def test_basic_match_units_location_priority(client, case):
+@mark.parametrize("case", cases_strat_name_priority)
+def test_basic_match_units_strat_name_priority(client, case):
     response = client.get(
         "/strat-names",
         params={
             "lat": case.xy[1],
             "lng": case.xy[0],
             "strat_name": case.match_text,
-            "priority": "location",
+            "priority": "strat_name",
         },
     )
     assert response.status_code == 200
@@ -273,7 +273,7 @@ def test_invalid_age_constraints(client):
 
 
 def test_match_types_all_true(client):
-    """With all=true, return all API-supported Brady Butte matches ordered by priority."""
+    """With all=true, return all API-supported Mancos matches ordered by priority."""
     response = client.get(
         "/strat-names",
         params={
@@ -305,7 +305,7 @@ def test_match_types_all_true(client):
 
 
 def test_match_types_all_false(client):
-    """With all=false, return only the best priority-0.0 Brady Butte match."""
+    """With all=false, return only the best priority-0.0 Mancos match."""
     response = client.get(
         "/strat-names",
         params={
@@ -330,6 +330,26 @@ def test_match_types_all_false(client):
     assert best_match["unit_id"] == 14992
     assert best_match["strat_name"] == "Mancos Shale"
 
+def test_match_brady_butte_pluton(client):
+    """Brady Butte Pluton should recover the related Brady Butte igneous unit."""
+    response = client.get(
+        "/strat-names",
+        params={
+            "col_id": 490,
+            "strat_name": "Brady Butte Pluton",
+            "all": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    results = data["results"]
+    assert len(results) == 1
+    matches = results[0]["unit_matches"]
+    assert_valid_unit_matches(matches)
+    assert len(matches) == 1
+    match = matches[0]
+    assert match["unit_id"] == 1852
+    assert match["strat_name"] == "Brady Butte Granodiorite"
 
 def test_all_false_returns_best_priority_only(client):
     """With all=false (default), only priority=0.0 matches are returned."""

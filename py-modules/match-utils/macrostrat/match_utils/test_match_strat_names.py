@@ -37,15 +37,16 @@ class StratTestCaseData(BaseModel):
     strat_name_id: int
     col_id: int
 
-
+#defaults to location order
 cases = [
     StratTestCaseData(
-        xy=(-109.905, 35.951),
-        match_text="Navajo",
-        unit_id=15191,
-        strat_name_id=1399,
-        col_id=495,
+    xy=(-109.905, 35.951),
+    match_text="Navajo",
+    unit_id=14999,
+    strat_name_id=3361,
+    col_id=490,
     ),
+
     StratTestCaseData(
         xy=(-109.905, 35.951),
         match_text="Halgaito Member",
@@ -55,13 +56,13 @@ cases = [
     ),
 ]
 
-cases_location_priority = [
+cases_strat_name_priority = [
     StratTestCaseData(
         xy=(-109.905, 35.951),
         match_text="Navajo",
-        unit_id=14999,
-        strat_name_id=3361,
-        col_id=490,
+        unit_id=15191,
+        strat_name_id=1399,
+        col_id=495,
     ),
     StratTestCaseData(
         xy=(-109.905, 35.951),

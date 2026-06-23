@@ -1,7 +1,7 @@
 from functools import lru_cache
 from urllib.parse import urljoin
 
-from macrostrat.column_ingestion.defs_provider import (
+from macrostrat.core.defs_provider import (
     MacrostratAPIConfig,
     MacrostratAPIDataProvider,
 )

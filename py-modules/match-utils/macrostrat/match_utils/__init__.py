@@ -44,6 +44,14 @@ MATCH_STRAT_NAMES_INFO = {
                 "lng": "number, longitude of the query location. Must be used with lat.",
                 "col_id": "integer, a specific Macrostrat column ID. "
                 "Can be used instead of lat/lng.",
+                "priority": "string, controls how match results are prioritized when multiple possible matches are found. "
+                "Allowed values: location | strat_name. Default: location. "
+                "If priority=location, matches from the containing column are ranked before matches "
+                "from adjacent columns, even if an adjacent-column match has a stronger stratigraphic "
+                "name match. If priority=strat_name, results are ranked first by how closely the "
+                "user's input stratigraphic name matches the stratigraphic name in the database, "
+                "with exact name matches prioritized before broader concept, rank-down, rank-up, "
+                "or synonym matches.",
                 "project_id": "integer, limit search to a specific Macrostrat project. "
                 "Useful when columns overlap across projects.",
                 "interval": "string or integer, geologic time interval name or ID to constrain "
@@ -73,8 +81,6 @@ MATCH_STRAT_NAMES_INFO = {
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&all=true",
-                "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_name=Navajo&lat=35.951&lng=-109.905",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&interval=Triassic",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_age=250.0&t_age=200.0",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_interval=Triassic&t_interval=Jurassic",
@@ -82,8 +88,8 @@ MATCH_STRAT_NAMES_INFO = {
                 "/dev/match/strat-names?strat_name=Kaza&lat=53.114&lng=-120.909&project_id=1",
                 "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905&identifier=sample-001",
                 "/dev/match/strat-names?strat_name_id=3361&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_id=9491&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?strat_name_id=3361&concept_id=9491&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&priority=location",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&priority=strat_name",
             ],
             "response_fields": {
                 "results": "array, list of match result objects, one per query.",
@@ -106,11 +112,16 @@ MATCH_STRAT_NAMES_INFO = {
                 "One of: containing column | adjacent column",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
-                "priority": "number, match priority — 0.0 is the best match, "
-                "higher numbers indicate less direct matches. "
-                "Priority order: exact/containing, exact/adjacent, concept/containing, "
-                "rank-down/containing, concept/adjacent, rank-down/adjacent, "
-                "rank-up/containing, rank-up/adjacent, synonym/containing, synonym/adjacent.",
+                "priority": "number, match priority assigned after applying the selected priority ordering scheme. "
+                "0.0 is the best match, and higher numbers indicate lower-priority matches. "
+                "When priority=location, containing-column matches are prioritized before adjacent-column matches: "
+                "exact/containing, concept/containing, rank-down/containing, rank-up/containing, "
+                "synonym/containing, exact/adjacent, concept/adjacent, rank-down/adjacent, "
+                "rank-up/adjacent, synonym/adjacent. "
+                "When priority=strat_name, stronger stratigraphic name matches are prioritized first: "
+                "exact/containing, exact/adjacent, concept/containing, rank-down/containing, "
+                "concept/adjacent, rank-down/adjacent, rank-up/containing, rank-up/adjacent, "
+                "synonym/containing, synonym/adjacent.",
             },
         },
     }
@@ -138,11 +149,10 @@ def get_columns_data_frame(db: Database):
                         ON c.id = ca.col_id
           WHERE c.status_code = 'active'
           """
-    gdf = GeoDataFrame.from_postgis(
-        text(sql), db.engine.connect(), geom_col="col_area", index_col="col_id"
-    )
-    return gdf
-
+    with db.engine.connect() as conn:
+        return GeoDataFrame.from_postgis(
+            text(sql), conn, geom_col="col_area", index_col="col_id"
+        )
 
 class ColumnInfo(BaseModel):
     col_id: int
