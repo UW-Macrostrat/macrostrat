@@ -1,7 +1,7 @@
 import pytest
 
-from ..project_metadata.test_project_metadata import template_database
-from . import (
+from macrostrat.column_ingestion.project_metadata.test_project_metadata import template_database
+from macrostrat.core.defs_provider import (
     MacrostratDatabaseDataProvider,
     MacrostratDataProvider,
     MacrostratMetadataPopulator,
@@ -9,7 +9,7 @@ from . import (
 from macrostrat.core.defs_provider import (
     MacrostratAPIDataProvider
 )
-from macrostrat.core.defs_provider_models import (
+from macrostrat.core.defs_provider.defs_provider_models import (
     Environment,
     Interval,
     Lithology,

@@ -185,7 +185,7 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
     return db
 
 
-from macrostrat.column_ingestion.defs_provider import (
+from macrostrat.core.defs_provider import (
     MacrostratAPIConfig,
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
