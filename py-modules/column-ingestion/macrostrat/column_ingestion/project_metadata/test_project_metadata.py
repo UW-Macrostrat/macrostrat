@@ -17,7 +17,10 @@ from . import _column_metadata_importer
 
 __here__ = Path(__file__).parent
 
-from ..defs_provider import MacrostratDatabaseDataProvider, MacrostratMetadataPopulator
+from macrostrat.core.defs_provider import (
+    MacrostratDatabaseDataProvider,
+    MacrostratMetadataPopulator,
+)
 
 
 @fixture(scope="class")

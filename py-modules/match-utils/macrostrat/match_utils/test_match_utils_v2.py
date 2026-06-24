@@ -3,10 +3,18 @@ Tests for the v2 match API response structure and batch endpoint.
 """
 
 from pydantic import BaseModel
-from pytest import mark
+from pytest import fixture, mark
 
 from . import get_all_matched_units, get_columns_for_location, standardize_names
+from ._test_helpers import get_test_lith_names
 from .models import MatchResult, MatchType
+from .strat_names import create_ignore_list
+
+
+@fixture(autouse=True)
+def initialize_ignore_list_for_tests():
+    create_ignore_list(list(get_test_lith_names()))
+
 
 # -- Batch input test data --------------------------------------------------
 

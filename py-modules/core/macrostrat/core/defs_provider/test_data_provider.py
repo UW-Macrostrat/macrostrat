@@ -1,13 +1,21 @@
 import pytest
 
-from ..project_metadata.test_project_metadata import template_database
-from . import (
+from macrostrat.column_ingestion.project_metadata.test_project_metadata import (
+    template_database,
+)
+from macrostrat.core.defs_provider import (
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
     MacrostratDataProvider,
     MacrostratMetadataPopulator,
 )
-from .models import Environment, Interval, Lithology, LithologyAttribute, Timescale
+from macrostrat.core.defs_provider.defs_provider_models import (
+    Environment,
+    Interval,
+    Lithology,
+    LithologyAttribute,
+    Timescale,
+)
 
 
 class StaticMacrostratDataProvider(MacrostratDataProvider):

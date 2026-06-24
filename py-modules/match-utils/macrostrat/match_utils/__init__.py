@@ -44,6 +44,14 @@ MATCH_STRAT_NAMES_INFO = {
                 "lng": "number, longitude of the query location. Must be used with lat.",
                 "col_id": "integer, a specific Macrostrat column ID. "
                 "Can be used instead of lat/lng.",
+                "priority": "string, controls how match results are prioritized when multiple possible matches are found. "
+                "Allowed values: location | strat_name. Default: location. "
+                "If priority=location, matches from the containing column are ranked before matches "
+                "from adjacent columns, even if an adjacent-column match has a stronger stratigraphic "
+                "name match. If priority=strat_name, results are ranked first by how closely the "
+                "user's input stratigraphic name matches the stratigraphic name in the database, "
+                "with exact name matches prioritized before broader concept, rank-down, rank-up, "
+                "or synonym matches.",
                 "project_id": "integer, limit search to a specific Macrostrat project. "
                 "Useful when columns overlap across projects.",
                 "interval": "string or integer, geologic time interval name or ID to constrain "
@@ -73,8 +81,6 @@ MATCH_STRAT_NAMES_INFO = {
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&all=true",
-                "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_name=Navajo&lat=35.951&lng=-109.905",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&interval=Triassic",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_age=250.0&t_age=200.0",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_interval=Triassic&t_interval=Jurassic",
@@ -82,8 +88,8 @@ MATCH_STRAT_NAMES_INFO = {
                 "/dev/match/strat-names?strat_name=Kaza&lat=53.114&lng=-120.909&project_id=1",
                 "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905&identifier=sample-001",
                 "/dev/match/strat-names?strat_name_id=3361&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?concept_id=9491&lat=35.951&lng=-109.905",
-                "/dev/match/strat-names?strat_name_id=3361&concept_id=9491&lat=35.951&lng=-109.905",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&priority=location",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&priority=strat_name",
             ],
             "response_fields": {
                 "results": "array, list of match result objects, one per query.",
@@ -106,11 +112,16 @@ MATCH_STRAT_NAMES_INFO = {
                 "One of: containing column | adjacent column",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
-                "priority": "number, match priority — 0.0 is the best match, "
-                "higher numbers indicate less direct matches. "
-                "Priority order: exact/containing, exact/adjacent, concept/containing, "
-                "rank-down/containing, concept/adjacent, rank-down/adjacent, "
-                "rank-up/containing, rank-up/adjacent, synonym/containing, synonym/adjacent.",
+                "priority": "number, match priority assigned after applying the selected priority ordering scheme. "
+                "0.0 is the best match, and higher numbers indicate lower-priority matches. "
+                "When priority=location, containing-column matches are prioritized before adjacent-column matches: "
+                "exact/containing, concept/containing, rank-down/containing, rank-up/containing, "
+                "synonym/containing, exact/adjacent, concept/adjacent, rank-down/adjacent, "
+                "rank-up/adjacent, synonym/adjacent. "
+                "When priority=strat_name, stronger stratigraphic name matches are prioritized first: "
+                "exact/containing, exact/adjacent, concept/containing, rank-down/containing, "
+                "concept/adjacent, rank-down/adjacent, rank-up/containing, rank-up/adjacent, "
+                "synonym/containing, synonym/adjacent.",
             },
         },
     }
@@ -138,10 +149,10 @@ def get_columns_data_frame(db: Database):
                         ON c.id = ca.col_id
           WHERE c.status_code = 'active'
           """
-    gdf = GeoDataFrame.from_postgis(
-        text(sql), db.engine.connect(), geom_col="col_area", index_col="col_id"
-    )
-    return gdf
+    with db.engine.connect() as conn:
+        return GeoDataFrame.from_postgis(
+            text(sql), conn, geom_col="col_area", index_col="col_id"
+        )
 
 
 class ColumnInfo(BaseModel):
@@ -178,10 +189,41 @@ def get_columns_for_location(
         params["project_id"] = project_id
 
     sql = base_select + " WHERE " + " AND ".join(filters)
-    print("sql to find cols!!", sql)
-    print("params", params)
     cols = db.run_query(sql, params).all()
     return [ColumnInfo.model_validate(row) for row in cols]
+
+
+def get_adjacent_cols_from_containing(
+    db, col_id, *, use_adjacent_cols=True, buffer=0.01
+) -> list[int]:
+    """
+    Given the column returned by get_columns_for_location(), return the list of the adjacent columns.
+    Adjacent columns query comes from the column-strat-names sql.
+    """
+    sql = """
+    WITH RECURSIVE cols AS (
+        SELECT col_id, ST_SetSRID(ca.col_area, 4326) AS col_area
+        FROM macrostrat.col_areas ca
+        JOIN macrostrat.cols c ON c.id = ca.col_id
+        WHERE c.status_code = 'active'
+    ),
+    selected_col AS (
+        SELECT * FROM cols WHERE col_id = :col_id
+    ),
+    adjacent_cols AS (
+        SELECT cols.col_id, cols.col_id = sel.col_id AS selected
+        FROM cols
+        JOIN selected_col sel
+            ON ST_Intersects(cols.col_area, ST_Buffer(sel.col_area, :buffer))
+        WHERE :use_adjacent_cols OR cols.col_id = sel.col_id
+    )
+    --containing column first, then adjacent
+    SELECT col_id FROM adjacent_cols
+    ORDER BY selected DESC, col_id
+    """
+    params = dict(col_id=col_id, use_adjacent_cols=use_adjacent_cols, buffer=buffer)
+    rows = db.run_query(sql, params).all()
+    return [row.col_id for row in rows]
 
 
 def ensure_single(col_ids, entity="column"):
@@ -202,9 +244,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
     Get a unit that matches a given stratigraphic name
     """
     unit_index = column_unit_index.get()
-    print("unit index", unit_index)
     if col_id in unit_index:
-        print(unit_index[col_id])
         return unit_index[col_id]
     # TODO need to update the match types model to exact, concept, rank-up, rank-down
     types = get_match_types(types)
@@ -218,16 +258,12 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
         use_column_units=MatchType.ColumnUnits in types,
     )
     sql = stored_procedure("column-strat-names")
-    print("sql", sql)
-    print("params", params)
     units_df = read_sql(
         sql,
         conn,
         params=params,
         coerce_float=False,
     )
-    print("units df found!", units_df)
-
     # Insert column strat_name_clean after strat_name
     ix = units_df.columns.get_loc("strat_name")
     units_df.insert(
@@ -239,10 +275,8 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
 
     # Set the index to a shared cache
     unit_index = column_unit_index.get()
-    print("unit index", unit_index)
     unit_index[col_id] = units_df
     column_unit_index.set(unit_index)
-    print("resetting unit index")
     return units_df
 
 
@@ -292,14 +326,12 @@ def get_all_matched_units(
     Returns list of (row, is_exact_name_match) tuples.
     """
     units = get_column_units(conn, col_id, types=types)
-    print("units found", units, "for col_id", col_id)
     if b_age is not None:
         units = units.loc[units.t_age <= b_age]
     if t_age is not None:
         units = units.loc[units.b_age >= t_age]
 
     u1 = units[units.strat_name_clean.notnull()]
-    print("adding strat name clean?", u1)
     matched_rows = []
     n_results = n_results or len(u1)
 
@@ -312,7 +344,6 @@ def get_all_matched_units(
         matched_rows.append((row, is_exact))
         if len(matched_rows) >= n_results:
             return matched_rows
-    print(matched_rows)
     return matched_rows
 
 

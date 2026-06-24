@@ -1,3 +1,6 @@
+from abc import ABC, abstractmethod
+from typing import Callable
+
 """
 Metadata provider for column ingestion. This gets common Macrostrat definitions, like
 lithology, environments, intervals from a centralized source (either the database or API),
@@ -5,20 +8,14 @@ and caches them for testing etc.
 """
 
 # https://macrostrat.org/api/v2/defs/intervals
-
-from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Generator, TypeVar
+from typing import Any, TypeVar
 
-from httpx import Client
-
+from macrostrat.column_ingestion.database import get_macrostrat_table
 from macrostrat.database import Database
 from macrostrat.database.postgresql import OnConflictAction, upsert
 from macrostrat.utils import get_logger
-
-from ..database import get_macrostrat_table
-from .models import Environment, Interval, Lithology, LithologyAttribute, Timescale
 
 log = get_logger(__name__)
 
@@ -32,9 +29,23 @@ def sql(name) -> str:
     return (__here__ / "sql" / f"{name}.sql").read_text()
 
 
+from httpx import Client
+
+from .defs_provider_models import (
+    Environment,
+    Interval,
+    Lithology,
+    LithologyAttribute,
+    Timescale,
+)
+
+T = TypeVar("T")
+
+
 @dataclass
 class MacrostratAPIConfig:
     base_url: str
+    verify_ssl: bool = True
 
 
 default_api_config = MacrostratAPIConfig(base_url="https://macrostrat.org/api/v2")
@@ -114,7 +125,7 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
     def __init__(self, config: MacrostratAPIConfig = default_api_config):
         super().__init__()
         self.config = config
-        self.client = Client(base_url=config.base_url)
+        self.client = Client(base_url=config.base_url, verify=config.verify_ssl)
 
     def close(self):
         self.client.close()

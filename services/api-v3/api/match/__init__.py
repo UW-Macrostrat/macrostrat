@@ -1,7 +1,7 @@
 import enum
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
@@ -123,6 +123,18 @@ class MatchQuery(BaseModel):
     )
     b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
     t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
+    priority: Literal["strat_name", "location"] = Field(
+        "location",
+        description=(
+            "Controls how match results are prioritized when multiple possible matches are found. "
+            "If priority='location', matches from the containing column are ranked before matches "
+            "from adjacent columns, even if an adjacent-column match has a stronger stratigraphic "
+            "name match. This is the default behavior. "
+            "If priority='strat_name', results are ranked first by how closely the user's input "
+            "stratigraphic name matches the stratigraphic name in the database, with exact name "
+            "matches prioritized before broader concept, rank-down, rank-up, or synonym matches."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_match_input(self):
@@ -229,39 +241,96 @@ class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
 
+NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
+SpatialBasis = Literal["containing column", "adjacent column"]
+
+
+class MatchPriorityOrder(BaseModel):
+    """
+    A single priority-ordering rule used to rank match results.
+    Each rule combines two pieces of information:
+    - name_basis: how the user's input stratigraphic name matched the database record
+      such as exact, concept, rank-down, rank-up, or synonym.
+    - spatial_basis: how the matched unit relates to the input location or column,
+      such as containing column or adjacent column.
+    The API supports different priority schemes. With priority='location', spatial
+    relationship is favored first, so containing-column matches are ranked before
+    adjacent-column matches. With priority='strat_name', the strength of the
+    stratigraphic name match is favored first.
+    """
+
+    name_basis: NameBasis = Field(
+        ...,
+        description=(
+            "How the user's input stratigraphic name matched the database record. "
+            "For example, 'exact' means the input name directly matched the database "
+        ),
+    )
+    spatial_basis: SpatialBasis = Field(
+        ...,
+        description=(
+            "Spatial relationship between the matched unit and the column location. "
+            "'containing column' means the match comes from the column containing the user's input "
+            "'adjacent column' means the match comes from a neighboring column. "
+        ),
+    )
+
+    def priority_matches(self, result: MatchResult) -> bool:
+        return (
+            result.name_basis == self.name_basis
+            and result.spatial_basis == self.spatial_basis
+        )
+
+
 PRIORITY_ORDER = [
-    ("exact", "containing column"),
-    ("exact", "adjacent column"),
-    ("concept", "containing column"),
-    ("rank-down", "containing column"),
-    ("concept", "adjacent column"),
-    ("rank-down", "adjacent column"),
-    ("rank-up", "containing column"),
-    ("rank-up", "adjacent column"),
-    ("synonym", "containing column"),
-    ("synonym", "adjacent column"),
+    MatchPriorityOrder(name_basis="exact", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="exact", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="concept", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-down", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="concept", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-down", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-up", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-up", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="synonym", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="synonym", spatial_basis="adjacent column"),
+]
+
+PRIORITY_ORDER_LOCATION = [
+    MatchPriorityOrder(name_basis="exact", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="concept", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-down", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-up", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="synonym", spatial_basis="containing column"),
+    MatchPriorityOrder(name_basis="exact", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="concept", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-down", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-up", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="synonym", spatial_basis="adjacent column"),
 ]
 
 
-def assign_priorities(results: list[MatchResult]) -> list[MatchResult]:
+def assign_priorities(
+    results: list[MatchResult], priority: str = "location"
+) -> list[MatchResult]:
     """Assign consecutive priorities based on name_basis/spatial_basis combinations present."""
-    # Find which combinations exist in results, in ranked order
-    present = []
-    for combo in PRIORITY_ORDER:
-        if any(
-            r.name_basis == combo[0] and r.spatial_basis == combo[1] for r in results
-        ):
-            if combo not in present:
-                present.append(combo)
 
-    # Assign priority based on position in present list
+    order = PRIORITY_ORDER_LOCATION if priority == "location" else PRIORITY_ORDER
+    present: list[MatchPriorityOrder] = []
+
+    for priority_rule in order:
+        if any(priority_rule.priority_matches(r) for r in results):
+            if priority_rule not in present:
+                present.append(priority_rule)
+
     updated = []
-    for r in results:
-        combo = (r.name_basis, r.spatial_basis)
-        priority = (
-            float(present.index(combo)) if combo in present else float(len(present))
-        )
-        updated.append(r.model_copy(update={"priority": priority}))
+    for result in results:
+        result_priority = float(len(present))
+        for idx, priority_rule in enumerate(present):
+            if priority_rule.priority_matches(result):
+                result_priority = float(idx)
+                break
+        updated.append(result.model_copy(update={"priority": result_priority}))
+
     return sorted(updated, key=lambda r: r.priority)
 
 
@@ -520,5 +589,5 @@ def build_match_data(db, params):
                 type=MatchMessageType.Warning,
             )
         )
-    results = assign_priorities(results)
+    results = assign_priorities(results, params.priority)
     return MatchData(unit_matches=results, messages=messages)
