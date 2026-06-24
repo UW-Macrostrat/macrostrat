@@ -1,13 +1,13 @@
 import pytest
 
-from macrostrat.column_ingestion.project_metadata.test_project_metadata import template_database
+from macrostrat.column_ingestion.project_metadata.test_project_metadata import (
+    template_database,
+)
 from macrostrat.core.defs_provider import (
+    MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
     MacrostratDataProvider,
     MacrostratMetadataPopulator,
-)
-from macrostrat.core.defs_provider import (
-    MacrostratAPIDataProvider
 )
 from macrostrat.core.defs_provider.defs_provider_models import (
     Environment,
@@ -16,6 +16,7 @@ from macrostrat.core.defs_provider.defs_provider_models import (
     LithologyAttribute,
     Timescale,
 )
+
 
 class StaticMacrostratDataProvider(MacrostratDataProvider):
     def _load_intervals(self) -> list[Interval]:

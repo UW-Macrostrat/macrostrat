@@ -12,10 +12,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
+from macrostrat.column_ingestion.database import get_macrostrat_table
 from macrostrat.database import Database
 from macrostrat.database.postgresql import OnConflictAction, upsert
 from macrostrat.utils import get_logger
-from macrostrat.column_ingestion.database import get_macrostrat_table
 
 log = get_logger(__name__)
 
@@ -49,6 +49,7 @@ class MacrostratAPIConfig:
 
 
 default_api_config = MacrostratAPIConfig(base_url="https://macrostrat.org/api/v2")
+
 
 class MacrostratDataProvider(ABC):
     """
@@ -204,6 +205,7 @@ class MacrostratAPIDataProvider(MacrostratDataProvider):
             )
             for row in rows
         ]
+
 
 def list_builder(fn):
     """Decorator that converts a function that returns an iterable into one that returns a list"""
@@ -414,4 +416,3 @@ def set_defaults(_dict, _defaults):
         if _dict[key] is None:
             _dict[key] = default
     return _dict
-
