@@ -1,11 +1,8 @@
 from functools import lru_cache
 from urllib.parse import urljoin
 
-from macrostrat.core.defs_provider import (
-    MacrostratAPIConfig,
-    MacrostratAPIDataProvider,
-)
 from macrostrat.core.config import settings
+from macrostrat.core.defs_provider import MacrostratAPIConfig, MacrostratAPIDataProvider
 
 
 def get_defs_api_base_url() -> str:

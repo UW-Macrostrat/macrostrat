@@ -154,6 +154,7 @@ def get_columns_data_frame(db: Database):
             text(sql), conn, geom_col="col_area", index_col="col_id"
         )
 
+
 class ColumnInfo(BaseModel):
     col_id: int
     project_id: int

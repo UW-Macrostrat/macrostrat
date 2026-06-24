@@ -5,7 +5,10 @@ from fastapi.testclient import TestClient
 from pytest import fixture, mark
 
 from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.match_utils.test_match_strat_names import cases, cases_strat_name_priority
+from macrostrat.match_utils.test_match_strat_names import (
+    cases,
+    cases_strat_name_priority,
+)
 
 from . import MatchQuery, router, setup_intervals
 
@@ -330,6 +333,7 @@ def test_match_types_all_false(client):
     assert best_match["unit_id"] == 14992
     assert best_match["strat_name"] == "Mancos Shale"
 
+
 def test_match_brady_butte_pluton(client):
     """Brady Butte Pluton should recover the related Brady Butte igneous unit."""
     response = client.get(
@@ -350,6 +354,7 @@ def test_match_brady_butte_pluton(client):
     match = matches[0]
     assert match["unit_id"] == 1852
     assert match["strat_name"] == "Brady Butte Granodiorite"
+
 
 def test_all_false_returns_best_priority_only(client):
     """With all=false (default), only priority=0.0 matches are returned."""

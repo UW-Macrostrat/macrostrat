@@ -124,15 +124,15 @@ class MatchQuery(BaseModel):
     b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
     t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
     priority: Literal["strat_name", "location"] = Field(
-    "location",
-    description=(
-        "Controls how match results are prioritized when multiple possible matches are found. "
-        "If priority='location', matches from the containing column are ranked before matches "
-        "from adjacent columns, even if an adjacent-column match has a stronger stratigraphic "
-        "name match. This is the default behavior. "
-        "If priority='strat_name', results are ranked first by how closely the user's input "
-        "stratigraphic name matches the stratigraphic name in the database, with exact name "
-        "matches prioritized before broader concept, rank-down, rank-up, or synonym matches."
+        "location",
+        description=(
+            "Controls how match results are prioritized when multiple possible matches are found. "
+            "If priority='location', matches from the containing column are ranked before matches "
+            "from adjacent columns, even if an adjacent-column match has a stronger stratigraphic "
+            "name match. This is the default behavior. "
+            "If priority='strat_name', results are ranked first by how closely the user's input "
+            "stratigraphic name matches the stratigraphic name in the database, with exact name "
+            "matches prioritized before broader concept, rank-down, rank-up, or synonym matches."
         ),
     )
 
@@ -240,30 +240,31 @@ class MatchOptions(BaseModel):
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
+
 NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
 SpatialBasis = Literal["containing column", "adjacent column"]
 
 
 class MatchPriorityOrder(BaseModel):
     """
-        A single priority-ordering rule used to rank match results.
-        Each rule combines two pieces of information:
-        - name_basis: how the user's input stratigraphic name matched the database record
-          such as exact, concept, rank-down, rank-up, or synonym.
-        - spatial_basis: how the matched unit relates to the input location or column,
-          such as containing column or adjacent column.
-        The API supports different priority schemes. With priority='location', spatial
-        relationship is favored first, so containing-column matches are ranked before
-        adjacent-column matches. With priority='strat_name', the strength of the
-        stratigraphic name match is favored first.
+    A single priority-ordering rule used to rank match results.
+    Each rule combines two pieces of information:
+    - name_basis: how the user's input stratigraphic name matched the database record
+      such as exact, concept, rank-down, rank-up, or synonym.
+    - spatial_basis: how the matched unit relates to the input location or column,
+      such as containing column or adjacent column.
+    The API supports different priority schemes. With priority='location', spatial
+    relationship is favored first, so containing-column matches are ranked before
+    adjacent-column matches. With priority='strat_name', the strength of the
+    stratigraphic name match is favored first.
     """
 
     name_basis: NameBasis = Field(
-    ...,
-    description=(
-        "How the user's input stratigraphic name matched the database record. "
-        "For example, 'exact' means the input name directly matched the database "
-    ),
+        ...,
+        description=(
+            "How the user's input stratigraphic name matched the database record. "
+            "For example, 'exact' means the input name directly matched the database "
+        ),
     )
     spatial_basis: SpatialBasis = Field(
         ...,
@@ -279,6 +280,8 @@ class MatchPriorityOrder(BaseModel):
             result.name_basis == self.name_basis
             and result.spatial_basis == self.spatial_basis
         )
+
+
 PRIORITY_ORDER = [
     MatchPriorityOrder(name_basis="exact", spatial_basis="containing column"),
     MatchPriorityOrder(name_basis="exact", spatial_basis="adjacent column"),
