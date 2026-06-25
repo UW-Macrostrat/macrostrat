@@ -60,12 +60,19 @@ def rgeom_map(test_db_base):
 
     _cleanup(db)  # clear any leftovers from a previous interrupted run
 
+    # primary_table is unused on the maps.polygons path, but create_rgeom builds
+    # Identifier("sources", primary_table) eagerly, which rejects NULL — so set it.
     db.run_sql(
         """
-        INSERT INTO maps.sources (source_id, slug, name, scale, status_code, is_finalized)
-        VALUES (:source_id, :slug, 'RGeom test map', 'large', 'active', true)
+        INSERT INTO maps.sources
+            (source_id, slug, name, primary_table, scale, status_code, is_finalized)
+        VALUES (:source_id, :slug, 'RGeom test map', :primary_table, 'large', 'active', true)
         """,
-        dict(source_id=TEST_SOURCE_ID, slug=TEST_SLUG),
+        dict(
+            source_id=TEST_SOURCE_ID,
+            slug=TEST_SLUG,
+            primary_table=f"{TEST_SLUG}_polygons",
+        ),
     )
 
     for wkt in TEST_POLYGONS:

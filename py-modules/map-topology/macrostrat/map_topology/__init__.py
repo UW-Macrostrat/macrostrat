@@ -368,13 +368,19 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
         updated += recovered
         print(f"  Recovered {recovered} errored features at reduced tolerance")
 
-    has_topogeometry = db.run_query(
-        "SELECT EXISTS (SELECT 1 FROM map_bounds.map_area WHERE id = :map_id AND (topo IS NOT NULL OR topology_error IS NOT NULL))",
+    has_valid_topogeom_or_error = db.run_query(
+        """
+        SELECT EXISTS (
+        SELECT 1 FROM map_bounds.map_area
+        WHERE id = :map_id
+          AND  ( topo IS NOT NULL OR topology_error IS NOT NULL) -- existing topogeometry
+          AND (geometry_hash IS NOT NULL AND geometry_hash = md5(ST_AsBinary(geometry)::uuid)) -- geometry matches hash
+        )
+        """,
         dict(map_id=map_id),
     ).scalar()
 
-    if updated > 0 or not has_topogeometry:
-        # We actually did something...
+    if updated > 0 or not has_valid_topogeom_or_error:
         # We need to create the topology
         print("  Updating map_area topogeometry")
         db.run_query(proc("create-source-topogeometry"), dict(map_id=map_id))
