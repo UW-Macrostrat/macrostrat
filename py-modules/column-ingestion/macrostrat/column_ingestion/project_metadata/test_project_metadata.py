@@ -4,9 +4,9 @@ import polars as pl
 from pytest import fixture
 from xlsxwriter import Workbook
 
-from macrostrat.database import reset_sequence, Database
-from macrostrat.utils import get_logger
+from macrostrat.database import Database, reset_sequence
 from macrostrat.database.utils import template_database
+from macrostrat.utils import get_logger
 
 from ..ingest import ingest_columns_from_file
 from ..query_helpers import get_liths_for_unit

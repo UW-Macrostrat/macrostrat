@@ -5,12 +5,11 @@ Basic wrapper for PyTest to run Macrostrat tests.
 
 from pathlib import Path
 
+from sqlalchemy.engine import Engine
 from typer import Context, Typer
 
 from macrostrat.core.config import settings
 from macrostrat.utils import working_directory
-
-from sqlalchemy.engine import Engine
 
 cli = Typer(
     short_help="Macrostrat tests",

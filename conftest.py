@@ -4,12 +4,12 @@ import importlib
 from pathlib import Path
 from typing import Optional
 
-from macrostrat.database.utils import temp_database
 from pytest import fixture, mark, skip
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
+from macrostrat.database.utils import temp_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 

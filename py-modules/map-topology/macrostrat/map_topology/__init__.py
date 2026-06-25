@@ -5,20 +5,19 @@ from pathlib import Path
 from subprocess import run
 
 import typer
+from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.config import (
+    IdentityStrategy,
+    TopologyContext,
+    create_context,
+)
 from rich import print
 from typer import Argument, Typer
 
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database import Database
-from macrostrat.utils import working_directory
-from mapboard.topology_manager import TopologyManager
-from mapboard.topology_manager.config import (
-    create_context,
-    TopologyContext,
-    IdentityStrategy,
-)
-
 from macrostrat.core.database import get_database
+from macrostrat.database import Database
+from macrostrat.database.transfer.utils import raw_database_url
+from macrostrat.utils import working_directory
 
 __dir__ = Path(__file__).parent
 

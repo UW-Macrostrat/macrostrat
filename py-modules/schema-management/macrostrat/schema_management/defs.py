@@ -10,9 +10,8 @@ from rich import print
 from macrostrat.core.config import settings
 from macrostrat.database import Database
 from macrostrat.dinosaur.cluster import database_cluster
-from macrostrat.utils.logs import get_logger, suppress_loggers
-
 from macrostrat.map_topology import create_topo_context, create_topo_fixtures
+from macrostrat.utils.logs import get_logger, suppress_loggers
 
 log = get_logger(__name__)
 

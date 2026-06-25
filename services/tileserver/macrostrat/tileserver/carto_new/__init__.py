@@ -7,7 +7,6 @@ from macrostrat.tileserver_utils import VectorTileResponse
 
 from ..utils import get_sql
 
-
 __here__ = Path(__file__).parent
 
 router = APIRouter()

@@ -59,6 +59,7 @@ def find_gis_files(
 
     return filtered_gis_files, excluded_files
 
+
 def is_gis_file(file: Path) -> bool:
     return file.suffix.lower() in (".geojson", ".gpkg", ".shp") or (
         file.is_dir() and file.suffix == ".gdb"

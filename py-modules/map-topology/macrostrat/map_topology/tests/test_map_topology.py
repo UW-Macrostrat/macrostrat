@@ -1,13 +1,11 @@
-from macrostrat.map_topology import (
-    update_maps,
-    create_topo_context,
-)
+from geoalchemy2.shape import from_shape
 from mapboard.topology_manager import TopologyInspector, TopologyManager
 from pytest import fixture
-from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
-from macrostrat.database.utils import template_database
+
 from macrostrat.database import Database
+from macrostrat.database.utils import template_database
+from macrostrat.map_topology import create_topo_context, update_maps
 
 
 def geom(_shape, srid=4326):
