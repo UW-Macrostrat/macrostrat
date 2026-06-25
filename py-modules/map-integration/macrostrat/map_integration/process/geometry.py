@@ -62,12 +62,16 @@ def create_rgeom(
             where_clause=SQL(where),
             srid=srid,
             geom_column=geom_column,
+            buffer_distance=300000,
+            fill_holes=True,
+            fix_antimeridian=True,
         ),
     )
 
     end = time.time()
+    dt = end - start
 
-    print(f"Done in {end - start} s")
+    print(f"Done in {dt:.2f} s")
 
 
 def create_webgeom(source: MapInfo, legacy: bool = False):

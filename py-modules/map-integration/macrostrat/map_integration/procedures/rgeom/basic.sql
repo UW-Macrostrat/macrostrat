@@ -1,51 +1,74 @@
-CREATE OR REPLACE FUNCTION map_bounds.update_rgeom_basic(geometry)
-  RETURNS geometry AS
+SELECT set_config('my.buffer_distance', (:buffer_distance)::text, false);
+SELECT set_config('my.fill_holes', (:fill_holes)::text, false);
+SELECT set_config('my.source_id', (:source_id)::text, false);
+SELECT set_config('my.fix_antimeridian', (:fix_antimeridian)::text, false);
+
+DO
 $$
 DECLARE
-  geom         geometry;
-  cleaned      geometry[];
-  ring_geom    geometry;
-  rec          record;
-  buffer_dist  float := 300000;
-  min_area     float;
+  _source_id integer := current_setting('my.source_id', false)::integer;
+  buffer_dist  float := current_setting('my.buffer_distance', false)::float;
+  fill_interior boolean := current_setting('my.fill_holes', false)::boolean;
+  fix_antimeridian boolean := coalesce(current_setting('my.fix_antimeridian', true)::boolean, true);
+  geom geometry;
 BEGIN
-  geom := $1;
-  min_area := buffer_dist * buffer_dist;
 
+  -- Get the latest RGeom instance
+  SELECT rgeom
+  FROM maps.sources
+  WHERE source_id = _source_id
+  INTO geom;
 
   /** Remove interior rings **/
 
   geom := ST_Multi(ST_CollectionExtract(geom, 3));
 
-  geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
-  geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+  IF buffer_dist > 0 THEN
+    geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
+    geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+    IF geom IS NULL THEN
+      RAISE EXCEPTION 'Buffering failed';
+    END IF;
+  END IF;
   geom := ST_MakeValid(geom, 'method=structure');
-  geom := ST_MakePolygon(ST_ExteriorRing(geom));
+
+  IF fill_interior THEN
+    geom := ST_MakePolygon(ST_ExteriorRing(geom));
+  END IF;
+
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at filling interior';
+  END IF;
 
   geom := ST_Transform(geom, 4326);
 
   -- Remove interior rings
 
   /** Fix antimeridian **/
-  geom := ST_MakeValid(geom);
-  geom := ST_Segmentize(geom::geography, 10000);
-  geom := ST_Split(geom, ST_GeometryFromText('LINESTRING(180 -90, 180 90)', 4326));
-  geom := ST_ShiftLongitude(geom);
-  geom := ST_Split(geom, ST_GeometryFromText('LINESTRING(180 -90, 180 90)', 4326));
-  geom := ST_WrapX(ST_MakeValid(geom), 180, -360);
-  geom := ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3))::geometry;
+  IF fix_antimeridian THEN
+    geom := ST_MakeValid(geom);
+    geom := ST_Segmentize(geom::geography, 10000);
+    geom := ST_Split(geom, ST_GeometryFromText('LINESTRING(180 -90, 180 90)', 4326));
+    geom := ST_ShiftLongitude(geom);
+    geom := ST_Split(geom, ST_GeometryFromText('LINESTRING(180 -90, 180 90)', 4326));
+    geom := ST_WrapX(ST_MakeValid(geom), 180, -360);
+    geom := ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3))::geometry;
+  END IF;
+
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at fixing antimeridian';
+  END IF;
 
   geom := ST_Intersection(ST_MakeValid(geom), ST_MakeEnvelope(-180, -90, 180, 90, 4326));
-  RETURN geom;
+
+  UPDATE map_bounds.map_area
+  SET
+    geometry = geom,
+    area_km = ST_Area(geom::geography) / 1000000
+  WHERE id = _source_id;
+
 END;
 $$ LANGUAGE plpgsql;
 
 
-WITH base_features AS (
-  SELECT source_id, rgeom geometry FROM maps.sources WHERE source_id = :source_id
-)
-UPDATE map_bounds.map_area
-SET geometry = map_bounds.update_rgeom_basic(f.geometry)
-FROM base_features f
-WHERE f.source_id = map_area.id
-  AND map_area.id = :source_id;
+
