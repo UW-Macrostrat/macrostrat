@@ -168,6 +168,10 @@ def update(
     """Update topology fixtures"""
     mgr = get_topo_manager()
     update_maps(mgr.ctx, maps, remove=remove)
+    # Invalidating maps whose geometries have changed
+    # TODO: make this more incremental
+    mgr.db.run_query(proc("mark-changed-areas"))
+
     mgr.update(incremental=True, composite_layers=True)
 
 
@@ -373,7 +377,7 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
         SELECT 1 FROM map_bounds.map_area
         WHERE id = :map_id
           AND  ( topo IS NOT NULL OR topology_error IS NOT NULL) -- existing topogeometry
-          AND (geometry_hash IS NOT NULL AND geometry_hash = md5(ST_AsBinary(geometry)::uuid)) -- geometry matches hash
+          AND (geometry_hash IS NOT NULL AND geometry_hash = md5(ST_AsBinary(geometry))::uuid) -- geometry matches hash
         )
         """,
         dict(map_id=map_id),
