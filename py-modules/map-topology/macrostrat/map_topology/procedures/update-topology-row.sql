@@ -1,6 +1,6 @@
 WITH update AS (
   SELECT
-    map_bounds.update_topogeom(m) res
+    map_bounds.update_topogeom(m, :tolerance) res
   FROM map_bounds.map_topo m
   WHERE map_id = :map_id
     AND topo IS NULL

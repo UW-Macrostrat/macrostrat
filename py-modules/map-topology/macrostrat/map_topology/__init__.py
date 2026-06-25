@@ -321,6 +321,23 @@ def _do_update(db, map_id: int) -> TopoUpdateResult:
     )
 
 
+def _retry_errors(db, map_id: int, tolerance: float) -> int:
+    """Re-attempt this map's errored map_topo rows at the given snap tolerance,
+    in batches, until a pass recovers nothing more. Returns the number of rows
+    recovered. Rows that still fail keep their topology_error for inspection."""
+    recovered = 0
+    while True:
+        res = db.run_query(
+            proc("update-topology-fix-errors"),
+            dict(map_id=map_id, batch_size=100, tolerance=tolerance),
+        ).one()
+        db.session.commit()
+        if not res.updated:
+            break
+        recovered += res.updated
+    return recovered
+
+
 def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
     n_remaining = 1000
     niter = 0
@@ -340,6 +357,16 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
             errors.extend(res.errors)
 
         niter += 1
+
+    # Re-attempt insertion failures at a snap tolerance just below the global
+    # 0.0001 default. The default over-snaps some incoming geometry into
+    # insertion failures (curve-not-simple, crosses-edge); a slightly smaller
+    # tolerance recovers a meaningful fraction without the spurious snapping a
+    # larger tolerance introduces. (Exact/0 and densification don't help here.)
+    recovered = _retry_errors(db, map_id, tolerance=0.00001)
+    if recovered > 0:
+        updated += recovered
+        print(f"  Recovered {recovered} errored features at reduced tolerance")
 
     has_topogeometry = db.run_query(
         "SELECT EXISTS (SELECT 1 FROM map_bounds.map_area WHERE id = :map_id AND (topo IS NOT NULL OR topology_error IS NOT NULL))",
@@ -439,26 +466,34 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
         else:
             print(f"[dim red]{err}")
 
-
-def _fix_error(id: int):
-    db = get_database()
-    densify: int = 1
-    err = "Unknown error"
-    while err is not None and densify <= 100:
-        if densify > 1:
-            print(f"  Densifying by {densify}")
-        err = db.run_query(
-            """
-              SELECT
-                map_bounds.update_topogeom(m, :tolerance, :densify) res
-              FROM map_bounds.map_topo m
-              WHERE topo IS NULL
-                AND topology_error IS NOT NULL
-                AND id = :id
-            """,
-            dict(id=id, densify=densify * 10, tolerance=0.0001 * densify),
+    if fix:
+        # The deferred edge-relation trigger only marked rows dirty; rebuild the
+        # affected relations now that the retries are done.
+        n = db.run_query(
+            "SELECT map_bounds_topology.rebuild_dirty_edge_relations()"
         ).scalar()
-        densify *= 10
+        db.session.commit()
+        if n:
+            print(f"[dim]Rebuilt edge relations for {n} topogeometries")
+
+
+def _fix_error(id: int, tolerance: float = 0.00001):
+    """Re-attempt a single errored map_topo row at a reduced snap tolerance
+    (below the 1e-4 global default). Empirically this recovers a meaningful
+    share of insertion-snapping failures (curve-not-simple, crosses-edge);
+    increasing tolerance or densifying does not. Returns None on success, or
+    the error text on failure."""
+    db = get_database()
+    err = db.run_query(
+        """
+          SELECT map_bounds.update_topogeom(m, :tolerance) res
+          FROM map_bounds.map_topo m
+          WHERE topo IS NULL
+            AND topology_error IS NOT NULL
+            AND id = :id
+        """,
+        dict(id=id, tolerance=tolerance),
+    ).scalar()
     db.session.commit()
     return err
 

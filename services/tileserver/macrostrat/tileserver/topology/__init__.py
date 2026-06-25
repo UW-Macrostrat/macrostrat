@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 
@@ -108,3 +109,28 @@ async def get_info(
     async with request.app.state.pool.acquire() as con:
         rows = await con.fetch(query, *params)
         return [dict(row) for row in rows]
+
+
+@router.get("/errors")
+async def get_errors(request: Request, map_layer: str = None):
+    """Topology-solving errors as a GeoJSON FeatureCollection.
+
+    Each feature is a `map_topo` face whose insertion into the topology failed
+    (``topology_error`` is set); properties carry the source map id/name/slug
+    and the error text. Optionally filtered to a single map layer by slug.
+    """
+    sql = get_query("errors")
+    # ``::map_layer_filter`` is a raw template slot filled before buildpg renders
+    # the value parameters.
+    if map_layer is None:
+        sql = sql.replace("::map_layer_filter", "true")
+    else:
+        sql = sql.replace("::map_layer_filter", "ml.slug = :map_layer")
+
+    query, params = render(sql, map_layer=map_layer)
+    async with request.app.state.pool.acquire() as con:
+        data = await con.fetchval(query, *params)
+    # asyncpg may hand back json as text depending on codec config.
+    if isinstance(data, str):
+        data = json.loads(data)
+    return data

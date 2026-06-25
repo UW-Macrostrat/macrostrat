@@ -75,17 +75,19 @@ CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_to
 /** Function to update topogeometry for a row, updating the geometry hash and setting/clearing
   topology errors as appropriate.
  */
+-- Drop the previous signature (which had an unused `densify` parameter) so the
+-- replacement below doesn't leave an ambiguous overload behind.
+DROP FUNCTION IF EXISTS map_bounds.update_topogeom(map_bounds.map_topo, double precision, integer);
+
 CREATE OR REPLACE FUNCTION map_bounds.update_topogeom(
   map_topo map_bounds.map_topo,
-  tolerance double precision DEFAULT 0.0001,
-  densify integer DEFAULT 1
+  tolerance double precision DEFAULT 0.0001
 ) RETURNS text AS
 $$
   DECLARE
     _layer_id integer;
     _hash uuid;
     _err_text text;
-    _geom geometry;
   BEGIN
     _hash := md5(ST_AsBinary(map_topo.geometry))::uuid;
 
@@ -95,12 +97,6 @@ $$
     WHERE schema_name='map_bounds'
       AND table_name='map_topo'
       AND feature_column='topo';
-
-    _geom := map_topo.geometry;
-    IF densify > 1 THEN
-      /** Create shorter segments to improve snapping behavior */
-      _geom := ST_Segmentize(_geom, ST_Length(ST_Boundary(_geom)) / densify::double precision);
-    END IF;
 
     IF (_hash = map_topo.geometry_hash) THEN
       -- We already have a valid topogeometry representation
