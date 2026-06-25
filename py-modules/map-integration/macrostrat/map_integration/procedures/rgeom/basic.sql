@@ -1,12 +1,14 @@
-SELECT set_config('my.buffer_distance', (:buffer_distance)::text, false);
-SELECT set_config('my.fill_holes', (:fill_holes)::text, false);
-SELECT set_config('my.source_id', (:source_id)::text, false);
-SELECT set_config('my.fix_antimeridian', (:fix_antimeridian)::text, false);
+SELECT set_config('my.buffer_distance', (:buffer_distance)::text, true);
+SELECT set_config('my.fill_holes', (:fill_holes)::text, true);
+SELECT set_config('my.source_id', (:source_id)::text, true);
+SELECT set_config('my.fix_antimeridian', (:fix_antimeridian)::text, true);
+SELECT set_config('my.srid', (:srid)::text, true);
 
 DO
 $$
 DECLARE
   _source_id integer := current_setting('my.source_id', false)::integer;
+  _srid integer := current_setting('my.srid', false)::integer;
   buffer_dist  float := current_setting('my.buffer_distance', false)::float;
   fill_interior boolean := current_setting('my.fill_holes', false)::boolean;
   fix_antimeridian boolean := coalesce(current_setting('my.fix_antimeridian', true)::boolean, true);
@@ -18,6 +20,8 @@ BEGIN
   FROM maps.sources
   WHERE source_id = _source_id
   INTO geom;
+
+  geom := ST_Transform(geom, _srid);
 
   /** Remove interior rings **/
 
@@ -61,6 +65,7 @@ BEGIN
 
   geom := ST_Intersection(ST_MakeValid(geom), ST_MakeEnvelope(-180, -90, 180, 90, 4326));
 
+  /** We set the final geometry in the map_bounds.map_area table **/
   UPDATE map_bounds.map_area
   SET
     geometry = geom,

@@ -355,6 +355,16 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
     else:
         print("[dim]  No topogeometries to add")
 
+    # Edge-relation maintenance for face-based topogeometries is deferred (the
+    # trigger only marks dirty), so rebuild the affected relations now that all
+    # of this map's features and its map_area topogeometry are in place.
+    n = db.run_query(
+        "SELECT map_bounds_topology.rebuild_dirty_edge_relations()"
+    ).scalar()
+    db.session.commit()
+    if n and n > 0:
+        print(f"  Rebuilt edge relations for {n} topogeometries")
+
     return TopoUpdateResult(updated, failed, 0, errors)
 
 

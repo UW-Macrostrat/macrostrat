@@ -11,6 +11,9 @@ def create_rgeom(
     use_maps_schema: bool = None,
     approach: str = "basic",
     srid: int = 4326,
+    buffer_distance: int = 0,
+    fill_holes: bool = True,
+    fix_antimeridian: bool = True,
 ):
     """Create a unioned reference geometry for a map source.
 
@@ -53,20 +56,55 @@ def create_rgeom(
         q = "UPDATE {primary_table} SET geom = ST_Multi(ST_Buffer(geom, 0))"
         db.run_query(q, {"primary_table": table})
 
-    print(f"Creating reference geometry using {approach} approach...")
+    print(f"Creating unioned geometry for {source.slug}...")
     db.run_sql(
-        sql_file("rgeom/" + approach),
+        """
+       WITH res AS (
+           SELECT
+               source_id,
+               ST_Transform(
+                   ST_Union(
+                       ST_MakeValid(
+                           ST_Transform({geom_column}, :srid)
+                       )
+                   ),
+                   4326
+               ) AS geometry
+           FROM {primary_table}
+           WHERE {where_clause}
+           GROUP BY source_id
+       )
+       UPDATE maps.sources
+       SET rgeom = res.geometry
+       FROM res
+       WHERE sources.source_id = :source_id;
+    """,
         dict(
             source_id=source_id,
-            primary_table=table,
-            where_clause=SQL(where),
-            srid=srid,
             geom_column=geom_column,
-            buffer_distance=300000,
-            fill_holes=True,
-            fix_antimeridian=True,
+            where_clause=SQL(where),
+            primary_table=table,
+            srid=srid,
         ),
     )
+
+    print(f"Creating reference geometry using {approach} approach...")
+    with db.transaction():
+        # Running in a transaction is needed for locally scoped variables to work
+        db.run_sql(
+            sql_file("rgeom/" + approach),
+            dict(
+                source_id=source_id,
+                primary_table=table,
+                where_clause=SQL(where),
+                srid=srid,
+                geom_column=geom_column,
+                buffer_distance=buffer_distance,
+                fill_holes=fill_holes,
+                fix_antimeridian=fix_antimeridian,
+            ),
+            raise_errors=True,
+        )
 
     end = time.time()
     dt = end - start
