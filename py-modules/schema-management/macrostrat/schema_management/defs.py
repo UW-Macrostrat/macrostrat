@@ -12,6 +12,8 @@ from macrostrat.database import Database
 from macrostrat.dinosaur.cluster import database_cluster
 from macrostrat.utils.logs import get_logger, suppress_loggers
 
+from macrostrat.map_topology import create_topo_context, create_topo_fixtures
+
 log = get_logger(__name__)
 
 
@@ -118,6 +120,17 @@ def apply_schema_for_environment(
             )
 
         db._applied_fixtures = db._applied_fixtures | set(fixtures)
+
+    if target is not None:
+        return db
+
+    # Post-processing for non-SQL-file fixtures
+    if env not in ["staging", "production"]:
+        # Create topology fixtures. We have to do this as a separate step because these
+        # fixtures are created in Python code and not SQL. We will unify this in the future.
+        ctx = create_topo_context(db)
+        create_topo_fixtures(ctx)
+
     return db
 
 

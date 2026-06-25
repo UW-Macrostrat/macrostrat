@@ -11,8 +11,7 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.database import get_database
-from macrostrat.core.database.sequences import reset_sequence
-from macrostrat.database import Database
+from macrostrat.database import Database, reset_sequence
 from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url

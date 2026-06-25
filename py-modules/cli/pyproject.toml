@@ -25,9 +25,9 @@ dependencies = [
     "macrostrat.schema-management",
     "macrostrat.integrations",
     "macrostrat.map-integration",
+    "macrostrat.map-topology",
     "macrostrat.match-utils",
     # "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
-    "mapboard.topology-manager",
     "macrostrat.column-ingestion",
     "htpheno.radosgw-admin-client",
     "numpy>=2.0.0,<3",
@@ -40,13 +40,13 @@ dependencies = [
     "spectra>=0.0.11,<0.0.12",
     "tiletanic>=1.1.0,<2",
     "tqdm>=4.65.0,<5",
-    "typer>=0.12,<0.26",
+    "typer>=0.12,<0.27",
     "click>=8.1.0,<8.4.0",
     "docker>=7,<8",
     "toml>=0.10.2,<0.11",
     "greenlet>=3.0.3,<4",
     "paramiko>=3.4.0,<4",
-    "pytest>=8.3.4,<9",
+    "pytest>=8.3.4,<10",
     "setuptools>=75.8.2,<81",
     "openpyxl>=3.1.5,<4",
     "results==1.4.0",
@@ -76,10 +76,10 @@ default-groups = [
 "macrostrat.core" = { path = "../core", editable = true }
 "macrostrat.integrations" = { path = "../integrations", editable = true }
 "macrostrat.schema-management" = { path = "../schema-management", editable = true }
-"mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../../submodules/storage-admin", editable = true }
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
 "macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
+"macrostrat.map-topology" = { path = "../map-topology", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

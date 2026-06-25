@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from contextvars import ContextVar
 
 from sqlalchemy import create_engine
@@ -33,3 +34,12 @@ def engine_for_db_name(name: str | None):
         return engine
     url = engine.url.set(database=name)
     return create_engine(url)
+
+
+@contextmanager
+def database_context(db: Database):
+    """Set the active database for the duration of the context."""
+    prev = db_ctx.get()
+    db_ctx.set(db)
+    yield db
+    db_ctx.set(prev)

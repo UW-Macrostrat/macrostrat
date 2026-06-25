@@ -190,6 +190,15 @@ from .usage_stats import router as usage_stats_router
 app.include_router(usage_stats_router, tags=["Usage stats"], prefix="/usage-stats")
 
 
+from .carto_new import router as carto_router
+
+app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
+
+from .topology import router as topo_router
+
+app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
+
+
 @app.get("/carto/rotation-models")
 async def rotation_models():
     """Return a list of rotation models."""

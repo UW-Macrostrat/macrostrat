@@ -12,7 +12,7 @@ from macrostrat.database.transfer import pg_restore_from_file
 from macrostrat.database.utils import temp_database
 
 # We could probably move this to a better location
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.dinosaur.cluster import database_cluster
 
 
 def restore_database(engine: Engine, dumpfile: Path):

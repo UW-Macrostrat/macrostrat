@@ -4,6 +4,7 @@ import importlib
 from pathlib import Path
 from typing import Optional
 
+from macrostrat.database.utils import temp_database
 from pytest import fixture, mark, skip
 from typer.testing import CliRunner
 
@@ -50,6 +51,13 @@ def pytest_addoption(parser):
         action="store_true",
         default=True,
         help="optimize database for fast testing",
+    )
+
+    parser.addoption(
+        "--no-optimize-database",
+        action="store_false",
+        dest="optimize_database",
+        help="do not optimize database for fast testing",
     )
 
 
@@ -146,6 +154,17 @@ def empty_db(request):
         skip("skipping Docker test database")
 
     optimize = request.config.getoption("--optimize-database")
+
+    from macrostrat.core.config import settings
+
+    # If we have settings.databases.test defined, do the testing with a local database
+    if settings.databases.get("test") and not request.config.getoption("--skip-env"):
+        log.info("Using local database for testing")
+        with temp_database(
+            settings.databases["test"], ensure_empty=True, drop=False
+        ) as engine:
+            yield Database(engine)
+        return
 
     with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
         yield db

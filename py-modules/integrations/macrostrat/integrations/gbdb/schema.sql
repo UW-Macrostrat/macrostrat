@@ -1,4 +1,3 @@
-SELECT pg_catalog.set_config('search_path', 'public', false);
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_gbdb;
 
