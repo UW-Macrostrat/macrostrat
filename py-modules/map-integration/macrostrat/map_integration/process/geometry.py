@@ -8,10 +8,11 @@ from ..utils import MapInfo, table_exists
 
 def create_rgeom(
     source: MapInfo,
+    *,
     use_maps_schema: bool = None,
     approach: str = "basic",
     srid: int = 4326,
-    buffer_distance: int = 0,
+    buffer: int = 0,
     fill_holes: bool = True,
     fix_antimeridian: bool = True,
 ):
@@ -95,11 +96,8 @@ def create_rgeom(
             sql_file("rgeom/" + approach),
             dict(
                 source_id=source_id,
-                primary_table=table,
-                where_clause=SQL(where),
                 srid=srid,
-                geom_column=geom_column,
-                buffer_distance=buffer_distance,
+                buffer_distance=buffer,
                 fill_holes=fill_holes,
                 fix_antimeridian=fix_antimeridian,
             ),

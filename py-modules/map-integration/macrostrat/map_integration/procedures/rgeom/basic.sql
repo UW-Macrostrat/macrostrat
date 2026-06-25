@@ -37,7 +37,15 @@ BEGIN
   geom := ST_MakeValid(geom, 'method=structure');
 
   IF fill_interior THEN
-    geom := ST_MakePolygon(ST_ExteriorRing(geom));
+    -- Drop interior rings from every part. ST_ExteriorRing only accepts a single
+    -- POLYGON (it returns NULL for a MULTIPOLYGON, which is what we have whenever
+    -- no buffer dissolved the parts), so dump to polygons, rebuild each from its
+    -- outer ring, and re-union. ST_Union also merges any parts that overlap once
+    -- their holes are filled.
+    geom := (
+      SELECT ST_Multi(ST_Union(ST_MakePolygon(ST_ExteriorRing((d).geom))))
+      FROM ST_Dump(geom) AS d
+    );
   END IF;
 
   IF geom IS NULL THEN
