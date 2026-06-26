@@ -27,17 +27,20 @@ app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
 
 @app.command(name="compute")
 def compute_stats(truncate: bool = False):
-    """Run the update procedure."""
-    tileserver_db = settings.databases.get("tileserver_stats")
-    db = Database(tileserver_db)
+    """Aggregate tileserver_stats.requests into the day_index / location_index.
 
-    # Run update
+    Rolls forward from the processing_status watermark in 100k-row batches until
+    the staging table is drained. With --truncate, clears requests once fully
+    aggregated (the serial is preserved, so the watermark stays valid)."""
+    db = get_database()
+
     fn = Path(relative_path(__file__, "procedures")) / "run-update.sql"
+    # Escape ':' so SQLAlchemy's text() doesn't treat regex fragments like
+    # ':www' (in `(?:www\.)`) as bind params; '\:' renders back to a literal ':'.
     sql = text(fn.read_text().replace(":", r"\:"))
 
-    # check query timing
     conn = db.engine.connect()
-    n_results = 10000
+    n_results = 1
     start = datetime.now()
     step = start
     while n_results > 0:
@@ -46,11 +49,12 @@ def compute_stats(truncate: bool = False):
         conn.execute(text("COMMIT"))
         next_step = datetime.now()
         dt = (next_step - step).total_seconds()
-        print(f"{res.last_row_id} ({dt*1000:.0f} ms)")
+        print(f"last_row_id={res.last_row_id} rows={n_results} ({dt*1000:.0f} ms)")
         step = next_step
 
-    if truncate and n_results == 0:
-        conn.execute(text("TRUNCATE TABLE requests"))
+    if truncate:
+        conn.execute(text("TRUNCATE TABLE tileserver_stats.requests"))
+        conn.execute(text("COMMIT"))
 
     print(f"Total time: {datetime.now() - start}")
 

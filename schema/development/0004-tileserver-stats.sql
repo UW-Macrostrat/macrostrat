@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.processed_logs (
   processed_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- new_system distinguishes rows aggregated by the new log-dump pipeline
+-- (true) from legacy rows migrated from the old direct-push era (false). It is
+-- part of the unique key so the two lineages accumulate separately and never
+-- merge.
 CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   layer text NOT NULL,
   ext text NOT NULL,
@@ -43,7 +47,8 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   app_version text NOT NULL,
   date timestamp without time zone NOT NULL,
   num_requests integer NOT NULL,
-  UNIQUE (layer, ext, referrer, app, app_version, date)
+  new_system boolean NOT NULL DEFAULT false,
+  CONSTRAINT day_index_unique UNIQUE (layer, ext, referrer, app, app_version, date, new_system)
 );
 
 CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
@@ -54,7 +59,8 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
   z integer NOT NULL,
   orig_z integer NOT NULL,
   num_requests integer NOT NULL,
-  UNIQUE (layer, ext, x, y, z, orig_z)
+  new_system boolean NOT NULL DEFAULT false,
+  CONSTRAINT location_index_unique UNIQUE (layer, ext, x, y, z, orig_z, new_system)
 );
 
 --INSERT INTO tileserver_stats.processing_status (last_row_id) VALUES (0);

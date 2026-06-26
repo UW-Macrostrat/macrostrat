@@ -2,7 +2,7 @@ WITH a AS (
 	SELECT
     req_id,
 		layer,
-		ext,
+		coalesce(ext, '') ext, -- index ext is NOT NULL; '' = no extension
 		x,
 		y,
 		z,
@@ -10,13 +10,16 @@ WITH a AS (
 		app,
 		app_version,
 		date_trunc('day', time) date
-	FROM requests
-  WHERE req_id > (SELECT last_row_id FROM stats.processing_status ORDER BY last_row_time DESC LIMIT 1)
+	FROM tileserver_stats.requests
+  WHERE req_id > coalesce(
+    (SELECT last_row_id FROM tileserver_stats.processing_status ORDER BY last_row_time DESC LIMIT 1),
+    0
+  )
 	ORDER BY req_id
 	LIMIT 100000
 ),
 b AS (
-  INSERT INTO tileserver_stats.day_index (layer, ext, referrer, app, app_version, date, num_requests)
+  INSERT INTO tileserver_stats.day_index (layer, ext, referrer, app, app_version, date, num_requests, new_system)
 	SELECT
     layer,
     ext,
@@ -24,10 +27,11 @@ b AS (
     coalesce(app, 'none'),
     coalesce(app_version, 'none'),
     date,
-    count(*)
+    count(*),
+    true
   FROM a
 	GROUP BY layer, ext, app, referrer, app_version, date
-  ON CONFLICT (layer, ext, referrer, app, app_version, date)
+  ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system)
   DO UPDATE SET
     num_requests = tileserver_stats.day_index.num_requests + EXCLUDED.num_requests
   RETURNING *
@@ -47,7 +51,7 @@ reduced_complexity_locations AS (
 	FROM a
 ),
 c AS (
-  INSERT INTO tileserver_stats.location_index (layer, ext, x, y, z, orig_z, num_requests)
+  INSERT INTO tileserver_stats.location_index (layer, ext, x, y, z, orig_z, num_requests, new_system)
   SELECT
     layer,
     ext,
@@ -55,10 +59,11 @@ c AS (
     y,
     z,
     orig_z,
-    count(*) num_requests
+    count(*) num_requests,
+    true
   FROM reduced_complexity_locations
   GROUP BY layer, ext, x, y, z, orig_z
-  ON CONFLICT (layer, ext, x, y, z, orig_z)
+  ON CONFLICT (layer, ext, x, y, z, orig_z, new_system)
   DO UPDATE SET
     num_requests = tileserver_stats.location_index.num_requests + EXCLUDED.num_requests
 ),
