@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 import asyncio
@@ -12,7 +13,7 @@ from macrostrat.database.transfer import move_tables
 from minio import Minio
 from rich import print
 from sqlalchemy import text
-from typer import Typer
+from typer import Typer, Option
 from pydantic import BaseModel
 
 from macrostrat.database import Database
@@ -77,6 +78,60 @@ def integrate_schema(drop: bool = False):
 
     task = move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"])
     asyncio.run(task)
+
+
+class SmoothOption(str, Enum):
+    none = "none"  # raw daily
+    weekly = "weekly"  # 7-day rolling mean
+    monthly = "monthly"  # 30-day rolling mean
+
+
+class RangeOption(str, Enum):
+    last_year = "last-year"
+    last_5_years = "last-5-years"
+    all = "all"
+
+
+@app.command(name="plot")
+def plot_command(
+    out: Optional[Path] = Option(
+        None,
+        "--out",
+        "-o",
+        help="Output file (.pdf/.svg/.png). Omit to print inline (iTerm).",
+    ),
+    smooth: SmoothOption = Option(
+        SmoothOption.weekly,
+        "--smooth",
+        help="Smoothing: none (raw daily), weekly (7-day mean), monthly (30-day mean).",
+    ),
+    range_: RangeOption = Option(
+        RangeOption.all, "--range", help="Time window to plot."
+    ),
+    log: bool = Option(False, "--log/--linear", help="Logarithmic vs. linear y-axis."),
+    omit_spikes: bool = Option(
+        True,
+        "--omit-spikes/--keep-spikes",
+        help="Cut spike days (systematic scrapes) before smoothing; drawn dashed.",
+    ),
+    spike_quantile: Optional[float] = Option(
+        None,
+        "--spike-quantile",
+        help="Daily-count quantile above which days are treated as spikes "
+        "(default: module SPIKE_QUANTILE).",
+    ),
+):
+    """Plot tile requests per day for reports."""
+    from .plot import SMOOTH_WINDOWS, SPIKE_QUANTILE, tileserver_stats_figure
+
+    tileserver_stats_figure(
+        out,
+        log=log,
+        omit_spikes=omit_spikes,
+        spike_quantile=SPIKE_QUANTILE if spike_quantile is None else spike_quantile,
+        smooth_window=SMOOTH_WINDOWS[smooth.value],
+        range_opt=range_.value,
+    )
 
 
 @app.command()
