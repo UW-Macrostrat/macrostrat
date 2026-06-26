@@ -1,8 +1,9 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 import asyncio
+import io
 import json
-import tempfile
 import re
 
 import zstandard as zstd
@@ -114,143 +115,201 @@ def get_config_attrs(config) -> S3Params:
     )
 
 
-@app.command(name="process")
-def process_ingest_logs():
-    """Ingest Traefik ingress logs from S3/MinIO."""
-    storage_cfg = getattr(settings, "storage")
-    res = get_config_attrs(getattr(storage_cfg, "access_logs"))
+# A tile request path is `/<layer>/<z>/<x>/<y>[.ext]`, where <layer> may span
+# multiple segments (e.g. `dev/topology/faces/<map_layer>`). The trailing three
+# numeric segments are z/x/y; everything before them is the layer.
+TILE_PATH_RE = re.compile(
+    r"^/(?P<layer>.+?)/(?P<z>\d+)/(?P<x>\d+)/(?P<y>\d+)(?:\.(?P<ext>[A-Za-z0-9]+))?/?$"
+)
 
-    ingest_traefik_logs_from_s3(res)
+
+def parse_tile_path(path: str | None) -> dict | None:
+    """Parse a request path into (layer, z, x, y, ext), or None if not a tile."""
+    if not path:
+        return None
+    path = path.split("?", 1)[0]  # drop any query string
+    m = TILE_PATH_RE.match(path)
+    if m is None:
+        return None
+    return {
+        "layer": m.group("layer"),
+        "z": int(m.group("z")),
+        "x": int(m.group("x")),
+        "y": int(m.group("y")),
+        "ext": m.group("ext"),
+    }
+
+
+def _parse_timestamp(rec: dict) -> datetime | None:
+    """Parse a Traefik log timestamp. Prefers ns-precision StartUTC; tolerates
+    the trailing 'Z' and truncates sub-microsecond digits for fromisoformat."""
+    raw = rec.get("StartUTC") or rec.get("time") or rec.get("StartLocal")
+    if not raw:
+        return None
+    s = raw.rstrip("Z")
+    if "." in s:
+        head, frac = s.split(".", 1)
+        s = f"{head}.{frac[:6]}"
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        return None
+
+
+def _resolve_access_logs_config() -> S3Params:
+    """Resolve the access-logs S3 config, tolerating either key spelling
+    (`access-logs` in TOML vs. `access_logs`)."""
+    storage_cfg = settings.storage
+    for key in ("access-logs", "access_logs"):
+        try:
+            cfg = storage_cfg[key]
+        except (KeyError, TypeError):
+            cfg = None
+        if cfg:
+            return get_config_attrs(cfg)
+    raise KeyError("storage.access-logs is not configured")
+
+
+@app.command(name="process")
+def process_ingest_logs(
+    prefix: str = "prod",
+    limit: Optional[int] = None,
+    reprocess: bool = False,
+):
+    """Ingest Traefik ingress logs from S3/MinIO into tileserver_stats.requests.
+
+    Already-ingested objects are skipped (tracked in tileserver_stats.processed_logs);
+    pass --reprocess to re-ingest them. --limit caps the number of new objects.
+    """
+    config = _resolve_access_logs_config()
+    n = ingest_traefik_logs_from_s3(
+        config, prefix=prefix, limit=limit, reprocess=reprocess
+    )
+    print(f"Inserted {n} tile requests")
+
+
+def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], int]:
+    """Stream-decompress one zstd JSONL log object and return (tile rows, total lines)."""
+    response = s3.get_object(bucket, object_name)
+    rows: list[dict] = []
+    n_records = 0
+    try:
+        dctx = zstd.ZstdDecompressor()
+        with dctx.stream_reader(response) as reader:
+            stream = io.TextIOWrapper(reader, encoding="utf-8", errors="replace")
+            for line in stream:
+                line = line.strip()
+                if not line:
+                    continue
+                n_records += 1
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("RequestMethod") != "GET":
+                    continue
+                tile = parse_tile_path(rec.get("RequestPath"))
+                if tile is None:
+                    continue
+                rows.append(
+                    {
+                        "uri": rec.get("RequestPath"),
+                        "layer": tile["layer"],
+                        "ext": tile["ext"],
+                        "x": tile["x"],
+                        "y": tile["y"],
+                        "z": tile["z"],
+                        "time": _parse_timestamp(rec),
+                    }
+                )
+    finally:
+        response.close()
+        response.release_conn()
+    return rows, n_records
 
 
 def ingest_traefik_logs_from_s3(
     config: S3Params,
     *,
-    limit: int | None = 5000,
+    prefix: str = "prod",
+    limit: int | None = None,
+    reprocess: bool = False,
+    insert_batch: int = 10000,
 ) -> int:
+    """Download Traefik access-log dumps from S3/MinIO, parse tile requests, and
+    load them into tileserver_stats.requests in the core Macrostrat database.
+
+    Objects are JSONL (one Traefik access-log record per line), zstd-compressed,
+    date-partitioned under `<prefix>/YYYY/MM/DD/...`. Each object is processed
+    atomically and recorded in tileserver_stats.processed_logs so it is never
+    reprocessed (and never needs deleting). NOTE: referrer/app/app_version and
+    cache levels (L1/L2) are not present in default Traefik logs and are left
+    null until the access-log config is extended — see the feature-area doc.
+
+    Returns the number of tile-request rows inserted.
     """
-    Download Traefik ingress logs from S3/MinIO, decompress Zstd JSON files,
-    subset relevant records, and insert them into tileserver_stats.requests.
-
-    Expected log format:
-      - one JSON object per line, or a JSON array of objects
-      - records should contain fields like:
-          uri, method, status, time, referrer, app, app_version, cache_hit, redis_hit
-
-    Args:
-        bucket: S3 bucket name.
-        prefix: Only process objects under this prefix.
-        subset: Optional maximum number of log records to process per object.
-        limit: Optional maximum number of objects to process.
-
-    Returns:
-        Number of inserted rows.
-    """
-    # MinIO client from settings
     s3 = config.get_client()
-    bucket = config.bucket
-    prefix = "prod"
-
-    tileserver_db = settings.databases.get("tileserver_stats")
-    db = Database(tileserver_db)
+    db = get_database()
 
     insert_sql = text(
         """
-        INSERT INTO tileserver_stats.requests (
-            uri, layer, ext, x, y, z, referrer, app, app_version, cache_hit, redis_hit, time
-        ) VALUES (
-            :uri, :layer, :ext, :x, :y, :z, :referrer, :app, :app_version, :cache_hit, :redis_hit, :time
-        )
+        INSERT INTO tileserver_stats.requests (uri, layer, ext, x, y, z, time)
+        VALUES (:uri, :layer, :ext, :x, :y, :z, :time)
+        """
+    )
+    record_sql = text(
+        """
+        INSERT INTO tileserver_stats.processed_logs
+            (object_name, etag, size, last_modified, num_records, num_tile_requests)
+        VALUES (:object_name, :etag, :size, :last_modified, :num_records, :num_tile_requests)
+        ON CONFLICT (object_name) DO UPDATE SET
+            etag = EXCLUDED.etag,
+            size = EXCLUDED.size,
+            last_modified = EXCLUDED.last_modified,
+            num_records = EXCLUDED.num_records,
+            num_tile_requests = EXCLUDED.num_tile_requests,
+            processed_at = now()
         """
     )
 
-    inserted = 0
-    object_count = 0
+    with db.engine.connect() as conn:
+        already = {
+            row[0]
+            for row in conn.execute(
+                text("SELECT object_name FROM tileserver_stats.processed_logs")
+            )
+        }
 
-    for obj in s3.list_objects(bucket, prefix=prefix, recursive=True):
-        if limit is not None and object_count >= limit:
-            break
+    inserted = 0
+    n_objects = 0
+    for obj in s3.list_objects(config.bucket, prefix=prefix, recursive=True):
         if not obj.object_name.endswith(".zst"):
             continue
-
-        object_count += 1
-        response = s3.get_object(bucket, obj.object_name)
-        print(obj.object_name)
-        try:
-            dctx = zstd.ZstdDecompressor()
-            with dctx.stream_reader(response) as reader:
-                # Read decompressed bytes in chunks and parse lines
-                with tempfile.SpooledTemporaryFile(
-                    max_size=32 * 1024 * 1024, mode="w+b"
-                ) as tmp:
-                    while True:
-                        chunk = reader.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        tmp.write(chunk)
-
-                    tmp.seek(0)
-                    raw_text = tmp.read().decode("utf-8", errors="replace")
-
-            # Support either JSONL or a JSON array
-            raw_text = raw_text.strip()
-            if not raw_text:
-                continue
-
-            if raw_text.startswith("["):
-                records = json.loads(raw_text)
-            else:
-                records = [
-                    json.loads(line) for line in raw_text.splitlines() if line.strip()
-                ]
-
-            print(len(records))
-            print(records[0])
+        if not reprocess and obj.object_name in already:
             continue
-            for record in records:
-                # Filter to records that match tile queries
-                path = record.get("RequestPath")
-                is_tile = re.match(r"(\d+)/(\d+)/(\d+)", path)
-                print(path)
-                if is_tile:
-                    print(path)
+        if limit is not None and n_objects >= limit:
+            break
+        n_objects += 1
 
-            continue
+        rows, n_records = _parse_log_object(s3, config.bucket, obj.object_name)
 
-            # Subset to relevant log entries
-            if subset is not None:
-                records = records[:subset]
+        with db.engine.begin() as conn:
+            for start in range(0, len(rows), insert_batch):
+                conn.execute(insert_sql, rows[start : start + insert_batch])
+            conn.execute(
+                record_sql,
+                {
+                    "object_name": obj.object_name,
+                    "etag": getattr(obj, "etag", None),
+                    "size": obj.size,
+                    "last_modified": getattr(obj, "last_modified", None),
+                    "num_records": n_records,
+                    "num_tile_requests": len(rows),
+                },
+            )
 
-            rows = []
-            for rec in records:
-                uri = rec.get("uri") or rec.get("request_uri") or ""
-                if not uri:
-                    continue
+        inserted += len(rows)
+        print(f"{obj.object_name}: {len(rows)}/{n_records} tile requests")
 
-                rows.append(
-                    {
-                        "uri": uri,
-                        "layer": rec.get("layer"),
-                        "ext": rec.get("ext"),
-                        "x": rec.get("x"),
-                        "y": rec.get("y"),
-                        "z": rec.get("z"),
-                        "referrer": rec.get("referrer"),
-                        "app": rec.get("app"),
-                        "app_version": rec.get("app_version"),
-                        "cache_hit": bool(rec.get("cache_hit", False)),
-                        "redis_hit": bool(rec.get("redis_hit", False)),
-                        "time": rec.get("time") or datetime.utcnow(),
-                    }
-                )
-
-            if rows:
-                with db.engine.begin() as conn:
-                    conn.execute(insert_sql, rows)
-                inserted += len(rows)
-
-        finally:
-            response.close()
-            response.release_conn()
-
+    print(f"Processed {n_objects} new object(s), inserted {inserted} tile requests")
     return inserted

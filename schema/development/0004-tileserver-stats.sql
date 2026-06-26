@@ -22,6 +22,19 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.processing_status (
   last_row_time timestamp without time zone DEFAULT now()
 );
 
+-- Tracks which log-dump objects have been ingested, so reruns never
+-- reprocess (or require deleting) a log file. Keyed by object name; etag/size
+-- are retained so a re-uploaded object can be detected and re-ingested later.
+CREATE TABLE IF NOT EXISTS tileserver_stats.processed_logs (
+  object_name text PRIMARY KEY,
+  etag text,
+  size bigint,
+  last_modified timestamptz,
+  num_records integer,        -- total log lines parsed from the object
+  num_tile_requests integer,  -- tile rows inserted into requests
+  processed_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   layer text NOT NULL,
   ext text NOT NULL,
