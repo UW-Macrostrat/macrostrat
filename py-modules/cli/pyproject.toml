@@ -51,6 +51,7 @@ dependencies = [
     "setuptools>=75.8.2,<81",
     "openpyxl>=3.1.5,<4",
     "results==1.4.0",
+    "pg-activity>=3.6.2",
 ]
 
 [project.scripts]
@@ -63,8 +64,7 @@ gis = [
 
 [dependency-groups]
 dev = [
-    "snakeviz>=2.2.0,<3",
-    "macrostrat.package_tools>=1.1.0,<2",
+    "snakeviz>=2.2.0,<3"
 ]
 
 [tool.uv]
