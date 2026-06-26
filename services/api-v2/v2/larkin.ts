@@ -99,8 +99,9 @@ enum APICapability {
     //logs any pool connection problems so pod network issues can be identified
     if (!connectionPoolStore[dbName]) {
       const pool = new Pool({ ...connectionDetails, connectionTimeoutMillis: 10000 });
+      const timestamp = new Date().toISOString().split("T")[1].replace(/\.\d+Z$/, " UTC");
       pool.on("error", (err) => {
-        larkin.log("error", `Unexpected error on idle pool client: ${err.message}`);
+        larkin.log("error", `${timestamp} Unexpected error on idle pool client: ${err.message}`);
       });
       connectionPoolStore[dbName] = pool;
     }
@@ -275,6 +276,9 @@ enum APICapability {
   };
 
   larkin.error = function (req, res, next, message, code) {
+    const timestamp = new Date().toISOString().split("T")[1].replace(/\.\d+Z$/, " UTC");
+    larkin.log("error", `${timestamp} - ${req.originalUrl ?? req.url} - ${message?.message ?? message}`);
+
     const statusCode = code || 500;
     var responseMessage = message
       ? message
