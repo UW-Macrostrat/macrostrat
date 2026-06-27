@@ -7,7 +7,7 @@ requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "MIT"
 dependencies = [
-    "macrostrat.database>=4.4.0,<5",
+    "macrostrat.database>=4.4.1,<5",
     "macrostrat.core",
     "minio>=7.2.20",
     "python-dotenv>=1.0.0,<2",

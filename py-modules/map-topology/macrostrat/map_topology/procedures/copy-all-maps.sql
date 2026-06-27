@@ -9,3 +9,8 @@ WHERE rgeom IS NOT NULL
   AND is_finalized
   AND status_code = 'active'
 ON CONFLICT (id) DO NOTHING;
+
+-- Update maps that are already in the table to make sure that the area is set correctly
+UPDATE map_bounds.map_area
+SET area_km = ST_Area(geometry::geography) / 1e6
+WHERE geometry IS NOT NULL AND area_km IS NULL;

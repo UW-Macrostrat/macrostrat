@@ -1084,7 +1084,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.4.0"
+version = "4.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1098,9 +1098,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/ff/db51282210e655dd7b13e3ae3ef2f157724cc1bf3403956bacd31b3415dd/macrostrat_database-4.4.0.tar.gz", hash = "sha256:51b150c5256f21cfeba8373ac687d0384840b86839a5ed7b45519f7cfd0052cc", size = 24180, upload-time = "2026-06-24T08:42:55.314Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/6f/9b0f4814fb92d5a5e0be7f9620ebd8833fb2747d7c3c47b6aa62e0b42def/macrostrat_database-4.4.1.tar.gz", hash = "sha256:466933d1661e5941060eacda1b4886729b0339d4ef024f33e0e231d25d5da87a", size = 24329, upload-time = "2026-06-27T10:13:04.21Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/16/9c3193e0621d20f407f86224cb6e278fd46da4c4afb1c55a15c37f92c339/macrostrat_database-4.4.0-py3-none-any.whl", hash = "sha256:c2ea2b1713ffd267f4b97ba5b1054964ed0e40b3e7698a74a270f0f2d4307b0e", size = 31408, upload-time = "2026-06-24T08:42:54.476Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/fc/50f2fb4759c4a49083a4c68ed3a4f072ea742d45fdecef0f95e9020858a4/macrostrat_database-4.4.1-py3-none-any.whl", hash = "sha256:979fb11729981199bc5e7a4575bab951d90a00be6069d3eba27c091baba387cc", size = 31521, upload-time = "2026-06-27T10:13:03.088Z" },
 ]
 
 [[package]]
@@ -2469,7 +2469,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "macrostrat-core", editable = "py-modules/core" },
-    { name = "macrostrat-database", specifier = ">=4.4.0,<5" },
+    { name = "macrostrat-database", specifier = ">=4.4.1,<5" },
     { name = "matplotlib", specifier = ">=3.9.2,<4" },
     { name = "minio", specifier = ">=7.2.20" },
     { name = "polars", specifier = ">=1.42.0,<2" },

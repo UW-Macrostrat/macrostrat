@@ -27,17 +27,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 from matplotlib.ticker import FuncFormatter
-from sqlalchemy import text
 
 from macrostrat.core import get_database
 
+from .params import Smoothing, TimeRange
+
 SPIKE_QUANTILE = 0.80  # default: days above this quantile are treated as spikes
-
-# --smooth option → rolling-mean window in days (1 = no smoothing).
-SMOOTH_WINDOWS = {"none": 1, "weekly": 7, "monthly": 30}
-
-# --range option → lookback in days (None = all time).
-RANGE_DAYS = {"last-month": 30, "last-year": 365, "last-5-years": 365 * 5, "all": None}
 
 
 def fetch_daily_requests() -> pl.DataFrame:
@@ -46,7 +41,7 @@ def fetch_daily_requests() -> pl.DataFrame:
     Columns: date (Datetime), new_system (Boolean), count (Int64).
     """
     db = get_database()
-    sql = text(
+    result = db.run_query(
         """
         SELECT date, new_system, sum(num_requests)::bigint AS count
         FROM tileserver_stats.day_index
@@ -54,8 +49,7 @@ def fetch_daily_requests() -> pl.DataFrame:
         ORDER BY date
         """
     )
-    with db.engine.connect() as conn:
-        rows = [dict(r._mapping) for r in conn.execute(sql)]
+    rows = [dict(r._mapping) for r in result]
 
     schema = {"date": pl.Datetime, "new_system": pl.Boolean, "count": pl.Int64}
     if not rows:
@@ -63,8 +57,8 @@ def fetch_daily_requests() -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema)
 
 
-def _filter_range(df: pl.DataFrame, range_opt: str) -> pl.DataFrame:
-    days = RANGE_DAYS.get(range_opt)
+def _filter_range(df: pl.DataFrame, time_range: TimeRange) -> pl.DataFrame:
+    days = time_range.days
     if days is None or df.is_empty():
         return df
     cutoff = df["date"].max() - timedelta(days=days)
@@ -179,20 +173,22 @@ def tileserver_stats_figure(
     log: bool = False,
     omit_spikes: bool = True,
     spike_quantile: float = SPIKE_QUANTILE,
-    smooth_window: int = SMOOTH_WINDOWS["weekly"],
-    range_opt: str = "all",
+    smoothing: Smoothing = Smoothing.weekly,
+    time_range: TimeRange = TimeRange.all,
 ) -> None:
     """Render the tile-requests-per-day figure.
 
     out=None prints inline to an iTerm console; otherwise the format follows the
     file suffix (.pdf / .svg / .png).
     """
+    smooth_window = smoothing.window
+
     df = fetch_daily_requests()
     if df.is_empty():
         raise ValueError("No rows in tileserver_stats.day_index — nothing to plot.")
-    df = _filter_range(df, range_opt)
+    df = _filter_range(df, time_range)
     if df.is_empty():
-        raise ValueError(f"No data in the selected range ({range_opt}).")
+        raise ValueError(f"No data in the selected range ({time_range.value}).")
 
     daily = _prepare(
         df,
