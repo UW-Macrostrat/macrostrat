@@ -1,37 +1,19 @@
 CREATE SCHEMA IF NOT EXISTS tileserver_stats;
 
-CREATE TABLE tileserver_stats.requests (
-  req_id serial
-    PRIMARY KEY,
-  uri text,
-  layer text,
-  ext text,
-  x integer,
-  y integer,
-  z integer,
-  referrer text,
-  app text,
-  app_version text,
-  cache_hit boolean DEFAULT FALSE,
-  redis_hit boolean DEFAULT FALSE,
-  time timestamp DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS tileserver_stats.processing_status (
-  last_row_id integer NOT NULL,
-  last_row_time timestamp without time zone DEFAULT now()
-);
-
--- Tracks which log-dump objects have been ingested, so reruns never
--- reprocess (or require deleting) a log file. Keyed by object name; etag/size
--- are retained so a re-uploaded object can be detected and re-ingested later.
+-- The pipeline aggregates log-dump objects directly into the indexes below;
+-- there is no raw `requests` staging table (and no processing_status watermark).
+-- Per-object idempotency comes from processed_logs.
+--
+-- Tracks which log-dump objects have been ingested, so reruns never reprocess
+-- (or require deleting) a log file. Keyed by object name; etag/size are retained
+-- so a re-uploaded object can be detected and re-ingested later.
 CREATE TABLE IF NOT EXISTS tileserver_stats.processed_logs (
   object_name text PRIMARY KEY,
   etag text,
   size bigint,
   last_modified timestamptz,
   num_records integer,        -- total log lines parsed from the object
-  num_tile_requests integer,  -- tile rows inserted into requests
+  num_tile_requests integer,  -- relevant tile requests aggregated from the object
   processed_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -67,5 +49,3 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
 -- (the unique constraint above leads with layer/ext, so it can't serve this).
 CREATE INDEX IF NOT EXISTS location_index_zxy
   ON tileserver_stats.location_index (z, x, y);
-
---INSERT INTO tileserver_stats.processing_status (last_row_id) VALUES (0);

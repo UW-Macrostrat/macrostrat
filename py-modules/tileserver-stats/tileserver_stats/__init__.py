@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -13,51 +14,16 @@ from macrostrat.database.transfer import move_tables
 from minio import Minio
 from rich import print
 from sqlalchemy import text
-from typer import Typer, Option
+from typer import Typer, Option, confirm
 from pydantic import BaseModel
 
 from macrostrat.database import Database
-from macrostrat.utils import relative_path
 from macrostrat.core.config import settings
 from macrostrat.core import get_database
 
 load_dotenv()
 
 app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
-
-
-@app.command(name="compute")
-def compute_stats(truncate: bool = False):
-    """Aggregate tileserver_stats.requests into the day_index / location_index.
-
-    Rolls forward from the processing_status watermark in 100k-row batches until
-    the staging table is drained. With --truncate, clears requests once fully
-    aggregated (the serial is preserved, so the watermark stays valid)."""
-    db = get_database()
-
-    fn = Path(relative_path(__file__, "procedures")) / "run-update.sql"
-    # Escape ':' so SQLAlchemy's text() doesn't treat regex fragments like
-    # ':www' (in `(?:www\.)`) as bind params; '\:' renders back to a literal ':'.
-    sql = text(fn.read_text().replace(":", r"\:"))
-
-    conn = db.engine.connect()
-    n_results = 1
-    start = datetime.now()
-    step = start
-    while n_results > 0:
-        res = conn.execute(sql, execution_options=dict(no_parameters=True)).first()
-        n_results = res.n_rows
-        conn.execute(text("COMMIT"))
-        next_step = datetime.now()
-        dt = (next_step - step).total_seconds()
-        print(f"last_row_id={res.last_row_id} rows={n_results} ({dt*1000:.0f} ms)")
-        step = next_step
-
-    if truncate:
-        conn.execute(text("TRUNCATE TABLE tileserver_stats.requests"))
-        conn.execute(text("COMMIT"))
-
-    print(f"Total time: {datetime.now() - start}")
 
 
 @app.command()
@@ -140,6 +106,40 @@ def show_database():
     """Show the database connection string."""
     tileserver_db = settings.databases.get("tileserver_stats")
     print(tileserver_db)
+
+
+@app.command(name="reset-new-system", rich_help_panel="Development")
+def reset_new_system(
+    yes: bool = Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+):
+    """Drop new-system aggregates and the processed-log records so the log dumps
+    can be re-ingested from scratch.
+
+    Deletes all `new_system = true` rows from day_index / location_index and
+    empties processed_logs; legacy (`new_system = false`) data is left intact.
+    For development/testing — handy when changing the ingestion or filter logic.
+    """
+    db = get_database()
+    if not yes:
+        confirm(
+            "Delete all new-system rows from day_index/location_index and clear "
+            "processed_logs?",
+            abort=True,
+        )
+    with db.engine.begin() as conn:
+        n_day = conn.execute(
+            text("DELETE FROM tileserver_stats.day_index WHERE new_system")
+        ).rowcount
+        n_loc = conn.execute(
+            text("DELETE FROM tileserver_stats.location_index WHERE new_system")
+        ).rowcount
+        n_log = conn.execute(
+            text("DELETE FROM tileserver_stats.processed_logs")
+        ).rowcount
+    print(
+        f"Cleared {n_day} day_index, {n_loc} location_index, "
+        f"{n_log} processed_logs rows."
+    )
 
 
 class S3Params(BaseModel):
@@ -230,26 +230,46 @@ def _resolve_access_logs_config() -> S3Params:
     raise KeyError("storage.access-logs is not configured")
 
 
+# --- Relevance filter -------------------------------------------------------
+#
+# We only care about tile requests served from the production tile host for a
+# small set of canonical map layers. Everything else in the access logs — other
+# hosts, garbled layer names (`carto/lite`, `carto|PNG`, `tiles/carto`, …),
+# subsidiary/dev layers, and scraper noise — is dropped before aggregation.
+KEEP_HOSTS = {"tiles.macrostrat.org"}
+KEEP_LAYERS = {"carto", "carto-slim"}
+
+
+def is_relevant_request(host: str | None, layer: str) -> bool:
+    """Whether a tile request counts toward the stats: production host + a
+    canonical layer. Tweak KEEP_HOSTS / KEEP_LAYERS to widen coverage."""
+    return host in KEEP_HOSTS and layer in KEEP_LAYERS
+
+
 @app.command(name="process")
 def process_ingest_logs(
     prefix: str = "prod",
     limit: Optional[int] = None,
     reprocess: bool = False,
 ):
-    """Ingest Traefik ingress logs from S3/MinIO into tileserver_stats.requests.
+    """Ingest Traefik access-log dumps from S3/MinIO, aggregating relevant tile
+    requests directly into tileserver_stats.day_index / location_index.
 
-    Already-ingested objects are skipped (tracked in tileserver_stats.processed_logs);
-    pass --reprocess to re-ingest them. --limit caps the number of new objects.
+    Already-processed objects are skipped (tracked in tileserver_stats.processed_logs);
+    --reprocess re-ingests them (note: this double-counts unless the indexes are
+    cleared first). --limit caps the number of new objects.
     """
     config = _resolve_access_logs_config()
     n = ingest_traefik_logs_from_s3(
         config, prefix=prefix, limit=limit, reprocess=reprocess
     )
-    print(f"Inserted {n} tile requests")
+    print(f"Aggregated {n} relevant tile requests")
 
 
 def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], int]:
-    """Stream-decompress one zstd JSONL log object and return (tile rows, total lines)."""
+    """Stream-decompress one zstd JSONL log object, returning (relevant tile
+    rows, total log lines). Non-tile paths and irrelevant host/layer requests
+    are filtered out; `ext` is normalized to lowercase ('' when absent)."""
     response = s3.get_object(bucket, object_name)
     rows: list[dict] = []
     n_records = 0
@@ -271,11 +291,12 @@ def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], in
                 tile = parse_tile_path(rec.get("RequestPath"))
                 if tile is None:
                     continue
+                if not is_relevant_request(rec.get("RequestHost"), tile["layer"]):
+                    continue
                 rows.append(
                     {
-                        "uri": rec.get("RequestPath"),
                         "layer": tile["layer"],
-                        "ext": tile["ext"],
+                        "ext": (tile["ext"] or "").lower(),
                         "x": tile["x"],
                         "y": tile["y"],
                         "z": tile["z"],
@@ -288,49 +309,114 @@ def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], in
     return rows, n_records
 
 
+def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Roll parsed requests up into day_index and location_index upsert rows.
+    Location cells are downsampled to z<=8 (the index's heatmap resolution),
+    keeping the original zoom as orig_z."""
+    day: dict[tuple, int] = defaultdict(int)
+    loc: dict[tuple, int] = defaultdict(int)
+    for r in rows:
+        z, x, y = r["z"], r["x"], r["y"]
+        if z > 8:
+            lx, ly, lz = x >> (z - 8), y >> (z - 8), 8
+        else:
+            lx, ly, lz = x, y, z
+        loc[(r["layer"], r["ext"], lx, ly, lz, z)] += 1
+        t = r["time"]
+        if t is not None:
+            date = datetime(t.year, t.month, t.day)
+            day[(r["layer"], r["ext"], date)] += 1
+
+    day_rows = [
+        {"layer": k[0], "ext": k[1], "date": k[2], "num_requests": n}
+        for k, n in day.items()
+    ]
+    loc_rows = [
+        {
+            "layer": k[0],
+            "ext": k[1],
+            "x": k[2],
+            "y": k[3],
+            "z": k[4],
+            "orig_z": k[5],
+            "num_requests": n,
+        }
+        for k, n in loc.items()
+    ]
+    return day_rows, loc_rows
+
+
+# Upserts accumulate counts (new_system rows; legacy rows carry new_system=false
+# and never collide). Aggregation dedupes keys, so no in-batch conflicts.
+DAY_UPSERT = text(
+    """
+    INSERT INTO tileserver_stats.day_index
+        (layer, ext, referrer, app, app_version, date, num_requests, new_system)
+    VALUES (:layer, :ext, 'none', 'none', 'none', :date, :num_requests, true)
+    ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system)
+    DO UPDATE SET num_requests =
+        tileserver_stats.day_index.num_requests + EXCLUDED.num_requests
+    """
+)
+LOCATION_UPSERT = text(
+    """
+    INSERT INTO tileserver_stats.location_index
+        (layer, ext, x, y, z, orig_z, num_requests, new_system)
+    VALUES (:layer, :ext, :x, :y, :z, :orig_z, :num_requests, true)
+    ON CONFLICT (layer, ext, x, y, z, orig_z, new_system)
+    DO UPDATE SET num_requests =
+        tileserver_stats.location_index.num_requests + EXCLUDED.num_requests
+    """
+)
+RECORD_LOG = text(
+    """
+    INSERT INTO tileserver_stats.processed_logs
+        (object_name, etag, size, last_modified, num_records, num_tile_requests)
+    VALUES (:object_name, :etag, :size, :last_modified, :num_records, :num_tile_requests)
+    ON CONFLICT (object_name) DO UPDATE SET
+        etag = EXCLUDED.etag,
+        size = EXCLUDED.size,
+        last_modified = EXCLUDED.last_modified,
+        num_records = EXCLUDED.num_records,
+        num_tile_requests = EXCLUDED.num_tile_requests,
+        processed_at = now()
+    """
+)
+
+
+def _executemany(conn, stmt, rows: list[dict], batch: int) -> None:
+    for i in range(0, len(rows), batch):
+        chunk = rows[i : i + batch]
+        if chunk:
+            conn.execute(stmt, chunk)
+
+
 def ingest_traefik_logs_from_s3(
     config: S3Params,
     *,
     prefix: str = "prod",
     limit: int | None = None,
     reprocess: bool = False,
-    insert_batch: int = 10000,
+    batch: int = 5000,
 ) -> int:
-    """Download Traefik access-log dumps from S3/MinIO, parse tile requests, and
-    load them into tileserver_stats.requests in the core Macrostrat database.
+    """Download Traefik access-log dumps from S3/MinIO and aggregate relevant
+    tile requests directly into the core-DB day_index / location_index — no raw
+    staging table.
 
-    Objects are JSONL (one Traefik access-log record per line), zstd-compressed,
-    date-partitioned under `<prefix>/YYYY/MM/DD/...`. Each object is processed
-    atomically and recorded in tileserver_stats.processed_logs so it is never
-    reprocessed (and never needs deleting). NOTE: referrer/app/app_version and
-    cache levels (L1/L2) are not present in default Traefik logs and are left
-    null until the access-log config is extended — see the feature-area doc.
+    Objects are JSONL (one Traefik record per line), zstd-compressed,
+    date-partitioned under `<prefix>/YYYY/MM/DD/...`. Each object is parsed,
+    filtered (see is_relevant_request), aggregated, upserted, and recorded in
+    tileserver_stats.processed_logs **atomically** (one transaction), so it's
+    never reprocessed and never needs a staging table.
 
-    Returns the number of tile-request rows inserted.
+    NOTE: referrer/app/app_version and cache levels (L1/L2) aren't present in
+    default Traefik logs, so day_index stores them as 'none' — see the
+    feature-area doc.
+
+    Returns the number of relevant tile requests aggregated.
     """
     s3 = config.get_client()
     db = get_database()
-
-    insert_sql = text(
-        """
-        INSERT INTO tileserver_stats.requests (uri, layer, ext, x, y, z, time)
-        VALUES (:uri, :layer, :ext, :x, :y, :z, :time)
-        """
-    )
-    record_sql = text(
-        """
-        INSERT INTO tileserver_stats.processed_logs
-            (object_name, etag, size, last_modified, num_records, num_tile_requests)
-        VALUES (:object_name, :etag, :size, :last_modified, :num_records, :num_tile_requests)
-        ON CONFLICT (object_name) DO UPDATE SET
-            etag = EXCLUDED.etag,
-            size = EXCLUDED.size,
-            last_modified = EXCLUDED.last_modified,
-            num_records = EXCLUDED.num_records,
-            num_tile_requests = EXCLUDED.num_tile_requests,
-            processed_at = now()
-        """
-    )
 
     with db.engine.connect() as conn:
         already = {
@@ -340,7 +426,7 @@ def ingest_traefik_logs_from_s3(
             )
         }
 
-    inserted = 0
+    total_kept = 0
     n_objects = 0
     for obj in s3.list_objects(config.bucket, prefix=prefix, recursive=True):
         if not obj.object_name.endswith(".zst"):
@@ -352,12 +438,13 @@ def ingest_traefik_logs_from_s3(
         n_objects += 1
 
         rows, n_records = _parse_log_object(s3, config.bucket, obj.object_name)
+        day_rows, loc_rows = _aggregate(rows)
 
         with db.engine.begin() as conn:
-            for start in range(0, len(rows), insert_batch):
-                conn.execute(insert_sql, rows[start : start + insert_batch])
+            _executemany(conn, DAY_UPSERT, day_rows, batch)
+            _executemany(conn, LOCATION_UPSERT, loc_rows, batch)
             conn.execute(
-                record_sql,
+                RECORD_LOG,
                 {
                     "object_name": obj.object_name,
                     "etag": getattr(obj, "etag", None),
@@ -368,8 +455,14 @@ def ingest_traefik_logs_from_s3(
                 },
             )
 
-        inserted += len(rows)
-        print(f"{obj.object_name}: {len(rows)}/{n_records} tile requests")
+        total_kept += len(rows)
+        print(
+            f"{obj.object_name}: kept {len(rows)}/{n_records} "
+            f"→ {len(day_rows)} day-cells, {len(loc_rows)} location-cells"
+        )
 
-    print(f"Processed {n_objects} new object(s), inserted {inserted} tile requests")
-    return inserted
+    print(
+        f"Processed {n_objects} new object(s); "
+        f"aggregated {total_kept} relevant tile requests"
+    )
+    return total_kept
