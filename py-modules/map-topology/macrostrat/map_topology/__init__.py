@@ -167,12 +167,23 @@ def update(
 ):
     """Update topology fixtures"""
     mgr = get_topo_manager()
-    update_maps(mgr.ctx, maps, remove=remove)
     # Invalidating maps whose geometries have changed
     # TODO: make this more incremental
     mgr.db.run_query(proc("mark-changed-areas"))
+    update_maps(mgr.ctx, maps, remove=remove)
 
-    mgr.update(incremental=True, composite_layers=True)
+    # Error if there are any maps without a topogeometry added or an error
+    res = mgr.db.run_query(
+        """
+        SELECT count(*)
+        FROM map_bounds.map_area a
+        WHERE geometry_hash IS NULL
+        """
+    ).scalar()
+
+    assert res == 0, f"{res} maps have no topogeometry"
+
+    mgr.update(incremental=True, composite_layers=True, boundaries=False)
 
 
 def update_maps(

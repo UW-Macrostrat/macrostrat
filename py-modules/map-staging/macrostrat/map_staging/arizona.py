@@ -9,7 +9,7 @@ import sys
 from typing import Any
 
 import requests
-from requests.adapters import HTTPAdapter
+from requests import HTTPAdapter
 
 SESSION = requests.Session()
 SESSION.mount("https://", HTTPAdapter(max_retries=5))
@@ -82,9 +82,7 @@ def main() -> None:
                 ref_authors = author["person"]
 
         for file in map["metadata"]["files"]:
-            base_url = (
-                f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
-            )
+            base_url = f"https://data.azgs.arizona.edu/api/v1/collections/{collection_id}"
             filename = file["name"]
             archive_url = f"{base_url}/{filename}"
 

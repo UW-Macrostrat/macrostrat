@@ -41,14 +41,14 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import psycopg2
 import requests
 from openpyxl import load_workbook
 
-from macrostrat.core.database import Database, get_database
+from macrostrat.core.database import get_database
 from macrostrat.core.exc import MacrostratError
 
 # -----------------------------

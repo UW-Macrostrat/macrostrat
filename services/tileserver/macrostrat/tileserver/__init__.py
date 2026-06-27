@@ -13,7 +13,6 @@ from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
 from timvt.db import (
     close_db_connection,
-    con_init,
     connect_to_db,
     register_table_catalog,
 )
@@ -185,10 +184,10 @@ from .integrations import router as integrations_router
 
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
 
-from .usage_stats import router as usage_stats_router
 
-app.include_router(usage_stats_router, tags=["Web stats"], prefix="/stats/web")
+from .stats import stats_router
 
+app.include_router(stats_router, tags=["Stats"], prefix="/stats")
 
 from .carto_new import router as carto_router
 
@@ -197,12 +196,6 @@ app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
 from .topology import router as topo_router
 
 app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
-
-from .stats.requests import router as request_stats_router
-
-app.include_router(
-    request_stats_router, tags=["Tileserver stats"], prefix="/stats/tileserver"
-)
 
 
 @app.get("/carto/rotation-models")

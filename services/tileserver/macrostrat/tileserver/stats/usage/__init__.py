@@ -1,14 +1,11 @@
 from pathlib import Path
-from typing import List
 
 from buildpg import V, render
-from fastapi import APIRouter, Request, Response
-from timvt.resources.enums import MimeTypes
+from fastapi import APIRouter, Request
 
 from macrostrat.tileserver_utils import VectorTileResponse
 from macrostrat.utils import get_logger
 
-from ..utils import get_layer_sql
 
 log = get_logger(__name__)
 
@@ -80,4 +77,4 @@ async def get_tile(
     async with pool.acquire() as con:
         data = await con.fetchval(q, *p)
 
-    return Response(data, media_type=MimeTypes.pbf.value)
+    return VectorTileResponse(data)
