@@ -63,4 +63,9 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
   CONSTRAINT location_index_unique UNIQUE (layer, ext, x, y, z, orig_z, new_system)
 );
 
+-- Supports the spatial-heatmap tile route, which filters by z + x/y ranges
+-- (the unique constraint above leads with layer/ext, so it can't serve this).
+CREATE INDEX IF NOT EXISTS location_index_zxy
+  ON tileserver_stats.location_index (z, x, y);
+
 --INSERT INTO tileserver_stats.processing_status (last_row_id) VALUES (0);

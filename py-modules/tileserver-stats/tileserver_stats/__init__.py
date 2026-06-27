@@ -61,8 +61,8 @@ def compute_stats(truncate: bool = False):
 
 
 @app.command()
-def integrate_schema(drop: bool = False):
-    """Merge the tileserver_stats schema into the core Macrostrat database."""
+def migrate_data(drop: bool = False):
+    """Merge the tileserver_stats database into the core Macrostrat database."""
     tileserver_db = settings.databases.get("tileserver_stats")
 
     tdb = Database(tileserver_db)
@@ -87,6 +87,7 @@ class SmoothOption(str, Enum):
 
 
 class RangeOption(str, Enum):
+    last_month = "last-month"
     last_year = "last-year"
     last_5_years = "last-5-years"
     all = "all"
@@ -112,7 +113,7 @@ def plot_command(
     omit_spikes: bool = Option(
         True,
         "--omit-spikes/--keep-spikes",
-        help="Cut spike days (systematic scrapes) before smoothing; drawn dashed.",
+        help="Cut spike days before smoothing; drawn dashed.",
     ),
     spike_quantile: Optional[float] = Option(
         None,

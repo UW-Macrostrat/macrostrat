@@ -37,7 +37,7 @@ SPIKE_QUANTILE = 0.80  # default: days above this quantile are treated as spikes
 SMOOTH_WINDOWS = {"none": 1, "weekly": 7, "monthly": 30}
 
 # --range option → lookback in days (None = all time).
-RANGE_DAYS = {"last-year": 365, "last-5-years": 365 * 5, "all": None}
+RANGE_DAYS = {"last-month": 30, "last-year": 365, "last-5-years": 365 * 5, "all": None}
 
 
 def fetch_daily_requests() -> pl.DataFrame:
