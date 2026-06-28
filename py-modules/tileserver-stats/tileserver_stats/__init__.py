@@ -5,20 +5,21 @@ from typing import Optional
 import asyncio
 import io
 import json
+import random
 import re
 
 import zstandard as zstd
 from macrostrat.database.transfer import move_tables
 from minio import Minio
 from rich import print
-from typer import Typer, Option, confirm
+from typer import Typer, Option, confirm, BadParameter
 from pydantic import BaseModel
 
 from macrostrat.database import Database
 from macrostrat.core.config import settings
 from macrostrat.core import get_database
 
-from .params import Smoothing, TimeRange
+from .params import Smoothing, is_valid_range
 
 app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
 
@@ -56,7 +57,12 @@ def plot_command(
         "--smooth",
         help="Smoothing: none (raw daily), weekly (7-day mean), monthly (30-day mean).",
     ),
-    range_: TimeRange = Option(TimeRange.all, "--range", help="Time window to plot."),
+    range_: str = Option(
+        "all",
+        "--range",
+        help="Time window: last-month, last-year, last-5-years, all, or a "
+        "4-digit calendar year (e.g. 2026).",
+    ),
     log: bool = Option(False, "--log/--linear", help="Logarithmic vs. linear y-axis."),
     omit_spikes: bool = Option(
         True,
@@ -71,6 +77,13 @@ def plot_command(
     ),
 ):
     """Plot tile requests per day for reports."""
+    if not is_valid_range(range_):
+        raise BadParameter(
+            "Use last-month, last-year, last-5-years, all, or a 4-digit year "
+            "(e.g. 2026).",
+            param_hint="--range",
+        )
+
     from .plot import SPIKE_QUANTILE, tileserver_stats_figure
 
     tileserver_stats_figure(
@@ -80,6 +93,63 @@ def plot_command(
         spike_quantile=SPIKE_QUANTILE if spike_quantile is None else spike_quantile,
         smoothing=smooth,
         time_range=range_,
+    )
+
+@app.command(name="show-sample")
+def show_sample(
+    path: Optional[str] = Option(
+        None,
+        "--path",
+        "-p",
+        help="S3 object key of a log file. Default: the most recent upload.",
+    ),
+    count: int = Option(20, "--count", "-n", help="Number of URLs to sample."),
+    all_requests: bool = Option(
+        False,
+        "--all",
+        help="Sample all requests, not just tile requests.",
+    ),
+    prefix: str = Option(
+        "prod", "--prefix", help="Object-key prefix to search for the latest log."
+    ),
+):
+    """Print a random sample of request URLs from a log file — for diagnosing
+    what is (and isn't) being captured. Defaults to the most recently uploaded
+    log object; pass --path to target a specific one, or --all to include
+    non-tile requests."""
+    config = _resolve_access_logs_config()
+    s3 = config.get_client()
+
+    object_name = path or _latest_log_object(s3, config.bucket, prefix)
+    if object_name is None:
+        print(f"No .zst log objects found under {prefix!r}.")
+        return
+    print(f"Sampling from [bold]{object_name}[/]\n")
+
+    urls = []
+    n_lines = 0
+    for rec in _iter_log_records(s3, config.bucket, object_name):
+        n_lines += 1
+        if rec.get("RequestMethod") != "GET":
+            continue
+        request_path = rec.get("RequestPath")
+        if not request_path:
+            continue
+        if not all_requests and parse_tile_path(request_path) is None:
+            continue
+        urls.append(f"{rec.get('RequestHost', '')}{request_path}")
+
+    if not urls:
+        print("No matching requests found.")
+        return
+
+    for url in random.sample(urls, min(count, len(urls))):
+        print(url)
+
+    kind = "requests" if all_requests else "tile requests"
+    print(
+        f"\n[dim]{min(count, len(urls))} of {len(urls)} {kind} "
+        f"({n_lines} log lines)[/]"
     )
 
 
@@ -125,17 +195,18 @@ def reset_new_system(
             "processed_logs?",
             abort=True,
         )
-    n_day = db.run_query(
-        "DELETE FROM tileserver_stats.day_index WHERE new_system"
-    ).rowcount
-    n_loc = db.run_query(
-        "DELETE FROM tileserver_stats.location_index WHERE new_system"
-    ).rowcount
-    n_log = db.run_query("DELETE FROM tileserver_stats.processed_logs").rowcount
-    print(
-        f"Cleared {n_day} day_index, {n_loc} location_index, "
-        f"{n_log} processed_logs rows."
-    )
+    with db.transaction():
+        n_day = db.run_query(
+            "DELETE FROM tileserver_stats.day_index WHERE new_system"
+        ).rowcount
+        n_loc = db.run_query(
+            "DELETE FROM tileserver_stats.location_index WHERE new_system"
+        ).rowcount
+        n_log = db.run_query("DELETE FROM tileserver_stats.processed_logs").rowcount
+        print(
+            f"Cleared {n_day} day_index, {n_loc} location_index, "
+            f"{n_log} processed_logs rows."
+        )
 
 
 class S3Params(BaseModel):
@@ -145,7 +216,6 @@ class S3Params(BaseModel):
     secret_key: str
 
     def get_client(self):
-        print(self.endpoint)
         secure = self.endpoint.startswith("https://")
         if "/" not in self.endpoint:
             secure = True
@@ -242,13 +312,10 @@ def is_relevant_request(host: str | None, layer: str) -> bool:
     return host in KEEP_HOSTS and layer in KEEP_LAYERS
 
 
-def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], int]:
-    """Stream-decompress one zstd JSONL log object, returning (relevant tile
-    rows, total log lines). Non-tile paths and irrelevant host/layer requests
-    are filtered out; `ext` is normalized to lowercase ('' when absent)."""
+def _iter_log_records(s3, bucket: str, object_name: str):
+    """Stream-decompress a zstd JSONL log object, yielding each parsed record.
+    Blank and malformed lines are skipped."""
     response = s3.get_object(bucket, object_name)
-    rows: list[dict] = []
-    n_records = 0
     try:
         dctx = zstd.ZstdDecompressor()
         with dctx.stream_reader(response) as reader:
@@ -257,31 +324,51 @@ def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], in
                 line = line.strip()
                 if not line:
                     continue
-                n_records += 1
                 try:
-                    rec = json.loads(line)
+                    yield json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if rec.get("RequestMethod") != "GET":
-                    continue
-                tile = parse_tile_path(rec.get("RequestPath"))
-                if tile is None:
-                    continue
-                if not is_relevant_request(rec.get("RequestHost"), tile["layer"]):
-                    continue
-                rows.append(
-                    {
-                        "layer": tile["layer"],
-                        "ext": (tile["ext"] or "").lower(),
-                        "x": tile["x"],
-                        "y": tile["y"],
-                        "z": tile["z"],
-                        "time": _parse_timestamp(rec),
-                    }
-                )
     finally:
         response.close()
         response.release_conn()
+
+
+def _latest_log_object(s3, bucket: str, prefix: str) -> str | None:
+    """The most recently uploaded `.zst` object under `prefix`. Log keys are
+    date-partitioned (`prod/YYYY/MM/DD/HHMM_...`), so they sort chronologically."""
+    latest = None
+    for obj in s3.list_objects(bucket, prefix=prefix, recursive=True):
+        name = obj.object_name
+        if name.endswith(".zst") and (latest is None or name > latest):
+            latest = name
+    return latest
+
+
+def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], int]:
+    """Parse one log object into (relevant tile rows, total log records). Non-tile
+    paths and irrelevant host/layer requests are filtered out; `ext` is
+    normalized to lowercase ('' when absent)."""
+    rows: list[dict] = []
+    n_records = 0
+    for rec in _iter_log_records(s3, bucket, object_name):
+        n_records += 1
+        if rec.get("RequestMethod") != "GET":
+            continue
+        tile = parse_tile_path(rec.get("RequestPath"))
+        if tile is None:
+            continue
+        if not is_relevant_request(rec.get("RequestHost"), tile["layer"]):
+            continue
+        rows.append(
+            {
+                "layer": tile["layer"],
+                "ext": (tile["ext"] or "").lower(),
+                "x": tile["x"],
+                "y": tile["y"],
+                "z": tile["z"],
+                "time": _parse_timestamp(rec),
+            }
+        )
     return rows, n_records
 
 

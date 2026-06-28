@@ -14,7 +14,6 @@ import io
 import math
 import os
 import sys
-from datetime import timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -30,7 +29,7 @@ from matplotlib.ticker import FuncFormatter
 
 from macrostrat.core import get_database
 
-from .params import Smoothing, TimeRange
+from .params import Smoothing, resolve_date_window
 
 SPIKE_QUANTILE = 0.80  # default: days above this quantile are treated as spikes
 
@@ -57,12 +56,15 @@ def fetch_daily_requests() -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema)
 
 
-def _filter_range(df: pl.DataFrame, time_range: TimeRange) -> pl.DataFrame:
-    days = time_range.days
-    if days is None or df.is_empty():
+def _filter_range(df: pl.DataFrame, time_range: str) -> pl.DataFrame:
+    if df.is_empty():
         return df
-    cutoff = df["date"].max() - timedelta(days=days)
-    return df.filter(pl.col("date") >= cutoff)
+    start, end = resolve_date_window(time_range, df["date"].max())
+    if start is not None:
+        df = df.filter(pl.col("date") >= start)
+    if end is not None:
+        df = df.filter(pl.col("date") < end)
+    return df
 
 
 def _prepare(
@@ -174,7 +176,7 @@ def tileserver_stats_figure(
     omit_spikes: bool = True,
     spike_quantile: float = SPIKE_QUANTILE,
     smoothing: Smoothing = Smoothing.weekly,
-    time_range: TimeRange = TimeRange.all,
+    time_range: str = "all",
 ) -> None:
     """Render the tile-requests-per-day figure.
 
@@ -188,7 +190,7 @@ def tileserver_stats_figure(
         raise ValueError("No rows in tileserver_stats.day_index — nothing to plot.")
     df = _filter_range(df, time_range)
     if df.is_empty():
-        raise ValueError(f"No data in the selected range ({time_range.value}).")
+        raise ValueError(f"No data in the selected range ({time_range}).")
 
     daily = _prepare(
         df,
@@ -257,8 +259,13 @@ def tileserver_stats_figure(
     ax.spines[["top", "right"]].set_visible(False)
     ax.grid(True, axis="y", linestyle=":", linewidth=0.5, color="#cccccc")
     ax.yaxis.set_major_formatter(FuncFormatter(_fmt_count))
-    ax.xaxis.set_major_locator(mdates.YearLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    # Adaptive date ticks: AutoDateLocator picks a sensible interval for the
+    # visible span (years / months / days) and ConciseDateFormatter labels them
+    # compactly (the higher unit shown once, as an offset), so the axis reads
+    # well whether the range is a decade, a single year, or a month.
+    locator = mdates.AutoDateLocator(minticks=4, maxticks=9)
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
     ax.set_xlim(dates.min(), dates.max())
 
     smoothing = f"{smooth_window}-day mean" if smooth_window > 1 else "daily"
