@@ -163,13 +163,16 @@ def rebuild():
 def update(
     maps: list[str] = Argument(None),
     *,
+    bulk: bool = False,
     remove: bool = False,
 ):
     """Update topology fixtures"""
     mgr = get_topo_manager()
     # Invalidating maps whose geometries have changed
     # TODO: make this more incremental
-    mgr.db.run_query(proc("mark-changed-areas"))
+    if bulk:
+        mgr.db.run_query(proc("mark-changed-areas"))
+
     update_maps(mgr.ctx, maps, remove=remove)
 
     # Error if there are any maps without a topogeometry added or an error
@@ -178,10 +181,10 @@ def update(
         SELECT count(*)
         FROM map_bounds.map_area a
         WHERE geometry_hash IS NULL
+          AND (topo IS NULL OR topology_error IS NOT NULL)
         """
     ).scalar()
-
-    # assert res == 0, f"{res} maps have no topogeometry"
+    assert res == 0, f"{res} maps have no topogeometry"
 
     mgr.update(incremental=True, composite_layers=True, boundaries=False)
 
@@ -211,8 +214,13 @@ def update_maps(
     for _map in all_maps:
         process_map(db, _map, **kwargs)
 
+    mgr = TopologyManager(ctx)
     if clean:
-        mgr = TopologyManager(ctx)
+        _clean(mgr)
+
+    update_map_area_topogeometries(db)
+
+    if clean:
         _clean(mgr)
 
     end_time = time.time()
@@ -382,43 +390,58 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
         updated += recovered
         print(f"  Recovered {recovered} errored features at reduced tolerance")
 
-    has_valid_topogeom_or_error = db.run_query(
-        """
-        SELECT id FROM map_bounds.map_area ma
-        WHERE NOT (
-            ( topo IS NOT NULL OR topology_error IS NOT NULL) -- existing topogeometry
-            AND geometry_hash IS NOT NULL
-            AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
-            )
-          AND EXISTS (
-            SELECT 1
-            FROM map_bounds.map_topo mt
-            WHERE mt.map_id = ma.id
-              AND mt.topo IS NOT NULL
+    if updated > 0:
+        # We invalidate the geometry hash for this map area, so we can know to recreate
+        # the topogeometry on the next update.
+        db.run_query(
+            "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE id = :id",
+            dict(id=map_id),
         )
-        """,
-        dict(map_id=map_id),
-    ).scalar()
+        db.session.commit()
 
-    if updated > 0 or not has_valid_topogeom_or_error:
-        # We need to create the topology
-        print("  Updating map_area topogeometry")
+    return TopoUpdateResult(updated, failed, 0, errors)
+
+
+def update_map_area_topogeometries(db):
+    """Once we have inserted topogeometries into the map_topo table, we must update the map_area
+    topogeometries to match. Here, we get a list of maps whose topology components have changed
+    and create a new topogeometry for each."""
+
+    maps_to_update = db.run_query(
+        """
+        SELECT id, slug FROM map_bounds.map_area ma
+        JOIN maps.sources s
+          ON ma.id = s.source_id
+        WHERE
+          topo is null or topology_error is not null
+          AND (
+            geometry_hash is NULL
+            OR geometry_hash != md5(ST_AsBinary(geometry))::uuid -- geometry does not match hash
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM map_bounds.map_topo mt
+              WHERE mt.map_id = ma.id
+                AND mt.topo IS NOT NULL
+          )
+        """
+    ).all()
+
+    print(f"Updating {len(maps_to_update)} map_area topogeometries")
+
+    for res in maps_to_update:
+        map_id = res.id
+        print(f"#{map_id} - {res.slug}")
         db.run_query(proc("create-source-topogeometry"), dict(map_id=map_id))
         db.session.commit()
-    else:
-        print("[dim]  No topogeometries to add")
 
     # Edge-relation maintenance for face-based topogeometries is deferred (the
     # trigger only marks dirty), so rebuild the affected relations now that all
     # of this map's features and its map_area topogeometry are in place.
+    print("Rebuilding edge relations")
     n = db.run_query(
         "SELECT map_bounds_topology.rebuild_dirty_edge_relations()"
     ).scalar()
-    db.session.commit()
-    if n and n > 0:
-        print(f"  Rebuilt edge relations for {n} topogeometries")
-
-    return TopoUpdateResult(updated, failed, 0, errors)
 
 
 @cli.command("summary")
@@ -465,7 +488,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
         JOIN maps.sources_metadata m
           ON t.map_id = m.source_id
         JOIN map_bounds.map_area
-        USING (map_id)
+          ON t.map_id = map_area.id
         WHERE t.topology_error IS NOT NULL
         ORDER BY t.map_id, ST_GeoHash(t.geometry::geography)
     """
