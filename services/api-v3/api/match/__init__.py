@@ -70,40 +70,13 @@ class AbsoluteAgeConstraint(BaseModel):
     t_age: float = Field(None, description="Late/upper age constraint in Ma")
 
 
-class MatchQuery(BaseModel):
-    strat_name: str | None = Field(
-        None,
-        description="Text containing a stratigraphic name to match.",
-        examples=[
-            "Navajo Sandstone",
-            "Halgaito Member",
-            "Coconino",
-            "Dakota Formation",
-            "Matchless Amphibolite",
-            "broke neck pluton; Escapement Bay Fm",
-            "Morrison Fm",
-            "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
-        ],
-    )
-    concept_name: str | None = Field(
-        None,
-        description="Text containing a concept name to match.",
-        examples=[
-            "Navajo",
-            "Dakota",
-            "Morrison",
-            "Kayenta",
-        ],
-    )
-    strat_name_id: int | None = Field(
-        None, description="A Macrostrat stratigraphic name ID to match directly."
-    )
-    concept_id: int | None = Field(
-        None, description="A Macrostrat concept ID to match directly."
-    )
-    identifier: str | int | None = Field(
-        None, description="An optional identifier to associate with this query."
-    )
+class MatchContext(BaseModel):
+    """Shared location, age, and priority fields used to constrain a match.
+
+    Factored out of MatchQuery so that both single queries and shared-location
+    batch queries (MatchBatchQuery) can reuse the same location/age handling.
+    """
+
     lat: float | None = None
     lng: float | None = None
     col_id: int | None = Field(
@@ -135,20 +108,6 @@ class MatchQuery(BaseModel):
             "matches prioritized before broader concept, rank-down, rank-up, or synonym matches."
         ),
     )
-
-    @model_validator(mode="after")
-    def validate_match_input(self):
-        """Ensure that either strat_name or strat_name_id is provided."""
-        if (
-            self.strat_name is None
-            and self.strat_name_id is None
-            and self.concept_id is None
-            and self.concept_name is None
-        ):
-            raise ValueError(
-                "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
-            )
-        return self
 
     @model_validator(mode="after")
     def validate_position_info(self):
@@ -184,6 +143,56 @@ class MatchQuery(BaseModel):
         return AbsoluteAgeConstraint(b_age=b_age, t_age=t_age)
 
 
+class MatchQuery(MatchContext):
+    strat_name: str | None = Field(
+        None,
+        description="Text containing a stratigraphic name to match.",
+        examples=[
+            "Navajo Sandstone",
+            "Halgaito Member",
+            "Coconino",
+            "Dakota Formation",
+            "Matchless Amphibolite",
+            "broke neck pluton; Escapement Bay Fm",
+            "Morrison Fm",
+            "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
+        ],
+    )
+    concept_name: str | None = Field(
+        None,
+        description="Text containing a concept name to match.",
+        examples=[
+            "Navajo",
+            "Dakota",
+            "Morrison",
+            "Kayenta",
+        ],
+    )
+    strat_name_id: int | None = Field(
+        None, description="A Macrostrat stratigraphic name ID to match directly."
+    )
+    concept_id: int | None = Field(
+        None, description="A Macrostrat concept ID to match directly."
+    )
+    identifier: str | int | None = Field(
+        None, description="An optional identifier to associate with this query."
+    )
+
+    @model_validator(mode="after")
+    def validate_match_input(self):
+        """Ensure that either strat_name or strat_name_id is provided."""
+        if (
+            self.strat_name is None
+            and self.strat_name_id is None
+            and self.concept_id is None
+            and self.concept_name is None
+        ):
+            raise ValueError(
+                "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
+            )
+        return self
+
+
 class MatchMessageType(enum.Enum):
     Info = "info"
     Warning = "warning"
@@ -213,6 +222,11 @@ class MatchMessage(BaseModel):
 
 
 class MatchData(BaseModel):
+    id: str | int | None = Field(
+        None,
+        description="The identifier supplied with the input query, echoed back so "
+        "batch results can be correlated to their input.",
+    )
     unit_matches: list[MatchResult]
     messages: list[MatchMessage]
 
@@ -239,6 +253,68 @@ class MatchOptions(BaseModel):
 
 class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
+
+
+class StratNameItem(BaseModel):
+    """A single (id, strat_name) pair in a shared-location batch query.
+
+    Accepts either a 2-element ``[id, strat_name]`` array (the JSON rendering of
+    an ``(id, strat_name)`` tuple) or an explicit ``{"id": ..., "strat_name": ...}``
+    object.
+    """
+
+    id: str | int = Field(
+        ..., description="User-supplied identifier, returned back in the result."
+    )
+    strat_name: str = Field(..., description="Stratigraphic name text to match.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_pair(cls, data):
+        if isinstance(data, (list, tuple)):
+            if len(data) != 2:
+                raise ValueError(
+                    "Each strat_names entry must be an (id, strat_name) pair."
+                )
+            return {"id": data[0], "strat_name": data[1]}
+        return data
+
+
+class MatchBatchQuery(MatchContext, MatchOptions):
+    """A shared-location batch query.
+
+    A single location (``lat``/``lng`` or ``col_id``), age constraint, priority,
+    and set of match options are applied to every ``(id, strat_name)`` pair in
+    ``strat_names``. Each pair is expanded into an individual MatchQuery, and the
+    supplied ``id`` is echoed back on the corresponding result.
+    """
+
+    strat_names: list[StratNameItem] = Field(
+        ...,
+        description="List of (id, strat_name) pairs to match against the shared location.",
+        examples=[[[932043, "Navajo"], [74382, "Navajo Sandstone"], [382950, "Morrison"]]],
+    )
+
+    def to_queries(self) -> list["MatchQuery"]:
+        """Expand each (id, strat_name) pair into a MatchQuery sharing this context."""
+        shared = self.model_dump(
+            include={
+                "lat",
+                "lng",
+                "col_id",
+                "project_id",
+                "b_interval",
+                "t_interval",
+                "interval",
+                "b_age",
+                "t_age",
+                "priority",
+            }
+        )
+        return [
+            MatchQuery(strat_name=item.strat_name, identifier=item.id, **shared)
+            for item in self.strat_names
+        ]
 
 
 NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
@@ -380,14 +456,32 @@ def match_units(
 
 @router.post("/strat-names")
 def match_units_multi(
-    body: list[MatchQuery],
+    body: list[MatchQuery] | MatchBatchQuery,
     query: Annotated[MatchOptions, Query()],
 ):
     """
     Match multiple stratigraphic name queries in a single request.
+
+    Two body shapes are accepted:
+
+    - A JSON **array** of full query objects, each carrying its own location and
+      options. MatchOptions (``all``, ``basis``) are read from query parameters.
+    - A JSON **object** (MatchBatchQuery) with a single shared location/options and
+      a ``strat_names`` list of ``(id, strat_name)`` pairs. Options are read from
+      the body, and each supplied ``id`` is echoed back on its result.
+
     :return: MatchAPIResponse
     """
-    opts = MatchOptions(**query.model_dump())
+    if isinstance(body, MatchBatchQuery):
+        # Shared-location batch: options come from the body, queries are expanded
+        # from the (id, strat_name) pairs.
+        opts = MatchOptions(all=body.all, basis=body.basis)
+        queries = body.to_queries()
+    else:
+        # Array of full query objects: options come from query parameters.
+        opts = MatchOptions(**query.model_dump())
+        queries = body
+
     if opts.basis is None:
         opts.basis = set(get_match_types(None))
 
@@ -396,10 +490,10 @@ def match_units_multi(
 
     all_results: list[MatchData] = []
 
-    if len(body) > 100:
+    if len(queries) > 100:
         raise ValueError("Maximum of 100 queries allowed per request.")
 
-    for params in body:
+    for params in queries:
         match_data = build_match_data(db, params)
         if match_data is not None:
             all_results.append(match_data)
@@ -413,6 +507,7 @@ def generate_response(
     if not opts.all:
         results = [
             MatchData(
+                id=result.id,
                 unit_matches=[m for m in result.unit_matches if m.priority == 0.0],
                 messages=result.messages,
             )
@@ -504,6 +599,7 @@ def build_match_data(db, params):
     if params.strat_name is not None and params.concept_name is not None:
         # Return an error result
         return MatchData(
+            id=params.identifier,
             unit_matches=[],
             messages=[
                 MatchMessage(
@@ -517,6 +613,7 @@ def build_match_data(db, params):
     if age_constraint.b_age < age_constraint.t_age:
         # Return an error result
         return MatchData(
+            id=params.identifier,
             unit_matches=[],
             messages=[
                 MatchMessage(
@@ -590,4 +687,4 @@ def build_match_data(db, params):
             )
         )
     results = assign_priorities(results, params.priority)
-    return MatchData(unit_matches=results, messages=messages)
+    return MatchData(id=params.identifier, unit_matches=results, messages=messages)

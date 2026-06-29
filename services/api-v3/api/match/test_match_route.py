@@ -150,6 +150,67 @@ def test_multi_match_units(client):
         assert best_match["strat_name_id"] == case.strat_name_id
 
 
+def test_batch_match_units_shared_location(client):
+    """POST a shared location plus a list of (id, strat_name) pairs.
+
+    Each input id should be echoed back on its result so callers can correlate,
+    and results should stay one-per-input in order.
+    """
+    pairs = [(1000 + i, c.match_text) for i, c in enumerate(cases)]
+    response = client.post(
+        "/strat-names",
+        json={
+            "strat_names": pairs,
+            "lat": cases[0].xy[1],
+            "lng": cases[0].xy[0],
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "results" in data
+
+    results = data["results"]
+    assert len(results) == len(cases)
+
+    for res, case, (pair_id, _name) in zip(results, cases, pairs):
+        # The supplied id is echoed back for correlation.
+        assert res["id"] == pair_id
+
+        matches = res["unit_matches"]
+        assert_valid_unit_matches(matches)
+
+        # Default all=false returns exactly one best-priority match per input.
+        assert len(matches) == 1
+        best_match = matches[0]
+        assert best_match["priority"] == 0.0
+        assert best_match["unit_id"] == case.unit_id
+        assert best_match["strat_name_id"] == case.strat_name_id
+
+
+def test_batch_match_units_col_id_and_all_in_body(client):
+    """Batch body accepts col_id instead of lat/lng and reads `all` from the body."""
+    response = client.post(
+        "/strat-names",
+        json={
+            "strat_names": [[42, "Mancos"]],
+            "col_id": 490,
+            "all": True,
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    results = data["results"]
+    assert len(results) == 1
+    assert results[0]["id"] == 42
+
+    matches = results[0]["unit_matches"]
+    assert_valid_unit_matches(matches)
+    # all=true (read from the body) should return more than the single best match.
+    priorities = [m["priority"] for m in matches]
+    assert priorities == sorted(priorities)
+    assert len(matches) > 1
+
+
 def test_match_units_ambiguous_column(client):
     response = client.get(
         "/strat-names",
