@@ -2,6 +2,7 @@ all:
 	# Install all dependencies
 	# Install all optional dependency groups (dev, gis, etc)
 	uv sync
+	uv add "psycopg[binary]"
 
 start-database:
 	# Install GIS dependencies
