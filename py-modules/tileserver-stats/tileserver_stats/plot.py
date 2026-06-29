@@ -73,9 +73,9 @@ def _prepare(
     """Collapse lineages to one daily series on a continuous timeline.
 
     Produces columns: date, is_spike, is_outage, series, band.
-      - Missing days (outages) become explicit nulls and remain gaps in `series`.
-      - Spike days are cut *before* smoothing and linearly interpolated, so they
-        don't distort the trend; they're flagged for dashed rendering.
+      - Missing days (outages) and spike days are left as nulls; the rolling mean
+        skips them, so neither distorts the trend.
+      - Outages remain gaps in `series`; spikes are flagged for dashed rendering.
     """
     daily = df.group_by("date").agg(pl.col("count").sum().alias("count")).sort("date")
     # Continuous daily timeline: gaps (outages) become explicit null rows.
@@ -95,18 +95,27 @@ def _prepare(
     else:
         daily = daily.with_columns(pl.lit(False).alias("is_spike"))
 
-    # Cut spikes (and, temporarily, outages) → interpolate → smooth.
+    # `clean`: real daily counts, with outages and spikes left as NULL (not
+    # interpolated or zero-filled). The rolling mean below skips nulls and
+    # divides by the actual number of present days in each window — so gaps and
+    # the edges of data drop-offs don't drag the average toward zero (which a
+    # fixed window denominator would). `center=True` also avoids the lag that
+    # smears a sharp step across the window.
     daily = daily.with_columns(
         pl.when(pl.col("is_spike") | pl.col("is_outage"))
         .then(pl.lit(None, dtype=pl.Float64))
         .otherwise(pl.col("count").cast(pl.Float64))
         .alias("clean")
-    ).with_columns(pl.col("clean").interpolate())
+    )
 
     if smooth_window > 1:
         daily = daily.with_columns(
-            pl.col("clean").rolling_mean(window_size=smooth_window).alias("series"),
-            pl.col("clean").rolling_std(window_size=smooth_window).alias("band"),
+            pl.col("clean")
+            .rolling_mean(window_size=smooth_window, min_samples=1, center=True)
+            .alias("series"),
+            pl.col("clean")
+            .rolling_std(window_size=smooth_window, min_samples=1, center=True)
+            .alias("band"),
         )
     else:
         daily = daily.with_columns(
@@ -114,7 +123,8 @@ def _prepare(
             pl.lit(None, dtype=pl.Float64).alias("band"),
         )
 
-    # Restore outage gaps: the displayed line breaks at genuinely-missing days.
+    # Outage days are gaps in the displayed line (the rolling mean would
+    # otherwise bridge them from neighboring windows).
     return daily.with_columns(
         pl.when(pl.col("is_outage"))
         .then(pl.lit(None, dtype=pl.Float64))

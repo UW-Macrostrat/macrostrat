@@ -312,6 +312,21 @@ def is_relevant_request(host: str | None, layer: str) -> bool:
     return host in KEEP_HOSTS and layer in KEEP_LAYERS
 
 
+# Known automated clients (cache-warmers, prefetchers, scrapers) by source IP.
+# Their requests are still aggregated, but tagged `is_bot` so organic traffic
+# can be separated from machine traffic. See the 2026-06-28 spike investigation:
+# 96.19.11.45 emits a fixed ~19.7k-tile carto.png set repeatedly and has driven
+# 50–80% of all logged requests since the May outage.
+KNOWN_BOTS = {
+    "96.19.11.45",
+}
+
+
+def is_known_bot(client: str | None) -> bool:
+    """Whether a request's client is a known automated agent."""
+    return client in KNOWN_BOTS
+
+
 def _iter_log_records(s3, bucket: str, object_name: str):
     """Stream-decompress a zstd JSONL log object, yielding each parsed record.
     Blank and malformed lines are skipped."""
@@ -367,6 +382,7 @@ def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], in
                 "y": tile["y"],
                 "z": tile["z"],
                 "time": _parse_timestamp(rec),
+                "is_bot": is_known_bot(rec.get("ClientHost")),
             }
         )
     return rows, n_records
@@ -379,19 +395,20 @@ def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     day: dict[tuple, int] = defaultdict(int)
     loc: dict[tuple, int] = defaultdict(int)
     for r in rows:
+        bot = r["is_bot"]
         z, x, y = r["z"], r["x"], r["y"]
         if z > 8:
             lx, ly, lz = x >> (z - 8), y >> (z - 8), 8
         else:
             lx, ly, lz = x, y, z
-        loc[(r["layer"], r["ext"], lx, ly, lz, z)] += 1
+        loc[(r["layer"], r["ext"], lx, ly, lz, z, bot)] += 1
         t = r["time"]
         if t is not None:
             date = datetime(t.year, t.month, t.day)
-            day[(r["layer"], r["ext"], date)] += 1
+            day[(r["layer"], r["ext"], date, bot)] += 1
 
     day_rows = [
-        {"layer": k[0], "ext": k[1], "date": k[2], "num_requests": n}
+        {"layer": k[0], "ext": k[1], "date": k[2], "is_bot": k[3], "num_requests": n}
         for k, n in day.items()
     ]
     loc_rows = [
@@ -402,6 +419,7 @@ def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
             "y": k[3],
             "z": k[4],
             "orig_z": k[5],
+            "is_bot": k[6],
             "num_requests": n,
         }
         for k, n in loc.items()
@@ -414,17 +432,17 @@ def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
 # a list of param dicts, db.run_query runs them as an executemany.
 DAY_UPSERT = """
     INSERT INTO tileserver_stats.day_index
-        (layer, ext, referrer, app, app_version, date, num_requests, new_system)
-    VALUES (:layer, :ext, 'none', 'none', 'none', :date, :num_requests, true)
-    ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system)
+        (layer, ext, referrer, app, app_version, date, num_requests, new_system, is_bot)
+    VALUES (:layer, :ext, 'none', 'none', 'none', :date, :num_requests, true, :is_bot)
+    ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system, is_bot)
     DO UPDATE SET num_requests =
         tileserver_stats.day_index.num_requests + EXCLUDED.num_requests
 """
 LOCATION_UPSERT = """
     INSERT INTO tileserver_stats.location_index
-        (layer, ext, x, y, z, orig_z, num_requests, new_system)
-    VALUES (:layer, :ext, :x, :y, :z, :orig_z, :num_requests, true)
-    ON CONFLICT (layer, ext, x, y, z, orig_z, new_system)
+        (layer, ext, x, y, z, orig_z, num_requests, new_system, is_bot)
+    VALUES (:layer, :ext, :x, :y, :z, :orig_z, :num_requests, true, :is_bot)
+    ON CONFLICT (layer, ext, x, y, z, orig_z, new_system, is_bot)
     DO UPDATE SET num_requests =
         tileserver_stats.location_index.num_requests + EXCLUDED.num_requests
 """

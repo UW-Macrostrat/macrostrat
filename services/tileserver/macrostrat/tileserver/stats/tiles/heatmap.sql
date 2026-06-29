@@ -17,6 +17,9 @@ cells AS (
     sum(li.num_requests)::bigint AS num_requests
   FROM tileserver_stats.location_index li, tile
   WHERE li.z = 8
+    -- Organic traffic only: exclude known automated clients (cache-warmers /
+    -- scrapers) so the heatmap reflects real usage, not machine traffic.
+    AND NOT li.is_bot
     AND CASE WHEN :z <= 8 THEN
               -- z8 cells contained in the requested tile
               li.x >= (:x::bigint << (8 - :z)) AND li.x < ((:x::bigint + 1) << (8 - :z))

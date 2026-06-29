@@ -18,9 +18,10 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.processed_logs (
 );
 
 -- new_system distinguishes rows aggregated by the new log-dump pipeline
--- (true) from legacy rows migrated from the old direct-push era (false). It is
--- part of the unique key so the two lineages accumulate separately and never
--- merge.
+-- (true) from legacy rows migrated from the old direct-push era (false).
+-- is_bot separates known automated clients (cache-warmers/scrapers; see
+-- KNOWN_BOTS) from organic traffic. Both are part of the unique key so the
+-- lineages/classes accumulate separately and never merge.
 CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   layer text NOT NULL,
   ext text NOT NULL,
@@ -30,7 +31,8 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   date timestamp without time zone NOT NULL,
   num_requests integer NOT NULL,
   new_system boolean NOT NULL DEFAULT false,
-  CONSTRAINT day_index_unique UNIQUE (layer, ext, referrer, app, app_version, date, new_system)
+  is_bot boolean NOT NULL DEFAULT false,
+  CONSTRAINT day_index_unique UNIQUE (layer, ext, referrer, app, app_version, date, new_system, is_bot)
 );
 
 CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
@@ -42,7 +44,8 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
   orig_z integer NOT NULL,
   num_requests integer NOT NULL,
   new_system boolean NOT NULL DEFAULT false,
-  CONSTRAINT location_index_unique UNIQUE (layer, ext, x, y, z, orig_z, new_system)
+  is_bot boolean NOT NULL DEFAULT false,
+  CONSTRAINT location_index_unique UNIQUE (layer, ext, x, y, z, orig_z, new_system, is_bot)
 );
 
 -- Supports the spatial-heatmap tile route, which filters by z + x/y ranges

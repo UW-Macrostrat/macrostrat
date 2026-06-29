@@ -254,6 +254,32 @@ def _print_map_info(map, prefix="Processing map "):
 
 
 def process_map(db, map, **kwargs):
+    """Process an individual map by creating topogeometries for its features if needed.
+    If run in "bulk" mode, processing will be run on all maps regardless of whether topogeometries
+    are already present. Otherwise, processing will be run only on maps that have not changed.
+    """
+    bulk = kwargs.get("bulk", False)
+    if not bulk:
+        # Test whether we should process this map
+        res = db.run_query(
+            """
+            SELECT 1
+            FROM map_bounds.map_area ma
+            WHERE EXISTS (
+                SELECT 1
+                FROM map_bounds.map_topo mt
+                WHERE mt.map_id = :map_id
+            )
+            AND geometry_hash IS NOT NULL
+            AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
+            AND topo IS NOT null
+            AND ma.id = :map_id
+            """,
+            dict(map_id=map.map_id),
+        ).scalar()
+        if res == 1:
+            return
+
     _print_map_info(map, prefix="Processing map ")
 
     prepare_map_topo_features(db, map, **kwargs)
