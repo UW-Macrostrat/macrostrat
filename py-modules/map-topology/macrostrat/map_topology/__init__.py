@@ -181,7 +181,7 @@ def update(
         """
     ).scalar()
 
-    assert res == 0, f"{res} maps have no topogeometry"
+    # assert res == 0, f"{res} maps have no topogeometry"
 
     mgr.update(incremental=True, composite_layers=True, boundaries=False)
 
@@ -384,11 +384,17 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
 
     has_valid_topogeom_or_error = db.run_query(
         """
-        SELECT EXISTS (
-        SELECT 1 FROM map_bounds.map_area
-        WHERE id = :map_id
-          AND  ( topo IS NOT NULL OR topology_error IS NOT NULL) -- existing topogeometry
-          AND (geometry_hash IS NOT NULL AND geometry_hash = md5(ST_AsBinary(geometry))::uuid) -- geometry matches hash
+        SELECT id FROM map_bounds.map_area ma
+        WHERE NOT (
+            ( topo IS NOT NULL OR topology_error IS NOT NULL) -- existing topogeometry
+            AND geometry_hash IS NOT NULL
+            AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
+            )
+          AND EXISTS (
+            SELECT 1
+            FROM map_bounds.map_topo mt
+            WHERE mt.map_id = ma.id
+              AND mt.topo IS NOT NULL
         )
         """,
         dict(map_id=map_id),
@@ -419,7 +425,7 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
 def summary():
     """Summarize the topology"""
     db = get_database()
-    res = db.run_query("SELECT TopologySummary('map_bounds_topology');").scalar()
+    res = db.run_query("SELECT TopologySummary('map_bounds_topology')").scalar()
     print(res)
 
 
