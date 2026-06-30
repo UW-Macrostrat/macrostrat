@@ -449,14 +449,22 @@ def match_units(
     opts = MatchOptions(**query.model_dump())
 
     db = get_database()
-    setup_matcher()
+    try:
+        setup_matcher()
 
-    results = []
-    match_data = build_match_data(db, params)
-    if match_data is not None:
-        results.append(match_data)
-        print("Match data results", results)
-    return generate_response(results, opts)
+        results = []
+        match_data = build_match_data(db, params)
+        if match_data is not None:
+            results.append(match_data)
+            print("Match data results", results)
+        return generate_response(results, opts)
+    finally:
+        # Release this thread's scoped session so its connection returns to the
+        # pool. Without this, queries run via db.run_query leave an open
+        # transaction (run_query never advances the underlying generator to its
+        # commit), leaking a connection per worker thread until the pool is
+        # exhausted.
+        db.session.remove()
 
 
 @router.post("/strat-names")
@@ -488,19 +496,24 @@ def match_units_multi(
         queries = body
 
     db = get_database()
-    setup_matcher()
+    try:
+        setup_matcher()
 
-    all_results: list[MatchData] = []
+        all_results: list[MatchData] = []
 
-    if len(queries) > 100:
-        raise ValueError("Maximum of 100 queries allowed per request.")
+        if len(queries) > 100:
+            raise ValueError("Maximum of 100 queries allowed per request.")
 
-    for params in queries:
-        match_data = build_match_data(db, params)
-        if match_data is not None:
-            all_results.append(match_data)
+        for params in queries:
+            match_data = build_match_data(db, params)
+            if match_data is not None:
+                all_results.append(match_data)
 
-    return generate_response(all_results, opts)
+        return generate_response(all_results, opts)
+    finally:
+        # Release this thread's scoped session so its connection returns to the
+        # pool (see match_units for details).
+        db.session.remove()
 
 
 def generate_response(
