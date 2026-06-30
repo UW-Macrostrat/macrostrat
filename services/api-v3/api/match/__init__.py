@@ -301,7 +301,9 @@ class MatchBatchQuery(MatchContext, MatchOptions):
     strat_names: list[StratNameItem] = Field(
         ...,
         description="List of (id, strat_name) pairs to match against the shared location.",
-        examples=[[[932043, "Navajo"], [74382, "Navajo Sandstone"], [382950, "Morrison"]]],
+        examples=[
+            [[932043, "Navajo"], [74382, "Navajo Sandstone"], [382950, "Morrison"]]
+        ],
     )
 
     def to_queries(self) -> list["MatchQuery"]:
