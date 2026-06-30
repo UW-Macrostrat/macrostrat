@@ -9,11 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 from macrostrat.match_utils import (
     MATCH_STRAT_NAMES_INFO,
     MatchResult,
-    MatchType,
     create_ignore_list,
     get_all_matched_units,
     get_columns_for_location,
-    get_match_types,
     standardize_names,
     standardize_names_from_id,
 )
@@ -180,7 +178,7 @@ class MatchQuery(MatchContext):
 
     @model_validator(mode="after")
     def validate_match_input(self):
-        """Ensure that either strat_name or strat_name_id is provided."""
+        """Ensure that exactly one of strat_name or strat_name_id is provided."""
         if (
             self.strat_name is None
             and self.strat_name_id is None
@@ -189,6 +187,10 @@ class MatchQuery(MatchContext):
         ):
             raise ValueError(
                 "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
+            )
+        if self.strat_name is not None and self.strat_name_id is not None:
+            raise ValueError(
+                "Only one of strat_name or strat_name_id can be provided, not both."
             )
         return self
 
@@ -241,9 +243,16 @@ class MatchAPIResponse(BaseModel):
     messages: set[MatchMessage] | None = None
 
 
+NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
+SpatialBasis = Literal["containing column", "adjacent column"]
+
+
 class MatchOptions(BaseModel):
-    basis: Optional[set[MatchType]] = Field(
-        None, description="Types of matches to include."
+    name_basis: Optional[NameBasis] = Field(
+        None,
+        description="If provided, filter results to only those whose name_basis "
+        "equals this value. One of: exact, concept, rank-down, rank-up, synonym. "
+        "Applied as a final step after matching and prioritization.",
     )
     all: bool = Field(
         False,
@@ -315,10 +324,6 @@ class MatchBatchQuery(MatchContext, MatchOptions):
             MatchQuery(strat_name=item.strat_name, identifier=item.id, **shared)
             for item in self.strat_names
         ]
-
-
-NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
-SpatialBasis = Literal["containing column", "adjacent column"]
 
 
 class MatchPriorityOrder(BaseModel):
@@ -440,8 +445,6 @@ def match_units(
     # Reconstruct separated mixins
     params = MatchQuery(**query.model_dump())
     opts = MatchOptions(**query.model_dump())
-    if opts.basis is None:
-        opts.basis = set(get_match_types(None))
 
     db = get_database()
     setup_matcher()
@@ -465,7 +468,7 @@ def match_units_multi(
     Two body shapes are accepted:
 
     - A JSON **array** of full query objects, each carrying its own location and
-      options. MatchOptions (``all``, ``basis``) are read from query parameters.
+      options. MatchOptions (``all``, ``name_basis``) are read from query parameters.
     - A JSON **object** (MatchBatchQuery) with a single shared location/options and
       a ``strat_names`` list of ``(id, strat_name)`` pairs. Options are read from
       the body, and each supplied ``id`` is echoed back on its result.
@@ -475,15 +478,12 @@ def match_units_multi(
     if isinstance(body, MatchBatchQuery):
         # Shared-location batch: options come from the body, queries are expanded
         # from the (id, strat_name) pairs.
-        opts = MatchOptions(all=body.all, basis=body.basis)
+        opts = MatchOptions(all=body.all, name_basis=body.name_basis)
         queries = body.to_queries()
     else:
         # Array of full query objects: options come from query parameters.
         opts = MatchOptions(**query.model_dump())
         queries = body
-
-    if opts.basis is None:
-        opts.basis = set(get_match_types(None))
 
     db = get_database()
     setup_matcher()
@@ -504,15 +504,34 @@ def match_units_multi(
 def generate_response(
     results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
 ) -> MatchAPIResponse:
-    if not opts.all:
+    # Filter by name_basis after matching/prioritization, keeping only matches
+    # whose name_basis equals the requested value.
+    if opts.name_basis is not None:
         results = [
             MatchData(
                 id=result.id,
-                unit_matches=[m for m in result.unit_matches if m.priority == 0.0],
+                unit_matches=[
+                    m for m in result.unit_matches if m.name_basis == opts.name_basis
+                ],
                 messages=result.messages,
             )
             for result in results
         ]
+
+    # When all=False, keep only the best (lowest-priority) match that remain.
+    # With no name_basis filter the best priority is 0.0, preserving prior behavior.
+    if not opts.all:
+        reduced: list[MatchData] = []
+        for result in results:
+            if result.unit_matches:
+                best = min(m.priority for m in result.unit_matches)
+                kept = [m for m in result.unit_matches if m.priority == best]
+            else:
+                kept = []
+            reduced.append(
+                MatchData(id=result.id, unit_matches=kept, messages=result.messages)
+            )
+        results = reduced
     _messages: set[MatchMessage] = set()
 
     for result in results:

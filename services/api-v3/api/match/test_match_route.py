@@ -101,6 +101,101 @@ def test_basic_match_units_strat_name_priority(client, case):
     assert best_match["strat_name_id"] == case.strat_name_id
 
 
+def test_strat_name_and_strat_name_id_returns_error(client):
+    """Providing both strat_name and strat_name_id is rejected with a 422."""
+    response = client.get(
+        "/strat-names",
+        params={
+            "strat_name": "Navajo Sandstone",
+            "strat_name_id": 3361,
+            "lat": 39.419220,
+            "lng": -111.950684,
+        },
+    )
+    assert response.status_code == 422
+    body = response.text
+    assert "Only one of strat_name or strat_name_id" in body
+
+
+def test_name_basis_filter(client):
+    """name_basis filters results to only matches with that name_basis."""
+    #get all possible match bases with all=True so we know which bases are present.
+    full = client.get(
+        "/strat-names",
+        params={"col_id": 490, "strat_name": "Mancos", "all": True},
+    )
+    assert full.status_code == 200
+    full_matches = full.json()["results"][0]["unit_matches"]
+    present = {m["name_basis"] for m in full_matches}
+    assert present  # sanity: there is something to filter
+
+    #pick one basis to confirm the filter returns only that basis
+    target = sorted(present)[0]
+    expected = [m for m in full_matches if m["name_basis"] == target]
+
+    filtered = client.get(
+        "/strat-names",
+        params={
+            "col_id": 490,
+            "strat_name": "Mancos",
+            "all": True,
+            "name_basis": target,
+        },
+    )
+    assert filtered.status_code == 200
+    filtered_matches = filtered.json()["results"][0]["unit_matches"]
+    assert len(filtered_matches) == len(expected)
+    assert all(m["name_basis"] == target for m in filtered_matches)
+
+
+def test_name_basis_filter_all_false_returns_best_single_match(client):
+    """all=false + name_basis returns the best (lowest-priority) match of that basis."""
+    #get all possible match bases with all=True so we know which bases are present.
+    full = client.get(
+        "/strat-names",
+        params={"col_id": 490, "strat_name": "Mancos", "all": True},
+    )
+    assert full.status_code == 200
+    full_matches = full.json()["results"][0]["unit_matches"]
+    present = {m["name_basis"] for m in full_matches}
+    assert present
+
+    target = sorted(present)[0]
+    of_basis = [m for m in full_matches if m["name_basis"] == target]
+    best_priority = min(m["priority"] for m in of_basis)
+    expected_unit_ids = {m["unit_id"] for m in of_basis if m["priority"] == best_priority}
+
+    resp = client.get(
+        "/strat-names",
+        params={
+            "col_id": 490,
+            "strat_name": "Mancos",
+            "all": False,
+            "name_basis": target,
+        },
+    )
+    assert resp.status_code == 200
+    matches = resp.json()["results"][0]["unit_matches"]
+    assert len(matches) >= 1
+    # Only the best match of the requested basis are returned.
+    assert all(m["name_basis"] == target for m in matches)
+    assert all(m["priority"] == best_priority for m in matches)
+    assert {m["unit_id"] for m in matches} == expected_unit_ids
+
+
+def test_name_basis_invalid_value_returns_error(client):
+    """An unknown name_basis value is rejected with a 422."""
+    response = client.get(
+        "/strat-names",
+        params={
+            "col_id": 490,
+            "strat_name": "Mancos",
+            "name_basis": "not-a-basis",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_no_match_units(client):
     response = client.get(
         "/strat-names",
