@@ -119,7 +119,7 @@ def test_strat_name_and_strat_name_id_returns_error(client):
 
 def test_name_basis_filter(client):
     """name_basis filters results to only matches with that name_basis."""
-    #get all possible match bases with all=True so we know which bases are present.
+    # get all possible match bases with all=True so we know which bases are present.
     full = client.get(
         "/strat-names",
         params={"col_id": 490, "strat_name": "Mancos", "all": True},
@@ -129,7 +129,7 @@ def test_name_basis_filter(client):
     present = {m["name_basis"] for m in full_matches}
     assert present  # sanity: there is something to filter
 
-    #pick one basis to confirm the filter returns only that basis
+    # pick one basis to confirm the filter returns only that basis
     target = sorted(present)[0]
     expected = [m for m in full_matches if m["name_basis"] == target]
 
@@ -150,7 +150,7 @@ def test_name_basis_filter(client):
 
 def test_name_basis_filter_all_false_returns_best_single_match(client):
     """all=false + name_basis returns the best (lowest-priority) match of that basis."""
-    #get all possible match bases with all=True so we know which bases are present.
+    # get all possible match bases with all=True so we know which bases are present.
     full = client.get(
         "/strat-names",
         params={"col_id": 490, "strat_name": "Mancos", "all": True},
@@ -163,7 +163,9 @@ def test_name_basis_filter_all_false_returns_best_single_match(client):
     target = sorted(present)[0]
     of_basis = [m for m in full_matches if m["name_basis"] == target]
     best_priority = min(m["priority"] for m in of_basis)
-    expected_unit_ids = {m["unit_id"] for m in of_basis if m["priority"] == best_priority}
+    expected_unit_ids = {
+        m["unit_id"] for m in of_basis if m["priority"] == best_priority
+    }
 
     resp = client.get(
         "/strat-names",
