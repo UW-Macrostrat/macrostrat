@@ -184,9 +184,7 @@ async def _delete_l2_for_sources(pool, source_ids: list[int]) -> int:
             if row is None or row["bbox"] is None:
                 continue
             min_zoom, max_zoom = _SCALE_BANDS.get(row["scale"], _FULL_RANGE)
-            total += await _delete_l2_tiles(
-                conn, row["bbox"], min_zoom, max_zoom
-            )
+            total += await _delete_l2_tiles(conn, row["bbox"], min_zoom, max_zoom)
     return total
 
 
@@ -204,7 +202,9 @@ async def _bbox_for_layer(pool, layer_slug: str):
         return await conn.fetchval(q, *p)
 
 
-async def _delete_l2_tiles(conn, bbox: list[float], min_zoom: int, max_zoom: int) -> int:
+async def _delete_l2_tiles(
+    conn, bbox: list[float], min_zoom: int, max_zoom: int
+) -> int:
     """Delete matching tiles from tile_cache.tile (on `conn`), return row count."""
     minx, miny, maxx, maxy = bbox
     q, p = render(

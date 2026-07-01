@@ -11,11 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from timvt.db import (
-    close_db_connection,
-    connect_to_db,
-    register_table_catalog,
-)
+from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.layer import FunctionRegistry
 from timvt.settings import PostgresSettings
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers

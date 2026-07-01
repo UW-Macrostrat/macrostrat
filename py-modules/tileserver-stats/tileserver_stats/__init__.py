@@ -1,23 +1,23 @@
-from collections import defaultdict
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
 import asyncio
 import io
 import json
 import random
 import re
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
 import zstandard as zstd
-from macrostrat.database.transfer import move_tables
 from minio import Minio
-from rich import print
-from typer import Typer, Option, confirm, BadParameter
 from pydantic import BaseModel
+from rich import print
+from typer import BadParameter, Option, Typer, confirm
 
-from macrostrat.database import Database
-from macrostrat.core.config import settings
 from macrostrat.core import get_database
+from macrostrat.core.config import settings
+from macrostrat.database import Database
+from macrostrat.database.transfer import move_tables
 
 from .params import Smoothing, is_valid_range
 
@@ -94,6 +94,7 @@ def plot_command(
         smoothing=smooth,
         time_range=range_,
     )
+
 
 @app.command(name="show-sample")
 def show_sample(

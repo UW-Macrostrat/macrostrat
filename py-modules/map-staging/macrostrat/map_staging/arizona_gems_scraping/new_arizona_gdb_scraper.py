@@ -248,7 +248,9 @@ def get_gis_collections() -> Optional[str]:
 
 
 def get_collection_metadata(collection_id: str, name: str) -> dict:
-    results = requests.get(f"https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}")
+    results = requests.get(
+        f"https://data.azgs.arizona.edu/api/v1/metadata/{collection_id}"
+    )
     payload = results.json()
 
     coll = payload.get("data", {})

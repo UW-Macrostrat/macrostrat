@@ -4,7 +4,7 @@ from pytest import fixture
 from shapely.geometry import Point
 
 from macrostrat.map_topology import create_topo_context
-from macrostrat.map_topology.manager import update_maps, MacrostratTopologyManager
+from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 
 def geom(_shape, srid=4326):
