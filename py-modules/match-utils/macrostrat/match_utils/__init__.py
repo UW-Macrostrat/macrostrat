@@ -78,12 +78,16 @@ MATCH_STRAT_NAMES_INFO = {
             "output_formats": ["json"],
             "methods": {
                 "GET": "Single query via URL parameters.",
-                "POST": "Batch query. Accepts either 1. a JSON array of up to 100 full "
-                "query objects, each with its own location; MatchOptions (all, name_basis) are "
-                "passed as query parameters; or 2. a JSON object with a single shared "
-                "location/options and a 'strat_names' list of (id, strat_name) pairs "
-                "(e.g. [[932043, 'Navajo'], [74382, 'Navajo Sandstone']]). Each supplied "
-                "id is echoed back as 'id' on the corresponding result for correlation.",
+                "POST": "Batch query — a JSON array of up to 100 query objects. Any field "
+                "can be set per item, or shared across all items via a query parameter: "
+                "query parameters act as defaults, so an item that omits a field inherits "
+                "the query-parameter value and a field set on an item overrides it. This "
+                "supports many names at one location, one name across many locations, and "
+                "bulk matching by strat_name_id. Each item's optional 'identifier' is echoed "
+                "back as 'id' on the corresponding result for correlation. Example: "
+                "POST /dev/match/strat-names?lat=39.41922&lng=-111.95068&all=true with body "
+                "[{\"identifier\": 932043, \"strat_name\": \"Navajo\"}, "
+                "{\"identifier\": 74382, \"strat_name\": \"Navajo Sandstone\"}].",
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
