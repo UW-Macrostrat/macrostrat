@@ -102,7 +102,18 @@ async def get_info(
     if map_layer is None:
         sql = sql.replace("::where_clauses", "true")
     else:
-        sql = sql.replace("::where_clauses", "ml.slug = :map_layer")
+        sql = sql.replace(
+            "::where_clauses",
+            """
+            ml.id IN (
+              SELECT id FROM map_bounds.map_layer WHERE slug = :map_layer
+              UNION ALL
+              SELECT unnest(composited_from) id
+              FROM map_bounds.map_layer
+              WHERE slug = :map_layer
+            )
+            """,
+        )
 
     query, params = render(sql, lng=lng, lat=lat, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:

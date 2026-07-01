@@ -3,9 +3,8 @@ from mapboard.topology_manager import TopologyInspector, TopologyManager
 from pytest import fixture
 from shapely.geometry import Point
 
-from macrostrat.database import Database
-from macrostrat.database.utils import template_database
-from macrostrat.map_topology import create_topo_context, update_maps
+from macrostrat.map_topology import create_topo_context
+from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 
 def geom(_shape, srid=4326):
@@ -28,7 +27,8 @@ class TestMapTopology:
         They have overlapping bounds so we can test the logic for merging them into
         a composite layer.
         """
-        db = ctx.database
+        mgr = TopologyManager(ctx)
+        db = mgr.database
 
         # Insert two non-overlapping test sources
         db.run_query(
@@ -40,7 +40,7 @@ class TestMapTopology:
             """
         )
 
-        update_maps(ctx)
+        update_maps(mgr, bulk=True)
 
         # Check that we have three dirty faces in the dirty_face table
         assert (
@@ -95,12 +95,12 @@ class TestMapTopology:
             """
         )
         insp = TopologyInspector(ctx)
+        mgr = TopologyManager(ctx)
 
-        update_maps(ctx)
+        update_maps(mgr, bulk=True)
 
         assert insp.n_face_primitives() == 5
 
-        mgr = TopologyManager(ctx)
         mgr.update(composite_layers=False)
 
         # Get the face primitive in the center of the new face
@@ -143,7 +143,7 @@ class TestMapTopology:
         )
 
         update_maps(ctx, subdivide_vertices=32)
-        mgr = TopologyManager(ctx)
+        mgr = MacrostratTopologyManager(ctx)
         mgr.update(composite_layers=False)
 
         insp = TopologyInspector(ctx)
@@ -153,7 +153,7 @@ class TestMapTopology:
 
     def test_composite_layers(self, ctx):
 
-        mgr = TopologyManager(ctx)
+        mgr = MacrostratTopologyManager(ctx)
         mgr.update(composite_layers=True)
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3

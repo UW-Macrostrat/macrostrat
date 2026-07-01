@@ -4,6 +4,7 @@ from pathlib import Path
 import typer
 from rich import print
 from rich.traceback import install
+from tileserver_stats import app as tileserver_stats_app
 from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
@@ -119,6 +120,13 @@ main.add_typer(
     rebuild_cli,
     name="rebuild",  # command group name
     short_help="Rebuild scripts",  # shows in --help
+    rich_help_panel="Subsystems",
+)
+
+main.add_typer(
+    tileserver_stats_app,
+    name="tileserver-stats",
+    short_help="Tileserver stats",
     rich_help_panel="Subsystems",
 )
 
