@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import temp_database
+from macrostrat.database.utils import temp_database, temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -160,7 +160,7 @@ def empty_db(request):
     # If we have settings.databases.test defined, do the testing with a local database
     if settings.databases.get("test") and not request.config.getoption("--skip-env"):
         log.info("Using local database for testing")
-        with temp_database(
+        with temporary_database(
             settings.databases["test"], ensure_empty=True, drop=False
         ) as engine:
             yield Database(engine)

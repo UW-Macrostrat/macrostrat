@@ -5,9 +5,10 @@ from mapboard.topology_manager.config import (
     IdentityStrategy,
     create_context,
 )
-
 from macrostrat.core.database import get_database
 from macrostrat.database import Database
+
+from .manager import MacrostratTopologyManager
 
 __dir__ = Path(__file__).parent
 
@@ -18,9 +19,6 @@ config = dict(
     srid=4326,
     tolerance=0.0001,
 )
-
-
-proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 
 
 IDENTITY_STRATEGY = IdentityStrategy(
@@ -49,7 +47,7 @@ def create_topo_context(db: Database):
 
 def get_topo_manager():
     db = get_database()
-    return TopologyManager(create_topo_context(db))
+    return MacrostratTopologyManager(create_topo_context(db))
 
 
 def get_topo_context():

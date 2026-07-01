@@ -1,11 +1,13 @@
+from mapboard.topology_manager import TopologyManager
 import time
 from dataclasses import dataclass
 
 from rich import print
-from typer import Argument
+from pathlib import Path
 
-from .config import get_topo_manager, proc
-from mapboard.topology_manager import TopologyContext, TopologyManager
+__dir__ = Path(__file__).parent
+
+proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
 
 
 class MacrostratTopologyManager(TopologyManager):
@@ -27,6 +29,85 @@ class MacrostratTopologyManager(TopologyManager):
 
         self.clean_topology()
 
+    def update_full(
+        self, maps: list[str] = None, *, bulk: bool = False, remove: bool = False
+    ):
+        """Update topology fixtures"""
+        # Invalidating maps whose geometries have changed
+        # TODO: make this more incremental
+        if bulk:
+            self.db.run_query(proc("mark-changed-areas"))
+            # Update faces that are not linked to maps
+            self.db.run_query(
+                """
+                UPDATE map_bounds_topology.map_face
+                SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+                WHERE map_id IS null;
+                """
+            )
+
+        update_maps(self, maps)
+
+        # Error if there are any maps without a topogeometry added or an error
+        res = self.db.run_query(
+            """
+            SELECT count(*)
+            FROM map_bounds.map_area a
+            WHERE geometry_hash IS NULL
+              AND (topo IS NULL OR topology_error IS NOT NULL)
+            """
+        ).scalar()
+        assert res == 0, f"{res} maps have no topogeometry"
+
+        self.update(incremental=True, composite_layers=True, boundaries=False)
+
+
+def _remove_map_topo_elements(db, map_id: int):
+    res = list(
+        db.run_query(
+            """
+            DELETE FROM map_bounds.map_topo
+            WHERE map_id = :map_id
+            RETURNING id
+            """,
+            dict(map_id=map_id),
+        )
+    )
+    db.session.commit()
+    print(f"Removed {len(res)} map_topo elements")
+
+
+def _print_map_info(map, prefix=""):
+    print(
+        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+    )
+
+
+def get_map_list(db, filter_by: list[str] = None):
+    all_maps = db.run_query(
+        """
+        SELECT
+            a.id map_id,
+            slug,
+            scale,
+            area_km
+        FROM map_bounds.map_area a
+        JOIN maps.sources s
+        ON a.id = s.source_id
+        ORDER BY area_km DESC
+        """
+    ).all()
+    if filter_by is not None:
+        all_maps = list(filter_maps(all_maps, filter_by))
+    return all_maps
+
+
+def filter_maps(all_maps, map_ids: list[str]):
+    ids, slugs = split_ids_and_slugs(map_ids)
+    for m in all_maps:
+        if m.map_id in ids or m.slug in slugs:
+            yield m
+
 
 def split_ids_and_slugs(map_ids):
     ids = []
@@ -39,55 +120,14 @@ def split_ids_and_slugs(map_ids):
     return ids, slugs
 
 
-def filter_maps(all_maps, map_ids: list[str]):
-    ids, slugs = split_ids_and_slugs(map_ids)
-    for m in all_maps:
-        if m.map_id in ids or m.slug in slugs:
-            yield m
-
-
-def update(
-    maps: list[str] = Argument(None), *, bulk: bool = False, remove: bool = False
-):
-    """Update topology fixtures"""
-    mgr = get_topo_manager()
-    # Invalidating maps whose geometries have changed
-    # TODO: make this more incremental
-    if bulk:
-        mgr.db.run_query(proc("mark-changed-areas"))
-        # Update faces that are not linked to maps
-        mgr.db.run_query(
-            """
-            UPDATE map_bounds_topology.map_face
-            SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
-            WHERE map_id IS null;
-        """
-        )
-
-    update_maps(mgr.ctx, maps, remove=remove)
-
-    # Error if there are any maps without a topogeometry added or an error
-    res = mgr.db.run_query(
-        """
-        SELECT count(*)
-        FROM map_bounds.map_area a
-        WHERE geometry_hash IS NULL
-          AND (topo IS NULL OR topology_error IS NOT NULL)
-        """
-    ).scalar()
-    assert res == 0, f"{res} maps have no topogeometry"
-
-    mgr.update(incremental=True, composite_layers=True, boundaries=False)
-
-
 def update_maps(
-    ctx: TopologyContext,
+    mgr: MacrostratTopologyManager,
     maps: list[str] = None,
     *,
     clean: bool = True,
     **kwargs,
 ):
-    db = ctx.database
+    db = mgr.database
     # Copy all maps into the schema
     db.run_sql(proc("copy-all-maps"))
 
@@ -101,7 +141,6 @@ def update_maps(
     for _map in all_maps:
         process_map(db, _map, **kwargs)
 
-    mgr = MacrostratTopologyManager(ctx)
     if clean:
         mgr.clean_topology()
 
@@ -115,29 +154,22 @@ def update_maps(
     print(f"Total time: {end_time - start_time:.3f} seconds")
 
 
-def get_map_list(db, filter_by: list[str] = None):
-    all_maps = db.run_query(
+def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
+    """Get a list of maps whose geometries have changed since the last update"""
+    return mgr.db.run_query(
         """
         SELECT
-            a.id map_id,
+            ma.id map_id,
             slug,
-            scale,
             area_km
-        FROM map_bounds.map_area a
+        FROM map_bounds.map_area ma
         JOIN maps.sources s
-          ON a.id = s.source_id
-        ORDER BY area_km DESC
-    """
+        ON ma.id = s.source_id
+        WHERE geometry IS NOT NULL
+            AND geometry_hash IS NULL
+           OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
+        """
     ).all()
-    if filter_by is not None:
-        all_maps = list(filter_maps(all_maps, filter_by))
-    return all_maps
-
-
-def _print_map_info(map, prefix="Processing map "):
-    print(
-        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
-    )
 
 
 def process_map(db, map, **kwargs):
@@ -145,7 +177,7 @@ def process_map(db, map, **kwargs):
     If run in "bulk" mode, processing will be run on all maps regardless of whether topogeometries
     are already present. Otherwise, processing will be run only on maps that have not changed.
     """
-    bulk = kwargs.get("bulk", False)
+    bulk = kwargs.pop("bulk", False)
     if not bulk:
         # Test whether we should process this map
         res = db.run_query(
@@ -157,10 +189,10 @@ def process_map(db, map, **kwargs):
                 FROM map_bounds.map_topo mt
                 WHERE mt.map_id = :map_id
             )
-            AND geometry_hash IS NOT NULL
-            AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
-            AND topo IS NOT null
-            AND ma.id = :map_id
+              AND geometry_hash IS NOT NULL
+              AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
+              AND topo IS NOT null
+              AND ma.id = :map_id
             """,
             dict(map_id=map.map_id),
         ).scalar()
@@ -204,21 +236,6 @@ def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
         print(f"Processing {total} [cyan]map_topo[/cyan] features")
         print(f"  inserted: {res.inserted}, existing: {res.existing}")
     print(f"{total} features,  {elapsed:.3f} seconds")
-
-
-def _remove_map_topo_elements(db, map_id: int):
-    res = list(
-        db.run_query(
-            """
-        DELETE FROM map_bounds.map_topo
-        WHERE map_id = :map_id
-        RETURNING id
-        """,
-            dict(map_id=map_id),
-        )
-    )
-    db.session.commit()
-    print(f"Removed {len(res)} map_topo elements")
 
 
 @dataclass
@@ -324,19 +341,17 @@ def update_map_area_topogeometries(db):
         """
         SELECT id, slug FROM map_bounds.map_area ma
         JOIN maps.sources s
-          ON ma.id = s.source_id
-        WHERE
-          topo is null or topology_error is not null
-          AND (
+        ON ma.id = s.source_id
+        WHERE (
             geometry_hash is NULL
-            OR geometry_hash != md5(ST_AsBinary(geometry))::uuid -- geometry does not match hash
-          )
+                OR geometry_hash != md5(ST_AsBinary(geometry))::uuid -- geometry does not match hash
+            )
           AND EXISTS (
-              SELECT 1
-              FROM map_bounds.map_topo mt
-              WHERE mt.map_id = ma.id
-                AND mt.topo IS NOT NULL
-          )
+            SELECT 1
+            FROM map_bounds.map_topo mt
+            WHERE mt.map_id = ma.id
+              AND mt.topo IS NOT NULL
+        )
         """
     ).all()
 

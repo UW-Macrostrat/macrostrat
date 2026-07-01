@@ -12,17 +12,18 @@ from macrostrat.core.database import get_database
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 
-from .update import get_map_list, _print_map_info
-from .config import get_topo_manager, get_topo_context, proc, create_topo_context
+from .config import get_topo_manager, get_topo_context, create_topo_context
 
-__dir__ = Path(__file__).parent
 
-from .update import (
+from .manager import (
     filter_maps,
-    update,
+    get_map_list,
+    _print_map_info,
     get_map_list,
     _print_map_info,
     _remove_map_topo_elements,
+    get_maps_with_changed_geometries,
+    proc,
 )
 
 cli = Typer(no_args_is_help=True)
@@ -41,20 +42,10 @@ def create_topo_fixtures(ctx: TopologyContext, reset: bool = False):
 def status():
     """Show the current status of the topology"""
     mgr = get_topo_manager()
-    res = mgr.db.run_query(
-        """
-        SELECT
-            ma.id map_id,
-            slug,
-            area_km
-        FROM map_bounds.map_area ma
-        JOIN maps.sources s
-           ON ma.id = s.source_id
-        WHERE geometry IS NOT NULL
-          AND geometry_hash IS NULL
-           OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
-        """
-    ).all()
+    res = get_maps_with_changed_geometries(mgr)
+    if len(res) == 0:
+        print("No maps with geometry changes")
+        return
     print(f"Found {len(res)} maps with with geometry changes")
     for row in res:
         _print_map_info(row)
@@ -172,7 +163,8 @@ def _update(
     remove: bool = False,
 ):
     """Update topology fixtures"""
-    update(maps, bulk=bulk, remove=remove)
+    mgr = get_topo_manager()
+    mgr.update_full(maps, bulk=bulk, remove=remove)
 
 
 @cli.command("summary")
