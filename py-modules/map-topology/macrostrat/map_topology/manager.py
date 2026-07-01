@@ -57,7 +57,8 @@ class MacrostratTopologyManager(TopologyManager):
               AND (topo IS NULL OR topology_error IS NOT NULL)
             """
         ).scalar()
-        assert res == 0, f"{res} maps have no topogeometry"
+        if res > 0:
+            print(f"[red]Found [bold]{res}[/bold] maps without a topogeometry[/red]")
 
         self.update(incremental=True, composite_layers=True, boundaries=False)
 
@@ -184,12 +185,7 @@ def process_map(db, map, **kwargs):
             """
             SELECT 1
             FROM map_bounds.map_area ma
-            WHERE EXISTS (
-                SELECT 1
-                FROM map_bounds.map_topo mt
-                WHERE mt.map_id = :map_id
-            )
-              AND geometry_hash IS NOT NULL
+            WHERE geometry_hash IS NOT NULL
               AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
               AND topo IS NOT null
               AND ma.id = :map_id
@@ -221,6 +217,12 @@ def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
         simplify_amount = 0.00001
 
     t_start = time.time()
+
+    # Force insertion
+    db.run_query(
+        "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id", dict(map_id=map_id)
+    )
+
     res = db.run_query(
         proc("insert-map-topo-features"),
         dict(
@@ -258,6 +260,7 @@ def _do_update(db, map_id: int) -> TopoUpdateResult:
     ).one()
     db.session.commit()
     elapsed = time.time() - t_start
+
     print(
         f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
     )

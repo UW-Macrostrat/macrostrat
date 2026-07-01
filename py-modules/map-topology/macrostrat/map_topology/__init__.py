@@ -144,15 +144,21 @@ def update_identity():
 
 def _set_dirty(db, map_id: int):
     db.run_query(
-        """
-     INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
-     SELECT (topology.gettopogeomelements(topo))[1] eid, ma.map_layer
-     FROM map_bounds.map_area ma
-     WHERE id = :map_id
-     ON CONFLICT DO NOTHING;
-     """,
-        dict(map_id=map_id),
+        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE id = :id",
+        dict(id=map_id),
     )
+
+    # db.run_query(
+    #     """
+    #  INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
+    #  SELECT (topology.gettopogeomelements(topo))[1] eid, ma.map_layer
+    #  FROM map_bounds.map_area ma
+    #  WHERE id = :map_id
+    #  ON CONFLICT DO NOTHING;
+    #  """,
+    #     dict(map_id=map_id),
+    # )
+    #
 
 
 @cli.command("update")
