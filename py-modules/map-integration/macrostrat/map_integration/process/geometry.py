@@ -13,7 +13,7 @@ def create_rgeom(
     approach: str = "basic",
     srid: int = 4326,
     buffer: int = 0,
-    fill_holes: bool = True,
+    fill_holes: bool = False,
     fix_antimeridian: bool = True,
 ):
     """Create a unioned reference geometry for a map source.

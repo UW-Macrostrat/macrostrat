@@ -1,0 +1,56 @@
+from pathlib import Path
+
+from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.config import (
+    IdentityStrategy,
+    create_context,
+)
+
+from macrostrat.core.database import get_database
+from macrostrat.database import Database
+
+__dir__ = Path(__file__).parent
+
+
+config = dict(
+    data_schema="map_bounds",
+    topo_schema="map_bounds_topology",
+    srid=4326,
+    tolerance=0.0001,
+)
+
+
+proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
+
+
+IDENTITY_STRATEGY = IdentityStrategy(
+    identity_column="map_id",
+    install=lambda ctx: ctx.database.run_fixtures(
+        __dir__ / "fixtures" / "03-identity-management.sql"
+    ),
+)
+
+
+def create_topo_context(db: Database):
+    return create_context(
+        db,
+        data_schema="map_bounds",
+        topo_schema="map_bounds_topology",
+        srid=4326,
+        tolerance=0.0001,
+        identity_strategy=IDENTITY_STRATEGY,
+        boundary_table="map_area",
+        create_data_tables=lambda ctx: db.run_fixtures(
+            __dir__ / "fixtures" / "01-create-tables.sql"
+        ),
+        notify_triggers=False,
+    )
+
+
+def get_topo_manager():
+    db = get_database()
+    return TopologyManager(create_topo_context(db))
+
+
+def get_topo_context():
+    return get_topo_manager().context
