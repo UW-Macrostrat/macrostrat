@@ -84,7 +84,6 @@ def update_maps(
     ctx: TopologyContext,
     maps: list[str] = None,
     *,
-    remove: bool = False,
     clean: bool = True,
     **kwargs,
 ):
@@ -97,9 +96,6 @@ def update_maps(
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
-
-    if remove:
-        _remove(maps)
 
     start_time = time.time()
     for _map in all_maps:

@@ -77,7 +77,7 @@ BEGIN
   UPDATE map_bounds.map_area
   SET
     geometry = geom,
-    area_km = ST_Area(geom::geography) / 1000000
+    area_km = ST_Area(ST_Segmentize(geometry, 90)::geography) / 1e6
   WHERE id = _source_id;
 
 END;
