@@ -152,11 +152,66 @@ def clean():
 
 
 @cli.command("rebuild")
-def rebuild():
+def rebuild(maps: list[str] = Argument(None)):
     """Rebuild topology fixtures"""
     mgr = get_topo_manager()
+
+    if maps is not None:
+        all_maps = get_map_list(mgr.database, maps)
+        for map in all_maps:
+            _set_dirty(mgr.database, map.map_id)
+
     mgr.create_tables()
     mgr.rebuild_edge_relations()
+
+
+@cli.command("mark-all")
+def mark_all():
+    """Mark all map faces as dirty"""
+    mgr = get_topo_manager()
+    res = mgr.database.run_query(
+        """
+        WITH insert AS (
+            INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
+                SELECT f.face_id, ml.id
+                FROM map_bounds_topology.face f
+                CROSS JOIN map_bounds.map_layer ml
+                WHERE ml.composited_from IS NULL
+                ON CONFLICT DO NOTHING
+                RETURNING id
+        )
+        SELECT count(*) FROM insert;
+        """
+    ).scalar()
+    mgr.database.session.commit()
+
+    print(f"Marked {res} dirty faces")
+
+
+@cli.command("identify", rich_help_panel="Utils")
+def update_identity():
+    """Refresh the identity of all map faces"""
+    mgr = get_topo_manager()
+    db = mgr.database
+    db.run_query(
+        """
+         UPDATE map_bounds_topology.map_face
+         SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+        """
+    )
+
+
+def _set_dirty(db, map_id: int):
+    db.run_query(
+        """
+     INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
+     SELECT (topology.gettopogeomelements(topo))[1] eid, ma.map_layer
+     FROM map_bounds.map_area ma
+     WHERE id = :map_id
+     ON CONFLICT DO NOTHING;
+     """,
+        dict(map_id=map_id),
+    )
 
 
 @cli.command("update")
@@ -172,6 +227,13 @@ def update(
     # TODO: make this more incremental
     if bulk:
         mgr.db.run_query(proc("mark-changed-areas"))
+        mgr.db.run_query(
+            """
+            UPDATE map_bounds_topology.map_face
+            SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+            WHERE map_id IS null;
+        """
+        )
 
     update_maps(mgr.ctx, maps, remove=remove)
 

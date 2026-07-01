@@ -42,7 +42,17 @@ log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 
-app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=["*"])])
+app = FastAPI(
+    prefix="/",
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ],
+)
 
 
 class TileServerSettings(PostgresSettings):
@@ -196,6 +206,10 @@ app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
 from .topology import router as topo_router
 
 app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
+
+from .cache_management import router as cache_router
+
+app.include_router(cache_router, tags=["Cache"], prefix="/cache")
 
 
 @app.get("/carto/rotation-models")
