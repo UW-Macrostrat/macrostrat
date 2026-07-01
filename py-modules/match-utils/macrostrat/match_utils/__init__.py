@@ -68,15 +68,22 @@ MATCH_STRAT_NAMES_INFO = {
                 "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
                 "If false (default), return only the highest priority match (priority=0.0).",
-                "basis": "string, matching strategies to use. One or more of: "
-                "column-units | adjacent-cols | concepts | synonyms | footprint-index. "
-                "Default: all strategies enabled.",
+                "name_basis": "string, filter results to only those with this name_basis. "
+                "One of: exact | concept | rank-down | rank-up | synonym. "
+                "Applied as a final step after matching and prioritization. "
+                "If all=true, returns every match with this name_basis; if all=false, "
+                "returns the best (lowest-priority) match with this name_basis. "
+                "Default: no filter (all bases returned).",
             },
             "output_formats": ["json"],
             "methods": {
                 "GET": "Single query via URL parameters.",
-                "POST": "Batch query — accepts a JSON array of up to 100 query objects. "
-                "MatchOptions (all, basis) are passed as query parameters.",
+                "POST": "Batch query. Accepts either 1. a JSON array of up to 100 full "
+                "query objects, each with its own location; MatchOptions (all, name_basis) are "
+                "passed as query parameters; or 2. a JSON object with a single shared "
+                "location/options and a 'strat_names' list of (id, strat_name) pairs "
+                "(e.g. [[932043, 'Navajo'], [74382, 'Navajo Sandstone']]). Each supplied "
+                "id is echoed back as 'id' on the corresponding result for correlation.",
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
@@ -84,7 +91,7 @@ MATCH_STRAT_NAMES_INFO = {
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&interval=Triassic",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_age=250.0&t_age=200.0",
                 "/dev/match/strat-names?strat_name=Jelm Formation&lat=40.9&lng=-105.6&b_interval=Triassic&t_interval=Jurassic",
-                "/dev/match/strat-names?strat_name=Navajo&lat=35.951&lng=-109.905&basis=column-units",
+                "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905&all=true&name_basis=rank-up",
                 "/dev/match/strat-names?strat_name=Kaza&lat=53.114&lng=-120.909&project_id=1",
                 "/dev/match/strat-names?strat_name=Halgaito Member&lat=35.951&lng=-109.905&identifier=sample-001",
                 "/dev/match/strat-names?strat_name_id=3361&lat=35.951&lng=-109.905",

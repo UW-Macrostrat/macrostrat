@@ -2,6 +2,7 @@ all:
 	# Install all dependencies
 	# Install all optional dependency groups (dev, gis, etc)
 	uv sync
+	uv add "psycopg[binary]"
 
 start-database:
 	# Install GIS dependencies
@@ -12,8 +13,7 @@ start-gateway:
 	macrostrat compose up -d gateway
 
 build-restart:
-	macrostrat compose build api_v3
-	macrostrat compose up -d --force-recreate api_v3
+	macrostrat compose up -d --build --force-recreate
 
 start-services:
 	macrostrat compose up -d gateway postgrest api_v2 api_v3 tileserver_core tileserver_legacy tileserver_cache

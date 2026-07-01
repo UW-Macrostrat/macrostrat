@@ -9,11 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 from macrostrat.match_utils import (
     MATCH_STRAT_NAMES_INFO,
     MatchResult,
-    MatchType,
     create_ignore_list,
     get_all_matched_units,
     get_columns_for_location,
-    get_match_types,
     standardize_names,
     standardize_names_from_id,
 )
@@ -70,40 +68,13 @@ class AbsoluteAgeConstraint(BaseModel):
     t_age: float = Field(None, description="Late/upper age constraint in Ma")
 
 
-class MatchQuery(BaseModel):
-    strat_name: str | None = Field(
-        None,
-        description="Text containing a stratigraphic name to match.",
-        examples=[
-            "Navajo Sandstone",
-            "Halgaito Member",
-            "Coconino",
-            "Dakota Formation",
-            "Matchless Amphibolite",
-            "broke neck pluton; Escapement Bay Fm",
-            "Morrison Fm",
-            "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
-        ],
-    )
-    concept_name: str | None = Field(
-        None,
-        description="Text containing a concept name to match.",
-        examples=[
-            "Navajo",
-            "Dakota",
-            "Morrison",
-            "Kayenta",
-        ],
-    )
-    strat_name_id: int | None = Field(
-        None, description="A Macrostrat stratigraphic name ID to match directly."
-    )
-    concept_id: int | None = Field(
-        None, description="A Macrostrat concept ID to match directly."
-    )
-    identifier: str | int | None = Field(
-        None, description="An optional identifier to associate with this query."
-    )
+class MatchContext(BaseModel):
+    """Shared location, age, and priority fields used to constrain a match.
+
+    Factored out of MatchQuery so that both single queries and shared-location
+    batch queries (MatchBatchQuery) can reuse the same location/age handling.
+    """
+
     lat: float | None = None
     lng: float | None = None
     col_id: int | None = Field(
@@ -135,20 +106,6 @@ class MatchQuery(BaseModel):
             "matches prioritized before broader concept, rank-down, rank-up, or synonym matches."
         ),
     )
-
-    @model_validator(mode="after")
-    def validate_match_input(self):
-        """Ensure that either strat_name or strat_name_id is provided."""
-        if (
-            self.strat_name is None
-            and self.strat_name_id is None
-            and self.concept_id is None
-            and self.concept_name is None
-        ):
-            raise ValueError(
-                "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
-            )
-        return self
 
     @model_validator(mode="after")
     def validate_position_info(self):
@@ -184,6 +141,60 @@ class MatchQuery(BaseModel):
         return AbsoluteAgeConstraint(b_age=b_age, t_age=t_age)
 
 
+class MatchQuery(MatchContext):
+    strat_name: str | None = Field(
+        None,
+        description="Text containing a stratigraphic name to match.",
+        examples=[
+            "Navajo Sandstone",
+            "Halgaito Member",
+            "Coconino",
+            "Dakota Formation",
+            "Matchless Amphibolite",
+            "broke neck pluton; Escapement Bay Fm",
+            "Morrison Fm",
+            "Kayenta Formation; Davis Branch Mbr; Wingate Sandstone",
+        ],
+    )
+    concept_name: str | None = Field(
+        None,
+        description="Text containing a concept name to match.",
+        examples=[
+            "Navajo",
+            "Dakota",
+            "Morrison",
+            "Kayenta",
+        ],
+    )
+    strat_name_id: int | None = Field(
+        None, description="A Macrostrat stratigraphic name ID to match directly."
+    )
+    concept_id: int | None = Field(
+        None, description="A Macrostrat concept ID to match directly."
+    )
+    identifier: str | int | None = Field(
+        None, description="An optional identifier to associate with this query."
+    )
+
+    @model_validator(mode="after")
+    def validate_match_input(self):
+        """Ensure that exactly one of strat_name or strat_name_id is provided."""
+        if (
+            self.strat_name is None
+            and self.strat_name_id is None
+            and self.concept_id is None
+            and self.concept_name is None
+        ):
+            raise ValueError(
+                "Either strat_name/concept_name or strat_name_id/concept_id must be provided."
+            )
+        if self.strat_name is not None and self.strat_name_id is not None:
+            raise ValueError(
+                "Only one of strat_name or strat_name_id can be provided, not both."
+            )
+        return self
+
+
 class MatchMessageType(enum.Enum):
     Info = "info"
     Warning = "warning"
@@ -213,6 +224,11 @@ class MatchMessage(BaseModel):
 
 
 class MatchData(BaseModel):
+    id: str | int | None = Field(
+        None,
+        description="The identifier supplied with the input query, echoed back so "
+        "batch results can be correlated to their input.",
+    )
     unit_matches: list[MatchResult]
     messages: list[MatchMessage]
 
@@ -227,9 +243,16 @@ class MatchAPIResponse(BaseModel):
     messages: set[MatchMessage] | None = None
 
 
+NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
+SpatialBasis = Literal["containing column", "adjacent column"]
+
+
 class MatchOptions(BaseModel):
-    basis: Optional[set[MatchType]] = Field(
-        None, description="Types of matches to include."
+    name_basis: Optional[NameBasis] = Field(
+        None,
+        description="If provided, filter results to only those whose name_basis "
+        "equals this value. One of: exact, concept, rank-down, rank-up, synonym. "
+        "Applied as a final step after matching and prioritization.",
     )
     all: bool = Field(
         False,
@@ -241,8 +264,68 @@ class MatchSingleQueryParams(MatchQuery, MatchOptions):
     pass
 
 
-NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
-SpatialBasis = Literal["containing column", "adjacent column"]
+class StratNameItem(BaseModel):
+    """A single (id, strat_name) pair in a shared-location batch query.
+
+    Accepts either a 2-element ``[id, strat_name]`` array (the JSON rendering of
+    an ``(id, strat_name)`` tuple) or an explicit ``{"id": ..., "strat_name": ...}``
+    object.
+    """
+
+    id: str | int = Field(
+        ..., description="User-supplied identifier, returned back in the result."
+    )
+    strat_name: str = Field(..., description="Stratigraphic name text to match.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_pair(cls, data):
+        if isinstance(data, (list, tuple)):
+            if len(data) != 2:
+                raise ValueError(
+                    "Each strat_names entry must be an (id, strat_name) pair."
+                )
+            return {"id": data[0], "strat_name": data[1]}
+        return data
+
+
+class MatchBatchQuery(MatchContext, MatchOptions):
+    """A shared-location batch query.
+
+    A single location (``lat``/``lng`` or ``col_id``), age constraint, priority,
+    and set of match options are applied to every ``(id, strat_name)`` pair in
+    ``strat_names``. Each pair is expanded into an individual MatchQuery, and the
+    supplied ``id`` is echoed back on the corresponding result.
+    """
+
+    strat_names: list[StratNameItem] = Field(
+        ...,
+        description="List of (id, strat_name) pairs to match against the shared location.",
+        examples=[
+            [[932043, "Navajo"], [74382, "Navajo Sandstone"], [382950, "Morrison"]]
+        ],
+    )
+
+    def to_queries(self) -> list["MatchQuery"]:
+        """Expand each (id, strat_name) pair into a MatchQuery sharing this context."""
+        shared = self.model_dump(
+            include={
+                "lat",
+                "lng",
+                "col_id",
+                "project_id",
+                "b_interval",
+                "t_interval",
+                "interval",
+                "b_age",
+                "t_age",
+                "priority",
+            }
+        )
+        return [
+            MatchQuery(strat_name=item.strat_name, identifier=item.id, **shared)
+            for item in self.strat_names
+        ]
 
 
 class MatchPriorityOrder(BaseModel):
@@ -364,60 +447,106 @@ def match_units(
     # Reconstruct separated mixins
     params = MatchQuery(**query.model_dump())
     opts = MatchOptions(**query.model_dump())
-    if opts.basis is None:
-        opts.basis = set(get_match_types(None))
 
     db = get_database()
-    setup_matcher()
+    try:
+        setup_matcher()
 
-    results = []
-    match_data = build_match_data(db, params)
-    if match_data is not None:
-        results.append(match_data)
-        print("Match data results", results)
-    return generate_response(results, opts)
+        results = []
+        match_data = build_match_data(db, params)
+        if match_data is not None:
+            results.append(match_data)
+            print("Match data results", results)
+        return generate_response(results, opts)
+    finally:
+        # Release this thread's scoped session so its connection returns to the
+        # pool. Without this, queries run via db.run_query leave an open
+        # transaction (run_query never advances the underlying generator to its
+        # commit), leaking a connection per worker thread until the pool is
+        # exhausted.
+        db.session.remove()
 
 
 @router.post("/strat-names")
 def match_units_multi(
-    body: list[MatchQuery],
+    body: list[MatchQuery] | MatchBatchQuery,
     query: Annotated[MatchOptions, Query()],
 ):
     """
     Match multiple stratigraphic name queries in a single request.
+
+    Two body shapes are accepted:
+
+    - A JSON **array** of full query objects, each carrying its own location and
+      options. MatchOptions (``all``, ``name_basis``) are read from query parameters.
+    - A JSON **object** (MatchBatchQuery) with a single shared location/options and
+      a ``strat_names`` list of ``(id, strat_name)`` pairs. Options are read from
+      the body, and each supplied ``id`` is echoed back on its result.
+
     :return: MatchAPIResponse
     """
-    opts = MatchOptions(**query.model_dump())
-    if opts.basis is None:
-        opts.basis = set(get_match_types(None))
+    if isinstance(body, MatchBatchQuery):
+        # Shared-location batch: options come from the body, queries are expanded
+        # from the (id, strat_name) pairs.
+        opts = MatchOptions(all=body.all, name_basis=body.name_basis)
+        queries = body.to_queries()
+    else:
+        # Array of full query objects: options come from query parameters.
+        opts = MatchOptions(**query.model_dump())
+        queries = body
 
     db = get_database()
-    setup_matcher()
+    try:
+        setup_matcher()
 
-    all_results: list[MatchData] = []
+        all_results: list[MatchData] = []
 
-    if len(body) > 100:
-        raise ValueError("Maximum of 100 queries allowed per request.")
+        if len(queries) > 100:
+            raise ValueError("Maximum of 100 queries allowed per request.")
 
-    for params in body:
-        match_data = build_match_data(db, params)
-        if match_data is not None:
-            all_results.append(match_data)
+        for params in queries:
+            match_data = build_match_data(db, params)
+            if match_data is not None:
+                all_results.append(match_data)
 
-    return generate_response(all_results, opts)
+        return generate_response(all_results, opts)
+    finally:
+        # Release this thread's scoped session so its connection returns to the
+        # pool (see match_units for details).
+        db.session.remove()
 
 
 def generate_response(
     results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
 ) -> MatchAPIResponse:
-    if not opts.all:
+    # Filter by name_basis after matching/prioritization, keeping only matches
+    # whose name_basis equals the requested value.
+    if opts.name_basis is not None:
         results = [
             MatchData(
-                unit_matches=[m for m in result.unit_matches if m.priority == 0.0],
+                id=result.id,
+                unit_matches=[
+                    m for m in result.unit_matches if m.name_basis == opts.name_basis
+                ],
                 messages=result.messages,
             )
             for result in results
         ]
+
+    # When all=False, keep only the best (lowest-priority) match that remain.
+    # With no name_basis filter the best priority is 0.0, preserving prior behavior.
+    if not opts.all:
+        reduced: list[MatchData] = []
+        for result in results:
+            if result.unit_matches:
+                best = min(m.priority for m in result.unit_matches)
+                kept = [m for m in result.unit_matches if m.priority == best]
+            else:
+                kept = []
+            reduced.append(
+                MatchData(id=result.id, unit_matches=kept, messages=result.messages)
+            )
+        results = reduced
     _messages: set[MatchMessage] = set()
 
     for result in results:
@@ -504,6 +633,7 @@ def build_match_data(db, params):
     if params.strat_name is not None and params.concept_name is not None:
         # Return an error result
         return MatchData(
+            id=params.identifier,
             unit_matches=[],
             messages=[
                 MatchMessage(
@@ -517,6 +647,7 @@ def build_match_data(db, params):
     if age_constraint.b_age < age_constraint.t_age:
         # Return an error result
         return MatchData(
+            id=params.identifier,
             unit_matches=[],
             messages=[
                 MatchMessage(
@@ -590,4 +721,4 @@ def build_match_data(db, params):
             )
         )
     results = assign_priorities(results, params.priority)
-    return MatchData(unit_matches=results, messages=messages)
+    return MatchData(id=params.identifier, unit_matches=results, messages=messages)
