@@ -28,8 +28,16 @@ BEGIN
   geom := ST_Multi(ST_CollectionExtract(geom, 3));
 
   IF buffer_dist > 0 THEN
-    geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
-    geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+    -- If we haven't set a SRID, then we should use geographic coordinates for the buffer distance.
+    -- We can convert the input distance into lat/long
+    IF _srid = 4326 THEN
+      geom = ST_Buffer(geom::geography, buffer_dist, 'endcap=round join=round');
+      geom = ST_Buffer(geom::geography, -buffer_dist, 'endcap=flat join=mitre');
+      geom = geom::geometry;
+    ELSE
+      geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
+      geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+    END IF;
     IF geom IS NULL THEN
       RAISE EXCEPTION 'Buffering failed';
     END IF;

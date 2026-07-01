@@ -83,7 +83,9 @@ def _remove(maps: list[str] = Argument(None)):
     if res.lower() not in ["y", "yes"]:
         raise Exception("User aborted")
 
-    mgr.remove_maps(all_maps)
+    all_map_ids = [m.map_id for m in all_maps]
+
+    mgr.remove_maps(all_map_ids)
 
 
 @cli.command("clean")

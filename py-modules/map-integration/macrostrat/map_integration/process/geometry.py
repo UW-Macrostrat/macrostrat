@@ -12,7 +12,7 @@ def create_rgeom(
     use_maps_schema: bool = None,
     approach: str = "basic",
     srid: int = 4326,
-    buffer: int = 0,
+    buffer: float = 0,
     fill_holes: bool = False,
     fix_antimeridian: bool = True,
 ):

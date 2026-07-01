@@ -383,6 +383,10 @@ def _parse_log_object(s3, bucket: str, object_name: str) -> tuple[list[dict], in
                 "z": tile["z"],
                 "time": _parse_timestamp(rec),
                 "is_bot": is_known_bot(rec.get("ClientHost")),
+                # Client-facing cache status ('' when the header is absent, e.g.
+                # pre-config-change logs). downstream_* is what the client got.
+                "x_cache": (rec.get("downstream_X-Cache") or "").lower(),
+                "x_tile_cache": (rec.get("downstream_X-Tile-Cache") or "").lower(),
             }
         )
     return rows, n_records
@@ -405,10 +409,20 @@ def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
         t = r["time"]
         if t is not None:
             date = datetime(t.year, t.month, t.day)
-            day[(r["layer"], r["ext"], date, bot)] += 1
+            # Cache status is a day_index-only dimension (kept off location_index
+            # to avoid multiplying its cardinality).
+            day[(r["layer"], r["ext"], date, bot, r["x_cache"], r["x_tile_cache"])] += 1
 
     day_rows = [
-        {"layer": k[0], "ext": k[1], "date": k[2], "is_bot": k[3], "num_requests": n}
+        {
+            "layer": k[0],
+            "ext": k[1],
+            "date": k[2],
+            "is_bot": k[3],
+            "x_cache": k[4],
+            "x_tile_cache": k[5],
+            "num_requests": n,
+        }
         for k, n in day.items()
     ]
     loc_rows = [
@@ -432,9 +446,9 @@ def _aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
 # a list of param dicts, db.run_query runs them as an executemany.
 DAY_UPSERT = """
     INSERT INTO tileserver_stats.day_index
-        (layer, ext, referrer, app, app_version, date, num_requests, new_system, is_bot)
-    VALUES (:layer, :ext, 'none', 'none', 'none', :date, :num_requests, true, :is_bot)
-    ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system, is_bot)
+        (layer, ext, referrer, app, app_version, date, num_requests, new_system, is_bot, x_cache, x_tile_cache)
+    VALUES (:layer, :ext, 'none', 'none', 'none', :date, :num_requests, true, :is_bot, :x_cache, :x_tile_cache)
+    ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system, is_bot, x_cache, x_tile_cache)
     DO UPDATE SET num_requests =
         tileserver_stats.day_index.num_requests + EXCLUDED.num_requests
 """

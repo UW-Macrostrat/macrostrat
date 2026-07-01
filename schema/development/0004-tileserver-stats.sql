@@ -20,8 +20,10 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.processed_logs (
 -- new_system distinguishes rows aggregated by the new log-dump pipeline
 -- (true) from legacy rows migrated from the old direct-push era (false).
 -- is_bot separates known automated clients (cache-warmers/scrapers; see
--- KNOWN_BOTS) from organic traffic. Both are part of the unique key so the
--- lineages/classes accumulate separately and never merge.
+-- KNOWN_BOTS) from organic traffic. x_cache / x_tile_cache record the
+-- client-facing cache status (downstream X-Cache ≈ L1/Varnish, X-Tile-Cache ≈
+-- L2/tileserver): hit/miss/bypass, or '' when the header is absent. All are part
+-- of the unique key so the classes accumulate separately and never merge.
 CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   layer text NOT NULL,
   ext text NOT NULL,
@@ -32,7 +34,9 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.day_index (
   num_requests integer NOT NULL,
   new_system boolean NOT NULL DEFAULT false,
   is_bot boolean NOT NULL DEFAULT false,
-  CONSTRAINT day_index_unique UNIQUE (layer, ext, referrer, app, app_version, date, new_system, is_bot)
+  x_cache text NOT NULL DEFAULT '',
+  x_tile_cache text NOT NULL DEFAULT '',
+  CONSTRAINT day_index_unique UNIQUE (layer, ext, referrer, app, app_version, date, new_system, is_bot, x_cache, x_tile_cache)
 );
 
 CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
