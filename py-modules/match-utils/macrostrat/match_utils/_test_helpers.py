@@ -1,43 +1,33 @@
-from functools import lru_cache
-from urllib.parse import urljoin
+from macrostrat.core.defs_provider import MacrostratDataProvider
+from pytest import fixture
+from macrostrat.utils import get_logger
 
-from macrostrat.core.config import settings
-from macrostrat.core.defs_provider import MacrostratAPIConfig, MacrostratAPIDataProvider
+from . import create_ignore_list
+from .strat_names import build_ignore_list, _ignore_list
 
-
-def get_defs_api_base_url() -> str:
-    base_url = getattr(settings, "base_url", None)
-
-    if not base_url:
-        env = getattr(settings, "env", None)
-        raise RuntimeError(
-            f"No base_url configured for Macrostrat environment {env!r}. "
-            "Add base_url to macrostrat.toml for this environment."
-        )
-
-    return urljoin(base_url.rstrip("/") + "/", "api/v2")
+log = get_logger(__name__)
 
 
-@lru_cache(maxsize=1)
-def get_test_lith_names():
-    cfg = MacrostratAPIConfig(
-        base_url=get_defs_api_base_url(),
-        verify_ssl=getattr(settings, "api_ssl_verify", True),
-    )
-    provider = MacrostratAPIDataProvider(cfg)
+@fixture(autouse=True)
+def lith_names_fixture(data_provider: MacrostratDataProvider):
+    """Fixture to get a list of lithologies from a data provider available in this environment"""
+    log.info(f"Getting lithologies from {data_provider}.")
+    lithologies = data_provider.get_lithologies()
 
-    try:
-        lithologies = provider.get_lithologies()
-    finally:
-        provider.close()
-
-    lith_names = sorted(
-        {lithology.lith.lower() for lithology in lithologies if lithology.lith}
+    lith_names = list(
+        sorted({lithology.lith.lower() for lithology in lithologies if lithology.lith})
     )
 
     if not lith_names:
-        raise RuntimeError(
-            f"No lithology names found from Macrostrat API at {cfg.base_url}"
-        )
+        raise RuntimeError(f"Could not get lith names from {data_provider}.")
 
-    return lith_names
+    log.info(f"Found {len(lith_names)} lithologies in {data_provider}.")
+
+    # Populate the ignore list used by tests
+
+    assert len(lith_names) > 0
+    create_ignore_list(lith_names)
+    prev_val = _ignore_list.get()
+    assert _ignore_list.get() is not None
+    yield
+    _ignore_list.set(prev_val)

@@ -5,11 +5,11 @@ The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
 
-from typing import Optional
-
 from pandas import isna
 from pydantic import BaseModel
-from pytest import fixture, mark
+from pytest import mark
+from ._test_helpers import lith_names_fixture
+
 
 from . import (
     ensure_single,
@@ -20,14 +20,7 @@ from . import (
     get_matched_unit,
     standardize_names,
 )
-from ._test_helpers import get_test_lith_names
 from .models import MatchResult
-from .strat_names import create_ignore_list
-
-
-@fixture(autouse=True)
-def initialize_ignore_list_for_tests():
-    create_ignore_list(list(get_test_lith_names()))
 
 
 class StratTestCaseData(BaseModel):

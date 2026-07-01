@@ -2,18 +2,11 @@
 Tests for the v2 match API response structure and batch endpoint.
 """
 
-from pydantic import BaseModel
-from pytest import fixture, mark
+from pytest import fixture
 
-from . import get_all_matched_units, get_columns_for_location, standardize_names
-from ._test_helpers import get_test_lith_names
-from .models import MatchResult, MatchType
-from .strat_names import create_ignore_list
-
-
-@fixture(autouse=True)
-def initialize_ignore_list_for_tests():
-    create_ignore_list(list(get_test_lith_names()))
+from . import get_all_matched_units, standardize_names
+from .models import MatchResult
+from ._test_helpers import lith_names_fixture
 
 
 # -- Batch input test data --------------------------------------------------
@@ -108,7 +101,6 @@ def test_match_result_fields():
 
 def test_match_result_name_basis_values():
     """name_basis must be one of the known values."""
-    from pandas import isna
 
     result = MatchResult(
         strat_name_id=1,

@@ -209,35 +209,14 @@ from macrostrat.core.defs_provider import (
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
     MacrostratMetadataPopulator,
+    MacrostratDataProvider,
 )
 
 
-def load_defs(settings, _db, source_db: Optional[Database] = None):
-    # Add data using Macrostrat defs loader, if available
-    base_url = settings.base_url
-    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
-    data_provider = MacrostratAPIDataProvider(cfg)
-    if source_db is not None:
-        data_provider = MacrostratDatabaseDataProvider(source_db)
-        log.info("Loading defs from database: %s", source_db.engine.url)
-    else:
-        log.info("Loading defs from API: %s", cfg.base_url)
-    loader = MacrostratMetadataPopulator(data_provider, _db)
-    loader.populate_all()
-
-
 @fixture(scope="session")
-def test_db_macrostrat_schema_only(request, empty_db: Database):
-    """The database used for testing."""
-    from macrostrat.core import get_database
+def data_provider(request):
     from macrostrat.core.config import settings
-
-    db = _apply_schema(
-        empty_db,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-        target="macrostrat",
-    )
+    from macrostrat.core import get_database
 
     source_db = None
     log.info("Attempting to connect to database %s", settings.pg_database)
@@ -248,7 +227,35 @@ def test_db_macrostrat_schema_only(request, empty_db: Database):
             log.warning("Could not connect to environment database: %s", e)
             log.warning("Defs will not be loaded from the API configuration")
 
-    load_defs(settings, db, source_db=source_db)
+    base_url = settings.base_url
+    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
+    data_provider = MacrostratAPIDataProvider(cfg)
+    if source_db is not None:
+        data_provider = MacrostratDatabaseDataProvider(source_db)
+        log.info(
+            "Set up Macrostrat data provider from database: %s", source_db.engine.url
+        )
+    else:
+        log.info("Set up Macrostrat data provider using API: %s", cfg.base_url)
+    yield data_provider
+
+
+@fixture(scope="session")
+def test_db_macrostrat_schema_only(
+    request, empty_db: Database, data_provider: MacrostratDataProvider
+):
+    """The database used for testing."""
+    from macrostrat.core.config import settings
+
+    db = _apply_schema(
+        empty_db,
+        env=settings.env,
+        optimize=request.config.getoption("--optimize-database"),
+        target="macrostrat",
+    )
+
+    loader = MacrostratMetadataPopulator(data_provider, db)
+    loader.populate_all()
     return db
 
 
