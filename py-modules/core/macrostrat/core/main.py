@@ -2,59 +2,28 @@ from os import environ
 from pathlib import Path
 from sys import argv, exit
 
-import toml
 from click.utils import get_app_dir
 from dynaconf import Dynaconf
+from numpy.random.mtrand import normal
 from rich.console import Console
 from typer import Context, Option
 
 from macrostrat.app_frame import Application, ControlCommand, DockerComposeManager
 from macrostrat.utils import get_logger
 
+from .utils import (
+    get_app_state_file,
+    get_app_state,
+    set_app_state,
+    env_text,
+)
 from .console import console_theme
 from .exc import MacrostratError
 
 log = get_logger(__name__)
 
 
-def get_app_state_file() -> Path:
-    APP_NAME = "macrostrat"
-    app_dir = Path(get_app_dir(APP_NAME))
-    return app_dir / "app-state.toml"
-
-
-def get_app_state(key: str = None) -> str:
-    state_file = get_app_state_file()
-    if not state_file.exists():
-        return None
-    with state_file.open() as f:
-        state = toml.load(f)
-    if key is None:
-        return state
-    return state.get(key, None)
-
-
-def set_app_state(key: str, value: str, wipe_others: bool = False):
-    state_file = get_app_state_file()
-    state_file.parent.mkdir(exist_ok=True)
-    state = get_app_state()
-    if state is None or wipe_others:
-        state = {}
-    state[key] = value
-    with state_file.open("w") as f:
-        toml.dump(state, f)
-
-
 def load_settings(console: Console):
-    if "MACROSTAT_ENV" in environ:
-        log.info("active environment: %s", env_text())
-    active_env = get_app_state_file()
-    if "MACROSTRAT_ENV" not in environ and active_env.exists():
-        env = get_app_state("active_env")
-        if env is not None:
-            environ["MACROSTRAT_ENV"] = env
-        log.info("active environment: %s", env_text())
-
     try:
         from .config import settings
     except AttributeError as err:
@@ -169,7 +138,3 @@ class Macrostrat(Application):
             mgr = self.create_docker_compose_extension()
             mgr.add_commands(cmd)
         return cmd
-
-
-def env_text():
-    return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"

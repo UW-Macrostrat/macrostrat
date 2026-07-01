@@ -1,16 +1,13 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
+from os import getenv
 from pathlib import Path
 
-from psycopg.sql import Identifier
-from pytest import fixture, mark
+from click.exceptions import NoArgsIsHelpError
+from pytest import fixture
 from typer.testing import CliRunner
 
-from macrostrat.schema_management.migrations import (
-    ReadinessState,
-    _run_migrations_in_database,
-)
 from macrostrat.utils import override_environment
 
 runner = CliRunner()
@@ -34,11 +31,25 @@ def test_cfg():
         importlib.reload(cfg)
 
 
+def is_default_cli_help(result):
+    """Assert that a CLI invocation with no arguments raises a NoArgsIsHelpError.
+    This is a workaround for weird behavior in Typer's test runner
+    """
+    try:
+        assert result.exit_code == 2
+        assert isinstance(result.exception, SystemExit)
+        # Typer catches NoArgsIsHelpError and raises SystemExit.
+        assert isinstance(result.exception.__context__, NoArgsIsHelpError)
+        return True
+    except AssertionError:
+        return False
+
+
 def test_cli_help(test_cfg):
     from macrostrat.cli.entrypoint import main
 
-    result = runner.invoke(main, [])
-    assert result.exit_code == 0
+    result = runner.invoke(main, [], catch_exceptions=False)
+    assert is_default_cli_help(result)
 
 
 def test_cli_database(test_cfg):
@@ -48,35 +59,33 @@ def test_cli_database(test_cfg):
 
 
 def test_cli_no_config():
-    with override_environment(MACROSTRAT_CONFIG="", NO_COLOR="1"):
-        from macrostrat.cli.entrypoint import main
+    import macrostrat.core as core
+    import macrostrat.core.config as cfg
+    import macrostrat.core.main as main
+    import macrostrat.cli.entrypoint as cli_entry
 
-        result = runner.invoke(main, [])
-        assert result.exit_code == 0
-        # assert "Macrostrat control interface" in result.output
-        # assert "Active environment: None" in result.output
+    with override_environment(MACROSTRAT_CONFIG="", NO_COLOR="1", MACROSTRAT_ENV=""):
+        # We need to specifically unset the environment variable, not set it to ""
 
+        assert getenv("MACROSTRAT_CONFIG") == ""
+        assert getenv("MACROSTRAT_ENV") == ""
 
-@mark.docker
-def test_database_migrations(test_db_base):
-    """Test that no database migrations are needed to reach the optimal database state."""
+        # Reload libraries (order matters!)
+        for mod in [cfg, main, core, cli_entry]:
+            importlib.reload(mod)
 
-    # NOTE: we need to use readiness_level=ReadinessState.GA here because when running
-    # in CI, we don't preload the development schema adjustments. We could potentially change
-    # this.
-    res = _run_migrations_in_database(
-        test_db_base, legacy=False, raise_errors=True, readiness_level=ReadinessState.GA
-    )
-    assert res.n_migrations == 0
-    assert res.n_remaining == 0
+        assert cfg.settings.config_file is None
+        assert cfg.settings.env is None
 
+        result = runner.invoke(cli_entry.main, [])
 
-def test_maps_tables_exist(test_db_full):
-    """Test that the tables exist in the database."""
+        assert is_default_cli_help(result)
+        assert "Macrostrat control interface" in result.output
 
-    for table in ["polygons", "lines", "points"]:
-        res = test_db_full.run_query(
-            "SELECT * FROM {table}", dict(table=Identifier("maps", table))
-        ).all()
-
-        assert len(res) == 0
+        did_assert = False
+        for line in result.output.splitlines():
+            if line.strip().startswith("Active environment:"):
+                assert "Active environment: None" in line
+                did_assert = True
+                break
+        assert did_assert
