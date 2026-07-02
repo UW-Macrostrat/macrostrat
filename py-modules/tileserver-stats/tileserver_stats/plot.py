@@ -34,19 +34,23 @@ from .params import Smoothing, resolve_date_window
 SPIKE_QUANTILE = 0.80  # default: days above this quantile are treated as spikes
 
 
-def fetch_daily_requests() -> pl.DataFrame:
+def fetch_daily_requests(*, skip_bots: bool = False) -> pl.DataFrame:
     """Daily tile-request totals from day_index, split by pipeline lineage.
 
     Columns: date (Datetime), new_system (Boolean), count (Int64).
+    skip_bots excludes known automated clients (is_bot) so the series reflects
+    organic traffic only.
     """
     db = get_database()
     result = db.run_query(
         """
         SELECT date, new_system, sum(num_requests)::bigint AS count
         FROM tileserver_stats.day_index
+        WHERE (NOT :skip_bots OR NOT is_bot)
         GROUP BY date, new_system
         ORDER BY date
-        """
+        """,
+        {"skip_bots": skip_bots},
     )
     rows = [dict(r._mapping) for r in result]
 
@@ -187,6 +191,7 @@ def tileserver_stats_figure(
     spike_quantile: float = SPIKE_QUANTILE,
     smoothing: Smoothing = Smoothing.weekly,
     time_range: str = "all",
+    skip_bots: bool = False,
 ) -> None:
     """Render the tile-requests-per-day figure.
 
@@ -195,7 +200,7 @@ def tileserver_stats_figure(
     """
     smooth_window = smoothing.window
 
-    df = fetch_daily_requests()
+    df = fetch_daily_requests(skip_bots=skip_bots)
     if df.is_empty():
         raise ValueError("No rows in tileserver_stats.day_index — nothing to plot.")
     df = _filter_range(df, time_range)

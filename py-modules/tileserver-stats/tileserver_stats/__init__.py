@@ -69,6 +69,12 @@ def plot_command(
         "--omit-spikes/--keep-spikes",
         help="Cut spike days before smoothing; drawn dashed.",
     ),
+    skip_bots: bool = Option(
+        False,
+        "--skip-bots/--keep-bots",
+        help="Exclude known automated clients (is_bot) so the plot reflects "
+        "organic traffic only.",
+    ),
     spike_quantile: Optional[float] = Option(
         None,
         "--spike-quantile",
@@ -93,6 +99,7 @@ def plot_command(
         spike_quantile=SPIKE_QUANTILE if spike_quantile is None else spike_quantile,
         smoothing=smooth,
         time_range=range_,
+        skip_bots=skip_bots,
     )
 
 @app.command(name="show-sample")
