@@ -39,6 +39,17 @@ services:
       - 5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
+  #redis broker for the Celery task queue. Exposed on the host so a locally-run worker
+  #can share the same broker as api_v3
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    labels:
+      - dev.orbstack.domains=redis.macrostrat.local
+    ports:
+      - "6379:6379"
+    expose:
+      - 6379
   api_v2:
     image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
     build: ${MACROSTRAT_API_SRC:-""}
@@ -57,6 +68,8 @@ services:
         py-modules: ../py-modules
     environment:
       - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIRECT_URI_ENV=https://macrostrat.local/api/v3/security/callback
       - SECRET_KEY=${SECRET_KEY}
       - JWT_ENCRYPTION_ALGORITHM=HS256

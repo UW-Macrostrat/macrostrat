@@ -6,6 +6,7 @@ import api.models.object as Object
 import api.schemas as schemas
 import minio
 import starlette.requests
+from api.celery_app import celery_app
 from api.database import get_async_session, get_engine
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
@@ -14,6 +15,7 @@ from api.schemas import IngestProcessTag, MapFiles
 from api.schemas import Object as ObjectORM
 from api.schemas import Sources
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from pydantic import BaseModel
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
 from starlette.responses import Response
@@ -23,6 +25,26 @@ router = APIRouter(
     tags=["ingest-process"],
     responses={404: {"description": "Not found"}},
 )
+
+
+class DeleteMapRequest(BaseModel):
+    slug: str
+
+
+@router.post("/delete-map")
+async def delete_map(
+    request: DeleteMapRequest, user_has_access: bool = Depends(has_access)
+):
+    """Enqueue deletion of a staged map. Client hands the slug to the Celery worker, which runs
+    `macrostrat maps staging delete <slug>`. Returns with the task id.
+    """
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="User does not have access to delete a map"
+        )
+
+    task = celery_app.send_task("macrostrat.maps.delete", args=[request.slug])
+    return {"task_id": task.id, "slug": request.slug}
 
 
 @router.get("", response_model=list[IngestProcessModel.Get])
