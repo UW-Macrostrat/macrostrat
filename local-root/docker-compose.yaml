@@ -78,6 +78,31 @@ services:
       - OAUTH_CLIENT_SECRET
       - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
       - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
+  # Celery worker for background tasks. lightweight image and does NOT bundle the GIS stack.
+  #See ../py-modules/cli/celery-worker.Dockerfile.
+  #this is a long-running worker that stays up with the stack and picks up
+  #tasks as they arrive. docker-compose can't spin a container up per-task
+  celery_worker:
+    build:
+      # Context is the whole py-modules dir so the worker's local dep
+      # (macrostrat.map_utils) is available to the build.
+      context: ../py-modules
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    command: celery -A macrostrat.worker.app worker -Q maps --loglevel=info --concurrency=2
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      # Optional S3/MinIO staging cleanup. Leave S3_BUCKET unset to run DB-only.
+      - S3_ENDPOINT=storage:9000
+      - S3_ACCESS_KEY=${STORAGE_ACCESS_KEY}
+      - S3_SECRET_KEY=${STORAGE_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_SECURE=false
+    depends_on:
+      - redis
+      - database
   postgrest:
     image: postgrest/postgrest:v12.2.3
     environment:
