@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from macrostrat.database import Database
 from psycopg.sql import Identifier
+
+from macrostrat.database import Database
 
 
 @dataclass
@@ -72,7 +73,9 @@ def _delete_staging_objects(db: Database, slug: str, storage: StorageConfig) -> 
     return len(objects)
 
 
-def delete_map(db: Database, slug: str, *, storage: StorageConfig | None = None) -> dict:
+def delete_map(
+    db: Database, slug: str, *, storage: StorageConfig | None = None
+) -> dict:
     """Delete a staged map by slug.
 
     Drops the source geometry tables, optionally clears staged S3 objects, and

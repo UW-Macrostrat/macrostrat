@@ -13,7 +13,6 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.database import Database
-from macrostrat.map_utils import StorageConfig, delete_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 
 # from macrostrat.map_integration.pipeline import ingest_map
@@ -26,6 +25,7 @@ from macrostrat.map_integration.utils.ingestion_utils import (
 )
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *
+from macrostrat.map_utils import StorageConfig, delete_map
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources

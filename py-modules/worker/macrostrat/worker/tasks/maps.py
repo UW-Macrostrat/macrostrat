@@ -8,7 +8,6 @@ import os
 
 from macrostrat.database import Database
 from macrostrat.map_utils import StorageConfig, delete_map
-
 from macrostrat.worker.app import app
 
 
