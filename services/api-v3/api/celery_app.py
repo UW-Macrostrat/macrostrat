@@ -6,6 +6,7 @@ the tasks lives in `macrostrat.cli.worker`.
 """
 
 import os
+
 from celery import Celery
 
 BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
