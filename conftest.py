@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from macrostrat.database import Database, drop_database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import temporary_database
+from macrostrat.database.utils import temporary_database, template_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 

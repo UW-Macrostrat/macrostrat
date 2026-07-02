@@ -101,18 +101,18 @@ def create_rgeom(
 
     print(f"Creating reference geometry using {approach} approach...")
     # Running in a transaction is needed for locally scoped variables to work
-    db.run_sql(
-        sql_file("rgeom/" + approach),
-        dict(
-            source_id=source_id,
-            srid=srid,
-            buffer_distance=buffer,
-            fill_holes=fill_holes,
-            fix_antimeridian=fix_antimeridian,
-        ),
-        raise_errors=True,
-        commit=True,
-    )
+    with db.transaction():
+        db.run_sql(
+            sql_file("rgeom/" + approach),
+            dict(
+                source_id=source_id,
+                srid=srid,
+                buffer_distance=buffer,
+                fill_holes=fill_holes,
+                fix_antimeridian=fix_antimeridian,
+            ),
+            raise_errors=True,
+        )
 
     end = time.time()
     dt = end - start

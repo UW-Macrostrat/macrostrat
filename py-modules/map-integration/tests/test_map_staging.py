@@ -9,13 +9,23 @@ from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.core.database import database_context
+from macrostrat.database.utils import template_database
+from macrostrat.database import Database
 
 
 # Override the test database fixture to use the full database with maps tables.
-@pytest.fixture
-def test_db(test_db_full):
-    """A test database session."""
-    yield test_db_full
+@pytest.fixture(scope="session")
+def test_db(test_db_base):
+    """A test database session. Some of the elements in this
+    module need transaction scope so we need to use a template database for isolation.
+    """
+    with template_database(
+        test_db_base.engine.url, close_source_connections=True
+    ) as engine:
+        db = Database(engine)
+        with database_context(db):
+            yield db
 
 
 def test_maps_tables_exist(test_db):

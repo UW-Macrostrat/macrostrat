@@ -110,7 +110,7 @@ def test_create_rgeom_basic_fills_holes_without_buffer(rgeom_map):
     db = rgeom_map
     map_info = get_map_info(db, TEST_SLUG)
 
-    create_rgeom(map_info)
+    create_rgeom(map_info, fill_holes=True)
 
     # Step 1 (union) populates maps.sources.rgeom with both disjoint parts.
     rgeom = db.run_query(
