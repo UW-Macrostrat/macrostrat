@@ -31,8 +31,8 @@ def db(test_db_macrostrat_schema_only: Database, env_db: Database):
     db = test_db_macrostrat_schema_only
     #
     # # Populate metadata (intervals, etc.) from the "live" Macrostrat database
-    # _provider = MacrostratDatabaseDataProvider(env_db)
-    # MacrostratMetadataPopulator(_provider, db).populate_all()
+    _provider = MacrostratDatabaseDataProvider(env_db)
+    MacrostratMetadataPopulator(_provider, db).populate_all()
 
     log.info("Setting up template database")
     with template_database(db, close_source_connections=True) as engine:

@@ -21,11 +21,19 @@ BEGIN
   WHERE source_id = _source_id
   INTO geom;
 
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at getting RGeom for source %', _source_id;
+  END IF;
+
   geom := ST_Transform(geom, _srid);
 
   /** Remove interior rings **/
 
   geom := ST_Multi(ST_CollectionExtract(geom, 3));
+
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at getting polygons';
+  END IF;
 
   IF buffer_dist > 0 THEN
     -- If we haven't set a SRID, then we should use geographic coordinates for the buffer distance.

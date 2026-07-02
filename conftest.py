@@ -5,11 +5,12 @@ from pathlib import Path
 from typing import Optional
 
 from pytest import fixture, mark, skip
+from sqlalchemy import make_url
 from typer.testing import CliRunner
 
-from macrostrat.database import Database
+from macrostrat.database import Database, drop_database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import temp_database, temporary_database
+from macrostrat.database.utils import temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -160,9 +161,20 @@ def empty_db(request):
     # If we have settings.databases.test defined, do the testing with a local database
     if settings.databases.get("test") and not request.config.getoption("--skip-env"):
         log.info("Using local database for testing")
-        with temporary_database(
-            settings.databases["test"], ensure_empty=True, drop=False
-        ) as engine:
+
+        uri = settings.databases["test"]
+        uri = make_url(uri)
+        # https://github.com/psycopg/psycopg2/issues/916
+        # We should probably integrate this into macrostrat.database module
+        # https://github.com/UW-Macrostrat/python-libraries/issues/49
+        uri = uri.set(drivername="postgresql+psycopg")
+        log.info("Database URL: %s", uri)
+
+        # Kludge to make sure we drop the database before creating it.
+        # This solves a subtle
+        with temporary_database(uri, ensure_empty=True, drop=False) as engine:
+            assert engine.url.drivername == "postgresql+psycopg"
+            log.info("Created temporary database: %s", engine.url)
             yield Database(engine)
         return
 
