@@ -1,6 +1,6 @@
 import time
 
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 
 from ..database import get_database, sql_file
 from ..utils import MapInfo, table_exists
