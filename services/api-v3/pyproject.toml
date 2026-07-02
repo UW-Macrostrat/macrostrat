@@ -26,7 +26,8 @@ dependencies = [
     "macrostrat.database>=4.0.0,<5",
     "macrostrat.match-utils",
     "morecantile>=7.0.2",
-    "pydantic-settings>2"
+    "pydantic-settings>2",
+    "celery[redis]>=5.3,<6"
 
 ]
 
