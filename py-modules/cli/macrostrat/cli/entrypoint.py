@@ -10,7 +10,7 @@ from typer import Argument, Typer
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.main import env_text, set_app_state
+from macrostrat.core.utils import env_text, set_app_state
 from macrostrat.schema_management import schema_app
 from macrostrat.utils.shell import run
 
@@ -46,13 +46,19 @@ rockd_url = settings.get("ROCKD_DATABASE") or settings.get("rockd_database")
 if rockd_url and "ROCKD_DATABASE" not in environ:
     environ["ROCKD_DATABASE"] = rockd_url
 
+# Patch to ensure weird out-of-order loading still works.
+db_subsystem.app = app
 app.subsystems.add(db_subsystem)
 # app.subsystems.add(rockd_subsystem)
+
+env_text = app.settings.env
+if env_text is None:
+    env_text = "None"
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
 
-Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
+Active environment: [bold cyan]{env_text}[/]
 """
 
 

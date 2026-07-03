@@ -12,6 +12,8 @@ from ..ingest import ingest_columns_from_file
 from ..query_helpers import get_liths_for_unit
 from . import _column_metadata_importer
 
+log = get_logger(__name__)
+
 __here__ = Path(__file__).parent
 
 from macrostrat.core.defs_provider import (
@@ -27,13 +29,14 @@ def db(test_db_macrostrat_schema_only: Database, env_db: Database):
     (beyond transaction isolation) is required.
     """
     db = test_db_macrostrat_schema_only
-
-    # Populate metadata (intervals, etc.) from the "live" Macrostrat database
+    #
+    # # Populate metadata (intervals, etc.) from the "live" Macrostrat database
     _provider = MacrostratDatabaseDataProvider(env_db)
     MacrostratMetadataPopulator(_provider, db).populate_all()
 
-    with template_database(db) as template_db:
-        yield template_db
+    log.info("Setting up template database")
+    with template_database(db, close_source_connections=True) as engine:
+        yield Database(engine)
 
 
 class TestProjectMetadata:

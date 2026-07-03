@@ -200,7 +200,7 @@ def match_sgp_data(
     )
 
     # Create a data frame of matches with the same index as the counts
-    matches = {}
+    _matches = {}
 
     with (
         Live(generate_table(status)) as live,
@@ -214,13 +214,13 @@ def match_sgp_data(
                 types=match,
                 # comparison=comparison,
             )
-            matches[ix] = _match
+            _matches[ix] = _match
             status.increment(row["count"], _match is not None)
             # log_match_data(row, _match, verbose=verbose, console=live.console)
             live.update(generate_table(status))
 
     # Create a data frame of matches with the same index as the counts
-    matches = DataFrame(matches).T
+    matches = DataFrame(_matches).T
     # Rename columns
     # Macrostrat uses b_age and t_age for max and min ages, respectively, while SGP uses min_age and max_age
     matches.rename(

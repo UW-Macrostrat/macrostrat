@@ -302,6 +302,8 @@ def get_matched_unit(
     if len(rows) == 0:
         return None
 
+    # TODO: the get_all_matched_units function now returns a tuple.
+    # We might choose to fix this
     return rows[0]
 
 
@@ -348,7 +350,8 @@ def get_all_matched_units(
         # true, true is exact match and true, false is concept/included match.
         if not matched:
             continue
-        matched_rows.append((row, is_exact))
+        row["is_exact_name_match"] = is_exact
+        matched_rows.append(row)
         if len(matched_rows) >= n_results:
             return matched_rows
     return matched_rows

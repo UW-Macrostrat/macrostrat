@@ -58,6 +58,8 @@ markers = [
 ]
 # Don't show captured logs by default
 addopts = "--log-disable=sqlalchemy.engine.Engine"
+# Default scope for the 'loop' fixture provided by pytest-asyncio.
+asyncio_default_fixture_loop_scope = "function"
 
 # Paths for default test discovery.
 # This allows 'pytest' to have the same discovery behavior
