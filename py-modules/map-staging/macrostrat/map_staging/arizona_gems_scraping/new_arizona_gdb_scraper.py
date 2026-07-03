@@ -1,16 +1,14 @@
 import csv
 import os
-import random
 import re
 import time
 import zipfile
 from multiprocessing.pool import ExceptionWithTraceback
 from typing import Optional
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 """
 BASE_URL = "https://repository.arizona.edu"
@@ -491,7 +489,7 @@ def download_gdb_zips(item_url: str):
             collection_id = get_collection_id(filename)
             metadata = get_collection_metadata(collection_id) if collection_id else None
             metadata_to_csv(metadata)
-    return 
+    return
 '''
 
 

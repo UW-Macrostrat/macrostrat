@@ -35,7 +35,7 @@ topogeo AS (
 UPDATE map_bounds.map_area
 SET
   topo = topogeo.topo,
-  geometry_hash = md5(ST_AsBinary(map_area.geometry))::uuid
+  geometry_hash = md5(ST_AsBinary(geometry))::uuid
 FROM topogeo
 WHERE map_area.id = :map_id
 

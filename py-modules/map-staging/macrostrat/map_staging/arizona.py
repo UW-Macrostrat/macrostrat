@@ -9,7 +9,7 @@ import sys
 from typing import Any
 
 import requests
-from requests.adapters import HTTPAdapter
+from requests import HTTPAdapter
 
 SESSION = requests.Session()
 SESSION.mount("https://", HTTPAdapter(max_retries=5))

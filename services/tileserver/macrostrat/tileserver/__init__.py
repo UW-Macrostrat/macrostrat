@@ -11,12 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from timvt.db import (
-    close_db_connection,
-    con_init,
-    connect_to_db,
-    register_table_catalog,
-)
+from timvt.db import close_db_connection, connect_to_db, register_table_catalog
 from timvt.layer import FunctionRegistry
 from timvt.settings import PostgresSettings
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
@@ -43,7 +38,17 @@ log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 
-app = FastAPI(prefix="/", middleware=[Middleware(CORSMiddleware, allow_origins=["*"])])
+app = FastAPI(
+    prefix="/",
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ],
+)
 
 
 class TileServerSettings(PostgresSettings):
@@ -185,10 +190,10 @@ from .integrations import router as integrations_router
 
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
 
-from .usage_stats import router as usage_stats_router
 
-app.include_router(usage_stats_router, tags=["Usage stats"], prefix="/usage-stats")
+from .stats import stats_router
 
+app.include_router(stats_router, tags=["Stats"], prefix="/stats")
 
 from .carto_new import router as carto_router
 
@@ -197,6 +202,10 @@ app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
 from .topology import router as topo_router
 
 app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
+
+from .cache_management import router as cache_router
+
+app.include_router(cache_router, tags=["Cache"], prefix="/cache")
 
 
 @app.get("/carto/rotation-models")

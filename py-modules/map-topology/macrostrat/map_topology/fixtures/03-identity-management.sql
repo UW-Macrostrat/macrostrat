@@ -9,12 +9,21 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
   -- Get maps that overlap the area
   SELECT mc.map_id
   FROM map_bounds.map_area ma
+  JOIN map_bounds.map_layer ml
+    ON ma.map_layer = ml.id
   JOIN map_bounds.map_priority mc
     ON mc.map_id = ma.id
-   AND mc.map_layer = _map_layer
+   AND mc.map_layer = ml.id
   -- The center of the area must be within each candidate map
-  WHERE ST_Intersects(ST_Centroid(geom), ma.geometry)
-  ORDER BY priority, map_id DESC
+  WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
+    AND ml.id IN (
+      SELECT id FROM map_bounds.map_layer WHERE id = _map_layer
+      UNION ALL
+      SELECT unnest(composited_from) id
+      FROM map_bounds.map_layer
+      WHERE id = _map_layer
+    )
+  ORDER BY priority DESC, area_km -- smaller areas first
   LIMIT 1;
 $$ LANGUAGE sql;
 
@@ -33,7 +42,7 @@ JOIN map_bounds.map_priority mc
  AND mc.map_layer = $2
 WHERE element_id = $1
   AND element_type = 3
-ORDER BY priority, map_id DESC
+ORDER BY priority DESC, area_km -- smaller areas first
 LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE;
 

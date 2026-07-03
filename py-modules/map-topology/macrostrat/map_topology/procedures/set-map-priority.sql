@@ -6,33 +6,17 @@ INSERT INTO map_bounds.map_priority (
   priority
 )
 SELECT
-  map_bounds.layer_id('tiny'),
-  source_id,
-  priority
-FROM map_bounds.scale_priority
-WHERE scale = 'tiny'
-UNION ALL
-SELECT
-  map_bounds.layer_id('small'),
-  source_id,
-  priority
-FROM map_bounds.scale_priority
-WHERE scale IN ('tiny', 'small')
-UNION ALL
-SELECT
-  map_bounds.layer_id('medium'),
-  source_id,
-  priority
-FROM map_bounds.scale_priority
-WHERE scale IN ('small', 'medium')
-UNION ALL
-SELECT
-  map_bounds.layer_id('large'),
-  source_id,
-  priority
-FROM map_bounds.scale_priority
-WHERE scale IN ('medium', 'large')
-ON CONFLICT (map_layer, map_id) DO NOTHING;
+  map_layer,
+  s.source_id,
+  new_priority + CASE WHEN s.scale = 'tiny' THEN -20000
+                  WHEN s.scale = 'small' THEN -10000
+                  WHEN s.scale = 'medium' THEN 0
+                  WHEN s.scale = 'large' THEN 10000
+                  ELSE 0 END AS priority
+FROM map_bounds.map_area a
+JOIN maps.sources s ON a.id = s.source_id
+ON CONFLICT (map_layer, map_id)
+DO UPDATE SET priority = EXCLUDED.priority;
 
 
 /** Temporary: associate maps directly with layers (means maps can only be in one layer) **/
@@ -41,3 +25,5 @@ SET map_layer = map_bounds.layer_id(s.scale)
 FROM maps.sources s
 WHERE map_bounds.map_area.id = s.source_id
   AND s.scale IS NOT NULL;
+
+SELECT * FROM map_bounds.map_area WHERE id = 154;

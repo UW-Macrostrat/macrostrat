@@ -29,6 +29,7 @@ dependencies = [
     "macrostrat.match-utils",
     # "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "macrostrat.column-ingestion",
+    "tileserver_stats",
     "htpheno.radosgw-admin-client",
     "numpy>=2.0.0,<3",
     "pyproj>=3.4.0,<4",
@@ -50,6 +51,7 @@ dependencies = [
     "setuptools>=75.8.2,<81",
     "openpyxl>=3.1.5,<4",
     "results==1.4.0",
+    "pg-activity>=3.6.2",
 ]
 
 [project.scripts]
@@ -62,8 +64,7 @@ gis = [
 
 [dependency-groups]
 dev = [
-    "snakeviz>=2.2.0,<3",
-    "macrostrat.package_tools>=1.1.0,<2",
+    "snakeviz>=2.2.0,<3"
 ]
 
 [tool.uv]
@@ -78,8 +79,9 @@ default-groups = [
 "macrostrat.schema-management" = { path = "../schema-management", editable = true }
 "htpheno.radosgw-admin-client" = { path = "../../submodules/storage-admin", editable = true }
 "macrostrat.match-utils" = { path = "../match-utils", editable = true }
-"macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
+"macrostrat.column-ingestion" = { path = "../column-ingestion", editable = true }
 "macrostrat.map-topology" = { path = "../map-topology", editable = true }
+"tileserver_stats" = { path = "../tileserver-stats", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]
