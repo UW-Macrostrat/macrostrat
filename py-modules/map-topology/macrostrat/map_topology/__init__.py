@@ -136,6 +136,10 @@ def update_identity():
     """Refresh the identity of all map faces"""
     mgr = get_topo_manager()
     db = mgr.database
+    _update_identity(db)
+
+
+def _update_identity(db):
     db.run_query(
         """
          UPDATE map_bounds_topology.map_face
