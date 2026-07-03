@@ -8,9 +8,10 @@ non-rollback ``test_db_base`` (which commits) and clean up after ourselves.
 """
 
 import pytest
+from macrostrat.database.utils import template_database
 
+from macrostrat.database import Database
 from macrostrat.map_integration.process.geometry import create_rgeom
-from macrostrat.map_integration.utils import table_exists
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 # A high source_id unlikely to collide with anything in the test database.
@@ -27,38 +28,21 @@ TEST_POLYGONS = [
 ]
 
 
-def _cleanup(db):
-    db.run_sql(
-        "DELETE FROM map_bounds.map_area WHERE id = :source_id",
-        dict(source_id=TEST_SOURCE_ID),
-    )
-    db.run_sql(
-        "DELETE FROM maps.polygons WHERE source_id = :source_id",
-        dict(source_id=TEST_SOURCE_ID),
-    )
-    db.run_sql(
-        "DELETE FROM maps.sources WHERE source_id = :source_id",
-        dict(source_id=TEST_SOURCE_ID),
-    )
+@pytest.fixture(scope="session")
+def db(test_db_base):
+    with template_database(test_db_base, close_source_connections=True) as engine:
+        _db = Database(engine)
+        add_test_data(_db)
+        yield _db
 
 
-@pytest.fixture
-def rgeom_map(test_db_base):
+def add_test_data(db):
     """Populate a map with a few polygons in the maps schema plus a placeholder
     ``map_bounds.map_area`` row, and bind it as the active database so
     ``create_rgeom`` (which calls ``get_database()``) resolves to it.
     """
-    db = test_db_base
-
-    if not table_exists(db, "map_area", schema="map_bounds"):
-        pytest.skip("map_bounds.map_area not present in this environment")
 
     # create_rgeom() resolves its database via get_database() -> db_ctx.
-    from macrostrat.core.database import db_ctx
-
-    db_ctx.set(db)
-
-    _cleanup(db)  # clear any leftovers from a previous interrupted run
 
     # primary_table is unused on the maps.polygons path, but create_rgeom builds
     # Identifier("sources", primary_table) eagerly, which rejects NULL — so set it.
@@ -95,22 +79,20 @@ def rgeom_map(test_db_base):
         dict(source_id=TEST_SOURCE_ID),
     )
 
-    try:
-        yield db
-    finally:
-        _cleanup(db)
+    db.session.commit()
 
 
-def test_create_rgeom_basic_fills_holes_without_buffer(rgeom_map):
+def test_create_rgeom_basic_fills_holes_without_buffer(db):
     """The default path (buffer=0, fill_holes=True) over a multipolygon should
     succeed and remove interior rings. Regression test: this used to raise
     "Failed at filling interior" because ST_ExteriorRing returns NULL for a
     MULTIPOLYGON.
     """
-    db = rgeom_map
     map_info = get_map_info(db, TEST_SLUG)
 
-    create_rgeom(map_info, fill_holes=True)
+    assert map_info.id == TEST_SOURCE_ID
+
+    create_rgeom(map_info, fill_holes=True, use_maps_schema=True, database=db)
 
     # Step 1 (union) populates maps.sources.rgeom with both disjoint parts.
     rgeom = db.run_query(

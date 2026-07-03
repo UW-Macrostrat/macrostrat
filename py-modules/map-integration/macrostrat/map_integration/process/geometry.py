@@ -15,6 +15,7 @@ def create_rgeom(
     buffer: float = 0,
     fill_holes: bool = False,
     fix_antimeridian: bool = True,
+    database: str = None,
 ):
     """Create a unioned reference geometry for a map source.
 
@@ -22,7 +23,7 @@ def create_rgeom(
         - basic: Dissolves all map polygons into a single geometry.
         - legacy: A more complex, ring-based approach
     """
-    db = get_database()
+    db = database or get_database()
     start = time.time()
     # TODO: we should run this in a transaction, but it makes tests fail.
     source_id = source.id
