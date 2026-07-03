@@ -8,7 +8,7 @@ from shapely.geometry import Point
 from dataclasses import dataclass
 
 from macrostrat.map_topology import create_topo_context, _set_dirty, _update_identity
-from macrostrat.map_topology.manager import update_maps, MacrostratTopologyManager
+from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 
 def geom(_shape, srid=4326):

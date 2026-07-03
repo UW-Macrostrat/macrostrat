@@ -48,7 +48,9 @@ def main() -> None:
             for anchor in cols[1].find_all("a"):
                 url = anchor.get("href", "")
 
-                if url.startswith("https://data.nbmg.unr.edu/Public/") and url.endswith(".zip"):
+                if url.startswith("https://data.nbmg.unr.edu/Public/") and url.endswith(
+                    ".zip"
+                ):
 
                     ## Make an educated guess for the DOI.
 
@@ -83,7 +85,9 @@ def main() -> None:
                                 else:
                                     authors = meta.get("content")
                     else:
-                        website_url = search_url  # fallback for when the DOI doesn't pan out
+                        website_url = (
+                            search_url  # fallback for when the DOI doesn't pan out
+                        )
 
                     writer.writerow(
                         {

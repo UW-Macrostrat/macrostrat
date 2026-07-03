@@ -12,16 +12,12 @@ from macrostrat.core.database import get_database
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 
-from .config import get_topo_manager, get_topo_context, create_topo_context
-
-
+from .config import create_topo_context, get_topo_context, get_topo_manager
 from .manager import (
-    filter_maps,
-    get_map_list,
-    _print_map_info,
-    get_map_list,
     _print_map_info,
     _remove_map_topo_elements,
+    filter_maps,
+    get_map_list,
     get_maps_with_changed_geometries,
     proc,
 )
