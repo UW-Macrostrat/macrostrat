@@ -501,6 +501,7 @@ def build_match_data(db, params):
         res["b_age"] = age_constraint.b_age
     print("params dumped into a model dict", res)
 
+    # TODO: errors should be thrown, not returned
     if params.strat_name is not None and params.concept_name is not None:
         # Return an error result
         return MatchData(
@@ -560,11 +561,11 @@ def build_match_data(db, params):
                 b_age=age_constraint.b_age,
             )
         raw_name = (params.strat_name or params.concept_name or "").strip().lower()
-        for row, is_exact in rows:
+        for row in rows:
             vals = dict(row)
             db_name = (vals.get("strat_name") or "").strip().lower()
+            is_exact = vals.pop("is_exact_name_match", False)
             is_exact = False if raw_name != db_name else is_exact
-            print("raw name", raw_name, "db_name", db_name, "is_exact", is_exact)
             from pandas import isna
 
             for key, val in vals.items():

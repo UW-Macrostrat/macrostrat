@@ -130,5 +130,5 @@ def test_priority_ascending_order(db):
         rows = get_all_matched_units(conn, 490, names)
     assert len(rows) > 0
     # Priorities from the raw rows (SQL priority column, pre-reassignment)
-    priorities = [row["priority"] for row, _ in rows]
+    priorities = [row["priority"] for row in rows]
     assert priorities == sorted(priorities)
