@@ -1,9 +1,9 @@
-from mapboard.topology_manager import TopologyManager
 import time
 from dataclasses import dataclass
-
-from rich import print
 from pathlib import Path
+
+from mapboard.topology_manager import TopologyManager
+from rich import print
 
 __dir__ = Path(__file__).parent
 

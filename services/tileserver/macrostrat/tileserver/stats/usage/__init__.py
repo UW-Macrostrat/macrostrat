@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request
 from macrostrat.tileserver_utils import VectorTileResponse
 from macrostrat.utils import get_logger
 
-
 log = get_logger(__name__)
 
 router = APIRouter()
