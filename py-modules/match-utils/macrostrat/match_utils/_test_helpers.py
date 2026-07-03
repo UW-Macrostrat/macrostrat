@@ -1,9 +1,10 @@
-from macrostrat.core.defs_provider import MacrostratDataProvider
 from pytest import fixture
+
+from macrostrat.core.defs_provider import MacrostratDataProvider
 from macrostrat.utils import get_logger
 
 from . import create_ignore_list
-from .strat_names import build_ignore_list, _ignore_list
+from .strat_names import _ignore_list, build_ignore_list
 
 log = get_logger(__name__)
 

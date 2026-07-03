@@ -11,14 +11,9 @@ from typer import Context, Option
 from macrostrat.app_frame import Application, ControlCommand, DockerComposeManager
 from macrostrat.utils import get_logger
 
-from .utils import (
-    get_app_state_file,
-    get_app_state,
-    set_app_state,
-    env_text,
-)
 from .console import console_theme
 from .exc import MacrostratError
+from .utils import env_text, get_app_state, get_app_state_file, set_app_state
 
 log = get_logger(__name__)
 

@@ -8,8 +8,6 @@ Macrostrat's database.
 from pandas import isna
 from pydantic import BaseModel
 from pytest import mark
-from ._test_helpers import lith_names_fixture
-
 
 from . import (
     ensure_single,
@@ -20,6 +18,7 @@ from . import (
     get_matched_unit,
     standardize_names,
 )
+from ._test_helpers import lith_names_fixture
 from .models import MatchResult
 
 

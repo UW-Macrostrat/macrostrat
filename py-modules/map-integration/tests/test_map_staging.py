@@ -4,14 +4,14 @@ from pathlib import Path
 import pytest
 from psycopg.sql import Identifier
 
+from macrostrat.core.database import database_context
+from macrostrat.database import Database
+from macrostrat.database.utils import template_database
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
 from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
-from macrostrat.core.database import database_context
-from macrostrat.database.utils import template_database
-from macrostrat.database import Database
 
 
 # Override the test database fixture to use the full database with maps tables.

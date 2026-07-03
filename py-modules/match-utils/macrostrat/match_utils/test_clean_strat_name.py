@@ -1,5 +1,5 @@
-from .strat_names import StratRank, clean_strat_name
 from ._test_helpers import lith_names_fixture
+from .strat_names import StratRank, clean_strat_name
 
 
 def test_clean_strat_name():

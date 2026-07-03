@@ -14,8 +14,8 @@ from .resolvers import cast_sources, setup_source_roots_environment
 from .utils import (
     convert_to_string,
     find_macrostrat_config,
-    path_list_resolver,
     normalize_macrostrat_env,
+    path_list_resolver,
 )
 
 log = get_logger(__name__)

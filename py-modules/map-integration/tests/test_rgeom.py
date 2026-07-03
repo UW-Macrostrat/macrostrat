@@ -8,9 +8,9 @@ non-rollback ``test_db_base`` (which commits) and clean up after ourselves.
 """
 
 import pytest
-from macrostrat.database.utils import template_database
 
 from macrostrat.database import Database
+from macrostrat.database.utils import template_database
 from macrostrat.map_integration.process.geometry import create_rgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
 

@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from macrostrat.database import Database, drop_database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import temporary_database, template_database
+from macrostrat.database.utils import template_database, temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -220,15 +220,15 @@ from macrostrat.core.defs_provider import (
     MacrostratAPIConfig,
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
-    MacrostratMetadataPopulator,
     MacrostratDataProvider,
+    MacrostratMetadataPopulator,
 )
 
 
 @fixture(scope="session")
 def data_provider(request):
-    from macrostrat.core.config import settings
     from macrostrat.core import get_database
+    from macrostrat.core.config import settings
 
     source_db = None
     log.info("Attempting to connect to database %s", settings.pg_database)

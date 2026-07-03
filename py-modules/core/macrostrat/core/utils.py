@@ -1,10 +1,10 @@
 from os import environ, unsetenv
 from pathlib import Path
 from typing import Optional
-from os import environ
 
 import toml
 from click import get_app_dir
+
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)

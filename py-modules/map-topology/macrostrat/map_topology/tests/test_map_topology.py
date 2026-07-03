@@ -1,13 +1,12 @@
-from pytest import mark
-from geoalchemy2.shape import from_shape
-from prompt_toolkit.styles.style import default_priority
-
-from mapboard.topology_manager import TopologyInspector, TopologyManager
-from pytest import fixture
-from shapely.geometry import Point
 from dataclasses import dataclass
 
-from macrostrat.map_topology import create_topo_context, _set_dirty, _update_identity
+from geoalchemy2.shape import from_shape
+from mapboard.topology_manager import TopologyInspector, TopologyManager
+from prompt_toolkit.styles.style import default_priority
+from pytest import fixture, mark
+from shapely.geometry import Point
+
+from macrostrat.map_topology import _set_dirty, _update_identity, create_topo_context
 from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 

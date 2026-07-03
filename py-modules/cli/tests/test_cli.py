@@ -59,10 +59,10 @@ def test_cli_database(test_cfg):
 
 
 def test_cli_no_config():
+    import macrostrat.cli.entrypoint as cli_entry
     import macrostrat.core as core
     import macrostrat.core.config as cfg
     import macrostrat.core.main as main
-    import macrostrat.cli.entrypoint as cli_entry
 
     with override_environment(MACROSTRAT_CONFIG="", NO_COLOR="1", MACROSTRAT_ENV=""):
         # We need to specifically unset the environment variable, not set it to ""

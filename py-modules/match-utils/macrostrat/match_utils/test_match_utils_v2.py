@@ -5,9 +5,8 @@ Tests for the v2 match API response structure and batch endpoint.
 from pytest import fixture
 
 from . import get_all_matched_units, standardize_names
-from .models import MatchResult
 from ._test_helpers import lith_names_fixture
-
+from .models import MatchResult
 
 # -- Batch input test data --------------------------------------------------
 
