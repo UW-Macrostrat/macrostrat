@@ -6,6 +6,7 @@
 # On the bottom you will find the methods that do not use this method
 #
 import datetime
+from contextvars import ContextVar
 from os import environ
 from typing import Literal, Type
 
@@ -26,11 +27,14 @@ from macrostrat.database import Database
 
 load_dotenv()
 
-engine: AsyncEngine | None = None
-sync_db: Database | None = None
+# Context variables are thread-safe, so are a better choice
+# than using a global variables (I think/hope)
+_db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
+_async_db_ctx: ContextVar[AsyncEngine | None] = ContextVar("async_db_ctx", default=None)
 
 
 def get_engine() -> AsyncEngine:
+    engine = _async_db_ctx.get()
     if engine is None:
         raise RuntimeError("Database engine not initialized yet")
     return engine
@@ -48,29 +52,31 @@ def get_db_url():
 
 
 def get_sync_database():
-    global sync_db
+    """Get the synchronous database connection from the context variable."""
+    sync_db = _db_ctx.get()
     if sync_db is None:
         sync_db = Database(get_db_url())
+        _db_ctx.set(sync_db)
     return sync_db
 
 
 async def connect_engine() -> AsyncEngine:
     # Check the uri and DB_URL for the database connection string
     # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
-    global engine
     db_url = get_db_url()
     # Make sure this is all run async
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(db_url)
+    _async_db_ctx.set(engine)
     return engine
 
 
 async def dispose_engine():
-    global engine
+    engine = _async_db_ctx.get()
     if engine is not None:
         await engine.dispose()
-        engine = None
+        _async_db_ctx.set(None)
 
 
 def get_async_session(
