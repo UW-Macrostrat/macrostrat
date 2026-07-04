@@ -15,7 +15,7 @@ from pathlib import Path
 from macrostrat.core.config import settings
 from macrostrat.map_topology import create_topo_context, create_topo_fixtures
 
-from .composer import SchemaChunk
+from .composer import SchemaDefinition
 
 # Environments (defs.py vocabulary) in which the dev-only layers apply. Mirrors
 # ``schema_dirs_for_environment`` and the topology gate in defs.py.
@@ -33,24 +33,24 @@ def _apply_topology(db) -> None:
     create_topo_fixtures(ctx)
 
 
-def all_chunks() -> list[SchemaChunk]:
+def all_chunks() -> list[SchemaDefinition]:
     """Every schema chunk, independent of environment."""
     schema_dir = settings.srcroot / "schema"
     return [
-        SchemaChunk(name="core", provides=[schema_dir / "core"]),
-        SchemaChunk(
+        SchemaDefinition(name="core", provides=[schema_dir / "core"]),
+        SchemaDefinition(
             name="development",
             depends_on=["core"],
             provides=[schema_dir / "development"],
             environments=_DEV_ENVS,
         ),
-        SchemaChunk(
+        SchemaDefinition(
             name="local",
             depends_on=["development"],
             provides=[schema_dir / "local"],
             environments=frozenset({"local"}),
         ),
-        SchemaChunk(
+        SchemaDefinition(
             name="topology",
             depends_on=["core"],
             provides=[_apply_topology],
@@ -59,6 +59,6 @@ def all_chunks() -> list[SchemaChunk]:
     ]
 
 
-def chunks_for_environment(env: str) -> list[SchemaChunk]:
+def chunks_for_environment(env: str) -> list[SchemaDefinition]:
     """The chunks that apply in the given environment."""
     return [c for c in all_chunks() if c.applies_to(env)]

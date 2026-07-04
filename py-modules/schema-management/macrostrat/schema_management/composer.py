@@ -28,7 +28,7 @@ Provider = Union[Path, DBCallable]
 
 
 @dataclass
-class SchemaChunk:
+class SchemaDefinition:
     """A named, dependency-ordered unit of declarative schema.
 
     Providers are applied in listed order once the chunk's ``depends_on`` are
@@ -42,6 +42,7 @@ class SchemaChunk:
     provides: list[Provider] = field(default_factory=list)
     # Environments in which this chunk applies. ``None`` means all environments.
     environments: Optional[frozenset[str]] = None
+    database: str = "macrostrat"
 
     def applies_to(self, env: str) -> bool:
         return self.environments is None or env in self.environments
@@ -75,12 +76,16 @@ def apply_sql_dir(db: Database, directory: Path) -> None:
     db.run_fixtures(fixtures)
 
 
-def order_chunks(chunks: list[SchemaChunk]) -> list[SchemaChunk]:
+def order_chunks(chunks: list[SchemaDefinition]) -> list[SchemaDefinition]:
     """Topologically sort chunks by ``depends_on``.
 
     Dependencies pointing outside the given set (e.g. env-filtered out) are
     tolerated: they order the graph but are skipped in the result.
     """
+    databases = {c.database for c in chunks}
+    if len(databases) != 1:
+        raise ValueError(f"Chunks must all be in the same database, got {databases}")
+
     by_name = {c.name: c for c in chunks}
     graph = {c.name: c.depends_on for c in chunks}
     order = list(TopologicalSorter(graph).static_order())
@@ -88,7 +93,7 @@ def order_chunks(chunks: list[SchemaChunk]) -> list[SchemaChunk]:
 
 
 def build_schema(
-    db: Database, env: str, chunks: Optional[list[SchemaChunk]] = None
+    db: Database, env: str, chunks: Optional[list[SchemaDefinition]] = None
 ) -> Database:
     """Build the declarative schema for ``env`` by applying chunks in graph order."""
     if chunks is None:
