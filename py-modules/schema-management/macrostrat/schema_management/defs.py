@@ -1,4 +1,3 @@
-import logging
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -10,8 +9,9 @@ from rich import print
 from macrostrat.core.config import settings
 from macrostrat.database import Database
 from macrostrat.dinosaur.cluster import database_cluster
-from macrostrat.map_topology import create_topo_context, create_topo_fixtures
 from macrostrat.utils.logs import get_logger, suppress_loggers
+
+from .composer import build_schema
 
 log = get_logger(__name__)
 
@@ -62,7 +62,7 @@ def apply_schema_for_environment(
     recursive: bool = True,
     statement_filter=None,
     transform_statement=None,
-    suppress_logging: bool = False,
+    suppress_logging: bool = True,
     pattern: str = "*",
     target: str | None = None,
 ):
@@ -84,6 +84,14 @@ def apply_schema_for_environment(
     # Create a cache to avoid re-applying the same fixtures on successive runs
     if not hasattr(db, "_applied_fixtures"):
         db._applied_fixtures = set()
+
+    _suppressed_loggers = []
+    if suppress_logging:
+        _suppressed_loggers = ["sqlalchemy.engine", "macrostrat.database.query"]
+
+    with suppress_loggers(*_suppressed_loggers):
+        build_schema(db, env)
+    return db
 
     for env_dir in schema_dirs_for_environment(env):
         schema_dir = env_dir

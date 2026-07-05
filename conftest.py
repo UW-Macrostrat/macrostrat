@@ -268,7 +268,9 @@ def test_db_macrostrat_schema_only(
 
     loader = MacrostratMetadataPopulator(data_provider, db)
     loader.populate_all()
-    return db
+    db.session.close()
+    db.engine.dispose()
+    yield db
 
 
 @fixture(scope="class")
@@ -281,13 +283,7 @@ def test_db(test_db_macrostrat_schema_only: Database):
 @fixture(scope="session")
 def test_db_base(request, test_db_macrostrat_schema_only: Database):
     """The database used for testing."""
-    from macrostrat.core.config import settings
-
-    return _apply_schema(
-        test_db_macrostrat_schema_only,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-    )
+    return test_db_macrostrat_schema_only
 
 
 @fixture(scope="class")

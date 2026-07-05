@@ -10,27 +10,14 @@ fixtures — onto chunks **without moving any files**. Relocating SQL into ownin
 modules is a later step, unblocked once the composer is verified as a no-op.
 """
 
-from pathlib import Path
-
 from macrostrat.core.config import settings
-from macrostrat.map_topology import create_topo_context, create_topo_fixtures
+from macrostrat.map_topology.config import TopologySchema
 
 from .composer import SchemaDefinition
 
 # Environments (defs.py vocabulary) in which the dev-only layers apply. Mirrors
 # ``schema_dirs_for_environment`` and the topology gate in defs.py.
 _DEV_ENVS = frozenset({"development", "local"})
-
-
-def _apply_topology(db) -> None:
-    """Function-backed declarative provider: build the topology fixtures.
-
-    Equivalent to the hardcoded post-processing step in
-    ``apply_schema_for_environment`` (defs.py), delegating the SQL to the
-    ``macrostrat.map_topology`` library.
-    """
-    ctx = create_topo_context(db)
-    create_topo_fixtures(ctx)
 
 
 def all_chunks() -> list[SchemaDefinition]:
@@ -50,12 +37,7 @@ def all_chunks() -> list[SchemaDefinition]:
             provides=[schema_dir / "local"],
             environments=frozenset({"local"}),
         ),
-        SchemaDefinition(
-            name="topology",
-            depends_on=["core"],
-            provides=[_apply_topology],
-            environments=_DEV_ENVS,
-        ),
+        TopologySchema,
     ]
 
 
