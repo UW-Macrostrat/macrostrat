@@ -182,38 +182,18 @@ def empty_db(request):
         yield db
 
 
-def _apply_schema(db, *, target=None, env="development", optimize=True):
-    from macrostrat.schema_management import apply_schema_for_environment
+@fixture(scope="session")
+def schema_harness(request, empty_db: Database):
+    """Progressive, chunk-based schema builder shared across the session.
 
-    transform_statement = None
-    if optimize:
-        # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
-        # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
-        # indexes, constraints, and permissions that are not necessary for most tests.
-        def transform_statement(
-            ctx: StatementContext,
-        ) -> Optional[list[StatementResult]]:
-            stmt = ctx.sql_text.strip().lower()
-            if (
-                stmt.startswith("create index")
-                or stmt.startswith("create unique index")
-                or stmt.startswith("alter index")
-                or stmt.startswith("grant")
-                or (stmt.startswith("alter table") and "owner to" in stmt)
-            ):
-                return []
+    The ``optimize`` transform (skipping indexes/grants/ownership) is applied by
+    default for a faster build; disable with ``--no-optimize-database``.
+    """
+    from macrostrat.core.config import settings
+    from macrostrat.schema_management.test_harness import DatabaseTestHarness
 
-            return None
-
-    log.info("Applying schema for environment %s to database %s", env, db.engine.url)
-    apply_schema_for_environment(
-        db,
-        env=env,
-        transform_statement=transform_statement,
-        suppress_logging=True,
-        target=target,
-    )
-    return db
+    optimize = request.config.getoption("--optimize-database")
+    return DatabaseTestHarness(empty_db, env=settings.env, optimize=optimize)
 
 
 from macrostrat.core.defs_provider import (
@@ -254,17 +234,10 @@ def data_provider(request):
 
 @fixture(scope="session")
 def test_db_macrostrat_schema_only(
-    request, empty_db: Database, data_provider: MacrostratDataProvider
+    schema_harness, data_provider: MacrostratDataProvider
 ):
-    """The database used for testing."""
-    from macrostrat.core.config import settings
-
-    db = _apply_schema(
-        empty_db,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-        target="macrostrat",
-    )
+    """A minimal database: the ``macrostrat`` subsystem and its dependencies."""
+    db = schema_harness.load_schema(target="macrostrat")
 
     loader = MacrostratMetadataPopulator(data_provider, db)
     loader.populate_all()
@@ -281,9 +254,13 @@ def test_db(test_db_macrostrat_schema_only: Database):
 
 
 @fixture(scope="session")
-def test_db_base(request, test_db_macrostrat_schema_only: Database):
-    """The database used for testing."""
-    return test_db_macrostrat_schema_only
+def test_db_base(schema_harness, test_db_macrostrat_schema_only: Database):
+    """The full-schema database used for testing.
+
+    Builds every remaining chunk (maps, storage, tiles, …) on top of the minimal
+    macrostrat build, so tests relying on e.g. ``macrostrat.maps`` have it.
+    """
+    return schema_harness.load_schema()
 
 
 @fixture(scope="class")

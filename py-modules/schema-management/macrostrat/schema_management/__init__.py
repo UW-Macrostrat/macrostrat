@@ -284,8 +284,12 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def provision(pattern: str = Argument("*")):
-    """Apply all schema objects to the database
+def provision(target: str = Argument(None, help="Subsystem to build (with its dependencies)")):
+    """Apply schema objects to the database
+
+    With TARGET (a subsystem/chunk name, e.g. [cyan]macrostrat[/]), apply only
+    that subsystem and its dependencies; otherwise build the full schema. Use
+    [cyan]macrostrat schema graph[/] to list available subsystems.
 
     TODO: filter out non-idempotent statements (table creation, etc.)
     """
@@ -295,7 +299,7 @@ def provision(pattern: str = Argument("*")):
 
     counter = StatementCounter(safe=True)
     apply_schema_for_environment(
-        db, environment, statement_filter=counter.filter, pattern=pattern
+        db, environment, statement_filter=counter.filter, target=target
     )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()

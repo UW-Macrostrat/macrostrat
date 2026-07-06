@@ -59,32 +59,17 @@ def apply_schema_for_environment(
     db: Database,
     env: str,
     *,
-    recursive: bool = True,
     statement_filter=None,
     transform_statement=None,
     suppress_logging: bool = True,
-    pattern: str = "*",
     target: str | None = None,
 ):
+    """Build the declarative schema for ``env``.
+
+    :param target: a subsystem (chunk) name; when given, only that chunk and its
+        transitive dependencies are applied. When omitted, the full schema for
+        the environment is built.
     """
-
-    :param db:
-    :param env:
-    :param recursive:
-    :param statement_filter:
-    :param transform_statement:
-    :param suppress_logging:
-    :param pattern:
-    :param target: Only apply fixtures up to a specific target string.
-    :return:
-    """
-    if "*" not in pattern:
-        pattern = f"*{pattern}*"
-
-    # Create a cache to avoid re-applying the same fixtures on successive runs
-    if not hasattr(db, "_applied_fixtures"):
-        db._applied_fixtures = set()
-
     _suppressed_loggers = []
     if suppress_logging:
         _suppressed_loggers = ["sqlalchemy.engine", "macrostrat.database.query"]
@@ -98,32 +83,6 @@ def apply_schema_for_environment(
             target=target,
         )
     return db
-
-
-def filter_schema_by_target(fixtures: list[Path], root_dir: Path, target: str):
-    """Filter a list of fixtures to only include those that occur before a target string is matched.
-    Used to apply an internally-consistent subset of fixtures to a database."""
-    matched = False
-    for fixture in fixtures:
-        rel_path = fixture.relative_to(root_dir)
-        this_matched = False
-        for part in rel_path.parts:
-            if "-" in part:
-                part = part.split("-")[1]
-            if "." in part:
-                part = part.split(".")[0]
-            if target == part:
-                this_matched = True
-                break
-        if this_matched:
-            matched = True
-            yield fixture
-        if not matched:
-            # We haven't reached the end yet
-            yield fixture
-        if matched and not this_matched:
-            # We've matched a fixture that's not in the target, so we can stop
-            return
 
 
 @contextmanager

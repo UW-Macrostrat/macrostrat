@@ -36,17 +36,64 @@ def order_chunks(chunks: list[SchemaDefinition]) -> list[SchemaDefinition]:
     return [by_name[n] for n in order if n in by_name]
 
 
+def dependency_closure(chunks: list[SchemaDefinition], target: str) -> set[str]:
+    """Names of ``target`` plus all of its transitive dependencies.
+
+    ``target`` is a subsystem (chunk) name. Building the closure yields exactly
+    the chunks needed to stand up that subsystem — this replaces the old
+    filename-substring ``target`` matching.
+    """
+    by_name = {c.name: c for c in chunks}
+    if target not in by_name:
+        raise ValueError(
+            f"Unknown schema target {target!r}. Known chunks: {sorted(by_name)}"
+        )
+
+    seen: set[str] = set()
+    stack = [target]
+    while stack:
+        name = stack.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        chunk = by_name.get(name)
+        if chunk is not None:
+            stack.extend(chunk.depends_on)
+    return seen
+
+
 def build_schema(
-    db: Database, env: str, chunks: Optional[list[SchemaDefinition]] = None
+    db: Database,
+    env: str,
+    chunks: Optional[list[SchemaDefinition]] = None,
+    *,
+    transform_statement=None,
+    statement_filter=None,
+    target: Optional[str] = None,
 ) -> Database:
-    """Build the declarative schema for ``env`` by applying chunks in graph order."""
+    """Build the declarative schema for ``env`` by applying chunks in graph order.
+
+    ``transform_statement`` / ``statement_filter`` are forwarded to SQL file
+    application. If ``target`` is given (a subsystem/chunk name), only that chunk
+    and its transitive dependencies are built — the minimal build for that
+    subsystem.
+    """
     if chunks is None:
         # Imported lazily to avoid a circular import at module load.
         from .chunks import chunks_for_environment
 
         chunks = chunks_for_environment(env)
 
-    for chunk in order_chunks(chunks):
-        chunk.apply(db)
+    ordered = order_chunks(chunks)
+    if target is not None:
+        keep = dependency_closure(chunks, target)
+        ordered = [c for c in ordered if c.name in keep]
+
+    for chunk in ordered:
+        chunk.apply(
+            db,
+            transform_statement=transform_statement,
+            statement_filter=statement_filter,
+        )
 
     return db

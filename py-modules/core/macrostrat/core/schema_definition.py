@@ -11,7 +11,7 @@ from macrostrat.database import Database
 # A provider that applies its own statements to the database.
 DBCallable = Callable[[Database], None]
 
-# A declarative provider: a directory of .sql files, or a callable.
+# A declarative provider: a directory (or single file) of SQL, or a callable.
 Provider = Union[Path, DBCallable]
 
 
@@ -20,9 +20,9 @@ class SchemaDefinition:
     """A named, dependency-ordered unit of declarative schema.
 
     Providers are applied in listed order once the chunk's ``depends_on`` are
-    satisfied. A ``Path`` provider is treated as a directory of ``.sql`` files;
-    any other callable receives the :class:`Database` and applies its own
-    statements.
+    satisfied. A ``Path`` provider is a directory of ``.sql`` files (applied in
+    filename order) or a single ``.sql`` file; a callable receives the
+    :class:`Database` and applies its own statements.
     """
 
     name: str
@@ -35,11 +35,22 @@ class SchemaDefinition:
     def applies_to(self, env: str) -> bool:
         return self.environments is None or env in self.environments
 
-    def apply(self, db: Database) -> None:
+    def apply(self, db: Database, *, transform_statement=None, statement_filter=None) -> None:
+        """Apply this chunk's providers.
+
+        ``transform_statement`` / ``statement_filter`` are forwarded to SQL file
+        application (e.g. to skip index/grant statements in tests).
+        """
         for provider in self.provides:
             if isinstance(provider, Path):
-                apply_sql_dir(db, provider)
+                apply_sql_path(
+                    db,
+                    provider,
+                    transform_statement=transform_statement,
+                    statement_filter=statement_filter,
+                )
             elif callable(provider):
+                # Function-backed providers apply their own statements.
                 provider(db)
             else:
                 raise TypeError(
@@ -48,17 +59,25 @@ class SchemaDefinition:
                 )
 
 
-def apply_sql_dir(db: Database, directory: Path) -> None:
-    """Apply every ``.sql`` file under ``directory`` in filename order.
+def apply_sql_path(
+    db: Database, path: Path, *, transform_statement=None, statement_filter=None
+) -> None:
+    """Apply the ``.sql`` file(s) at ``path`` in filename order.
 
-    Mirrors the globbing in :func:`apply_schema_for_environment` exactly: recurse,
-    sort by path, drop ``*.plan.sql``. Duplicated (rather than shared) to keep the
-    composer additive; the parity test guards against drift.
+    ``path`` may be a directory (applied recursively, sorted by path) or a single
+    ``.sql`` file. ``*.plan.sql`` files are always skipped.
     """
-    if not directory.exists():
+    if path.is_dir():
+        fixtures = sorted(path.rglob("*.sql"))
+    elif path.is_file():
+        fixtures = [path]
+    else:
         return
-    fixtures = sorted(directory.rglob("*.sql"))
+
     fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
-    if not fixtures:
-        return
-    db.run_fixtures(fixtures)
+    if fixtures:
+        db.run_fixtures(
+            fixtures,
+            transform_statement=transform_statement,
+            statement_filter=statement_filter,
+        )
