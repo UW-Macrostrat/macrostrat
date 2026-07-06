@@ -90,54 +90,13 @@ def apply_schema_for_environment(
         _suppressed_loggers = ["sqlalchemy.engine", "macrostrat.database.query"]
 
     with suppress_loggers(*_suppressed_loggers):
-        build_schema(db, env)
-    return db
-
-    for env_dir in schema_dirs_for_environment(env):
-        schema_dir = env_dir
-        if not schema_dir.exists():
-            continue
-
-        func = schema_dir.rglob if recursive else schema_dir.glob
-        fixtures = sorted(list(func(pattern + ".sql")))
-        fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
-
-        if target is not None:
-            fixtures = list(filter_schema_by_target(fixtures, schema_dir, target))
-
-        # Remove any fixtures that have already been applied
-        fixtures = [f for f in fixtures if f.name not in db._applied_fixtures]
-
-        if len(fixtures) == 0:
-            continue
-        _suppressed_loggers = []
-        if suppress_logging:
-            _suppressed_loggers = [
-                "sqlalchemy.engine",
-                "macrostrat.database.utils",
-            ]
-
-        with suppress_loggers(*_suppressed_loggers):
-            db.run_fixtures(
-                fixtures,
-                recursive=recursive,
-                statement_filter=statement_filter,
-                transform_statement=transform_statement,
-                print_skipped=False,
-            )
-
-        db._applied_fixtures = db._applied_fixtures | set(fixtures)
-
-    if target is not None:
-        return db
-
-    # Post-processing for non-SQL-file fixtures
-    if env not in ["staging", "production"]:
-        # Create topology fixtures. We have to do this as a separate step because these
-        # fixtures are created in Python code and not SQL. We will unify this in the future.
-        ctx = create_topo_context(db)
-        create_topo_fixtures(ctx)
-
+        build_schema(
+            db,
+            env,
+            transform_statement=transform_statement,
+            statement_filter=statement_filter,
+            target=target,
+        )
     return db
 
 

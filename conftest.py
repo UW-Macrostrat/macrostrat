@@ -8,9 +8,9 @@ from pytest import fixture, mark, skip
 from sqlalchemy import make_url
 from typer.testing import CliRunner
 
-from macrostrat.database import Database, drop_database
+from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import template_database, temporary_database
+from macrostrat.database.utils import temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
