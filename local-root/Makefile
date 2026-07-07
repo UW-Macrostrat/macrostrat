@@ -14,24 +14,17 @@ all:
 	uv add "psycopg[binary]"
 
 start-database:
-	# Uses `compose up -d` (not `macrostrat up`) on purpose: starts just this subset,
-	# detached. `macrostrat up` takes a single container and follows logs.
 	macrostrat compose up -d database storage
 
 start-gateway:
-	# Single container -> `macrostrat up gateway` (follows logs).
 	macrostrat up gateway
 
 build-restart:
-	# `macrostrat up` rebuilds the image; --force-recreate replaces the container. Follows logs.
 	macrostrat up --force-recreate api_v3
 
 start-services:
-	# Build + start the whole stack and follow logs (the canonical local-run command).
 	macrostrat up
 stop-services:
-	# `compose stop` (not `macrostrat down`): stops only the app services and leaves
-	# database + storage running. `macrostrat down` would stop + remove EVERYTHING.
 	macrostrat compose stop postgrest api_v2 api_v3 tileserver_core tileserver_legacy tileserver_cache gateway
 stop-gateway:
 	macrostrat compose stop gateway
