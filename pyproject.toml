@@ -12,6 +12,8 @@ dependencies = [
     "macrostrat.core",
     "macrostrat.schema-management",
     "api",
+    "macrostrat.map_utils",
+    "macrostrat.worker[maps]",
     "testcontainers>=4.14.2",
     "psycopg[binary]>=3.3.3",
 ]
@@ -41,6 +43,8 @@ default-groups = [
 "macrostrat.core" = { editable = true, path = "py-modules/core" }
 "macrostrat.schema-management" = { editable = true, path = "py-modules/schema-management" }
 "api" = { editable = true, path = "services/api-v3" }
+"macrostrat.map_utils" = { editable = true, path = "py-modules/map-utils" }
+"macrostrat.worker" = { editable = true, path = "py-modules/worker" }
 
 [tool.black]
 line-length = 88

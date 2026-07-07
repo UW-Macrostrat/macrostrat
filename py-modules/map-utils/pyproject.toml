@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "macrostrat.map_utils"
+version = "0.0.1"
+description = "Lightweight map database + storage operations (no GIS dependencies)"
+authors = [{ name = "Macrostrat" }]
+requires-python = ">=3.11,<4"
+readme = "README.md"
+dependencies = [
+    "macrostrat.database>=4.0.0,<5",
+    "psycopg[binary]>=3.0,<4",
+    "minio>=7.2,<8",
+]
+
+[tool.uv.sources]
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true
