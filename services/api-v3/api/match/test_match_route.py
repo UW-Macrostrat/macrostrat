@@ -248,20 +248,17 @@ def test_multi_match_units(client):
         assert best_match["strat_name_id"] == case.strat_name_id
 
 
-def test_batch_match_units_shared_location(client):
-    """POST a shared location plus a list of (id, strat_name) pairs.
+def test_batch_shared_location_via_query_defaults(client):
+    """Shared location goes in the query string; the body carries per-item names.
 
-    Each input id should be echoed back on its result so callers can correlate,
-    and results should stay one-per-input in order.
+    Each item's `identifier` is echoed back as `id` so callers can correlate,
+    and results stay one-per-input in order.
     """
-    pairs = [(1000 + i, c.match_text) for i, c in enumerate(cases)]
+    items = [{"identifier": 1000 + i, "strat_name": c.match_text} for i, c in enumerate(cases)]
     response = client.post(
         "/strat-names",
-        json={
-            "strat_names": pairs,
-            "lat": cases[0].xy[1],
-            "lng": cases[0].xy[0],
-        },
+        params={"lat": cases[0].xy[1], "lng": cases[0].xy[0]},
+        json=items,
     )
     assert response.status_code == 200
     data = response.json()
@@ -270,9 +267,9 @@ def test_batch_match_units_shared_location(client):
     results = data["results"]
     assert len(results) == len(cases)
 
-    for res, case, (pair_id, _name) in zip(results, cases, pairs):
-        # The supplied id is echoed back for correlation.
-        assert res["id"] == pair_id
+    for res, case, item in zip(results, cases, items):
+        # The supplied identifier is echoed back as `id` for correlation.
+        assert res["id"] == item["identifier"]
 
         matches = res["unit_matches"]
         assert_valid_unit_matches(matches)
@@ -285,15 +282,12 @@ def test_batch_match_units_shared_location(client):
         assert best_match["strat_name_id"] == case.strat_name_id
 
 
-def test_batch_match_units_col_id_and_all_in_body(client):
-    """Batch body accepts col_id instead of lat/lng and reads `all` from the body."""
+def test_batch_col_id_and_all_query_defaults(client):
+    """Shared col_id and all=true come from the query string; body items may be partial."""
     response = client.post(
         "/strat-names",
-        json={
-            "strat_names": [[42, "Mancos"]],
-            "col_id": 490,
-            "all": True,
-        },
+        params={"col_id": 490, "all": True},
+        json=[{"identifier": 42, "strat_name": "Mancos"}],
     )
     assert response.status_code == 200
     data = response.json()
@@ -303,10 +297,36 @@ def test_batch_match_units_col_id_and_all_in_body(client):
 
     matches = results[0]["unit_matches"]
     assert_valid_unit_matches(matches)
-    # all=true (read from the body) should return more than the single best match.
+    # all=true (shared via query) should return more than the single best match.
     priorities = [m["priority"] for m in matches]
     assert priorities == sorted(priorities)
     assert len(matches) > 1
+
+
+def test_batch_item_overrides_query_default(client):
+    """A field set on a body item overrides the shared query-parameter default."""
+    # Shared col_id=490 in the query, but the second item overrides it.
+    response = client.post(
+        "/strat-names",
+        params={"col_id": 490},
+        json=[
+            {"identifier": "a", "strat_name": "Mancos"},
+            {"identifier": "b", "strat_name": "Kaza", "col_id": 495},
+        ],
+    )
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 2
+    assert [r["id"] for r in results] == ["a", "b"]
+
+
+def test_batch_missing_location_returns_422(client):
+    """An item with no location (and no shared default) is a 422, not a 500."""
+    response = client.post(
+        "/strat-names",
+        json=[{"identifier": 1, "strat_name": "Mancos"}],
+    )
+    assert response.status_code == 422
 
 
 def test_match_units_ambiguous_column(client):
