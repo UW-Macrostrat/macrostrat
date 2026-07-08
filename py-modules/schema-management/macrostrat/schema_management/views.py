@@ -107,7 +107,9 @@ def _view_transform(ctx: StatementContext) -> list[StatementDirective] | None:
     m = _VIEW_STMT_RE.match(ctx.sql_text)
     if m is not None and not m.group(1):
         return [
-            StatementDirective(query=_as_create_or_replace(ctx.sql_text), params=ctx.params)
+            StatementDirective(
+                query=_as_create_or_replace(ctx.sql_text), params=ctx.params
+            )
         ]
     return None
 
@@ -202,7 +204,7 @@ def rebuild_views(db: Database, env: str) -> ViewRebuildReport:
             statement,
             transform_statement=_view_transform,
             on_error=recover,
-            raise_errors=True,
+            raise_errors=False,
         )
         report.total += 1
 

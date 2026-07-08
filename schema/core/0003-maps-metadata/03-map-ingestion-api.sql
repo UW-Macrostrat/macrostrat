@@ -34,5 +34,7 @@ SELECT
 FROM maps.sources s
 LEFT JOIN maps_metadata.ingest_process i
   ON s.source_id = i.source_id
+LEFT JOIN tags
+  ON i.id = tags.ingest_process_id
 ORDER BY s.source_id DESC;
 
