@@ -5,7 +5,7 @@ The Celery task-queue **application** and workers for Macrostrat background jobs
 This module owns the *task framework* — the shared Celery app, its broker/result
 configuration, and thin task wrappers. It deliberately keeps its base dependency
 footprint tiny (just `celery[redis]`); the actual domain logic lives in
-light, GIS-free modules like [`macrostrat.map_utils`](../map-utils) and is pulled
+light, GIS-free modules like [`macrostrat.map_utils`](../../py-modules/map-utils) and is pulled
 in through **extras** so each worker image installs only what its tasks need.
 
 ## Layout
@@ -26,7 +26,7 @@ in through **extras** so each worker image installs only what its tasks need.
 ## Running
 
 ```bash
-# Locally (from py-modules/worker, with the `maps` extra installed):
+# Locally (from services/worker, with the `maps` extra installed):
 uv run celery -A macrostrat.worker.app worker -Q maps --loglevel=info
 
 # Enqueue by name from anywhere (no need to import this package):

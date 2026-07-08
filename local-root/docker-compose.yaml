@@ -78,16 +78,16 @@ services:
       - OAUTH_CLIENT_SECRET
       - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
       - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
-  # Celery worker for background tasks. lightweight image and does NOT bundle the GIS stack.
-  #See ../py-modules/cli/celery-worker.Dockerfile.
-  #this is a long-running worker that stays up with the stack and picks up
-  #tasks as they arrive. docker-compose can't spin a container up per-task
+  # Celery worker for background tasks. Lightweight image and does NOT bundle the GIS stack.
+  # This is a long-running worker that stays up with the stack and picks up
+  # tasks as they arrive. docker-compose can't spin a container up per-task.
   celery_worker:
     build:
-      # Context is the whole py-modules dir so the worker's local dep
-      # (macrostrat.map_utils) is available to the build.
-      context: ../py-modules
-      dockerfile: worker/Dockerfile
+      # The worker package is the build context; its local dependency
+      # macrostrat.map_utils (in py-modules) is provided as a named context.
+      context: ../services/worker
+      additional_contexts:
+        py-modules: ../py-modules
     restart: unless-stopped
     command: celery -A macrostrat.worker.app worker -Q maps --loglevel=info --concurrency=2
     environment:
