@@ -1,3 +1,5 @@
+/** Schema for the map ingestion system */
+
 CREATE SCHEMA maps_metadata;
 CREATE SCHEMA IF NOT EXISTS sources;
 
