@@ -4,12 +4,9 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq-dev gcc \
+    && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# macrostrat.map_utils lives in py-modules, supplied as a named build context
-# (see the `additional_contexts` in docker-compose.yaml). The worker package
-# itself is the main build context.
 COPY --from=py-modules map-utils /app/map-utils
 COPY . /app/worker
 
