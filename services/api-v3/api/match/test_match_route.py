@@ -254,7 +254,10 @@ def test_batch_shared_location_via_query_defaults(client):
     Each item's `identifier` is echoed back as `id` so callers can correlate,
     and results stay one-per-input in order.
     """
-    items = [{"identifier": 1000 + i, "strat_name": c.match_text} for i, c in enumerate(cases)]
+    items = [
+        {"identifier": 1000 + i, "strat_name": c.match_text}
+        for i, c in enumerate(cases)
+    ]
     response = client.post(
         "/strat-names",
         params={"lat": cases[0].xy[1], "lng": cases[0].xy[0]},

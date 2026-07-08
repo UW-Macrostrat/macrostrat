@@ -86,8 +86,8 @@ MATCH_STRAT_NAMES_INFO = {
                 "bulk matching by strat_name_id. Each item's optional 'identifier' is echoed "
                 "back as 'id' on the corresponding result for correlation. Example: "
                 "POST /dev/match/strat-names?lat=39.41922&lng=-111.95068&all=true with body "
-                "[{\"identifier\": 932043, \"strat_name\": \"Navajo\"}, "
-                "{\"identifier\": 74382, \"strat_name\": \"Navajo Sandstone\"}].",
+                '[{"identifier": 932043, "strat_name": "Navajo"}, '
+                '{"identifier": 74382, "strat_name": "Navajo Sandstone"}].',
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
