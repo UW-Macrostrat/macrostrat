@@ -331,6 +331,27 @@ def rebuild_views():
         )
 
 
+@schema_app.command(name="rebuild-grants", rich_help_panel="Utils")
+def rebuild_grants():
+    """Re-apply all declared grants (in dependency order)
+
+    Re-runs every [cyan]GRANT[/] / [cyan]REVOKE[/] / [cyan]ALTER DEFAULT PRIVILEGES[/]
+    from the schema. Idempotent — restores the declared permission state, e.g. after
+    a view rebuild dropped a dependent's grants.
+    """
+    from .grants import rebuild_grants as _rebuild_grants
+
+    db = get_database()
+
+    report = _rebuild_grants(db, settings.env)
+
+    db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+    print(f"[dim]{report.applied} grant statements applied")
+    if report.failed:
+        print(f"[yellow]{len(report.failed)} failed (see log)")
+
+
 def _describe_provider(provider) -> str:
     """Human-readable summary of a schema-chunk provider."""
     if isinstance(provider, Path):

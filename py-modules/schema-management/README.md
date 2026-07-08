@@ -33,6 +33,10 @@ builds them.
   recreating (and restoring grants) only when a signature change requires it, via the
   `macrostrat.database` `on_error` recovery hook. Views, functions, and triggers otherwise
   stay diff-managed (migra sequences their drop/recreate around dependent table changes).
+- **`rebuild_grants`** — parallel to the view rebuild: walks the same dependency-ordered chunks
+  and re-runs every `GRANT` / `REVOKE` / `ALTER DEFAULT PRIVILEGES` (idempotent), restoring the
+  declared permission state — e.g. after a view rebuild dropped a dependent's grants.
+  (`macrostrat schema rebuild-grants`.)
 - **Enforced read-only access** (`readonly.py`) — `readonly_login` mints an ephemeral,
   privilege-limited login role (`pg_read_all_data` plus optional impersonation roles) so tests
   against a live database genuinely cannot write; `assert_read_only` fails closed, and

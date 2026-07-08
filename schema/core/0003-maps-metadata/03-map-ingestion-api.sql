@@ -38,3 +38,7 @@ LEFT JOIN tags
   ON i.id = tags.ingest_process_id
 ORDER BY s.source_id DESC;
 
+-- TODO: tighten this to "web_user" and possible only specific users.
+GRANT USAGE ON SCHEMA map_ingestion_api TO web_anon;
+GRANT SELECT ON map_ingestion_api.maps TO web_anon;
+
