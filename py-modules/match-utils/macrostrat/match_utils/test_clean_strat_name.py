@@ -1,24 +1,5 @@
+from ._test_helpers import lith_names_fixture
 from .strat_names import StratRank, clean_strat_name
-
-# using the dev api for now
-"""
-@fixture(scope="module", autouse=True)
-def lith_names(env_db):
-    lith_names = (
-        env_db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
-    )
-    create_ignore_list(lith_names)
-    """
-
-from pytest import fixture
-
-from ._test_helpers import get_test_lith_names
-from .strat_names import create_ignore_list
-
-
-@fixture(autouse=True)
-def initialize_ignore_list_for_tests():
-    create_ignore_list(list(get_test_lith_names()))
 
 
 def test_clean_strat_name():

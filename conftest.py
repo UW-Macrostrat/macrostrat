@@ -5,11 +5,12 @@ from pathlib import Path
 from typing import Optional
 
 from pytest import fixture, mark, skip
+from sqlalchemy import make_url
 from typer.testing import CliRunner
 
-from macrostrat.database import Database
+from macrostrat.database import Database, drop_database
 from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import temp_database
+from macrostrat.database.utils import template_database, temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -160,9 +161,20 @@ def empty_db(request):
     # If we have settings.databases.test defined, do the testing with a local database
     if settings.databases.get("test") and not request.config.getoption("--skip-env"):
         log.info("Using local database for testing")
-        with temp_database(
-            settings.databases["test"], ensure_empty=True, drop=False
-        ) as engine:
+
+        uri = settings.databases["test"]
+        uri = make_url(uri)
+        # https://github.com/psycopg/psycopg2/issues/916
+        # We should probably integrate this into macrostrat.database module
+        # https://github.com/UW-Macrostrat/python-libraries/issues/49
+        uri = uri.set(drivername="postgresql+psycopg")
+        log.info("Database URL: %s", uri)
+
+        # Kludge to make sure we drop the database before creating it.
+        # This solves a subtle
+        with temporary_database(uri, ensure_empty=True, drop=False) as engine:
+            assert engine.url.drivername == "postgresql+psycopg"
+            log.info("Created temporary database: %s", engine.url)
             yield Database(engine)
         return
 
@@ -208,36 +220,15 @@ from macrostrat.core.defs_provider import (
     MacrostratAPIConfig,
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
+    MacrostratDataProvider,
     MacrostratMetadataPopulator,
 )
 
 
-def load_defs(settings, _db, source_db: Optional[Database] = None):
-    # Add data using Macrostrat defs loader, if available
-    base_url = settings.base_url
-    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
-    data_provider = MacrostratAPIDataProvider(cfg)
-    if source_db is not None:
-        data_provider = MacrostratDatabaseDataProvider(source_db)
-        log.info("Loading defs from database: %s", source_db.engine.url)
-    else:
-        log.info("Loading defs from API: %s", cfg.base_url)
-    loader = MacrostratMetadataPopulator(data_provider, _db)
-    loader.populate_all()
-
-
 @fixture(scope="session")
-def test_db_macrostrat_schema_only(request, empty_db: Database):
-    """The database used for testing."""
+def data_provider(request):
     from macrostrat.core import get_database
     from macrostrat.core.config import settings
-
-    db = _apply_schema(
-        empty_db,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-        target="macrostrat",
-    )
 
     source_db = None
     log.info("Attempting to connect to database %s", settings.pg_database)
@@ -248,7 +239,35 @@ def test_db_macrostrat_schema_only(request, empty_db: Database):
             log.warning("Could not connect to environment database: %s", e)
             log.warning("Defs will not be loaded from the API configuration")
 
-    load_defs(settings, db, source_db=source_db)
+    base_url = settings.base_url
+    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
+    data_provider = MacrostratAPIDataProvider(cfg)
+    if source_db is not None:
+        data_provider = MacrostratDatabaseDataProvider(source_db)
+        log.info(
+            "Set up Macrostrat data provider from database: %s", source_db.engine.url
+        )
+    else:
+        log.info("Set up Macrostrat data provider using API: %s", cfg.base_url)
+    yield data_provider
+
+
+@fixture(scope="session")
+def test_db_macrostrat_schema_only(
+    request, empty_db: Database, data_provider: MacrostratDataProvider
+):
+    """The database used for testing."""
+    from macrostrat.core.config import settings
+
+    db = _apply_schema(
+        empty_db,
+        env=settings.env,
+        optimize=request.config.getoption("--optimize-database"),
+        target="macrostrat",
+    )
+
+    loader = MacrostratMetadataPopulator(data_provider, db)
+    loader.populate_all()
     return db
 
 

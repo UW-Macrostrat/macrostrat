@@ -21,15 +21,31 @@ BEGIN
   WHERE source_id = _source_id
   INTO geom;
 
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at getting RGeom for source %', _source_id;
+  END IF;
+
   geom := ST_Transform(geom, _srid);
 
   /** Remove interior rings **/
 
   geom := ST_Multi(ST_CollectionExtract(geom, 3));
 
+  IF geom IS NULL THEN
+    RAISE EXCEPTION 'Failed at getting polygons';
+  END IF;
+
   IF buffer_dist > 0 THEN
-    geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
-    geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+    -- If we haven't set a SRID, then we should use geographic coordinates for the buffer distance.
+    -- We can convert the input distance into lat/long
+    IF _srid = 4326 THEN
+      geom = ST_Buffer(geom::geography, buffer_dist, 'endcap=round join=round');
+      geom = ST_Buffer(geom::geography, -buffer_dist, 'endcap=flat join=mitre');
+      geom = geom::geometry;
+    ELSE
+      geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
+      geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+    END IF;
     IF geom IS NULL THEN
       RAISE EXCEPTION 'Buffering failed';
     END IF;
@@ -77,7 +93,7 @@ BEGIN
   UPDATE map_bounds.map_area
   SET
     geometry = geom,
-    area_km = ST_Area(geom::geography) / 1000000
+    area_km = ST_Area(ST_Segmentize(geometry, 90)::geography) / 1e6
   WHERE id = _source_id;
 
 END;

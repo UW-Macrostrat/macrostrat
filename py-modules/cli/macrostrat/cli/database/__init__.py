@@ -387,3 +387,34 @@ def field_title(name):
     # expand the title to 20 characters
     title = title.ljust(12)
     return "[dim]" + title + "[/]" + " "
+
+
+@db_app.command(
+    name="activity",
+    rich_help_panel="Helpers",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def activity(ctx: typer.Context):
+    """Monitor live database activity with the pg_activity TUI.
+
+    Extra arguments are passed straight through to pg_activity, e.g.
+    `macrostrat db activity --rds --duration-mode backend`.
+    """
+    import sys
+
+    from pgactivity.cli import main as pg_activity_main
+
+    db = get_db()
+    # Strip the SQLAlchemy driver suffix (e.g. "+psycopg") — libpq/pg_activity
+    # want a plain "postgresql://" URI, not the dialect form.
+    dsn = raw_database_url(db.engine.url.set(drivername="postgresql"))
+
+    # pg_activity takes the connection string as a positional argument (a libpq
+    # URI or key/value DSN), with options before it. Drive its argparse-based
+    # entrypoint directly rather than shelling out to the executable.
+    prev_argv = sys.argv
+    sys.argv = ["pg_activity", *ctx.args, dsn]
+    try:
+        pg_activity_main()
+    finally:
+        sys.argv = prev_argv

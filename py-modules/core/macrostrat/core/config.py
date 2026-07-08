@@ -10,9 +10,13 @@ from toml import load as load_toml
 
 from macrostrat.utils import get_logger
 
-from .exc import MacrostratError
 from .resolvers import cast_sources, setup_source_roots_environment
-from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
+from .utils import (
+    convert_to_string,
+    find_macrostrat_config,
+    normalize_macrostrat_env,
+    path_list_resolver,
+)
 
 log = get_logger(__name__)
 
@@ -39,19 +43,29 @@ class MacrostratConfig(Dynaconf):
 
         cfg = find_macrostrat_config()
         settings_files = []
+        should_load_environments = False
+
         if cfg is not None:
             settings_files.append(cfg)
+            env = normalize_macrostrat_env()
+            if env is not None:
+                should_load_environments = True
 
-        env = getenv("MACROSTRAT_ENV")
+        env_kwargs = dict()
+        if should_load_environments:
+            env_kwargs = dict(
+                environments=True,
+                env_switcher="MACROSTRAT_ENV",
+            )
+
         super().__init__(
             envvar_prefix="MACROSTRAT",
-            environments=True,
-            env_switcher="MACROSTRAT_ENV",
             settings_files=settings_files,
             # We load dotenv files on our own
             load_dotenv=False,
+            **env_kwargs,
         )
-        if not hasattr(self, "env"):
+        if not hasattr(self, "env") or not should_load_environments:
             self.env = None
 
         self.config_file = None

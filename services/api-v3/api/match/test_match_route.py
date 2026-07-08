@@ -12,6 +12,7 @@ from macrostrat.match_utils.test_match_strat_names import (
 
 from . import MatchQuery, router, setup_intervals
 
+# TODO: just import the enums from the parent module
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
 valid_spatial_bases = {"containing column", "adjacent column"}
 
@@ -253,7 +254,10 @@ def test_batch_shared_location_via_query_defaults(client):
     Each item's `identifier` is echoed back as `id` so callers can correlate,
     and results stay one-per-input in order.
     """
-    items = [{"identifier": 1000 + i, "strat_name": c.match_text} for i, c in enumerate(cases)]
+    items = [
+        {"identifier": 1000 + i, "strat_name": c.match_text}
+        for i, c in enumerate(cases)
+    ]
     response = client.post(
         "/strat-names",
         params={"lat": cases[0].xy[1], "lng": cases[0].xy[0]},
@@ -480,8 +484,14 @@ def test_match_types_all_true(client):
     assert len(matches) > 1
     assert len(set(priorities)) > 1
 
+    # This is from an adjacent column and a member within the Mancos shale
+    # Graneros Mbr of the Mancos Shale. It should still match.
+    # TODO should we match based on unit name? or just named strat names
     assert any(
-        m["unit_id"] == 15174 and m["strat_name"] == "Mancos Shale" for m in matches
+        m["unit_id"] == 15174
+        and m["strat_name"] == "Mancos Shale"
+        and m["col_id"] == 495
+        for m in matches
     )
 
 

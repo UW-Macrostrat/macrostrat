@@ -153,8 +153,8 @@ def isolated_db(empty_db: Database):
     We use this pattern to ensure that we have a clean database for each test where isolation
     (beyond transaction isolation) is required.
     """
-    with template_database(empty_db) as template_db:
-        yield template_db
+    with template_database(empty_db, close_source_connections=True) as template_db:
+        yield Database(template_db)
 
 
 def test_populates_test_db(isolated_db):

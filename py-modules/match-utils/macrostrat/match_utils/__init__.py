@@ -86,8 +86,8 @@ MATCH_STRAT_NAMES_INFO = {
                 "bulk matching by strat_name_id. Each item's optional 'identifier' is echoed "
                 "back as 'id' on the corresponding result for correlation. Example: "
                 "POST /dev/match/strat-names?lat=39.41922&lng=-111.95068&all=true with body "
-                "[{\"identifier\": 932043, \"strat_name\": \"Navajo\"}, "
-                "{\"identifier\": 74382, \"strat_name\": \"Navajo Sandstone\"}].",
+                '[{"identifier": 932043, "strat_name": "Navajo"}, '
+                '{"identifier": 74382, "strat_name": "Navajo Sandstone"}].',
             },
             "examples": [
                 "/dev/match/strat-names?strat_name=Navajo Sandstone&lat=35.951&lng=-109.905",
@@ -306,6 +306,8 @@ def get_matched_unit(
     if len(rows) == 0:
         return None
 
+    # TODO: the get_all_matched_units function now returns a tuple.
+    # We might choose to fix this
     return rows[0]
 
 
@@ -352,7 +354,8 @@ def get_all_matched_units(
         # true, true is exact match and true, false is concept/included match.
         if not matched:
             continue
-        matched_rows.append((row, is_exact))
+        row["is_exact_name_match"] = is_exact
+        matched_rows.append(row)
         if len(matched_rows) >= n_results:
             return matched_rows
     return matched_rows

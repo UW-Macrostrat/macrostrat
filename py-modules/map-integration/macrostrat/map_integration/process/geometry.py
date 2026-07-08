@@ -1,6 +1,6 @@
 import time
 
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 
 from ..database import get_database, sql_file
 from ..utils import MapInfo, table_exists
@@ -12,9 +12,10 @@ def create_rgeom(
     use_maps_schema: bool = None,
     approach: str = "basic",
     srid: int = 4326,
-    buffer: int = 0,
-    fill_holes: bool = True,
+    buffer: float = 0,
+    fill_holes: bool = False,
     fix_antimeridian: bool = True,
+    database: str = None,
 ):
     """Create a unioned reference geometry for a map source.
 
@@ -22,8 +23,9 @@ def create_rgeom(
         - basic: Dissolves all map polygons into a single geometry.
         - legacy: A more complex, ring-based approach
     """
-    db = get_database()
+    db = database or get_database()
     start = time.time()
+    # TODO: we should run this in a transaction, but it makes tests fail.
     source_id = source.id
 
     q = "SELECT primary_table FROM maps.sources WHERE source_id = :source_id"
@@ -46,6 +48,7 @@ def create_rgeom(
     table = Identifier("sources", name)
     where = "not coalesce(omit, false)"
     geom_column = Identifier("geometry")
+
     if use_maps_schema:
         table = Identifier("maps", "polygons")
         where = "source_id = :source_id"
@@ -53,9 +56,17 @@ def create_rgeom(
     elif not table_exists(db, name, schema="sources"):
         raise ValueError(f"No table found for {name}")
     else:
+
+        # This is a hack to make sure the geometry is a multipolygon
+        # We need to make this more standardized and robust.
+        db.run_sql(
+            "ALTER TABLE {primary_table} RENAME COLUMN geom TO geometry",
+            {"primary_table": table},
+        )
+
         print(f"Validating geometry in sources.{row.primary_table}")
-        q = "UPDATE {primary_table} SET geom = ST_Multi(ST_Buffer(geom, 0))"
-        db.run_query(q, {"primary_table": table})
+        q = "UPDATE {primary_table} SET geometry = ST_Multi(ST_Buffer(geometry, 0))"
+        db.run_sql(q, {"primary_table": table})
 
     print(f"Creating unioned geometry for {source.slug}...")
     db.run_sql(
@@ -79,7 +90,7 @@ def create_rgeom(
        SET rgeom = res.geometry
        FROM res
        WHERE sources.source_id = :source_id;
-    """,
+        """,
         dict(
             source_id=source_id,
             geom_column=geom_column,
@@ -90,8 +101,8 @@ def create_rgeom(
     )
 
     print(f"Creating reference geometry using {approach} approach...")
+    # Running in a transaction is needed for locally scoped variables to work
     with db.transaction():
-        # Running in a transaction is needed for locally scoped variables to work
         db.run_sql(
             sql_file("rgeom/" + approach),
             dict(

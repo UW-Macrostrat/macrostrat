@@ -15,6 +15,17 @@ backend backend-legacy {
 
 # Bypass Varnish if tile has a cache=bypass query parameter
 sub vcl_recv {
+    # Cache invalidation via BAN — only reachable from internal docker network.
+    # The expression is a `req.url ~ <regex>` ban built by the tileserver
+    # (see cache_management.py), evaluated lazily against incoming requests.
+    if (req.method == "BAN") {
+        if (!req.http.X-Ban-Expression) {
+            return(synth(400, "Missing X-Ban-Expression header"));
+        }
+        ban(req.http.X-Ban-Expression);
+        return(synth(200, "Banned"));
+    }
+
     # Set the backend hints to route to the correct upstream
     # For now the index.html route is served from the legacy tileserver
     if (req.url ~ "^/$" || req.url ~ "^/preview$") {

@@ -5,11 +5,9 @@ The tests are not unit tests, as they require actual data to be loaded into
 Macrostrat's database.
 """
 
-from typing import Optional
-
 from pandas import isna
 from pydantic import BaseModel
-from pytest import fixture, mark
+from pytest import mark
 
 from . import (
     ensure_single,
@@ -20,14 +18,8 @@ from . import (
     get_matched_unit,
     standardize_names,
 )
-from ._test_helpers import get_test_lith_names
+from ._test_helpers import lith_names_fixture
 from .models import MatchResult
-from .strat_names import create_ignore_list
-
-
-@fixture(autouse=True)
-def initialize_ignore_list_for_tests():
-    create_ignore_list(list(get_test_lith_names()))
 
 
 class StratTestCaseData(BaseModel):
@@ -133,7 +125,7 @@ def test_match_strat_name(db, case):
     assert len(results) > 0
     surfaced = [
         row
-        for row, _is_exact in results
+        for row in results
         if row["unit_id"] == case.unit_id
         and row["strat_name_id"] == case.strat_name_id
         and row["col_id"] == case.col_id
@@ -156,18 +148,19 @@ def test_strat_name_coerce_to_pydantic(db, case):
                 results.append(result)
     # pick the surfaced match that came from the expected column.
     surfaced = [
-        (row, is_exact)
-        for row, is_exact in results
+        row
+        for row in results
         if row["unit_id"] == case.unit_id
         and row["strat_name_id"] == case.strat_name_id
         and row["col_id"] == case.col_id
     ]
     assert len(surfaced) > 0
-    row, is_exact = surfaced[0]
+    row = surfaced[0]
     vals = dict(row)
     for key, val in vals.items():
         if isna(val):
             vals[key] = None
+    is_exact = vals.pop("is_exact_name_match")
     vals["name_basis"] = "exact" if is_exact else "concept"
     vals["priority"] = 0.0
     vals.pop("basis", None)
@@ -176,15 +169,14 @@ def test_strat_name_coerce_to_pydantic(db, case):
     assert match_result.strat_name_id == case.strat_name_id
 
 
-def test_match_returns_tuple(db):
+def test_match_returns_row(db):
     """get_all_matched_units must return list of (row, is_exact) tuples."""
     names = standardize_names("Navajo Sandstone")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
     assert len(rows) > 0
-    for item in rows:
-        assert isinstance(item, tuple) and len(item) == 2
-        row, is_exact = item
+    for row in rows:
+        is_exact = row.get("is_exact_name_match")
         assert isinstance(is_exact, bool)
 
 
@@ -193,7 +185,7 @@ def test_exact_match_is_exact(db):
     names = standardize_names("Navajo Sandstone")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
-    exact_matches = [row for row, is_exact in rows if is_exact]
+    exact_matches = [row for row in rows if row.get("is_exact_name_match")]
     assert len(exact_matches) > 0
 
 
@@ -204,7 +196,7 @@ def test_partial_name_matches_are_exact_when_cleaned_name_matches(db):
         rows = get_all_matched_units(conn, 490, names)
 
     assert len(rows) > 0
-    assert any(is_exact for _, is_exact in rows)
+    assert any(row.get("is_exact_name_match") for row in rows)
 
 
 def test_match_count(db):
@@ -212,9 +204,9 @@ def test_match_count(db):
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
     assert len(rows) == 2
-    row, is_exact = rows[0]
+    row = rows[0]
     assert row["strat_name"] == "Brady Butte Granodiorite"
-    unit_ids = set(row["unit_id"] for row, _ in rows)
+    unit_ids = set(row["unit_id"] for row in rows)
     assert unit_ids == {1852}
 
 
@@ -223,7 +215,7 @@ def test_spatial_basis_containing_column(db):
     names = standardize_names("Navajo Sandstone")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
-    containing = [row for row, _ in rows if row["spatial_basis"] == "containing column"]
+    containing = [row for row in rows if row["spatial_basis"] == "containing column"]
     assert len(containing) > 0
 
 

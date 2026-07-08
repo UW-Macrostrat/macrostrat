@@ -151,6 +151,9 @@ def filter_schema_by_target(fixtures: list[Path], root_dir: Path, target: str):
         if this_matched:
             matched = True
             yield fixture
+        if not matched:
+            # We haven't reached the end yet
+            yield fixture
         if matched and not this_matched:
             # We've matched a fixture that's not in the target, so we can stop
             return
