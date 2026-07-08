@@ -123,14 +123,11 @@ class OurPostgreSQL(PostgreSQL):
             self.included_schemas = schemas
 
     def filter_schema(self, schema=None, exclude_schema=None):
-        def is_managed_schema(x):
-            return x.schema in self.included_schemas
-
-        comparator = is_managed_schema
-
         for prop in PROPS.split():
             att = getattr(self, prop)
-            filtered = {k: v for k, v in att.items() if comparator(v)}
+            filtered = {
+                k: v for k, v in att.items() if v.schema in self.included_schemas
+            }
             setattr(self, prop, filtered)
 
 
