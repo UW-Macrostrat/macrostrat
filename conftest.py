@@ -107,32 +107,31 @@ def env_config(request):
 # prod, or empty databases as needed.
 
 
-# TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
 def env_db(env_config):
-    """The actually operational database for the current environment."""
+    """A read-only connection to the current environment's database.
+
+    Read-only is *enforced*, not advisory: a throwaway login role (owning no write
+    privileges) is minted for the session and verified before use, so tests
+    against a live environment cannot mutate it. See
+    ``macrostrat.schema_management.readonly``.
+    """
+    from sqlalchemy.exc import DBAPIError, OperationalError
+
+    from macrostrat.schema_management.readonly import assert_read_only, readonly_login
+
+    if env_config is None or env_config.pg_database is None:
+        skip("No environment database configured")
+
+    log.info("Connecting to environment database: %s", env_config.pg_database)
     try:
-        log.info("Connecting to environment database: %s", env_config.pg_database)
-        yield _env_db(env_config)
-    except RuntimeError as e:
-        skip(str(e))
-
-
-def _env_db(env_config):
-    """Helper function to get the environment database without the fixture wrapper."""
-    if env_config is None:
-        raise RuntimeError("No environment configured")
-
-    if env_config.pg_database is None:
-        raise RuntimeError("No database configured for this environment")
-
-    log.info("Connecting to database: %s", env_config.pg_database)
-    db = Database(env_config.pg_database)
-
-    # Change the user on the connection to a read-only user
-    # TODO: verify read-only
-    db.run_sql("SET ROLE web_anon;")
-    return db
+        with readonly_login(env_config.pg_database) as ro_url:
+            db = Database(ro_url)
+            assert_read_only(db)  # fail closed if the connection can write
+            yield db
+            db.engine.dispose()
+    except (RuntimeError, DBAPIError, OperationalError) as e:
+        skip(f"read-only environment database unavailable: {e}")
 
 
 @fixture(scope="class")

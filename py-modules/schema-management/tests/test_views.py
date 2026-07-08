@@ -40,11 +40,11 @@ def test_view_name_unparseable():
 )
 def test_as_create_or_replace(stmt, expected_prefix):
     out = _as_create_or_replace(stmt)
-    assert out.upper().startswith(expected_prefix)
+    assert out.startswith(expected_prefix)
     # Rewriting is idempotent and never doubles the clause.
-    assert out.upper().count("OR REPLACE") == 1
+    assert out.count("OR REPLACE") == 1
     # The body after the view keyword is preserved.
-    assert out.rstrip().endswith("SELECT 1")
+    assert out.rstrip().upper().endswith("SELECT 1")
 
 
 def test_view_statements_in_filters_and_strips_comments():
@@ -61,15 +61,15 @@ def test_view_statements_in_filters_and_strips_comments():
     """
     found = list(view_statements_in(sql))
     assert len(found) == 2
-    assert found[0].startswith("CREATE VIEW s.v")
+    assert found[0].upper().startswith("CREATE VIEW s.v")
     assert found[1].startswith("CREATE OR REPLACE VIEW s.w")
 
 
 @mark.parametrize(
     "sqlstate, pgcode, expected",
     [
-        ("42P16", None, True),   # invalid_table_definition (psycopg3)
-        (None, "42P16", True),   # pgcode fallback (psycopg2-style)
+        ("42P16", None, True),  # invalid_table_definition (psycopg3)
+        (None, "42P16", True),  # pgcode fallback (psycopg2-style)
         ("42804", None, False),  # datatype_mismatch — not a replace conflict
         (None, None, False),
     ],
