@@ -62,6 +62,30 @@ def dependency_closure(chunks: list[SchemaDefinition], target: str) -> set[str]:
     return seen
 
 
+def selected_chunks(
+    env: str, *, target: Optional[str] = None, no_dependents: bool = False
+) -> list[SchemaDefinition]:
+    """Ordered chunks for ``env``, optionally narrowed to a ``target`` subsystem.
+
+    - ``target=None`` → all chunks for the environment.
+    - ``target`` set, ``no_dependents=False`` (default) → the target chunk plus
+      its dependency closure (the chunks it depends on).
+    - ``target`` set, ``no_dependents=True`` → only the target chunk.
+    """
+    from .chunks import chunks_for_environment
+
+    chunks = order_chunks(chunks_for_environment(env))
+    if target is None:
+        return chunks
+
+    names = {c.name for c in chunks}
+    if target not in names:
+        raise ValueError(f"Unknown target {target!r}. Known chunks: {sorted(names)}")
+
+    keep = {target} if no_dependents else dependency_closure(chunks, target)
+    return [c for c in chunks if c.name in keep]
+
+
 def build_schema(
     db: Database,
     env: str,

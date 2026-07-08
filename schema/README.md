@@ -36,12 +36,15 @@ The declarative schema is composed from chunks in dependency order (see the
 its dependency closure is built:
 
 ```
-macrostrat schema graph                 # list chunks, deps, and order
-macrostrat schema provision             # build the full schema
-macrostrat schema provision macrostrat  # build the macrostrat subsystem + deps
+macrostrat schema graph                     # list chunks, deps, and order
+macrostrat schema provision                 # build the full schema
+macrostrat schema provision --target macrostrat   # subsystem + its dependencies
+macrostrat schema sync                      # re-apply views, procedures, and grants
+macrostrat schema sync --target maps --no-dependents   # just one subsystem's
 ```
 
-Tests build schema the same way via `DatabaseTestHarness` (progressively, chunk by chunk).
+`--target` / `--no-dependents` are a shared option block (used by both `provision` and
+`sync`). Tests build schema the same way via `DatabaseTestHarness` (progressively, chunk by chunk).
 
 # Direction
 

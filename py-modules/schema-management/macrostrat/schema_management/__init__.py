@@ -27,6 +27,7 @@ from .defs import (
     is_unsafe_statement,
     planning_database,
 )
+from .rebuild import NO_DEPENDENTS_OPTION, TARGET_OPTION
 from .inspect_utils import *
 from .inspect_utils import _any, _not
 
@@ -283,73 +284,78 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def provision(target: str = Argument(None, help="Subsystem to build (with its dependencies)")):
+def provision(
+    target: str = TARGET_OPTION,
+    no_dependents: bool = NO_DEPENDENTS_OPTION,
+):
     """Apply schema objects to the database
 
-    With TARGET (a subsystem/chunk name, e.g. [cyan]macrostrat[/]), apply only
-    that subsystem and its dependencies; otherwise build the full schema. Use
-    [cyan]macrostrat schema graph[/] to list available subsystems.
+    With [cyan]--target[/] (a subsystem/chunk name, e.g. [cyan]macrostrat[/]), apply
+    only that subsystem and its dependencies — add [cyan]--no-dependents[/] for just
+    the chunk; otherwise build the full schema. Use [cyan]macrostrat schema graph[/]
+    to list available subsystems.
 
     TODO: filter out non-idempotent statements (table creation, etc.)
     """
+    from .composer import selected_chunks
+
     db = get_database()
 
-    environment = settings.env
-
     counter = StatementCounter(safe=True)
+    chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
     apply_schema_for_environment(
-        db, environment, statement_filter=counter.filter, target=target
+        db, settings.env, statement_filter=counter.filter, chunks=chunks
     )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()
 
 
+def _report(label: str, applied: int, failed: int):
+    msg = f"[dim]{applied} {label} applied"
+    if failed:
+        msg += f" ([yellow]{failed} failed[/])"
+    print(msg)
+
+
 @schema_app.command(rich_help_panel="Utils")
-def rebuild_views():
-    """Rebuild all views
+def sync(
+    views: bool = Option(True, "--views/--no-views", help="Rebuild views"),
+    procedures: bool = Option(
+        True, "--procedures/--no-procedures", help="Rebuild functions/procedures"
+    ),
+    permissions: bool = Option(
+        True, "--permissions/--no-permissions", help="Re-apply grants"
+    ),
+    target: str = TARGET_OPTION,
+    no_dependents: bool = NO_DEPENDENTS_OPTION,
+):
+    """Re-apply non-data-modifying schema objects: views, procedures, and grants.
 
-    Re-applies every view with [cyan]CREATE OR REPLACE[/] (preserving grants and
-    dependents), dropping and recreating only those whose output signature changed.
+    These idempotent objects may be interleaved with other schema; this re-applies
+    them without a full [cyan]plan[/]/[cyan]apply[/] cycle. Select a subset with
+    [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
     """
-    from .views import rebuild_views as _rebuild_views
+    from .composer import selected_chunks
+    from .grants import rebuild_grants
+    from .procedures import rebuild_procedures
+    from .views import rebuild_views
 
     db = get_database()
+    chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
-    report = _rebuild_views(db, settings.env)
-
-    db.run_sql("NOTIFY pgrst, 'reload schema';")
-
-    print(f"[dim]{report.replaced} views replaced")
-    if report.recreated:
-        print(
-            f"[yellow]{len(report.recreated)} dropped & recreated "
-            f"(signature changed, grants restored): {', '.join(report.recreated)}"
-        )
-        print(
-            "[dim]Note: views cascade-dropped as dependents are recreated but may "
-            "need grants reapplied via [cyan]macrostrat schema provision[/]."
-        )
-
-
-@schema_app.command(name="rebuild-grants", rich_help_panel="Utils")
-def rebuild_grants():
-    """Re-apply all declared grants (in dependency order)
-
-    Re-runs every [cyan]GRANT[/] / [cyan]REVOKE[/] / [cyan]ALTER DEFAULT PRIVILEGES[/]
-    from the schema. Idempotent — restores the declared permission state, e.g. after
-    a view rebuild dropped a dependent's grants.
-    """
-    from .grants import rebuild_grants as _rebuild_grants
-
-    db = get_database()
-
-    report = _rebuild_grants(db, settings.env)
+    # Dependencies first (functions before the views that call them); grants last.
+    if procedures:
+        r = rebuild_procedures(db, chunks)
+        _report("procedures", r.applied, len(r.failed))
+    if views:
+        r = rebuild_views(db, chunks)
+        extra = f", {len(r.recreated)} recreated" if r.recreated else ""
+        print(f"[dim]{r.replaced} views replaced{extra}")
+    if permissions:
+        r = rebuild_grants(db, chunks)
+        _report("grants", r.applied, len(r.failed))
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
-
-    print(f"[dim]{report.applied} grant statements applied")
-    if report.failed:
-        print(f"[yellow]{len(report.failed)} failed (see log)")
 
 
 def _describe_provider(provider) -> str:

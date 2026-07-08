@@ -15,20 +15,16 @@ dependency-ordered pass.
 
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Iterator
 
 import sqlparse
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
 
-from macrostrat.core.schema_definition import sql_files
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.utils import get_logger
 
-from .chunks import chunks_for_environment
-from .composer import order_chunks
+from .rebuild import iter_chunk_statements
 
 log = get_logger(__name__)
 
@@ -56,18 +52,9 @@ def view_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_view_statements(env: str) -> Iterator[str]:
-    """Yield ``CREATE VIEW`` statements for ``env`` in dependency/apply order.
-
-    Only file-backed providers are scanned; function-backed providers (e.g.
-    topology) manage their own objects and are skipped.
-    """
-    for chunk in order_chunks(chunks_for_environment(env)):
-        for provider in chunk.provides:
-            if not isinstance(provider, Path):
-                continue
-            for f in sql_files(provider):
-                yield from view_statements_in(f.read_text())
+def iter_view_statements(chunks) -> Iterator[str]:
+    """Yield ``CREATE VIEW`` statements from ``chunks``, in dependency/apply order."""
+    yield from iter_chunk_statements(chunks, view_statements_in)
 
 
 # --- statement helpers ----------------------------------------------------
@@ -182,8 +169,8 @@ def _make_recovery(report: ViewRebuildReport):
     return recover
 
 
-def rebuild_views(db: Database, env: str) -> ViewRebuildReport:
-    """Re-apply all views for ``env``, dropping and recreating only when needed.
+def rebuild_views(db: Database, chunks) -> ViewRebuildReport:
+    """Re-apply the views in ``chunks``, dropping and recreating only when needed.
 
     Runs each view through the database library's find-run loop; the drop/recreate
     fallback and grant restoration are handled by an ``on_error`` recovery hook.
@@ -191,7 +178,7 @@ def rebuild_views(db: Database, env: str) -> ViewRebuildReport:
     report = ViewRebuildReport()
     recover = _make_recovery(report)
 
-    for statement in iter_view_statements(env):
+    for statement in iter_view_statements(chunks):
         db.run_sql(
             statement,
             transform_statement=_view_transform,

@@ -29,14 +29,22 @@ builds them.
   backed by `migra`) reconciles structure against the composed ideal; stateful `Migration`
   classes (`macrostrat schema migrate`) handle transitions the diff can't express — renames,
   backfills, data-dependent changes — gated by pre/postconditions.
-- **`rebuild_views`** re-applies views as code: `CREATE OR REPLACE` by default, dropping and
-  recreating (and restoring grants) only when a signature change requires it, via the
-  `macrostrat.database` `on_error` recovery hook. Views, functions, and triggers otherwise
-  stay diff-managed (migra sequences their drop/recreate around dependent table changes).
-- **`rebuild_grants`** — parallel to the view rebuild: walks the same dependency-ordered chunks
-  and re-runs every `GRANT` / `REVOKE` / `ALTER DEFAULT PRIVILEGES` (idempotent), restoring the
-  declared permission state — e.g. after a view rebuild dropped a dependent's grants.
-  (`macrostrat schema rebuild-grants`.)
+- **`macrostrat schema sync`** re-applies the non-data-modifying schema objects — **views**,
+  **procedures/functions**, and **grants** — without a full `plan`/`apply` cycle. They're
+  idempotent and often interleaved with other DDL. Select a subset with `--no-views` /
+  `--no-procedures` / `--no-permissions`, and restrict to a subsystem with the shared
+  `--target` / `--no-dependents` option block (see below). Per category:
+    - *views* (`views.py`) — `CREATE OR REPLACE` by default; drop-and-recreate (restoring grants)
+      only on a signature change (SQLSTATE 42P16), via the `macrostrat.database` `on_error` hook.
+    - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; signature changes
+      are left to the diff.
+    - *grants* (`grants.py`) — re-run every `GRANT` / `REVOKE` / `ALTER DEFAULT PRIVILEGES`.
+
+  Views, functions, and triggers otherwise stay diff-managed (migra sequences their drop/recreate
+  around dependent table changes); `sync` is a convenience for re-asserting them.
+- **Shared `--target` / `--no-dependents` option block** (`rebuild.py`) — reused by `sync` and
+  `provision`. `--target NAME` restricts to a subsystem; its dependency closure is included unless
+  `--no-dependents`. Resolved by `composer.selected_chunks`.
 - **Enforced read-only access** (`readonly.py`) — `readonly_login` mints an ephemeral,
   privilege-limited login role (`pg_read_all_data` plus optional impersonation roles) so tests
   against a live database genuinely cannot write; `assert_read_only` fails closed, and

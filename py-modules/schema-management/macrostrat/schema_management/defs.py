@@ -63,12 +63,15 @@ def apply_schema_for_environment(
     transform_statement=None,
     suppress_logging: bool = True,
     target: str | None = None,
+    chunks=None,
 ):
     """Build the declarative schema for ``env``.
 
     :param target: a subsystem (chunk) name; when given, only that chunk and its
         transitive dependencies are applied. When omitted, the full schema for
         the environment is built.
+    :param chunks: a pre-resolved chunk list (e.g. from ``selected_chunks``);
+        takes precedence over ``target``.
     """
     _suppressed_loggers = []
     if suppress_logging:
@@ -78,6 +81,7 @@ def apply_schema_for_environment(
         build_schema(
             db,
             env,
+            chunks,
             transform_statement=transform_statement,
             statement_filter=statement_filter,
             target=target,
