@@ -23,7 +23,7 @@ build-restart:
 	macrostrat up --force-recreate api_v3
 
 start-services:
-	macrostrat up
+	macrostrat --verbose up
 stop-services:
 	macrostrat compose stop postgrest api_v2 api_v3 tileserver_core tileserver_legacy tileserver_cache gateway
 stop-gateway:

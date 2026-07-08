@@ -383,7 +383,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                 cookie_domain = ".".join(parts[-2:])
                 # Must be the string "none" (not Python None, which drops the attribute and defaults to Lax). lets the
                 # cookie allow cross-site fetches from http://localhost:3000 to https://macrostrat.local.
-                samesite = "none"
+                samesite = None
 
             log.info("Redirecting to %s", cookie_domain)
 

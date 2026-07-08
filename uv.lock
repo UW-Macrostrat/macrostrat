@@ -912,7 +912,6 @@ name = "macrostrat-cli"
 version = "3.0.0"
 source = { editable = "py-modules/cli" }
 dependencies = [
-    { name = "celery", extra = ["redis"] },
     { name = "click" },
     { name = "docker" },
     { name = "dynaconf" },
@@ -961,7 +960,6 @@ gis = [
 
 [package.metadata]
 requires-dist = [
-    { name = "celery", extras = ["redis"], specifier = ">=5.3,<6" },
     { name = "click", specifier = ">=8.1.0,<8.4.0" },
     { name = "docker", specifier = ">=7,<8" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
@@ -1137,6 +1135,7 @@ dependencies = [
     { name = "ipython" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
+    { name = "macrostrat-map-utils" },
     { name = "minio" },
     { name = "numpy" },
     { name = "psycopg" },
@@ -1164,6 +1163,7 @@ requires-dist = [
     { name = "ipython", specifier = ">=8.5.0,<10" },
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "minio", specifier = ">=7.2.5,<8" },
     { name = "numpy", specifier = ">=2.0.0,<3" },
     { name = "psycopg", specifier = ">=3.0.0,<4" },
@@ -1206,6 +1206,23 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
     { name = "pytest", specifier = ">=8.3.4,<10" },
+]
+
+[[package]]
+name = "macrostrat-map-utils"
+version = "0.0.1"
+source = { editable = "py-modules/map-utils" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "minio" },
+    { name = "psycopg", extra = ["binary"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "minio", specifier = ">=7.2,<8" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.0,<4" },
 ]
 
 [[package]]
@@ -1274,8 +1291,10 @@ dependencies = [
     { name = "api" },
     { name = "macrostrat-cli" },
     { name = "macrostrat-core" },
+    { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-schema-management" },
+    { name = "macrostrat-worker", extra = ["maps"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "setuptools" },
     { name = "testcontainers" },
@@ -1296,8 +1315,10 @@ requires-dist = [
     { name = "api", editable = "services/api-v3" },
     { name = "macrostrat-cli", editable = "py-modules/cli" },
     { name = "macrostrat-core", editable = "py-modules/core" },
+    { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
+    { name = "macrostrat-worker", extras = ["maps"], editable = "py-modules/worker" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.3" },
     { name = "setuptools", specifier = ">=75.8.2,<81.0.0" },
     { name = "testcontainers", specifier = ">=4.14.2" },
@@ -1323,6 +1344,26 @@ sdist = { url = "https://files.pythonhosted.org/packages/cd/3d/2b217734378124f42
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1d/72/d02baf7073bd92332943c990249b4a3a372cbd117fec2ab69bce26b7ad4e/macrostrat_utils-1.3.3-py3-none-any.whl", hash = "sha256:c8533ac2850e7beaa7d3630b567c9acf99d8d5de75afd9be780b8aa5b5900396", size = 5009, upload-time = "2026-04-29T15:32:28.689Z" },
 ]
+
+[[package]]
+name = "macrostrat-worker"
+version = "0.0.1"
+source = { editable = "py-modules/worker" }
+dependencies = [
+    { name = "celery", extra = ["redis"] },
+]
+
+[package.optional-dependencies]
+maps = [
+    { name = "macrostrat-map-utils" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "celery", extras = ["redis"], specifier = ">=5.3,<6" },
+    { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
+]
+provides-extras = ["maps"]
 
 [[package]]
 name = "mapboard-topology-manager"
