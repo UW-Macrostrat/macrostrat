@@ -16,11 +16,6 @@ log = get_logger(__name__)
 
 __here__ = Path(__file__).parent
 
-from macrostrat.core.defs_provider import (
-    MacrostratDatabaseDataProvider,
-    MacrostratMetadataPopulator,
-)
-
 
 @fixture(scope="class")
 def db(test_db_macrostrat_schema_only: Database, env_db: Database):
@@ -28,14 +23,10 @@ def db(test_db_macrostrat_schema_only: Database, env_db: Database):
     We use this pattern to ensure that we have a clean database for each test where isolation
     (beyond transaction isolation) is required.
     """
-    db = test_db_macrostrat_schema_only
-    #
-    # # Populate metadata (intervals, etc.) from the "live" Macrostrat database
-    _provider = MacrostratDatabaseDataProvider(env_db)
-    MacrostratMetadataPopulator(_provider, db).populate_all()
-
     log.info("Setting up template database")
-    with template_database(db, close_source_connections=True) as engine:
+    with template_database(
+        test_db_macrostrat_schema_only, close_source_connections=True
+    ) as engine:
         yield Database(engine)
 
 

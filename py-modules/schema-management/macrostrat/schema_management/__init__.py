@@ -283,8 +283,12 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def provision(pattern: str = Argument("*")):
-    """Apply all schema objects to the database
+def provision(target: str = Argument(None, help="Subsystem to build (with its dependencies)")):
+    """Apply schema objects to the database
+
+    With TARGET (a subsystem/chunk name, e.g. [cyan]macrostrat[/]), apply only
+    that subsystem and its dependencies; otherwise build the full schema. Use
+    [cyan]macrostrat schema graph[/] to list available subsystems.
 
     TODO: filter out non-idempotent statements (table creation, etc.)
     """
@@ -294,7 +298,7 @@ def provision(pattern: str = Argument("*")):
 
     counter = StatementCounter(safe=True)
     apply_schema_for_environment(
-        db, environment, statement_filter=counter.filter, pattern=pattern
+        db, environment, statement_filter=counter.filter, target=target
     )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()
@@ -325,3 +329,57 @@ def rebuild_views():
             "[dim]Note: views cascade-dropped as dependents are recreated but may "
             "need grants reapplied via [cyan]macrostrat schema provision[/]."
         )
+
+
+def _describe_provider(provider) -> str:
+    """Human-readable summary of a schema-chunk provider."""
+    if isinstance(provider, Path):
+        try:
+            return str(provider.relative_to(settings.srcroot))
+        except ValueError:
+            return str(provider)
+    name = getattr(provider, "__name__", repr(provider))
+    module = getattr(provider, "__module__", "")
+    return f"{name}() [dim]{module}[/]"
+
+
+@schema_app.command(name="graph", rich_help_panel="Automated migrations")
+def graph(
+    env: str = Option(
+        None, "--env", help="Environment to inspect (defaults to the active env)"
+    ),
+):
+    """Show schema chunks, their dependencies, and application order"""
+    from rich.table import Table
+
+    from .chunks import all_chunks, chunks_for_environment
+    from .composer import order_chunks
+
+    environment = env or settings.env
+
+    selected = chunks_for_environment(environment)
+    ordered = order_chunks(selected)
+
+    table = Table(title=f"Schema chunks — [bold cyan]{environment}[/]")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Chunk", style="bold cyan")
+    table.add_column("Depends on")
+    table.add_column("Provides")
+    table.add_column("Environments")
+
+    for i, chunk in enumerate(ordered, start=1):
+        deps = ", ".join(chunk.depends_on) or "[dim]—[/]"
+        provides = "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
+        envs = (
+            ", ".join(sorted(chunk.environments))
+            if chunk.environments is not None
+            else "[dim]all[/]"
+        )
+        table.add_row(str(i), chunk.name, deps, provides, envs)
+
+    print(table)
+
+    selected_names = {c.name for c in selected}
+    excluded = [c.name for c in all_chunks() if c.name not in selected_names]
+    if excluded:
+        print(f"[dim]Not applied in [bold]{environment}[/]: {', '.join(excluded)}[/]")

@@ -1,4 +1,3 @@
-import logging
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -10,8 +9,9 @@ from rich import print
 from macrostrat.core.config import settings
 from macrostrat.database import Database
 from macrostrat.dinosaur.cluster import database_cluster
-from macrostrat.map_topology import create_topo_context, create_topo_fixtures
 from macrostrat.utils.logs import get_logger, suppress_loggers
+
+from .composer import build_schema
 
 log = get_logger(__name__)
 
@@ -59,104 +59,30 @@ def apply_schema_for_environment(
     db: Database,
     env: str,
     *,
-    recursive: bool = True,
     statement_filter=None,
     transform_statement=None,
-    suppress_logging: bool = False,
-    pattern: str = "*",
+    suppress_logging: bool = True,
     target: str | None = None,
 ):
+    """Build the declarative schema for ``env``.
+
+    :param target: a subsystem (chunk) name; when given, only that chunk and its
+        transitive dependencies are applied. When omitted, the full schema for
+        the environment is built.
     """
+    _suppressed_loggers = []
+    if suppress_logging:
+        _suppressed_loggers = ["sqlalchemy.engine", "macrostrat.database.query"]
 
-    :param db:
-    :param env:
-    :param recursive:
-    :param statement_filter:
-    :param transform_statement:
-    :param suppress_logging:
-    :param pattern:
-    :param target: Only apply fixtures up to a specific target string.
-    :return:
-    """
-    if "*" not in pattern:
-        pattern = f"*{pattern}*"
-
-    # Create a cache to avoid re-applying the same fixtures on successive runs
-    if not hasattr(db, "_applied_fixtures"):
-        db._applied_fixtures = set()
-
-    for env_dir in schema_dirs_for_environment(env):
-        schema_dir = env_dir
-        if not schema_dir.exists():
-            continue
-
-        func = schema_dir.rglob if recursive else schema_dir.glob
-        fixtures = sorted(list(func(pattern + ".sql")))
-        fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
-
-        if target is not None:
-            fixtures = list(filter_schema_by_target(fixtures, schema_dir, target))
-
-        # Remove any fixtures that have already been applied
-        fixtures = [f for f in fixtures if f.name not in db._applied_fixtures]
-
-        if len(fixtures) == 0:
-            continue
-        _suppressed_loggers = []
-        if suppress_logging:
-            _suppressed_loggers = [
-                "sqlalchemy.engine",
-                "macrostrat.database.utils",
-            ]
-
-        with suppress_loggers(*_suppressed_loggers):
-            db.run_fixtures(
-                fixtures,
-                recursive=recursive,
-                statement_filter=statement_filter,
-                transform_statement=transform_statement,
-                print_skipped=False,
-            )
-
-        db._applied_fixtures = db._applied_fixtures | set(fixtures)
-
-    if target is not None:
-        return db
-
-    # Post-processing for non-SQL-file fixtures
-    if env not in ["staging", "production"]:
-        # Create topology fixtures. We have to do this as a separate step because these
-        # fixtures are created in Python code and not SQL. We will unify this in the future.
-        ctx = create_topo_context(db)
-        create_topo_fixtures(ctx)
-
+    with suppress_loggers(*_suppressed_loggers):
+        build_schema(
+            db,
+            env,
+            transform_statement=transform_statement,
+            statement_filter=statement_filter,
+            target=target,
+        )
     return db
-
-
-def filter_schema_by_target(fixtures: list[Path], root_dir: Path, target: str):
-    """Filter a list of fixtures to only include those that occur before a target string is matched.
-    Used to apply an internally-consistent subset of fixtures to a database."""
-    matched = False
-    for fixture in fixtures:
-        rel_path = fixture.relative_to(root_dir)
-        this_matched = False
-        for part in rel_path.parts:
-            if "-" in part:
-                part = part.split("-")[1]
-            if "." in part:
-                part = part.split(".")[0]
-            if target == part:
-                this_matched = True
-                break
-        if this_matched:
-            matched = True
-            yield fixture
-        if not matched:
-            # We haven't reached the end yet
-            yield fixture
-        if matched and not this_matched:
-            # We've matched a fixture that's not in the target, so we can stop
-            return
 
 
 @contextmanager
