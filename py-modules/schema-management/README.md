@@ -22,3 +22,34 @@ ordered by a dependency graph, rather than by filename:
 
 `macrostrat schema graph` lists the chunks and order; `macrostrat schema provision [TARGET]`
 builds them.
+
+## Other capabilities
+
+- **Two migration models.** A stateless, diff-based flow (`macrostrat schema plan` / `apply`,
+  backed by `migra`) reconciles structure against the composed ideal; stateful `Migration`
+  classes (`macrostrat schema migrate`) handle transitions the diff can't express — renames,
+  backfills, data-dependent changes — gated by pre/postconditions.
+- **`rebuild_views`** re-applies views as code: `CREATE OR REPLACE` by default, dropping and
+  recreating (and restoring grants) only when a signature change requires it, via the
+  `macrostrat.database` `on_error` recovery hook. Views, functions, and triggers otherwise
+  stay diff-managed (migra sequences their drop/recreate around dependent table changes).
+- **Enforced read-only access** (`readonly.py`) — `readonly_login` mints an ephemeral,
+  privilege-limited login role (`pg_read_all_data` plus optional impersonation roles) so tests
+  against a live database genuinely cannot write; `assert_read_only` fails closed, and
+  `as_role` runs reads as a specific role for grant / RLS testing.
+- **Testing** — `DatabaseTestHarness` builds schema progressively; a drift test asserts the
+  declarative build has an empty `plan` against its own freshly-built ideal.
+
+## Direction
+
+The composer is in place, but the reorientation to fully modular subsystems is **not finished**.
+Intended next steps:
+
+- **Colocate** each subsystem's `.sql` with its owning module (as `map-topology` already does
+  with `TopologySchema`), and *discover* chunks rather than listing them centrally in `chunks.py`.
+- **Decompose `core`** (today `public → macrostrat → core`-remainder) into finer named subsystems
+  with real `depends_on` edges.
+- **Unify migrations into the chunk graph** so a `SchemaDefinition` owns both its declarative
+  providers and its condition-gated `Migration`s — a subsystem's structure, transitions, and seed
+  data in one place.
+- **Template-database isolation** for faster, hermetic test databases.
