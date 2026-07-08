@@ -23,6 +23,7 @@ dependencies = [
     "pyogrio>=0.12.1,<0.13",
     "psycopg>=3.0.0,<4",
     "macrostrat.core",
+    "macrostrat.map_utils",
 ]
 
 [project.scripts]
@@ -49,6 +50,7 @@ default-groups = [
 
 [tool.uv.sources]
 "macrostrat.core" = { path = "../core", editable = true }
+"macrostrat.map_utils" = { path = "../map-utils", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

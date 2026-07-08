@@ -25,6 +25,7 @@ from macrostrat.map_integration.utils.ingestion_utils import (
 )
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *
+from macrostrat.map_utils import StorageConfig, delete_map
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -89,6 +90,21 @@ sources.add_command(copy_macrostrat_sources, name="copy")
 sources.add_command(map_sources, name="list")
 
 
+def _staging_storage_config() -> "StorageConfig | None":
+    """Build a StorageConfig from Macrostrat settings, or None if unconfigured."""
+    endpoint = app.settings.get("storage.endpoint")
+    bucket = app.settings.get("storage.bucket_name")
+    if not endpoint or not bucket:
+        return None
+    return StorageConfig(
+        endpoint=endpoint,
+        access_key=app.settings.get("storage.access_key"),
+        secret_key=app.settings.get("storage.secret_key"),
+        bucket=bucket,
+        secure=True,
+    )
+
+
 @sources.command(name="delete")
 def delete_sources(
     slug: list[str] = Argument(
@@ -115,62 +131,21 @@ def delete_sources(
         print("\nDry run; not actually deleting anything")
         return
 
+    storage = _staging_storage_config()
     for s in slug:
         print(f"Deleting map {s}")
-        tables = db.run_query(
-            "SELECT primary_table, primary_line_table FROM maps.sources WHERE slug = :slug",
-            dict(slug=s),
-        ).fetchone()
-
-        line_table = None
-        poly_table = None
-        if tables is not None:
-            line_table = tables.primary_line_table
-            poly_table = tables.primary_table
-
-        if line_table is None:
-            line_table = f"{s}_lines"
-        if poly_table is None:
-            poly_table = f"{s}_polygons"
-        points_table = f"{s}_points"
-
-        for table in [line_table, poly_table, points_table]:
-            db.run_sql(
-                "DROP TABLE IF EXISTS {table}",
-                dict(table=Identifier("sources", table)),
-            )
-
-        staging_delete_dir(s, db)
-
-        source_id = db.run_query(
-            "SELECT source_id FROM maps.sources WHERE slug = :slug",
-            dict(slug=s),
-        ).scalar()
-
-        # Delete ALL ingest-related rows for this source
-        db.run_sql(
-            """
-            DELETE FROM maps_metadata.ingest_process_tag
-            WHERE ingest_process_id IN (
-                SELECT id FROM maps_metadata.ingest_process
-                WHERE source_id = :source_id
-            )
-            """,
-            dict(source_id=source_id),
-        )
-
-        db.run_sql(
-            """
-            DELETE FROM maps_metadata.ingest_process
-            WHERE source_id = :source_id
-            """,
-            dict(source_id=source_id),
-        )
-
+        # The published-data (`--all-data`) removal needs the source_id while the
+        # source row still exists, so handle it here before delegating the
+        # staging delete to the shared, GIS-free helper in macrostrat.map_utils.
         if all_data:
-            _delete_map_data(source_id)
+            source_id = db.run_query(
+                "SELECT source_id FROM maps.sources WHERE slug = :slug",
+                dict(slug=s),
+            ).scalar()
+            if source_id is not None:
+                _delete_map_data(source_id)
 
-        db.run_sql("DELETE FROM maps.sources WHERE slug = :slug", dict(slug=s))
+        delete_map(db, s, storage=storage)
 
 
 @cli.command(name="change-slug")

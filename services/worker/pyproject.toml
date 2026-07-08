@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "macrostrat.worker"
+version = "0.0.1"
+description = "Celery task-queue app and workers for Macrostrat background jobs"
+authors = [{ name = "Macrostrat" }]
+requires-python = ">=3.11,<4"
+readme = "README.md"
+dependencies = [
+    "celery[redis]>=5.3,<6",
+]
+
+[project.optional-dependencies]
+maps = [
+    "macrostrat.map_utils",
+]
+
+[tool.uv.sources]
+"macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[tool.mypy]
+explicit_package_bases = true
+namespace_packages = true

@@ -6,6 +6,7 @@ import api.models.object as Object
 import api.schemas as schemas
 import minio
 import starlette.requests
+from api.celery_app import celery_app
 from api.database import get_async_session, get_engine
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
@@ -13,7 +14,10 @@ from api.schemas import IngestProcess as IngestProcessSchema
 from api.schemas import IngestProcessTag, MapFiles
 from api.schemas import Object as ObjectORM
 from api.schemas import Sources
+from celery.exceptions import TimeoutError as CeleryTimeoutError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
 from starlette.responses import Response
@@ -23,6 +27,84 @@ router = APIRouter(
     tags=["ingest-process"],
     responses={404: {"description": "Not found"}},
 )
+
+
+class DeleteMapRequest(BaseModel):
+    slug: str
+
+
+# How long the API waits for the Celery delete task to finish before giving up.
+# Override with the DELETE_TASK_TIMEOUT env var (seconds).
+DELETE_TASK_TIMEOUT = float(os.environ.get("DELETE_TASK_TIMEOUT", "30"))
+
+
+@router.post("/delete-map")
+async def delete_map(
+    request: DeleteMapRequest, user_has_access: bool = Depends(has_access)
+):
+    """Delete a staged map via the Celery worker, surfacing any failure.
+
+    The task runs in the `celery_worker` container (calling `macrostrat.map_utils`).
+    We enqueue it and wait for the result so errors can be returned to the caller
+    for debugging rather than failing silently:
+
+    * 403 — caller lacks access
+    * 503 — task couldn't be enqueued (broker / Celery container unreachable)
+    * 504 — no worker finished it within DELETE_TASK_TIMEOUT (worker down, or
+            nothing consuming the `maps` queue)
+    * 502 — error talking to the result backend while waiting
+    * 500 — the task itself raised in the worker (includes the worker-side error
+            message and traceback from map_utils / the DB / etc.)
+    """
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="User does not have access to delete a map"
+        )
+
+    #Enqueue. A failure here means the broker (Redis / Celery container) is
+    #unreachable.
+    try:
+        task = celery_app.send_task("macrostrat.maps.delete", args=[request.slug])
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not enqueue delete task — is the Celery broker reachable? {e}",
+        )
+
+    #Wait for the worker to finish within DELETE_TASK_TIMEOUT timeframe.
+    try:
+        result = await run_in_threadpool(
+            task.get, timeout=DELETE_TASK_TIMEOUT, propagate=False
+        )
+    except CeleryTimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"Delete task {task.id} for slug '{request.slug}' did not finish "
+                f"within {DELETE_TASK_TIMEOUT:.0f}s. It may still be running, or no "
+                f"worker is consuming the 'maps' queue (check the celery_worker "
+                f"container)."
+            ),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error while waiting for delete task {task.id}: {e}",
+        )
+
+    #The task ran but error raised inside the map_utils function
+    if task.failed():
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"Delete task failed for slug '{request.slug}'",
+                "task_id": task.id,
+                "error": str(task.result),
+                "traceback": task.traceback,
+            },
+        )
+
+    return {"task_id": task.id, "slug": request.slug, "result": result}
 
 
 @router.get("", response_model=list[IngestProcessModel.Get])
