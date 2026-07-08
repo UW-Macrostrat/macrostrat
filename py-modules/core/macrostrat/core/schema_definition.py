@@ -59,22 +59,28 @@ class SchemaDefinition:
                 )
 
 
+def sql_files(path: Path) -> list[Path]:
+    """The ``.sql`` files at ``path``, in filename order.
+
+    ``path`` may be a directory (recursed, sorted by path) or a single ``.sql``
+    file; ``*.plan.sql`` files are always skipped. A path that exists as neither
+    yields no files. Shared by every ``Path`` provider so file discovery is
+    defined in exactly one place.
+    """
+    if path.is_dir():
+        files = sorted(path.rglob("*.sql"))
+    elif path.is_file():
+        files = [path]
+    else:
+        files = []
+    return [f for f in files if not f.name.endswith(".plan.sql")]
+
+
 def apply_sql_path(
     db: Database, path: Path, *, transform_statement=None, statement_filter=None
 ) -> None:
-    """Apply the ``.sql`` file(s) at ``path`` in filename order.
-
-    ``path`` may be a directory (applied recursively, sorted by path) or a single
-    ``.sql`` file. ``*.plan.sql`` files are always skipped.
-    """
-    if path.is_dir():
-        fixtures = sorted(path.rglob("*.sql"))
-    elif path.is_file():
-        fixtures = [path]
-    else:
-        return
-
-    fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
+    """Apply the ``.sql`` file(s) at ``path`` in filename order (see :func:`sql_files`)."""
+    fixtures = sql_files(path)
     if fixtures:
         db.run_fixtures(
             fixtures,

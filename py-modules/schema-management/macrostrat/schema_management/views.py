@@ -22,6 +22,7 @@ import sqlparse
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
+from macrostrat.core.schema_definition import sql_files
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.utils import get_logger
@@ -46,15 +47,6 @@ _VIEW_NAME_RE = re.compile(
 # --- statement collection -------------------------------------------------
 
 
-def _sql_files(provider: Path) -> list[Path]:
-    """SQL files under a Path provider, in the same order as ``apply_sql_dir``."""
-    if provider.is_file():
-        files = [provider]
-    else:
-        files = sorted(provider.rglob("*.sql"))
-    return [f for f in files if not f.name.endswith(".plan.sql")]
-
-
 def view_statements_in(sql_text: str) -> Iterator[str]:
     """Yield the ``CREATE VIEW`` statements found in a block of SQL."""
     for statement in sqlparse.split(sql_text):
@@ -74,7 +66,7 @@ def iter_view_statements(env: str) -> Iterator[str]:
         for provider in chunk.provides:
             if not isinstance(provider, Path):
                 continue
-            for f in _sql_files(provider):
+            for f in sql_files(provider):
                 yield from view_statements_in(f.read_text())
 
 
