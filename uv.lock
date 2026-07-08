@@ -1084,7 +1084,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.4.1"
+version = "4.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1098,9 +1098,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/da/6f/9b0f4814fb92d5a5e0be7f9620ebd8833fb2747d7c3c47b6aa62e0b42def/macrostrat_database-4.4.1.tar.gz", hash = "sha256:466933d1661e5941060eacda1b4886729b0339d4ef024f33e0e231d25d5da87a", size = 24329, upload-time = "2026-06-27T10:13:04.21Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/1c/c6855cb11c05a80cab0eb2e788315ca0e3a173138f8b9d6d6c67322feb67/macrostrat_database-4.5.0.tar.gz", hash = "sha256:963d7531953a4ec8cb2fb3946ca897062f59e810c1c5d7a62c6710b9c975e969", size = 24940, upload-time = "2026-07-08T06:11:05.439Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/fc/50f2fb4759c4a49083a4c68ed3a4f072ea742d45fdecef0f95e9020858a4/macrostrat_database-4.4.1-py3-none-any.whl", hash = "sha256:979fb11729981199bc5e7a4575bab951d90a00be6069d3eba27c091baba387cc", size = 31521, upload-time = "2026-06-27T10:13:03.088Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/16/033caa3f4c0760c1f3d2770c998d4f0e2aed39c8d90cf93b58d835f5a0dc/macrostrat_database-4.5.0-py3-none-any.whl", hash = "sha256:d7d4f6426a761df3ccacfb52ca01182cc426540203280635413631388be468bc", size = 32095, upload-time = "2026-07-08T06:11:06.333Z" },
 ]
 
 [[package]]
@@ -1270,7 +1270,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-core", editable = "py-modules/core" },
-    { name = "macrostrat-database", specifier = ">=4.0.1,<5" },
+    { name = "macrostrat-database", specifier = ">=4.5.0,<5" },
     { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
@@ -1278,7 +1278,7 @@ requires-dist = [
     { name = "results", specifier = ">=1.4.0,<1.5.0" },
     { name = "rich", specifier = ">=13,<16" },
     { name = "testcontainers", specifier = ">=4.14.2" },
-    { name = "typer", specifier = ">=0.22,<0.26" },
+    { name = "typer", specifier = ">=0.22,<0.27" },
 ]
 
 [[package]]

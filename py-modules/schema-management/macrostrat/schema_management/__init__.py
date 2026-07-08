@@ -14,7 +14,6 @@ from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import engine_for_db_name, get_database
 from macrostrat.core.exc import MacrostratError
-from macrostrat.database.query import StatementContext, StatementResult
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
@@ -301,24 +300,28 @@ def provision(pattern: str = Argument("*")):
     counter.print_report()
 
 
-def view_transformer(ctx: StatementContext) -> list[StatementResult] | None:
-    txt = ctx.sql_text.lower().strip()
-    if txt.startswith("create or replace view"):
-        return None
-
-    if txt.startswith("create view"):
-        txt = txt.replace("create view", "CREATE OR REPLACE VIEW")
-        return [StatementResult(query=txt, params=ctx.params)]
-    # Don't run anything
-    return []
-
-
 @schema_app.command(rich_help_panel="Utils")
 def rebuild_views():
-    """Rebuild all views"""
-    db = get_database()
-    environment = settings.env
+    """Rebuild all views
 
-    apply_schema_for_environment(db, environment, transform_statement=view_transformer)
+    Re-applies every view with [cyan]CREATE OR REPLACE[/] (preserving grants and
+    dependents), dropping and recreating only those whose output signature changed.
+    """
+    from .views import rebuild_views as _rebuild_views
+
+    db = get_database()
+
+    report = _rebuild_views(db, settings.env)
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+    print(f"[dim]{report.replaced} views replaced")
+    if report.recreated:
+        print(
+            f"[yellow]{len(report.recreated)} dropped & recreated "
+            f"(signature changed, grants restored): {', '.join(report.recreated)}"
+        )
+        print(
+            "[dim]Note: views cascade-dropped as dependents are recreated but may "
+            "need grants reapplied via [cyan]macrostrat schema provision[/]."
+        )

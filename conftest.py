@@ -9,7 +9,7 @@ from sqlalchemy import make_url
 from typer.testing import CliRunner
 
 from macrostrat.database import Database, drop_database
-from macrostrat.database.query import StatementContext, StatementResult
+from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.database.utils import template_database, temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
@@ -192,7 +192,7 @@ def _apply_schema(db, *, target=None, env="development", optimize=True):
         # indexes, constraints, and permissions that are not necessary for most tests.
         def transform_statement(
             ctx: StatementContext,
-        ) -> Optional[list[StatementResult]]:
+        ) -> Optional[list[StatementDirective]]:
             stmt = ctx.sql_text.strip().lower()
             if (
                 stmt.startswith("create index")

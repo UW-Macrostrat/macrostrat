@@ -23,10 +23,12 @@ GRANT SELECT, UPDATE ON maps_metadata.ingest_process TO web_user;
 GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_metadata TO web_user;
 
 --add views for postgrest
-create or replace view macrostrat_api.map_ingest as
-    select * from maps_metadata.ingest_process;
+CREATE OR REPLACE VIEW macrostrat_api.map_ingest AS
+SELECT * FROM maps_metadata.ingest_process;
+
 create or replace view macrostrat_api.map_ingest_tags as
     select * from maps_metadata.ingest_process_tag;
+
 create or replace view macrostrat_api.maps_sources AS
   select source_id,
          name,

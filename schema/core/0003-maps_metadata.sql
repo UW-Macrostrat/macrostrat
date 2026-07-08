@@ -30,6 +30,8 @@ CREATE TABLE maps_metadata.ingest_state (
 );
 ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
 
+/** Is there a difference between ingest_state and tags? */
+
 INSERT INTO maps_metadata.ingest_state (id)
 VALUES ('pending'),
   ('ingested'),
@@ -45,13 +47,28 @@ VALUES ('pending'),
 ON CONFLICT (id) DO NOTHING;
 
 
+/** This is not necessary - subsumed into the ingest_pipeline */
 CREATE TYPE maps.ingest_type AS ENUM (
     'vector',
     'ta1_output'
 );
 ALTER TYPE maps.ingest_type OWNER TO macrostrat;
 
+/** Separation between comments and ingest status */
+CREATE TABLE maps_metadata.ingest_result (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY ,
+  source_id integer NOT NULL REFERENCES maps.sources(source_id),
+  description text,
+  error text,
+  processing_step text,
+  date timestamp with time zone DEFAULT now() NOT NULL,
+  details jsonb -- random information for debugging (e.g., which strat names didn't match)
+);
+
+
 CREATE TABLE maps_metadata.ingest_process (
+    -- This id is deprecated in favor of just using the source_id as the primary key,
+    -- which we will converge on eventually.
     id integer NOT NULL,
     state text references maps_metadata.ingest_state (id),
     comments text,
@@ -60,14 +77,19 @@ CREATE TABLE maps_metadata.ingest_process (
         references maps.sources,
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     completed_on timestamp with time zone,
-    map_id text,
+    -- Not necessary
     type maps.ingest_type,
+    -- These are for UI / table state (omitted columns, column order, etc.)
     polygon_state jsonb,
     line_state jsonb,
     point_state jsonb,
+    -- Which pipeline was used to ingest
     ingest_pipeline text,
+  -- can delete
+    map_id text,
     map_url text,
     ingested_by text,
+    -- Redundant but useful for debugging
     slug text references maps.sources (slug));
 
 ALTER TABLE maps_metadata.ingest_process OWNER TO macrostrat;
@@ -116,29 +138,32 @@ CREATE TABLE maps_metadata.sources (
 ALTER TABLE maps_metadata.sources OWNER TO macrostrat_admin;
 
 CREATE VIEW maps_metadata.sources_meta AS
- SELECT ms.source_id,
-    ms.raster_bucket_url,
-    ms.date_compiled,
-    ms.compiler_name,
-    ms.raster_source_url,
-    s.name,
-    s.url,
-    s.ref_title,
-    s.authors,
-    s.ref_year,
-    s.ref_source,
-    s.isbn_doi,
-    s.scale,
-    s.license AS licence,
-    s.features,
-    s.area,
-    s.priority,
-    s.display_scales,
-    s.status_code,
-    s.slug
-   FROM (maps.sources s
-     LEFT JOIN maps_metadata.sources ms ON ((ms.source_id = s.source_id)));
-ALTER TABLE maps_metadata.sources_meta OWNER TO macrostrat_admin;
+SELECT
+  ms.source_id,
+  ms.raster_bucket_url,
+  ms.date_compiled,
+  ms.compiler_name,
+  ms.raster_source_url,
+  s.name,
+  s.url,
+  s.ref_title,
+  s.authors,
+  s.ref_year,
+  s.ref_source,
+  s.isbn_doi,
+  s.scale,
+  s.license,
+  s.features,
+  s.area,
+  s.priority,
+  s.display_scales,
+  s.status_code,
+  s.slug
+FROM maps.sources s
+LEFT JOIN maps_metadata.sources ms
+  ON ms.source_id = s.source_id
+LEFT JOIN maps_metadata.ingest_process ip
+  ON ip.source_id = s.source_id;
 
 ALTER TABLE ONLY maps_metadata.ingest_process ALTER COLUMN id SET DEFAULT nextval('maps_metadata.ingest_process_id_seq'::regclass);
 
