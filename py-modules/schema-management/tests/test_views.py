@@ -61,7 +61,7 @@ def test_view_statements_in_filters_and_strips_comments():
     """
     found = list(view_statements_in(sql))
     assert len(found) == 2
-    assert found[0].upper().startswith("CREATE VIEW s.v")
+    assert found[0].upper().startswith("CREATE VIEW S.V")
     assert found[1].startswith("CREATE OR REPLACE VIEW s.w")
 
 
