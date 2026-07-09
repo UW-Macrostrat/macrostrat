@@ -1,4 +1,5 @@
-from macrostrat.database import Database, Identifier
+from macrostrat.database import Database
+from psycopg.sql import Identifier
 from macrostrat.schema_management import (
     Migration,
     ReadinessState,

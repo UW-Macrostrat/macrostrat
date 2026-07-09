@@ -1,10 +1,9 @@
 from pathlib import Path
 
-from mapboard.topology_manager import TopologyManager
 from mapboard.topology_manager.config import IdentityStrategy, create_context
 
-from macrostrat.core.database import get_database
 from macrostrat.database import Database
+from macrostrat.core import get_database, SchemaDefinition
 
 from .manager import MacrostratTopologyManager
 
@@ -41,6 +40,20 @@ def create_topo_context(db: Database):
         ),
         notify_triggers=False,
     )
+
+
+def create_topo_fixtures(db: Database):
+    ctx = create_topo_context(db)
+    mgr = MacrostratTopologyManager(ctx)
+    mgr.create_tables()
+
+
+TopologySchema = SchemaDefinition(
+    "map-topology",
+    provides=[create_topo_fixtures],
+    depends_on=["core"],
+    environments=frozenset({"local"}),
+)
 
 
 def get_topo_manager():

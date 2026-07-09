@@ -29,11 +29,6 @@ ALTER TABLE storage.objects OWNER TO macrostrat;
 CREATE SEQUENCE IF NOT EXISTS storage.objects_id_seq;
 ALTER TABLE storage.objects
 ALTER COLUMN id SET DEFAULT nextval('storage.objects_id_seq');
-SELECT setval(
-  'storage.objects_id_seq',
-  COALESCE((SELECT MAX(id) FROM storage.objects), 0) + 1,
-  false
-);
 
 ALTER TABLE ONLY storage.objects
     ADD CONSTRAINT object_pkey PRIMARY KEY (id);

@@ -14,7 +14,6 @@ from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import engine_for_db_name, get_database
 from macrostrat.core.exc import MacrostratError
-from macrostrat.database.query import StatementContext, StatementResult
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
@@ -28,6 +27,7 @@ from .defs import (
     is_unsafe_statement,
     planning_database,
 )
+from .rebuild import NO_DEPENDENTS_OPTION, TARGET_OPTION
 from .inspect_utils import *
 from .inspect_utils import _any, _not
 
@@ -284,41 +284,139 @@ def dump_schema(schema: str):
 
 
 @schema_app.command(rich_help_panel="Utils")
-def provision(pattern: str = Argument("*")):
-    """Apply all schema objects to the database
+def provision(
+    target: str = TARGET_OPTION,
+    no_dependents: bool = NO_DEPENDENTS_OPTION,
+):
+    """Apply schema objects to the database
+
+    With [cyan]--target[/] (a subsystem/chunk name, e.g. [cyan]macrostrat[/]), apply
+    only that subsystem and its dependencies — add [cyan]--no-dependents[/] for just
+    the chunk; otherwise build the full schema. Use [cyan]macrostrat schema graph[/]
+    to list available subsystems.
 
     TODO: filter out non-idempotent statements (table creation, etc.)
     """
+    from .composer import selected_chunks
+
     db = get_database()
 
-    environment = settings.env
-
     counter = StatementCounter(safe=True)
+    chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
     apply_schema_for_environment(
-        db, environment, statement_filter=counter.filter, pattern=pattern
+        db, settings.env, statement_filter=counter.filter, chunks=chunks
     )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     counter.print_report()
 
 
-def view_transformer(ctx: StatementContext) -> list[StatementResult] | None:
-    txt = ctx.sql_text.lower().strip()
-    if txt.startswith("create or replace view"):
-        return None
-
-    if txt.startswith("create view"):
-        txt = txt.replace("create view", "CREATE OR REPLACE VIEW")
-        return [StatementResult(query=txt, params=ctx.params)]
-    # Don't run anything
-    return []
+def _report(label: str, applied: int, failed: int):
+    msg = f"[dim]{applied} {label} applied"
+    if failed:
+        msg += f" ([yellow]{failed} failed[/])"
+    print(msg)
 
 
 @schema_app.command(rich_help_panel="Utils")
-def rebuild_views():
-    """Rebuild all views"""
-    db = get_database()
-    environment = settings.env
+def sync(
+    views: bool = Option(True, "--views/--no-views", help="Rebuild views"),
+    procedures: bool = Option(
+        True, "--procedures/--no-procedures", help="Rebuild functions/procedures"
+    ),
+    data: bool = Option(
+        True, "--data/--no-data", help="Re-apply idempotent seed data (INSERT/UPDATE)"
+    ),
+    permissions: bool = Option(
+        True, "--permissions/--no-permissions", help="Re-apply grants"
+    ),
+    target: str = TARGET_OPTION,
+    no_dependents: bool = NO_DEPENDENTS_OPTION,
+):
+    """Re-apply the re-runnable schema content: views, procedures, seed data, grants.
 
-    apply_schema_for_environment(db, environment, transform_statement=view_transformer)
+    Everything a schema diff can't manage on its own — code objects, idempotent
+    seed rows, and permissions — so that [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/].
+    Select a subset with [cyan]--no-views[/] etc., and restrict to a subsystem with
+    [cyan]--target[/].
+    """
+    from .composer import selected_chunks
+    from .grants import rebuild_grants
+    from .procedures import rebuild_procedures
+    from .seed_data import rebuild_seed_data
+    from .views import rebuild_views
+
+    db = get_database()
+    chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
+
+    # Dependencies first (functions before views/seed that use them); grants last.
+    if procedures:
+        r = rebuild_procedures(db, chunks)
+        _report("procedures", r.applied, len(r.failed))
+    if views:
+        r = rebuild_views(db, chunks)
+        extra = f", {len(r.recreated)} recreated" if r.recreated else ""
+        print(f"[dim]{r.replaced} views replaced{extra}")
+    if data:
+        r = rebuild_seed_data(db, chunks)
+        _report("data statements", r.applied, len(r.failed))
+    if permissions:
+        r = rebuild_grants(db, chunks)
+        _report("grants", r.applied, len(r.failed))
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+
+def _describe_provider(provider) -> str:
+    """Human-readable summary of a schema-chunk provider."""
+    if isinstance(provider, Path):
+        try:
+            return str(provider.relative_to(settings.srcroot))
+        except ValueError:
+            return str(provider)
+    name = getattr(provider, "__name__", repr(provider))
+    module = getattr(provider, "__module__", "")
+    return f"{name}() [dim]{module}[/]"
+
+
+@schema_app.command(name="graph", rich_help_panel="Automated migrations")
+def graph(
+    env: str = Option(
+        None, "--env", help="Environment to inspect (defaults to the active env)"
+    ),
+):
+    """Show schema chunks, their dependencies, and application order"""
+    from rich.table import Table
+
+    from .chunks import all_chunks, chunks_for_environment
+    from .composer import order_chunks
+
+    environment = env or settings.env
+
+    selected = chunks_for_environment(environment)
+    ordered = order_chunks(selected)
+
+    table = Table(title=f"Schema chunks — [bold cyan]{environment}[/]")
+    table.add_column("#", justify="right", style="dim")
+    table.add_column("Chunk", style="bold cyan")
+    table.add_column("Depends on")
+    table.add_column("Provides")
+    table.add_column("Environments")
+
+    for i, chunk in enumerate(ordered, start=1):
+        deps = ", ".join(chunk.depends_on) or "[dim]—[/]"
+        provides = (
+            "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
+        )
+        envs = (
+            ", ".join(sorted(chunk.environments))
+            if chunk.environments is not None
+            else "[dim]all[/]"
+        )
+        table.add_row(str(i), chunk.name, deps, provides, envs)
+
+    print(table)
+
+    selected_names = {c.name for c in selected}
+    excluded = [c.name for c in all_chunks() if c.name not in selected_names]
+    if excluded:
+        print(f"[dim]Not applied in [bold]{environment}[/]: {', '.join(excluded)}[/]")

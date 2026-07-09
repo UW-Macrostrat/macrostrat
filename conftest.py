@@ -8,9 +8,9 @@ from pytest import fixture, mark, skip
 from sqlalchemy import make_url
 from typer.testing import CliRunner
 
-from macrostrat.database import Database, drop_database
-from macrostrat.database.query import StatementContext, StatementResult
-from macrostrat.database.utils import template_database, temporary_database
+from macrostrat.database import Database
+from macrostrat.database.query import StatementContext, StatementDirective
+from macrostrat.database.utils import temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
@@ -107,32 +107,31 @@ def env_config(request):
 # prod, or empty databases as needed.
 
 
-# TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
 def env_db(env_config):
-    """The actually operational database for the current environment."""
+    """A read-only connection to the current environment's database.
+
+    Read-only is *enforced*, not advisory: a throwaway login role (owning no write
+    privileges) is minted for the session and verified before use, so tests
+    against a live environment cannot mutate it. See
+    ``macrostrat.schema_management.readonly``.
+    """
+    from sqlalchemy.exc import DBAPIError, OperationalError
+
+    from macrostrat.schema_management.readonly import assert_read_only, readonly_login
+
+    if env_config is None or env_config.pg_database is None:
+        skip("No environment database configured")
+
+    log.info("Connecting to environment database: %s", env_config.pg_database)
     try:
-        log.info("Connecting to environment database: %s", env_config.pg_database)
-        yield _env_db(env_config)
-    except RuntimeError as e:
-        skip(str(e))
-
-
-def _env_db(env_config):
-    """Helper function to get the environment database without the fixture wrapper."""
-    if env_config is None:
-        raise RuntimeError("No environment configured")
-
-    if env_config.pg_database is None:
-        raise RuntimeError("No database configured for this environment")
-
-    log.info("Connecting to database: %s", env_config.pg_database)
-    db = Database(env_config.pg_database)
-
-    # Change the user on the connection to a read-only user
-    # TODO: verify read-only
-    db.run_sql("SET ROLE web_anon;")
-    return db
+        with readonly_login(env_config.pg_database) as ro_url:
+            db = Database(ro_url)
+            assert_read_only(db)  # fail closed if the connection can write
+            yield db
+            db.engine.dispose()
+    except (RuntimeError, DBAPIError, OperationalError) as e:
+        skip(f"read-only environment database unavailable: {e}")
 
 
 @fixture(scope="class")
@@ -182,38 +181,18 @@ def empty_db(request):
         yield db
 
 
-def _apply_schema(db, *, target=None, env="development", optimize=True):
-    from macrostrat.schema_management import apply_schema_for_environment
+@fixture(scope="session")
+def schema_harness(request, empty_db: Database):
+    """Progressive, chunk-based schema builder shared across the session.
 
-    transform_statement = None
-    if optimize:
-        # If we're optimizing the database, we want to skip any statements that are not necessary for testing.
-        # This is a bit hacky, but it allows us to significantly speed up the tests by skipping things like
-        # indexes, constraints, and permissions that are not necessary for most tests.
-        def transform_statement(
-            ctx: StatementContext,
-        ) -> Optional[list[StatementResult]]:
-            stmt = ctx.sql_text.strip().lower()
-            if (
-                stmt.startswith("create index")
-                or stmt.startswith("create unique index")
-                or stmt.startswith("alter index")
-                or stmt.startswith("grant")
-                or (stmt.startswith("alter table") and "owner to" in stmt)
-            ):
-                return []
+    The ``optimize`` transform (skipping indexes/grants/ownership) is applied by
+    default for a faster build; disable with ``--no-optimize-database``.
+    """
+    from macrostrat.core.config import settings
+    from macrostrat.schema_management.test_harness import DatabaseTestHarness
 
-            return None
-
-    log.info("Applying schema for environment %s to database %s", env, db.engine.url)
-    apply_schema_for_environment(
-        db,
-        env=env,
-        transform_statement=transform_statement,
-        suppress_logging=True,
-        target=target,
-    )
-    return db
+    optimize = request.config.getoption("--optimize-database")
+    return DatabaseTestHarness(empty_db, env=settings.env, optimize=optimize)
 
 
 from macrostrat.core.defs_provider import (
@@ -254,21 +233,16 @@ def data_provider(request):
 
 @fixture(scope="session")
 def test_db_macrostrat_schema_only(
-    request, empty_db: Database, data_provider: MacrostratDataProvider
+    schema_harness, data_provider: MacrostratDataProvider
 ):
-    """The database used for testing."""
-    from macrostrat.core.config import settings
-
-    db = _apply_schema(
-        empty_db,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-        target="macrostrat",
-    )
+    """A minimal database: the ``macrostrat`` subsystem and its dependencies."""
+    db = schema_harness.load_schema(target="macrostrat")
 
     loader = MacrostratMetadataPopulator(data_provider, db)
     loader.populate_all()
-    return db
+    db.session.close()
+    db.engine.dispose()
+    yield db
 
 
 @fixture(scope="class")
@@ -279,15 +253,13 @@ def test_db(test_db_macrostrat_schema_only: Database):
 
 
 @fixture(scope="session")
-def test_db_base(request, test_db_macrostrat_schema_only: Database):
-    """The database used for testing."""
-    from macrostrat.core.config import settings
+def test_db_base(schema_harness, test_db_macrostrat_schema_only: Database):
+    """The full-schema database used for testing.
 
-    return _apply_schema(
-        test_db_macrostrat_schema_only,
-        env=settings.env,
-        optimize=request.config.getoption("--optimize-database"),
-    )
+    Builds every remaining chunk (maps, storage, tiles, …) on top of the minimal
+    macrostrat build, so tests relying on e.g. ``macrostrat.maps`` have it.
+    """
+    return schema_harness.load_schema()
 
 
 @fixture(scope="class")

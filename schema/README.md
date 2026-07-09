@@ -22,10 +22,44 @@ be performed with manually created migration files. To create a manual migration
 
 # Concepts
 
-- Subsystems ~ modules that can be independently migrated. These often correspond to PostgreSQL schemas and specific modules in the codebase.
-- Environments ~ different database instances (e.g., development, staging, production) that may be at different schema versions.
+- Subsystems ~ named **chunks** of schema (`SchemaDefinition`) with declared `depends_on` edges. A chunk provides a
+  `.sql` directory, a single file, or a function. `core` is decomposed into `public → macrostrat → core` (remainder);
+  finer subsystems can be split out over time.
+- Environments ~ different database instances (e.g., development, staging, production) that may be at different schema
+  versions.
 - Migrations ~ files that describe changes to the database schema. Not all changes must be made with manual migrations
 
+# Building the schema
+
+The declarative schema is composed from chunks in dependency order (see the
+`schema-management` module). To build a subset, name a subsystem as the *target* —
+its dependency closure is built:
+
+```
+macrostrat schema graph                     # list chunks, deps, and order
+macrostrat schema provision                 # build the full schema
+macrostrat schema provision --target macrostrat   # subsystem + its dependencies
+macrostrat schema sync                      # re-apply views, procedures, and grants
+macrostrat schema sync --target maps --no-dependents   # just one subsystem's
+```
+
+`--target` / `--no-dependents` are a shared option block (used by both `provision` and
+`sync`). Tests build schema the same way via `DatabaseTestHarness` (progressively, chunk by chunk).
+
+# Direction
+
+We are in the process of reorienting the schema around modular **subsystem chunks** (see the
+`schema-management` module). Today `core` is only coarsely split (`public → macrostrat → core`), the `.sql` still
+lives centrally in this directory, and stateful migrations are a separate system.
+The intent is to:
+
+- Colocate each subsystem's SQL with its owning code (as `map-topology`
+  already does), discovering chunks rather than listing them centrally;
+- Decompose `core` into finer named subsystems (`maps`, `tiles`, …); and
+- Fold migrations into the same dependency graph, so a subsystem's structure,
+  transitions, and seed data live together.
+
+Until then, add new `.sql` here — it lands in the `core` chunk by default.
 
 ## Known deficiencies in migration process
 

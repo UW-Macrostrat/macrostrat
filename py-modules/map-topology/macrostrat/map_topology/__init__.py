@@ -1,10 +1,7 @@
 from os import environ
-from pathlib import Path
 from subprocess import run
 
 import typer
-from mapboard.topology_manager import TopologyManager
-from mapboard.topology_manager.config import TopologyContext
 from rich import print
 from typer import Argument, Typer
 
@@ -25,15 +22,6 @@ from .manager import (
 cli = Typer(no_args_is_help=True)
 
 
-def create_topo_fixtures(ctx: TopologyContext, reset: bool = False):
-    db = ctx.database
-    if reset:
-        db.run_fixtures(proc("drop-tables"))
-
-    mgr = TopologyManager(ctx)
-    mgr.create_tables()
-
-
 @cli.command("status")
 def status():
     """Show the current status of the topology"""
@@ -45,20 +33,6 @@ def status():
     print(f"Found {len(res)} maps with with geometry changes")
     for row in res:
         _print_map_info(row)
-
-
-@cli.command("create")
-def _create_fixtures(reset: bool = False):
-    """Create topology fixtures"""
-    mgr = get_topo_manager()
-    mgr.create_tables()
-
-
-@cli.command("drop")
-def drop():
-    """Drop topology fixtures"""
-    mgr = get_topo_manager()
-    mgr.database.run_fixtures(proc("drop-tables"))
 
 
 @cli.command("reset")
