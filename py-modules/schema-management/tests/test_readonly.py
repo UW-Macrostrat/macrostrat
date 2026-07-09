@@ -1,7 +1,6 @@
 """Tests for enforced read-only environment access (PostgreSQL)."""
 
 from pytest import mark, raises
-
 from sqlalchemy.exc import DBAPIError
 
 from macrostrat.database import Database

@@ -2,8 +2,8 @@ from pathlib import Path
 
 from mapboard.topology_manager.config import IdentityStrategy, create_context
 
+from macrostrat.core import SchemaDefinition, get_database
 from macrostrat.database import Database
-from macrostrat.core import get_database, SchemaDefinition
 
 from .manager import MacrostratTopologyManager
 

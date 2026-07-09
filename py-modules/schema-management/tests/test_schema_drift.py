@@ -10,14 +10,9 @@ exists that isn't reproducible from the declarative source.
 """
 
 from pytest import mark
-
 from results.dbdiff import Migration as DiffMigration
 
-from macrostrat.schema_management import (
-    _get_results_db,
-    get_all_schemas,
-    get_inspector,
-)
+from macrostrat.schema_management import _get_results_db, get_all_schemas, get_inspector
 from macrostrat.schema_management.composer import build_schema
 from macrostrat.schema_management.defs import planning_database, test_database_cluster
 
@@ -47,8 +42,10 @@ def _plan(from_db, target_db) -> list[str]:
 @mark.slow
 def test_declarative_build_has_no_drift():
     """A declarative build matches a fresh ideal — empty plan both ways."""
-    with test_database_cluster(username="macrostrat_admin") as built, \
-            planning_database(_ENV) as ideal:
+    with (
+        test_database_cluster(username="macrostrat_admin") as built,
+        planning_database(_ENV) as ideal,
+    ):
         build_schema(built, _ENV)
 
         forward = _plan(built, ideal)

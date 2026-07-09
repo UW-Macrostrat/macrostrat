@@ -6,7 +6,6 @@ transform), and can then be grown to a full build in place.
 """
 
 from pytest import mark
-
 from results.dbdiff import Migration as DiffMigration
 
 from macrostrat.schema_management import (
@@ -46,8 +45,10 @@ def _diff_statements(from_db, target_db) -> list[str]:
 @mark.docker
 @mark.slow
 def test_harness_replicates_macrostrat_schema_only():
-    with test_database_cluster(username="macrostrat_admin") as db_legacy, \
-            test_database_cluster(username="macrostrat_admin") as db_harness:
+    with (
+        test_database_cluster(username="macrostrat_admin") as db_legacy,
+        test_database_cluster(username="macrostrat_admin") as db_harness,
+    ):
 
         # Legacy minimal build via the public API, with the optimize transform.
         apply_schema_for_environment(

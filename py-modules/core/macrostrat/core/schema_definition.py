@@ -35,7 +35,9 @@ class SchemaDefinition:
     def applies_to(self, env: str) -> bool:
         return self.environments is None or env in self.environments
 
-    def apply(self, db: Database, *, transform_statement=None, statement_filter=None) -> None:
+    def apply(
+        self, db: Database, *, transform_statement=None, statement_filter=None
+    ) -> None:
         """Apply this chunk's providers.
 
         ``transform_statement`` / ``statement_filter`` are forwarded to SQL file

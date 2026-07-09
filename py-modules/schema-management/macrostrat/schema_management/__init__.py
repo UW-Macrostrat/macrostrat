@@ -27,7 +27,6 @@ from .defs import (
     is_unsafe_statement,
     planning_database,
 )
-from .rebuild import NO_DEPENDENTS_OPTION, TARGET_OPTION
 from .inspect_utils import *
 from .inspect_utils import _any, _not
 
@@ -41,6 +40,7 @@ from .migrations import (
     ReadinessState,
     run_migrations,
 )
+from .rebuild import NO_DEPENDENTS_OPTION, TARGET_OPTION
 
 log = get_logger(__name__)
 

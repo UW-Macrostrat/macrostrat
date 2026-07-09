@@ -16,8 +16,8 @@ relocated into owning modules.
 from graphlib import TopologicalSorter
 from typing import Optional
 
-from macrostrat.database import Database
 from macrostrat.core import SchemaDefinition
+from macrostrat.database import Database
 
 
 def order_chunks(chunks: list[SchemaDefinition]) -> list[SchemaDefinition]:

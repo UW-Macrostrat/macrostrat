@@ -6,8 +6,8 @@ from macrostrat.schema_management.composer import build_schema, selected_chunks
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.schema_management.seed_data import (
     _is_non_idempotent_insert,
-    rebuild_seed_data,
     data_statements_in,
+    rebuild_seed_data,
 )
 
 _ENV = "development"

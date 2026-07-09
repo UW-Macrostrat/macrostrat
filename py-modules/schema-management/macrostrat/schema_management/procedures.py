@@ -37,9 +37,7 @@ def _as_create_or_replace(statement: str) -> str:
     """Rewrite ``CREATE FUNCTION|PROCEDURE`` → ``CREATE OR REPLACE …`` (leaving the rest)."""
     return _PROC_STMT_RE.sub(
         lambda m: (
-            m.group(0)
-            if m.group(1)
-            else f"CREATE OR REPLACE {m.group(2).upper()}"
+            m.group(0) if m.group(1) else f"CREATE OR REPLACE {m.group(2).upper()}"
         ),
         statement,
         count=1,

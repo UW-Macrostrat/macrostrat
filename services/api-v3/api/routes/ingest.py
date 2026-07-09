@@ -61,8 +61,8 @@ async def delete_map(
             status_code=403, detail="User does not have access to delete a map"
         )
 
-    #Enqueue. A failure here means the broker (Redis / Celery container) is
-    #unreachable.
+    # Enqueue. A failure here means the broker (Redis / Celery container) is
+    # unreachable.
     try:
         task = celery_app.send_task("macrostrat.maps.delete", args=[request.slug])
     except Exception as e:
@@ -71,7 +71,7 @@ async def delete_map(
             detail=f"Could not enqueue delete task — is the Celery broker reachable? {e}",
         )
 
-    #Wait for the worker to finish within DELETE_TASK_TIMEOUT timeframe.
+    # Wait for the worker to finish within DELETE_TASK_TIMEOUT timeframe.
     try:
         result = await run_in_threadpool(
             task.get, timeout=DELETE_TASK_TIMEOUT, propagate=False
@@ -92,7 +92,7 @@ async def delete_map(
             detail=f"Error while waiting for delete task {task.id}: {e}",
         )
 
-    #The task ran but error raised inside the map_utils function
+    # The task ran but error raised inside the map_utils function
     if task.failed():
         raise HTTPException(
             status_code=500,

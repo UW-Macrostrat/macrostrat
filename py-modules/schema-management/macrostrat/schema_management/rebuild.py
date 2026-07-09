@@ -20,7 +20,9 @@ from macrostrat.utils import get_logger
 log = get_logger(__name__)
 
 
-def iter_chunk_statements(chunks, extract: Callable[[str], Iterator[str]]) -> Iterator[str]:
+def iter_chunk_statements(
+    chunks, extract: Callable[[str], Iterator[str]]
+) -> Iterator[str]:
     """Yield statements from the file-backed providers of ``chunks`` (in order).
 
     ``extract`` pulls the statements of interest out of one SQL file's text.
