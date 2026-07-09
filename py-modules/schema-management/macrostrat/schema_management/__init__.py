@@ -323,27 +323,32 @@ def sync(
     procedures: bool = Option(
         True, "--procedures/--no-procedures", help="Rebuild functions/procedures"
     ),
+    data: bool = Option(
+        True, "--data/--no-data", help="Re-apply idempotent seed data (INSERT/UPDATE)"
+    ),
     permissions: bool = Option(
         True, "--permissions/--no-permissions", help="Re-apply grants"
     ),
     target: str = TARGET_OPTION,
     no_dependents: bool = NO_DEPENDENTS_OPTION,
 ):
-    """Re-apply non-data-modifying schema objects: views, procedures, and grants.
+    """Re-apply the re-runnable schema content: views, procedures, seed data, grants.
 
-    These idempotent objects may be interleaved with other schema; this re-applies
-    them without a full [cyan]plan[/]/[cyan]apply[/] cycle. Select a subset with
-    [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
+    Everything a schema diff can't manage on its own — code objects, idempotent
+    seed rows, and permissions — so that [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/].
+    Select a subset with [cyan]--no-views[/] etc., and restrict to a subsystem with
+    [cyan]--target[/].
     """
     from .composer import selected_chunks
     from .grants import rebuild_grants
     from .procedures import rebuild_procedures
+    from .seed_data import rebuild_seed_data
     from .views import rebuild_views
 
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
-    # Dependencies first (functions before the views that call them); grants last.
+    # Dependencies first (functions before views/seed that use them); grants last.
     if procedures:
         r = rebuild_procedures(db, chunks)
         _report("procedures", r.applied, len(r.failed))
@@ -351,6 +356,9 @@ def sync(
         r = rebuild_views(db, chunks)
         extra = f", {len(r.recreated)} recreated" if r.recreated else ""
         print(f"[dim]{r.replaced} views replaced{extra}")
+    if data:
+        r = rebuild_seed_data(db, chunks)
+        _report("data statements", r.applied, len(r.failed))
     if permissions:
         r = rebuild_grants(db, chunks)
         _report("grants", r.applied, len(r.failed))
@@ -396,7 +404,9 @@ def graph(
 
     for i, chunk in enumerate(ordered, start=1):
         deps = ", ".join(chunk.depends_on) or "[dim]—[/]"
-        provides = "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
+        provides = (
+            "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
+        )
         envs = (
             ", ".join(sorted(chunk.environments))
             if chunk.environments is not None

@@ -29,19 +29,24 @@ builds them.
   backed by `migra`) reconciles structure against the composed ideal; stateful `Migration`
   classes (`macrostrat schema migrate`) handle transitions the diff can't express — renames,
   backfills, data-dependent changes — gated by pre/postconditions.
-- **`macrostrat schema sync`** re-applies the non-data-modifying schema objects — **views**,
-  **procedures/functions**, and **grants** — without a full `plan`/`apply` cycle. They're
-  idempotent and often interleaved with other DDL. Select a subset with `--no-views` /
-  `--no-procedures` / `--no-permissions`, and restrict to a subsystem with the shared
+- **`macrostrat schema sync`** re-applies everything a schema diff *can't* manage on its own —
+  **views**, **procedures/functions**, idempotent **seed data**, and **grants** — so that
+  **`provision` ≡ `diff` + `sync`** (same schema *and* seed data either way). These are idempotent
+  and often interleaved with other DDL. Select a subset with `--no-views` / `--no-procedures` /
+  `--no-data` / `--no-permissions`, and restrict to a subsystem with the shared
   `--target` / `--no-dependents` option block (see below). Per category:
     - *views* (`views.py`) — `CREATE OR REPLACE` by default; drop-and-recreate (restoring grants)
       only on a signature change (SQLSTATE 42P16), via the `macrostrat.database` `on_error` hook.
     - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; signature changes
       are left to the diff.
+    - *seed* (`seed.py`) — re-run the data-writing statements (`INSERT`/`UPDATE`/`DELETE`/`MERGE`,
+      including `WITH … INSERT`), detected by `sqlparse` statement type. These must be idempotent;
+      an `INSERT` without `ON CONFLICT` is warned about.
     - *grants* (`grants.py`) — re-run every `GRANT` / `REVOKE` / `ALTER DEFAULT PRIVILEGES`.
 
-  Views, functions, and triggers otherwise stay diff-managed (migra sequences their drop/recreate
-  around dependent table changes); `sync` is a convenience for re-asserting them.
+  Structure (tables, columns, constraints, views, functions, triggers) otherwise stays
+  diff-managed (migra sequences view/table drop-recreate); `sync` re-asserts the re-runnable
+  content the diff is blind to (especially data).
 - **Shared `--target` / `--no-dependents` option block** (`rebuild.py`) — reused by `sync` and
   `provision`. `--target NAME` restricts to a subsystem; its dependency closure is included unless
   `--no-dependents`. Resolved by `composer.selected_chunks`.
