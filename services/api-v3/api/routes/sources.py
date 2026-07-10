@@ -8,16 +8,15 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from slugify import slugify
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import NoResultFound, NoSuchTableError
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 dotenv.load_dotenv()
 
 import api.database as db
 import api.models.source as Sources
-import api.routes.security
 import api.schemas as schemas
 from api.database import (
-    get_async_session,
-    get_engine,
+    DatabaseDep,
     get_table,
     patch_sources_sub_table,
     select_sources_sub_table,
@@ -42,10 +41,13 @@ router = APIRouter(
 
 @router.get("")
 async def get_sources(
-    response: Response, page: int = 0, page_size: int = 100, include_geom: bool = False
+    response: Response,
+    database: DatabaseDep,
+    page: int = 0,
+    page_size: int = 100,
+    include_geom: bool = False,
 ) -> List[Sources.Get]:
-    async_session = get_async_session(get_engine())
-    sources = await db.get_sources(async_session, page, page_size)
+    sources = await db.get_sources(database.async_sessionmaker, page, page_size)
 
     # Delete the geom if not required
     if not include_geom:
@@ -62,13 +64,10 @@ async def get_sources(
 
 
 @router.get("/{source_id}")
-async def get_source(source_id: int) -> Sources.Get:
+async def get_source(source_id: int, database: DatabaseDep) -> Sources.Get:
     """Get a single object"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         select_stmt = select(
             *[
                 c
@@ -89,7 +88,10 @@ async def get_source(source_id: int) -> Sources.Get:
 
 @router.patch("/{source_id}")
 async def patch_source(
-    source_id: int, source: Sources.Patch, user_has_access: bool = Depends(has_access)
+    source_id: int,
+    source: Sources.Patch,
+    database: DatabaseDep,
+    user_has_access: bool = Depends(has_access),
 ) -> Sources.Get:
     """Patch a source"""
 
@@ -98,10 +100,7 @@ async def patch_source(
             status_code=401, detail="User does not have access to patch object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         update_stmt = (
             update(schemas.Sources)
             .where(schemas.Sources.source_id == source_id)
@@ -118,7 +117,9 @@ async def patch_source(
 
 @router.post("")
 async def post_source(
-    source: Sources.Post, user_has_access: bool = Depends(has_access)
+    source: Sources.Post,
+    database: DatabaseDep,
+    user_has_access: bool = Depends(has_access),
 ) -> Sources.Get:
     """Post a source"""
 
@@ -127,14 +128,11 @@ async def post_source(
             status_code=401, detail="User does not have access to post object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
     if source.slug is None:
         source.slug = re.sub(r"\W", "_", slugify(source.name, max_length=30))
     source.primary_table = source.slug + "_polygons"
 
-    async with async_session() as session:
+    async with database.async_session() as session:
         insert_stmt = (
             insert(schemas.Sources)
             .values(**source.model_dump())
@@ -148,11 +146,10 @@ async def post_source(
 
 
 @router.get("/{table_id}/geometries")
-async def get_sub_sources_geometries(table_id: int):
+async def get_sub_sources_geometries(table_id: int, database: DatabaseDep):
     result = {}
 
-    engine = get_engine()
-    async with engine.begin() as conn:
+    async with database.async_connection() as conn:
 
         for geometry in ["polygons", "lines", "points"]:
 
@@ -169,6 +166,7 @@ async def get_sub_sources_geometries(table_id: int):
 async def get_sub_sources_helper(
     response: Response,
     request: starlette.requests.Request,
+    engine: AsyncEngine,
     table_id: int,
     geometry_type: Literal["polygons", "lines", "points"],
     page: int = 0,
@@ -183,7 +181,7 @@ async def get_sub_sources_helper(
             )
         ]
         result = await select_sources_sub_table(
-            engine=get_engine(),
+            engine=engine,
             table_id=table_id,
             geometry_type=geometry_type,
             page=page,
@@ -194,7 +192,7 @@ async def get_sub_sources_helper(
         # Add metadata to the response
         response.headers["X-Total-Count"] = str(
             await db.get_sources_sub_table_count(
-                engine=get_engine(),
+                engine=engine,
                 query_params=filter_query_params,
                 table_id=table_id,
                 geometry_type=geometry_type,
@@ -216,12 +214,13 @@ async def get_sub_sources_helper(
 async def get_sub_sources(
     response: Response,
     request: starlette.requests.Request,
+    database: DatabaseDep,
     table_id: int,
     page: int = 0,
     page_size: int = 100,
 ):
     return await get_sub_sources_helper(
-        response, request, table_id, "polygons", page, page_size
+        response, request, database.async_engine, table_id, "polygons", page, page_size
     )
 
 
@@ -229,12 +228,13 @@ async def get_sub_sources(
 async def get_sub_sources(
     response: Response,
     request: starlette.requests.Request,
+    database: DatabaseDep,
     table_id: int,
     page: int = 0,
     page_size: int = 100,
 ):
     return await get_sub_sources_helper(
-        response, request, table_id, "points", page, page_size
+        response, request, database.async_engine, table_id, "points", page, page_size
     )
 
 
@@ -242,12 +242,13 @@ async def get_sub_sources(
 async def get_sub_sources(
     response: Response,
     request: starlette.requests.Request,
+    database: DatabaseDep,
     table_id: int,
     page: int = 0,
     page_size: int = 100,
 ):
     return await get_sub_sources_helper(
-        response, request, table_id, "lines", page, page_size
+        response, request, database.async_engine, table_id, "lines", page, page_size
     )
 
 
@@ -257,6 +258,7 @@ async def patch_sub_sources(
     table_id: int,
     geometry_type: Literal["polygons", "lines", "points"],
     updates: Union[PolygonRequestModel, LineStringModel, PointModel],
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ) -> List[Union[PolygonResponseModel, LineStringModel, PointModel]]:
     if not user_has_access:
@@ -266,7 +268,7 @@ async def patch_sub_sources(
 
     try:
         result = await patch_sources_sub_table(
-            engine=get_engine(),
+            engine=database.async_engine,
             table_id=table_id,
             geometry_type=geometry_type,
             update_values=updates.model_dump(exclude_none=True),
@@ -300,6 +302,7 @@ async def patch_sub_sources(
     table_id: int,
     geometry_type: Literal["polygons", "lines", "points"],
     copy_column: CopyColumnRequest,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     if not user_has_access:
@@ -309,7 +312,7 @@ async def patch_sub_sources(
 
     try:
         result = await db.patch_sources_sub_table_set_columns_equal(
-            engine=get_engine(),
+            engine=database.async_engine,
             table_id=table_id,
             geometry_type=geometry_type,
             source_column=copy_column.source_column,

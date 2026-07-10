@@ -10,6 +10,7 @@ from macrostrat.match_utils.test_match_strat_names import (
     cases_strat_name_priority,
 )
 
+from ..app import setup_engine
 from . import MatchQuery, router, setup_intervals
 
 # TODO: just import the enums from the parent module
@@ -34,9 +35,12 @@ def assert_valid_unit_matches(matches):
 @fixture(scope="module")
 def client(env_db):
     environ["MACROSTRAT_DATABASE_URL"] = raw_database_url(env_db.engine.url)
-    test_app = FastAPI()
+    test_app = FastAPI(lifespan=setup_engine)
     test_app.include_router(router)
-    return TestClient(test_app, raise_server_exceptions=True)
+    # Enter the TestClient as a context manager so Starlette runs the lifespan,
+    # which populates app.state.sync_db that the match routes depend on.
+    with TestClient(test_app, raise_server_exceptions=True) as client:
+        yield client
 
 
 def test_match_units_no_params(client):
