@@ -7,7 +7,7 @@ import api.schemas as schemas
 import minio
 import starlette.requests
 from api.celery_app import celery_app
-from api.database import EngineDep, get_async_session
+from api.database import DatabaseDep
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
 from api.schemas import IngestProcess as IngestProcessSchema
@@ -110,20 +110,18 @@ async def delete_map(
 @router.get("", response_model=list[IngestProcessModel.Get])
 async def get_multiple_ingest_process(
     response: Response,
-    engine: EngineDep,
+    database: DatabaseDep,
     page: int = 0,
     page_size: int = 50,
     filter_query_params=Depends(get_filter_query_params),
 ):
     """Get all ingestion processes"""
 
-    async_session = get_async_session(engine)
-
     query_parser = QueryParser(
         columns=IngestProcessSchema.__table__.c, query_params=filter_query_params
     )
 
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         select_stmt = (
             select(IngestProcessSchema)
@@ -160,12 +158,10 @@ async def get_multiple_ingest_process(
 
 
 @router.get("/tags", response_model=list[str])
-async def get_all_tags(engine: EngineDep):
+async def get_all_tags(database: DatabaseDep):
     """Get all tags"""
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         select_stmt = select(IngestProcessTag.tag).distinct()
         results = await session.execute(select_stmt)
 
@@ -173,12 +169,10 @@ async def get_all_tags(engine: EngineDep):
 
 
 @router.get("/{id}", response_model=IngestProcessModel.Get)
-async def get_ingest_process(id: int, engine: EngineDep):
+async def get_ingest_process(id: int, database: DatabaseDep):
     """Get a single object"""
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         select_stmt = (
             select(IngestProcessSchema)
             .where(and_(IngestProcessSchema.id == id))
@@ -203,7 +197,7 @@ async def get_ingest_process(id: int, engine: EngineDep):
 @router.post("", response_model=IngestProcessModel.Get)
 async def create_ingest_process(
     object: IngestProcessModel.Post,
-    engine: EngineDep,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
@@ -213,9 +207,7 @@ async def create_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    async_session = get_async_session(engine, expire_on_commit=False)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         if object.tags is None:
             object.tags = []
@@ -236,7 +228,7 @@ async def create_ingest_process(
 async def patch_ingest_process(
     id: int,
     object: IngestProcessModel.Patch,
-    engine: EngineDep,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Update a object"""
@@ -246,9 +238,7 @@ async def patch_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         update_stmt = (
             update(IngestProcessSchema)
             .where(IngestProcessSchema.id == id)
@@ -267,7 +257,7 @@ async def patch_ingest_process(
 async def add_ingest_process_tag(
     id: int,
     tag: IngestProcessModel.Tag,
-    engine: EngineDep,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Add a tag to an ingest process"""
@@ -277,9 +267,7 @@ async def add_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_process = await session.get(IngestProcessSchema, id)
 
@@ -301,7 +289,7 @@ async def add_ingest_process_tag(
 async def delete_ingest_process_tag(
     id: int,
     tag: str,
-    engine: EngineDep,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Delete a tag from an ingest process"""
@@ -311,9 +299,7 @@ async def delete_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_process = await session.get(IngestProcessSchema, id)
 
@@ -336,12 +322,10 @@ async def delete_ingest_process_tag(
 
 
 @router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
-async def get_ingest_process_objects(id: int, engine: EngineDep):
+async def get_ingest_process_objects(id: int, database: DatabaseDep):
     """Get all objects for an ingestion process"""
 
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         select_stmt = select(IngestProcessSchema).where(
             and_(IngestProcessSchema.id == id)
@@ -389,7 +373,7 @@ async def create_object(
     request: starlette.requests.Request,
     id: int,
     object: list[UploadFile],
-    engine: EngineDep,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
@@ -399,11 +383,9 @@ async def create_object(
             status_code=403, detail="User does not have access to create object"
         )
 
-    async_session = get_async_session(engine)
-
     response_objects = []
 
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_stmt = select(IngestProcessSchema).where(IngestProcessSchema.id == id)
         ingest_process = await session.scalar(ingest_stmt)

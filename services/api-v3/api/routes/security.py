@@ -22,7 +22,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -32,6 +32,7 @@ dotenv.load_dotenv()
 
 import api.database as db
 import api.schemas as schemas
+from api.database import DatabaseDep
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
@@ -119,9 +120,9 @@ def hash_refresh_token(raw_token: str) -> str:
     return base64.urlsafe_b64encode(digest).decode("utf-8")
 
 
-async def get_user_by_id(user_id: int, engine: AsyncEngine) -> schemas.User | None:
-    async_session = db.get_async_session(engine)
-
+async def get_user_by_id(
+    user_id: int, async_session: async_sessionmaker[AsyncSession]
+) -> schemas.User | None:
     async with async_session() as session:
         stmt = (
             select(schemas.User)
@@ -152,7 +153,7 @@ def clear_auth_cookies(response: Response):
 
 
 async def get_groups_from_header_token(
-    request: Request,
+    database: DatabaseDep,
     header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)],
 ) -> int | None:
     """Get the groups from the bearer token in the header"""
@@ -163,11 +164,8 @@ async def get_groups_from_header_token(
     token_hash = bcrypt.hashpw(header_token.credentials.encode(), GROUP_TOKEN_SALT)
     token_hash_string = token_hash.decode("utf-8")
 
-    engine = db.get_engine(request)
-    async_session = db.get_async_session(engine)
-
     token = await db.get_access_token(
-        async_session=async_session, token=token_hash_string
+        async_session=database.async_sessionmaker, token=token_hash_string
     )
 
     if token is None:
@@ -176,10 +174,10 @@ async def get_groups_from_header_token(
     return token.group
 
 
-async def get_user(sub: str, engine: AsyncEngine) -> schemas.User | None:
+async def get_user(
+    sub: str, async_session: async_sessionmaker[AsyncSession]
+) -> schemas.User | None:
     """Get an existing user"""
-
-    async_session = db.get_async_session(engine)
 
     async with async_session() as session:
         stmt = (
@@ -193,11 +191,9 @@ async def get_user(sub: str, engine: AsyncEngine) -> schemas.User | None:
 
 
 async def create_user(
-    sub: str, name: str, email: str, engine: AsyncEngine
+    sub: str, name: str, email: str, async_session: async_sessionmaker[AsyncSession]
 ) -> schemas.User:
     """Create a new user"""
-
-    async_session = db.get_async_session(engine)
 
     user = schemas.User(sub=sub, name=name, email=email)
 
@@ -205,7 +201,7 @@ async def create_user(
         session.add(user)
         await session.commit()
 
-    return await get_user(sub, engine)
+    return await get_user(sub, async_session)
 
 
 async def get_user_token_from_cookie(
@@ -290,7 +286,7 @@ async def redirect_authorization(return_url: str = None):
 
 @router.get("/callback")
 async def redirect_callback(
-    code: str, engine: db.EngineDep, state: Optional[str] = None
+    code: str, database: DatabaseDep, state: Optional[str] = None
 ):
     """Exchange the code for a token and redirect to the state URL"""
 
@@ -334,7 +330,7 @@ async def redirect_callback(
 
             user_data = await user_response.json()
             # need to look up the user_id and return it in the jwt
-            user = await get_user(user_data["sub"], engine)
+            user = await get_user(user_data["sub"], database.async_sessionmaker)
 
             if user is None:
 
@@ -349,7 +345,7 @@ async def redirect_callback(
                     user_data["sub"],
                     f"{given_name} {family_name}",
                     user_data.get("email", ""),
-                    engine,
+                    database.async_sessionmaker,
                 )
 
             # Check if the user is in the admin group to set the appropriate database role
@@ -433,6 +429,7 @@ async def redirect_callback(
 async def refresh_token(
     request: Request,
     response: Response,
+    database: DatabaseDep,
     refresh_token: str | None = Cookie(default=None, alias=refresh_token_key),
 ):
     if not refresh_token:
@@ -459,7 +456,7 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
     # verifying the user_id and group_id
-    user = await get_user_by_id(int(user_id), db.get_engine(request))
+    user = await get_user_by_id(int(user_id), database.async_sessionmaker)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     names = {g.name for g in user.groups}
@@ -492,7 +489,7 @@ async def refresh_token(
 @router.post("/token", response_model=AccessToken)
 async def create_group_token(
     group_token_request: GroupTokenRequest,
-    engine: db.EngineDep,
+    database: DatabaseDep,
     user_token: TokenData = Depends(get_user_token_from_cookie),
 ):
     """Get an access token for the current user"""
@@ -512,7 +509,7 @@ async def create_group_token(
     )
 
     await db.insert_group_api_token(
-        engine=engine,
+        engine=database.async_engine,
         token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
         expiration_dt=datetime.fromtimestamp(
@@ -538,7 +535,7 @@ async def get_security_groups(groups: list[int] = Depends(get_groups)):
 
 @router.get("/me")
 async def read_users_me(
-    engine: db.EngineDep,
+    database: DatabaseDep,
     user_token_data: TokenData = Depends(get_user_token_from_cookie),
 ):
     """Return JWT content"""
@@ -546,9 +543,7 @@ async def read_users_me(
     if user_token_data is None:
         raise HTTPException(status_code=401, detail="User not found")
 
-    async_session = db.get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         user_stmt = (
             select(schemas.User)
             .options(selectinload(schemas.User.groups))

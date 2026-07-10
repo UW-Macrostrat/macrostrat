@@ -15,7 +15,7 @@ load_dotenv()
 
 import api.database as db
 from api.app import app
-from api.database import build_async_engine
+from api.database import AppDatabase, get_db_url
 from api.models.geometries import PolygonModel
 
 # Define some testing values
@@ -43,9 +43,9 @@ def api_client() -> TestClient:
 
 @pytest.fixture
 async def engine() -> AsyncEngine:
-    _engine = build_async_engine()
-    yield _engine
-    await _engine.dispose()
+    database = AppDatabase(get_db_url())
+    yield database.async_engine
+    await database.dispose()
 
 
 @pytest.fixture
