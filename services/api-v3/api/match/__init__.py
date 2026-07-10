@@ -17,7 +17,7 @@ from macrostrat.match_utils import (
 )
 from macrostrat.match_utils.strat_names import get_ignore_list
 
-from ..database import get_sync_database as get_database
+from ..database import SyncDatabaseDep
 
 
 class Interval(BaseModel):
@@ -45,9 +45,8 @@ def setup_intervals(db):
     _intervals.set(interval_list)
 
 
-def setup_matcher():
+def setup_matcher(db):
     """Setup function to initialize matcher resources."""
-    db = get_database()
     try:
         ignore = get_ignore_list()
         return
@@ -393,6 +392,7 @@ def match_info():
 @router.get("/strat-names")
 def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
+    db: SyncDatabaseDep,
 ) -> MatchAPIResponse:
     """
     Match stratigraphic name text to the Macrostrat lexicon and columns.
@@ -401,9 +401,8 @@ def match_units(
     params = MatchQuery(**query.model_dump())
     opts = MatchOptions(**query.model_dump())
 
-    db = get_database()
     try:
-        setup_matcher()
+        setup_matcher(db)
 
         results = []
         match_data = build_match_data(db, params)
@@ -424,6 +423,7 @@ def match_units(
 def match_units_multi(
     body: list[MatchQueryFields],
     defaults: Annotated[MatchDefaults, Query()],
+    db: SyncDatabaseDep,
 ) -> MatchAPIResponse:
     """
     Match a batch of stratigraphic name queries in a single request.
@@ -461,9 +461,8 @@ def match_units_multi(
                 detail=[{**e, "index": index} for e in err.errors()],
             )
 
-    db = get_database()
     try:
-        setup_matcher()
+        setup_matcher(db)
 
         all_results: list[MatchData] = []
         for params in queries:

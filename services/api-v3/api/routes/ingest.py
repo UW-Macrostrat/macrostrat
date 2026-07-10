@@ -7,7 +7,7 @@ import api.schemas as schemas
 import minio
 import starlette.requests
 from api.celery_app import celery_app
-from api.database import get_async_session, get_engine
+from api.database import EngineDep, get_async_session
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
 from api.schemas import IngestProcess as IngestProcessSchema
@@ -110,13 +110,13 @@ async def delete_map(
 @router.get("", response_model=list[IngestProcessModel.Get])
 async def get_multiple_ingest_process(
     response: Response,
+    engine: EngineDep,
     page: int = 0,
     page_size: int = 50,
     filter_query_params=Depends(get_filter_query_params),
 ):
     """Get all ingestion processes"""
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     query_parser = QueryParser(
@@ -160,10 +160,9 @@ async def get_multiple_ingest_process(
 
 
 @router.get("/tags", response_model=list[str])
-async def get_all_tags():
+async def get_all_tags(engine: EngineDep):
     """Get all tags"""
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -174,10 +173,9 @@ async def get_all_tags():
 
 
 @router.get("/{id}", response_model=IngestProcessModel.Get)
-async def get_ingest_process(id: int):
+async def get_ingest_process(id: int, engine: EngineDep):
     """Get a single object"""
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -204,7 +202,9 @@ async def get_ingest_process(id: int):
 
 @router.post("", response_model=IngestProcessModel.Get)
 async def create_ingest_process(
-    object: IngestProcessModel.Post, user_has_access: bool = Depends(has_access)
+    object: IngestProcessModel.Post,
+    engine: EngineDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
 
@@ -213,7 +213,6 @@ async def create_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
     async_session = get_async_session(engine, expire_on_commit=False)
 
     async with async_session() as session:
@@ -237,6 +236,7 @@ async def create_ingest_process(
 async def patch_ingest_process(
     id: int,
     object: IngestProcessModel.Patch,
+    engine: EngineDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Update a object"""
@@ -246,7 +246,6 @@ async def patch_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -266,7 +265,10 @@ async def patch_ingest_process(
 
 @router.post("/{id}/tags", response_model=list[str])
 async def add_ingest_process_tag(
-    id: int, tag: IngestProcessModel.Tag, user_has_access: bool = Depends(has_access)
+    id: int,
+    tag: IngestProcessModel.Tag,
+    engine: EngineDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Add a tag to an ingest process"""
 
@@ -275,7 +277,6 @@ async def add_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -298,7 +299,10 @@ async def add_ingest_process_tag(
 
 @router.delete("/{id}/tags/{tag}", response_model=list[str])
 async def delete_ingest_process_tag(
-    id: int, tag: str, user_has_access: bool = Depends(has_access)
+    id: int,
+    tag: str,
+    engine: EngineDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Delete a tag from an ingest process"""
 
@@ -307,7 +311,6 @@ async def delete_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -333,10 +336,9 @@ async def delete_ingest_process_tag(
 
 
 @router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
-async def get_ingest_process_objects(id: int):
+async def get_ingest_process_objects(id: int, engine: EngineDep):
     """Get all objects for an ingestion process"""
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -387,6 +389,7 @@ async def create_object(
     request: starlette.requests.Request,
     id: int,
     object: list[UploadFile],
+    engine: EngineDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
@@ -396,7 +399,6 @@ async def create_object(
             status_code=403, detail="User does not have access to create object"
         )
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     response_objects = []

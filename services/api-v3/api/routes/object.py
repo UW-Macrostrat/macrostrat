@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 import starlette.requests
-from api.database import get_async_session, get_engine
+from api.database import EngineDep, get_async_session
 from api.routes.security import has_access
 from fastapi import APIRouter, Depends, HTTPException
 from minio import Minio
@@ -175,6 +175,7 @@ def _row_to_dict(row) -> dict[str, Any]:
 
 @router.get("")
 async def list_objects(
+    engine: EngineDep,
     limit: int = 50,
     before_id: int | None = None,
     slug: str | None = None,
@@ -208,7 +209,6 @@ async def list_objects(
     ORDER BY id DESC
     LIMIT :limit
     """
-    engine = get_engine()
     async_session = get_async_session(engine)
     async with async_session() as session:
         res = await session.execute(text(sql), params)
@@ -218,8 +218,7 @@ async def list_objects(
 
 
 @router.get("/{id}")
-async def get_object(id: int):
-    engine = get_engine()
+async def get_object(id: int, engine: EngineDep):
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -237,6 +236,7 @@ async def get_object(id: int):
 @router.post("")
 async def create_object(
     request: starlette.requests.Request,
+    engine: EngineDep,
     user_has_access: bool = Depends(has_access),
 ):
     """
@@ -263,7 +263,6 @@ async def create_object(
     host, bucket = get_storage_host_bucket()
     s3_client = get_s3_client()
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     created: list[dict[str, Any]] = []
@@ -328,6 +327,7 @@ async def create_object(
 async def patch_object(
     id: int,
     body: dict[str, Any],
+    engine: EngineDep,
     user_has_access: bool = Depends(has_access),
 ):
     """
@@ -345,7 +345,6 @@ async def patch_object(
     if isinstance(source, dict):
         source = json.dumps(source)
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:
@@ -366,6 +365,7 @@ async def patch_object(
 @router.delete("/{id}")
 async def delete_object(
     id: int,
+    engine: EngineDep,
     hard: bool = True,
     user_has_access: bool = Depends(has_access),
 ):
@@ -381,7 +381,6 @@ async def delete_object(
 
     s3_client = get_s3_client()
 
-    engine = get_engine()
     async_session = get_async_session(engine)
 
     async with async_session() as session:

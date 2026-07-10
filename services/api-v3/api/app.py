@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 dotenv.load_dotenv()
 
 import api.routes.security
-from api.database import connect_engine, dispose_engine
+from api.database import build_async_engine, build_sync_database
 from api.map import router as map_router
 from api.match import router as match_router
 from api.routes.ingest import router as ingest_router
@@ -19,10 +19,18 @@ from api.routes.sources import router as sources_router
 
 @asynccontextmanager
 async def setup_engine(app: FastAPI):
-    """Return database client instance."""
-    app.state.engine = await connect_engine()
+    """Create the shared database connection pools for the app's lifetime.
+
+    Both the async engine and the sync Database own a connection pool, so they
+    are built exactly once here and shared across all requests via app.state
+    (see api/database.py dependencies). They are disposed on shutdown so their
+    connections are returned to Postgres rather than leaked.
+    """
+    app.state.engine = build_async_engine()
+    app.state.sync_db = build_sync_database()
     yield
-    await dispose_engine()
+    await app.state.engine.dispose()
+    app.state.sync_db.engine.dispose()
 
 
 app = FastAPI(

@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import morecantile
-from api.database import get_sync_database
+from api.database import SyncDatabaseDep
 from fastapi import APIRouter, Depends, HTTPException
 from morecantile import Tile
 from shapely import GEOSException
@@ -114,10 +114,9 @@ def get_compilation(compilation: str) -> str:
 def get_map_legend(
     compilation: Annotated[str, Depends(get_compilation)],
     map_area: Annotated[MapAreaInfo, Depends(map_area_params)],
+    db: SyncDatabaseDep,
 ):
     """Get the legend for a given map compilation."""
-
-    db = get_sync_database()
 
     scale = scale_for_zoom(map_area.zoom)
 

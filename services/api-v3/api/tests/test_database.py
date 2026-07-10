@@ -15,7 +15,7 @@ load_dotenv()
 
 import api.database as db
 from api.app import app
-from api.database import connect_engine, dispose_engine, get_engine
+from api.database import build_async_engine
 from api.models.geometries import PolygonModel
 
 # Define some testing values
@@ -43,9 +43,9 @@ def api_client() -> TestClient:
 
 @pytest.fixture
 async def engine() -> AsyncEngine:
-    await connect_engine()
-    yield get_engine()
-    await dispose_engine()
+    _engine = build_async_engine()
+    yield _engine
+    await _engine.dispose()
 
 
 @pytest.fixture
@@ -64,7 +64,8 @@ class TestUtils:
 
     @pytest.mark.asyncio
     async def test_source_id_to_slug(self, engine: AsyncEngine):
-        slug = await db.source_id_to_slug(engine, TEST_SOURCE_TABLE.source_id)
+        async with engine.begin() as conn:
+            slug = await db.source_id_to_slug(conn, TEST_SOURCE_TABLE.source_id)
         assert slug == TEST_SOURCE_TABLE.slug
 
 

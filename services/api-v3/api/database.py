@@ -6,17 +6,18 @@
 # On the bottom you will find the methods that do not use this method
 #
 import datetime
-from contextvars import ContextVar
 from os import environ
-from typing import Literal, Type
+from typing import Annotated, Iterator, Literal, Type
 
 import api.schemas as schemas
 from api.query_parser import QueryParser
 from dotenv import load_dotenv
+from fastapi import Depends, Request
 from pydantic import BaseModel
 from sqlalchemy import CursorResult, MetaData, Table, func, insert, select, text, update
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
@@ -27,16 +28,18 @@ from macrostrat.database import Database
 
 load_dotenv()
 
-# Context variables are thread-safe, so are a better choice
-# than using a global variables (I think/hope)
-_db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
-_async_db_ctx: ContextVar[AsyncEngine | None] = ContextVar("async_db_ctx", default=None)
 
+def get_engine(request: Request) -> AsyncEngine:
+    """FastAPI dependency returning the process-wide async engine.
 
-def get_engine() -> AsyncEngine:
-    engine = _async_db_ctx.get()
+    The engine (and its connection pool) is created once in the app lifespan and
+    stored on ``app.state`` — see ``api/app.py``. Handlers must receive it via
+    injection rather than creating their own, which is what previously leaked a
+    pool per request and exhausted Postgres connections.
+    """
+    engine = getattr(request.app.state, "engine", None)
     if engine is None:
-        return _connect_engine_sync()
+        raise RuntimeError("Async engine not initialized; check the app lifespan")
     return engine
 
 
@@ -51,36 +54,54 @@ def get_db_url():
     raise ValueError("No database URL found")
 
 
-def get_sync_database():
-    """Get the synchronous database connection from the context variable."""
-    sync_db = _db_ctx.get()
+def get_sync_database(request: Request) -> Iterator[Database]:
+    """FastAPI dependency yielding the process-wide synchronous ``Database``.
+
+    Like the async engine, this is built once in the app lifespan and stored on
+    ``app.state`` so every request shares one connection pool.
+
+    ``Database.run_query`` leaves the thread-local session's transaction open
+    (it never advances its internal generator to the commit), which keeps a
+    connection checked out. Now that the pool is shared across all requests
+    rather than recreated per request, that would exhaust the pool — so we
+    release the scoped session here once the request finishes, returning its
+    connection to the pool.
+    """
+    sync_db = getattr(request.app.state, "sync_db", None)
     if sync_db is None:
-        sync_db = Database(get_db_url())
-        _db_ctx.set(sync_db)
-    return sync_db
+        raise RuntimeError("Sync database not initialized; check the app lifespan")
+    try:
+        yield sync_db
+    finally:
+        sync_db.session.remove()
 
 
-async def connect_engine() -> AsyncEngine:
-    # Make sure this is all run async in FastAPI lifecycle
-    return _connect_engine_sync()
+# Pool configuration shared by the async engine and the sync Database. A single
+# engine/pool is created per process in the app lifespan; ``pool_pre_ping``
+# recycles connections dropped by the server instead of raising on first use.
+_POOL_KWARGS = dict(
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
 
 
-def _connect_engine_sync():
-    # Check the uri and DB_URL for the database connection string
-    # uri is how the Postgres Operator passes, DB_URL is nicer for .env files
+def build_async_engine() -> AsyncEngine:
+    """Build the async engine. Call once, in the app lifespan."""
     db_url = get_db_url()
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    engine = create_async_engine(db_url)
-    _async_db_ctx.set(engine)
-    return engine
+    return create_async_engine(db_url, **_POOL_KWARGS)
 
 
-async def dispose_engine():
-    engine = _async_db_ctx.get()
-    if engine is not None:
-        await engine.dispose()
-        _async_db_ctx.set(None)
+def build_sync_database() -> Database:
+    """Build the sync Database. Call once, in the app lifespan."""
+    return Database(get_db_url(), **_POOL_KWARGS)
+
+
+EngineDep = Annotated[AsyncEngine, Depends(get_engine)]
+SyncDatabaseDep = Annotated[Database, Depends(get_sync_database)]
 
 
 def get_async_session(
@@ -89,17 +110,22 @@ def get_async_session(
     return async_sessionmaker(engine, **kwargs)
 
 
-async def source_id_to_slug(async_engine: AsyncEngine, source_id: id):
-    async with get_async_session(async_engine)() as session:
-        stmt = select(schemas.Sources).where(schemas.Sources.source_id == source_id)
-        result = await session.scalar(stmt)
+async def source_id_to_slug(conn: AsyncConnection, source_id: int):
+    """Look up a source's slug, reusing an existing connection.
 
-        if result is None:
-            raise NoResultFound(
-                f"Could not find primary_table corresponding with source_id: {source_id}"
-            )
+    Takes a live connection rather than the engine so callers that already hold
+    one (e.g. ``get_table``) don't acquire a second pooled connection while the
+    first is still checked out.
+    """
+    stmt = select(schemas.Sources.slug).where(schemas.Sources.source_id == source_id)
+    slug = (await conn.execute(stmt)).scalar()
 
-        return result.slug
+    if slug is None:
+        raise NoResultFound(
+            f"Could not find primary_table corresponding with source_id: {source_id}"
+        )
+
+    return slug
 
 
 async def get_sources(
@@ -211,7 +237,7 @@ async def get_table(
     conn, table_id: int, geometry_type: Literal["polygons", "points", "lines"]
 ) -> Table:
     metadata = MetaData(schema="sources")
-    table_slug = await source_id_to_slug(get_engine(), table_id)
+    table_slug = await source_id_to_slug(conn, table_id)
     table_name = f"{table_slug}_{geometry_type}"
     table = await conn.run_sync(
         lambda sync_conn: Table(table_name, metadata, autoload_with=sync_conn)

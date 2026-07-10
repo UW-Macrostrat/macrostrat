@@ -22,6 +22,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -118,8 +119,7 @@ def hash_refresh_token(raw_token: str) -> str:
     return base64.urlsafe_b64encode(digest).decode("utf-8")
 
 
-async def get_user_by_id(user_id: int) -> schemas.User | None:
-    engine = db.get_engine()
+async def get_user_by_id(user_id: int, engine: AsyncEngine) -> schemas.User | None:
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
@@ -152,7 +152,8 @@ def clear_auth_cookies(response: Response):
 
 
 async def get_groups_from_header_token(
-    header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)]
+    request: Request,
+    header_token: Annotated[HTTPAuthorizationCredentials, Depends(http_bearer)],
 ) -> int | None:
     """Get the groups from the bearer token in the header"""
 
@@ -162,7 +163,7 @@ async def get_groups_from_header_token(
     token_hash = bcrypt.hashpw(header_token.credentials.encode(), GROUP_TOKEN_SALT)
     token_hash_string = token_hash.decode("utf-8")
 
-    engine = db.get_engine()
+    engine = db.get_engine(request)
     async_session = db.get_async_session(engine)
 
     token = await db.get_access_token(
@@ -175,10 +176,9 @@ async def get_groups_from_header_token(
     return token.group
 
 
-async def get_user(sub: str) -> schemas.User | None:
+async def get_user(sub: str, engine: AsyncEngine) -> schemas.User | None:
     """Get an existing user"""
 
-    engine = db.get_engine()
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
@@ -192,10 +192,11 @@ async def get_user(sub: str) -> schemas.User | None:
     return user
 
 
-async def create_user(sub: str, name: str, email: str) -> schemas.User:
+async def create_user(
+    sub: str, name: str, email: str, engine: AsyncEngine
+) -> schemas.User:
     """Create a new user"""
 
-    engine = db.get_engine()
     async_session = db.get_async_session(engine)
 
     user = schemas.User(sub=sub, name=name, email=email)
@@ -204,7 +205,7 @@ async def create_user(sub: str, name: str, email: str) -> schemas.User:
         session.add(user)
         await session.commit()
 
-    return await get_user(sub)
+    return await get_user(sub, engine)
 
 
 async def get_user_token_from_cookie(
@@ -288,7 +289,9 @@ async def redirect_authorization(return_url: str = None):
 
 
 @router.get("/callback")
-async def redirect_callback(code: str, state: Optional[str] = None):
+async def redirect_callback(
+    code: str, engine: db.EngineDep, state: Optional[str] = None
+):
     """Exchange the code for a token and redirect to the state URL"""
 
     uri = os.environ["REDIRECT_URI_ENV"]
@@ -331,7 +334,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
 
             user_data = await user_response.json()
             # need to look up the user_id and return it in the jwt
-            user = await get_user(user_data["sub"])
+            user = await get_user(user_data["sub"], engine)
 
             if user is None:
 
@@ -346,6 +349,7 @@ async def redirect_callback(code: str, state: Optional[str] = None):
                     user_data["sub"],
                     f"{given_name} {family_name}",
                     user_data.get("email", ""),
+                    engine,
                 )
 
             # Check if the user is in the admin group to set the appropriate database role
@@ -455,7 +459,7 @@ async def refresh_token(
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
     # verifying the user_id and group_id
-    user = await get_user_by_id(int(user_id))
+    user = await get_user_by_id(int(user_id), db.get_engine(request))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     names = {g.name for g in user.groups}
@@ -488,6 +492,7 @@ async def refresh_token(
 @router.post("/token", response_model=AccessToken)
 async def create_group_token(
     group_token_request: GroupTokenRequest,
+    engine: db.EngineDep,
     user_token: TokenData = Depends(get_user_token_from_cookie),
 ):
     """Get an access token for the current user"""
@@ -498,8 +503,6 @@ async def create_group_token(
             detail=f"User cannot create tokens for group {group_token_request.group_id}",
         )
 
-    engine = db.get_engine()
-
     token = "".join(
         secrets.choice(string.ascii_letters + string.digits)
         for i in range(GROUP_TOKEN_LENGTH)
@@ -509,7 +512,7 @@ async def create_group_token(
     )
 
     await db.insert_group_api_token(
-        engine=db.get_engine(),
+        engine=engine,
         token_hash_string=token_hash_string,
         group_id=group_token_request.group_id,
         expiration_dt=datetime.fromtimestamp(
@@ -535,6 +538,7 @@ async def get_security_groups(groups: list[int] = Depends(get_groups)):
 
 @router.get("/me")
 async def read_users_me(
+    engine: db.EngineDep,
     user_token_data: TokenData = Depends(get_user_token_from_cookie),
 ):
     """Return JWT content"""
@@ -542,7 +546,6 @@ async def read_users_me(
     if user_token_data is None:
         raise HTTPException(status_code=401, detail="User not found")
 
-    engine = db.get_engine()
     async_session = db.get_async_session(engine)
 
     async with async_session() as session:
