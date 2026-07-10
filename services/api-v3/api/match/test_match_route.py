@@ -10,8 +10,8 @@ from macrostrat.match_utils.test_match_strat_names import (
     cases_strat_name_priority,
 )
 
-from . import MatchQuery, router, setup_intervals
 from ..app import setup_engine
+from . import MatchQuery, router, setup_intervals
 
 # TODO: just import the enums from the parent module
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
