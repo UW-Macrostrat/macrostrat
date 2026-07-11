@@ -28,6 +28,9 @@ from .v1_entrypoint import v1_cli
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
+app.warnings = []
+app.info = []
+
 install(show_locals=False)
 
 
@@ -51,28 +54,28 @@ db_subsystem.app = app
 app.subsystems.add(db_subsystem)
 # app.subsystems.add(rockd_subsystem)
 
-env_text = app.settings.env
-if env_text is None:
-    env_text = "None"
+_env_text = app.settings.env
+if _env_text is None:
+    _env_text = "None"
 
 help_text = f"""[bold]Macrostrat[/] control interface
 
-
-Active environment: [bold cyan]{env_text}[/]
 """
 
+app.info.append(f"Active environment: [bold cyan]{_env_text}[/]")
 
-warnings = []
 if not settings.pg_database:
-    warnings.append("No database URL found in settings")
+    app.warnings.append("No database URL found in settings")
 reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
 if reinstall_warning is not None:
     if len(reinstall_warning) < 2:
         reinstall_warning = "Macrostrat needs to be reinstalled."
-    warnings.append(f"{reinstall_warning} Please run [bold cyan]macrostrat install[/].")
+    app.warnings.append(
+        f"{reinstall_warning} Please run [bold cyan]macrostrat install[/]."
+    )
 if environ.get("MACROSTRAT_PYROOT") is not None:
-    warnings.append(
-        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]. This is not recommended for normal operation."
+    app.warnings.append(
+        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]\n  [dim]This is not recommended for normal operation."
     )
 
 # TODO: load all subsystems before rendering help so that warnings can be shown
@@ -82,7 +85,7 @@ try:
     pcli = build_paleogeography_subsystem(app, db_subsystem)
     subsystem_commands.append(pcli)
 except SubsystemLoadError as err:
-    warnings.append(str(err))
+    app.warnings.append(str(err))
 
 # If the user has macrostrat-<command> on their path, we want to run it as a subprocess
 # and return the output, instead of continuing with the CLI.
@@ -90,10 +93,12 @@ except SubsystemLoadError as err:
 # existing commands.
 run_user_command_if_provided(*settings.script_dirs)
 
+if app.info:
+    help_text += "\n".join([f"- {w}" for w in app.info]) + "\n"
+
 # Now, we render the warnings in the CLI help text
-if warnings:
-    help_text += "\n[bold yellow]Warnings[/]:\n"
-    help_text += "\n".join([f"- [yellow]{w}[/]" for w in warnings]) + "\n"
+if app.warnings:
+    help_text += "\n".join([f"- [yellow]{w}[/]" for w in app.warnings]) + "\n"
 
 main = app.control_command(
     add_completion=True,
