@@ -14,7 +14,6 @@ from macrostrat.core.utils import env_text, set_app_state
 from macrostrat.schema_management import schema_app
 from macrostrat.utils.shell import run
 
-from .utils import activate_proxy
 from .database import db_app, db_subsystem
 from .subsystems.dev import dev_app
 from .subsystems.paleogeography import (
@@ -64,10 +63,6 @@ help_text = f"""[bold]Macrostrat[/] control interface
 """
 
 app.info.append(f"Active environment: [bold cyan]{_env_text}[/]")
-
-
-# Activate a Socks5 proxy if set in this command
-activate_proxy(app)
 
 if not settings.pg_database:
     app.warnings.append("No database URL found in settings")
