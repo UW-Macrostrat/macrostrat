@@ -121,6 +121,8 @@ settings.validators.register(
     Validator("databases", default={}),
     Validator("log_modules", cast=list, default=["macrostrat"]),
     Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
+    Validator("proxy_address", cast=convert_to_string, default=None),
+    Validator("proxy_command", cast=convert_to_string, default=None),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
