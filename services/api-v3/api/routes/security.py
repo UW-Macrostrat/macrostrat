@@ -55,7 +55,7 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     sub: str
-    groups: list[int] = []
+    role: str | None = None
 
 
 class User(BaseModel):
@@ -118,18 +118,6 @@ def hash_refresh_token(raw_token: str) -> str:
     key = os.environ["SECRET_KEY"].encode("utf-8")
     digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
     return base64.urlsafe_b64encode(digest).decode("utf-8")
-
-
-async def get_user_by_id(
-    user_id: int, async_session: async_sessionmaker[AsyncSession]
-) -> schemas.User | None:
-    async with async_session() as session:
-        stmt = (
-            select(schemas.User)
-            .options(selectinload(schemas.User.groups))
-            .where(schemas.User.id == user_id)
-        )
-        return await session.scalar(stmt)
 
 
 def parse_redirect_uri():
@@ -220,8 +208,8 @@ async def get_user_token_from_cookie(
             algorithms=[os.environ["JWT_ENCRYPTION_ALGORITHM"]],
         )
         sub: str = payload.get("sub")
-        groups = payload.get("groups", [])
-        token_data = TokenData(sub=sub, groups=groups)
+        role: str | None = payload.get("role")
+        token_data = TokenData(sub=sub, role=role)
     except JWTError as e:
         return None
 
@@ -229,14 +217,17 @@ async def get_user_token_from_cookie(
 
 
 async def get_groups(
+    database: DatabaseDep,
     user_token_data: TokenData | None = Depends(get_user_token_from_cookie),
     header_token: int | None = Depends(get_groups_from_header_token),
 ) -> list[int]:
-    """Get the groups from both the cookies and header"""
+    """Get the user's group ids from the database (via the JWT `sub`) and header"""
 
     groups = []
     if user_token_data is not None:
-        groups = user_token_data.groups
+        user = await get_user(user_token_data.sub, database.async_sessionmaker)
+        if user is not None:
+            groups = [g.id for g in user.groups]
 
     if header_token is not None:
         groups.append(header_token)
@@ -244,9 +235,14 @@ async def get_groups(
     return groups
 
 
-async def has_access(groups: list[int] = Depends(get_groups)) -> bool:
-    """Check if the user has access to the group"""
-    return 1 in groups
+async def has_access(
+    user_token_data: TokenData | None = Depends(get_user_token_from_cookie),
+    header_token: int | None = Depends(get_groups_from_header_token),
+) -> bool:
+    """Check for admin access via the JWT role or a group-1 API token"""
+    if user_token_data is not None and user_token_data.role == "web_admin":
+        return True
+    return header_token == 1
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -329,7 +325,7 @@ async def redirect_callback(
                 )
 
             user_data = await user_response.json()
-            # need to look up the user_id and return it in the jwt
+            # look up the user by their OIDC subject to compute their role
             user = await get_user(user_data["sub"], database.async_sessionmaker)
 
             if user is None:
@@ -358,14 +354,10 @@ async def redirect_callback(
             )
 
             # validate jwt https://dev.macrostrat.org/dev/me
-            # TODO remove the groups and sub and add the user_name
             access_token = create_access_token(
                 data={
                     "sub": user.sub,
                     "role": role,  # For PostgREST
-                    # ensure user_id is correctly being returned
-                    "user_id": user.id,
-                    "groups": list(ids),
                 }
             )
 
@@ -403,7 +395,6 @@ async def redirect_callback(
             # TODO remove the token type
             refresh_jwt = jwt.encode(
                 {
-                    "user_id": user.id,
                     "sub": user.sub,
                     "type": "refresh",
                     "exp": datetime.utcnow()
@@ -450,13 +441,13 @@ async def refresh_token(
         clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
-    user_id = payload.get("user_id")
-    if not user_id:
+    sub = payload.get("sub")
+    if not sub:
         clear_auth_cookies(response)
         raise HTTPException(status_code=401, detail="Refresh token invalid")
 
-    # verifying the user_id and group_id
-    user = await get_user_by_id(int(user_id), database.async_sessionmaker)
+    # verifying the user via the subject claim
+    user = await get_user(sub, database.async_sessionmaker)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     names = {g.name for g in user.groups}
@@ -467,9 +458,8 @@ async def refresh_token(
         else "web_user"
     )
     # setting new access cookie
-    # TODO can remove groups, sub. add user_name.
     access_token = create_access_token(
-        data={"sub": user.sub, "role": role, "user_id": user.id, "groups": list(ids)}
+        data={"sub": user.sub, "role": role}
     )
 
     parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
@@ -494,7 +484,12 @@ async def create_group_token(
 ):
     """Get an access token for the current user"""
 
-    if group_token_request.group_id not in user_token.groups:
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = await get_user(user_token.sub, database.async_sessionmaker)
+    group_ids = {g.id for g in user.groups} if user is not None else set()
+    if group_token_request.group_id not in group_ids:
         raise HTTPException(
             status_code=401,
             detail=f"User cannot create tokens for group {group_token_request.group_id}",

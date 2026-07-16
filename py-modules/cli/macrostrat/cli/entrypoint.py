@@ -29,7 +29,7 @@ __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
 app.warnings = []
-app.info = []
+app.info_messages = []
 
 install(show_locals=False)
 
@@ -62,7 +62,7 @@ help_text = f"""[bold]Macrostrat[/] control interface
 
 """
 
-app.info.append(f"Active environment: [bold cyan]{_env_text}[/]")
+app.info_messages.append(f"Active environment: [bold cyan]{_env_text}[/]")
 
 if not settings.pg_database:
     app.warnings.append("No database URL found in settings")
@@ -93,8 +93,8 @@ except SubsystemLoadError as err:
 # existing commands.
 run_user_command_if_provided(*settings.script_dirs)
 
-if app.info:
-    help_text += "\n".join([f"- {w}" for w in app.info]) + "\n"
+if app.info_messages:
+    help_text += "\n".join([f"- {w}" for w in app.info_messages]) + "\n"
 
 # Now, we render the warnings in the CLI help text
 if app.warnings:
