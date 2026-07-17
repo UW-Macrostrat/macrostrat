@@ -137,8 +137,8 @@ module.exports = function (req, res, next) {
                 LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
                 LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
                 WHERE units_sections.col_id = $1
-                GROUP BY units.id, period, unit_class, lith_short
-                ORDER BY units.id ASC;`;
+                GROUP BY units.id, period, unit_class, lith_short, lookup_unit_intervals.t_age
+                ORDER BY t_age ASC;`;
 
                 larkin.queryPg(
                   "burwell",
@@ -261,8 +261,8 @@ module.exports = function (req, res, next) {
                 LEFT JOIN macrostrat.lookup_strat_names ON lookup_strat_names.strat_name_id=unit_strat_names.strat_name_id
                 LEFT JOIN macrostrat.pbdb_matches ON pbdb_matches.unit_id=units.id and pbdb_matches.release_date < now()
                 WHERE units_sections.col_id = ?
-                GROUP BY units.id, period, unit_class, lith_short
-                ORDER BY units.id ASC;`,
+                GROUP BY units.id, period, unit_class, lith_short, lookup_unit_intervals.t_age
+                ORDER BY t_age ASC;`,
                   [req.query.col_id],
                   function (error, result) {
                     if (error) {
