@@ -1,6 +1,5 @@
 
 CREATE SCHEMA carto;
-ALTER SCHEMA carto OWNER TO macrostrat;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -8,13 +7,11 @@ CREATE TABLE carto.flat_large (
     map_id integer,
     geom public.geometry
 );
-ALTER TABLE carto.flat_large OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.flat_medium (
     map_id integer,
     geom public.geometry
 );
-ALTER TABLE carto.flat_medium OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.large (
     map_id integer,
@@ -39,7 +36,6 @@ CREATE TABLE carto.large (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.large OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.lines (
     line_id integer NOT NULL,
@@ -49,7 +45,6 @@ CREATE TABLE carto.lines (
     scale maps.map_scale NOT NULL
 )
 PARTITION BY LIST (scale);
-ALTER TABLE carto.lines OWNER TO macrostrat;
 
 CREATE TABLE carto.lines_large (
     line_id integer NOT NULL,
@@ -59,7 +54,6 @@ CREATE TABLE carto.lines_large (
     scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
     CONSTRAINT lines_large_scale_check CHECK ((scale = 'large'::maps.map_scale))
 );
-ALTER TABLE carto.lines_large OWNER TO macrostrat;
 
 CREATE TABLE carto.lines_medium (
     line_id integer NOT NULL,
@@ -69,7 +63,6 @@ CREATE TABLE carto.lines_medium (
     scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
     CONSTRAINT lines_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale))
 );
-ALTER TABLE carto.lines_medium OWNER TO macrostrat;
 
 CREATE TABLE carto.lines_small (
     line_id integer NOT NULL,
@@ -79,7 +72,6 @@ CREATE TABLE carto.lines_small (
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
     CONSTRAINT lines_small_scale_check CHECK ((scale = 'small'::maps.map_scale))
 );
-ALTER TABLE carto.lines_small OWNER TO macrostrat;
 
 CREATE TABLE carto.lines_tiny (
     line_id integer NOT NULL,
@@ -89,7 +81,6 @@ CREATE TABLE carto.lines_tiny (
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
     CONSTRAINT lines_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale))
 );
-ALTER TABLE carto.lines_tiny OWNER TO macrostrat;
 
 CREATE TABLE carto.medium (
     map_id integer,
@@ -114,7 +105,6 @@ CREATE TABLE carto.medium (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.medium OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.polygons (
     map_id integer NOT NULL,
@@ -124,7 +114,6 @@ CREATE TABLE carto.polygons (
     scale maps.map_scale NOT NULL
 )
 PARTITION BY LIST (scale);
-ALTER TABLE carto.polygons OWNER TO macrostrat;
 
 CREATE TABLE carto.polygons_large (
     map_id integer NOT NULL,
@@ -134,7 +123,6 @@ CREATE TABLE carto.polygons_large (
     scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
     CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale))
 );
-ALTER TABLE carto.polygons_large OWNER TO macrostrat;
 
 CREATE TABLE carto.polygons_medium (
     map_id integer NOT NULL,
@@ -144,7 +132,6 @@ CREATE TABLE carto.polygons_medium (
     scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
     CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale))
 );
-ALTER TABLE carto.polygons_medium OWNER TO macrostrat;
 
 CREATE TABLE carto.polygons_small (
     map_id integer NOT NULL,
@@ -154,7 +141,6 @@ CREATE TABLE carto.polygons_small (
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
     CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale))
 );
-ALTER TABLE carto.polygons_small OWNER TO macrostrat;
 
 CREATE TABLE carto.polygons_tiny (
     map_id integer NOT NULL,
@@ -164,7 +150,6 @@ CREATE TABLE carto.polygons_tiny (
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
     CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale))
 );
-ALTER TABLE carto.polygons_tiny OWNER TO macrostrat;
 
 CREATE TABLE carto.small (
     map_id integer,
@@ -189,7 +174,6 @@ CREATE TABLE carto.small (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.small OWNER TO macrostrat_admin;
 
 CREATE TABLE carto.tiny (
     map_id integer,
@@ -214,7 +198,6 @@ CREATE TABLE carto.tiny (
     lith_ids integer[],
     geom public.geometry
 );
-ALTER TABLE carto.tiny OWNER TO macrostrat_admin;
 
 ALTER TABLE ONLY carto.lines ATTACH PARTITION carto.lines_large FOR VALUES IN ('large');
 
@@ -362,7 +345,4 @@ ALTER TABLE carto.lines
 ALTER TABLE carto.polygons
     ADD CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);
 
-GRANT SELECT ON ALL TABLES IN SCHEMA carto TO macrostrat;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto GRANT SELECT ON TABLES  TO macrostrat;
 

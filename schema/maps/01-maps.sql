@@ -1,6 +1,5 @@
 
 CREATE SCHEMA maps;
-ALTER SCHEMA maps OWNER TO macrostrat;
 
 
 CREATE TYPE maps.map_scale AS ENUM (
@@ -9,21 +8,18 @@ CREATE TYPE maps.map_scale AS ENUM (
     'medium',
     'large'
 );
-ALTER TYPE maps.map_scale OWNER TO macrostrat;
 
 CREATE FUNCTION maps.lines_geom_is_valid(geom public.geometry) RETURNS boolean
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_LineString', 'ST_MultiLineString');
 $$;
-ALTER FUNCTION maps.lines_geom_is_valid(geom public.geometry) OWNER TO macrostrat;
 
 CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolean
     LANGUAGE sql IMMUTABLE
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
-ALTER FUNCTION maps.polygons_geom_is_valid(geom public.geometry) OWNER TO macrostrat;
 SET default_tablespace = '';
 
 CREATE TABLE maps.lines (
@@ -41,7 +37,6 @@ CREATE TABLE maps.lines (
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 )
 PARTITION BY LIST (scale);
-ALTER TABLE maps.lines OWNER TO macrostrat;
 SET default_table_access_method = heap;
 
 CREATE TABLE maps.legend (
@@ -74,14 +69,12 @@ CREATE TABLE maps.legend (
     medium_area numeric,
     large_area numeric
 );
-ALTER TABLE maps.legend OWNER TO macrostrat;
 
 CREATE TABLE maps.legend_liths (
     legend_id integer NOT NULL,
     lith_id integer NOT NULL,
     basis_col text NOT NULL
 );
-ALTER TABLE maps.legend_liths OWNER TO macrostrat;
 
 CREATE SEQUENCE maps.map_ids
     START WITH 1
@@ -89,7 +82,6 @@ CREATE SEQUENCE maps.map_ids
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE maps.map_ids OWNER TO macrostrat;
 
 CREATE TABLE maps.polygons (
     map_id integer DEFAULT nextval('maps.map_ids'::regclass) NOT NULL,
@@ -108,7 +100,6 @@ CREATE TABLE maps.polygons (
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom))
 )
 PARTITION BY LIST (scale);
-ALTER TABLE maps.polygons OWNER TO macrostrat;
 
 CREATE TABLE maps.sources (
     source_id serial PRIMARY KEY,
@@ -158,7 +149,6 @@ ALTER TABLE ONLY maps.sources
 ALTER TABLE ONLY maps.sources
   ADD CONSTRAINT sources_source_id_key UNIQUE (source_id);
 
-ALTER TABLE maps.sources OWNER TO macrostrat;
 
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
 
@@ -181,7 +171,6 @@ CREATE TABLE maps.points (
     CONSTRAINT strike_lt_360 CHECK ((strike <= 360)),
     CONSTRAINT strike_positive CHECK ((strike >= 0))
 );
-ALTER TABLE maps.points OWNER TO macrostrat;
 
 CREATE TABLE maps.polygons_large (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -202,7 +191,6 @@ CREATE TABLE maps.polygons_large (
     CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
     CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
-ALTER TABLE maps.polygons_large OWNER TO macrostrat;
 
 CREATE SEQUENCE maps.legend_legend_id_seq
     AS integer
@@ -211,7 +199,6 @@ CREATE SEQUENCE maps.legend_legend_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE maps.legend_legend_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE maps.legend_legend_id_seq OWNED BY maps.legend.legend_id;
 
@@ -230,7 +217,6 @@ CREATE TABLE maps.lines_large (
     CONSTRAINT lines_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
-ALTER TABLE maps.lines_large OWNER TO macrostrat;
 
 CREATE TABLE maps.lines_medium (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -247,7 +233,6 @@ CREATE TABLE maps.lines_medium (
     CONSTRAINT lines_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
-ALTER TABLE maps.lines_medium OWNER TO macrostrat;
 
 CREATE TABLE maps.lines_small (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -264,7 +249,6 @@ CREATE TABLE maps.lines_small (
     CONSTRAINT lines_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
-ALTER TABLE maps.lines_small OWNER TO macrostrat;
 
 CREATE TABLE maps.lines_tiny (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -282,7 +266,6 @@ CREATE TABLE maps.lines_tiny (
     CONSTRAINT lines_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
-ALTER TABLE maps.lines_tiny OWNER TO macrostrat;
 
 CREATE TABLE maps.manual_matches (
     match_id integer NOT NULL,
@@ -293,7 +276,6 @@ CREATE TABLE maps.manual_matches (
     removal boolean DEFAULT false,
     type character varying(20)
 );
-ALTER TABLE maps.manual_matches OWNER TO macrostrat;
 
 CREATE SEQUENCE maps.manual_matches_match_id_seq
     START WITH 1
@@ -301,7 +283,6 @@ CREATE SEQUENCE maps.manual_matches_match_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE maps.manual_matches_match_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE maps.manual_matches_match_id_seq OWNED BY maps.manual_matches.match_id;
 
@@ -309,28 +290,24 @@ CREATE TABLE maps.map_legend (
     legend_id integer NOT NULL,
     map_id integer NOT NULL
 );
-ALTER TABLE maps.map_legend OWNER TO macrostrat;
 
 CREATE TABLE maps.map_liths (
     map_id integer NOT NULL,
     lith_id integer NOT NULL,
     basis_col character varying(50)
 );
-ALTER TABLE maps.map_liths OWNER TO macrostrat;
 
 CREATE TABLE maps.map_strat_names (
     map_id integer NOT NULL,
     strat_name_id integer NOT NULL,
     basis_col character varying(50)
 );
-ALTER TABLE maps.map_strat_names OWNER TO macrostrat;
 
 CREATE TABLE maps.map_units (
     map_id integer NOT NULL,
     unit_id integer NOT NULL,
     basis_col character varying(50)
 );
-ALTER TABLE maps.map_units OWNER TO macrostrat;
 
 CREATE TABLE maps.polygons_medium (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -351,7 +328,6 @@ CREATE TABLE maps.polygons_medium (
     CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
     CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
-ALTER TABLE maps.polygons_medium OWNER TO macrostrat;
 
 CREATE SEQUENCE maps.points_point_id_seq
     START WITH 1
@@ -359,7 +335,6 @@ CREATE SEQUENCE maps.points_point_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE maps.points_point_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE maps.points_point_id_seq OWNED BY maps.points.point_id;
 
@@ -381,7 +356,6 @@ CREATE TABLE maps.polygons_small (
     CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
     CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
-ALTER TABLE maps.polygons_small OWNER TO macrostrat;
 
 CREATE TABLE maps.polygons_tiny (
     map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
@@ -401,7 +375,6 @@ CREATE TABLE maps.polygons_tiny (
     CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
     CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
 );
-ALTER TABLE maps.polygons_tiny OWNER TO macrostrat;
 
 CREATE TABLE maps.source_operations (
     id integer NOT NULL,
@@ -413,7 +386,6 @@ CREATE TABLE maps.source_operations (
     details jsonb,
     date timestamp with time zone DEFAULT now() NOT NULL
 );
-ALTER TABLE maps.source_operations OWNER TO macrostrat;
 
 create table maps.line_type (
     id text not null primary key,
@@ -434,7 +406,6 @@ CREATE SEQUENCE maps.source_operations_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE maps.source_operations_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE maps.source_operations_id_seq OWNED BY maps.source_operations.id;
 
@@ -754,14 +725,8 @@ ALTER TABLE ONLY maps.source_operations
 ALTER TABLE ONLY maps.source_operations
     ADD CONSTRAINT source_operations_user_id_fkey FOREIGN KEY (user_id) REFERENCES macrostrat_auth."user"(id) ON DELETE SET NULL;
 
-GRANT SELECT ON TABLE maps.vw_legend_with_liths TO macrostrat;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA maps GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA maps GRANT SELECT ON TABLES  TO macrostrat;
 
 
-GRANT USAGE ON SCHEMA maps TO macrostrat;
-GRANT SELECT ON ALL TABLES IN SCHEMA maps TO macrostrat;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA maps TO macrostrat;
+
+
 

@@ -11,7 +11,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA macrostrat_api;
-ALTER SCHEMA macrostrat_api OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_api.auth_status() RETURNS jsonb
     LANGUAGE sql
@@ -21,7 +20,6 @@ CREATE FUNCTION macrostrat_api.auth_status() RETURNS jsonb
     'role', current_user
   );
 $$;
-ALTER FUNCTION macrostrat_api.auth_status() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat_api.combine_sections(section_ids integer[]) RETURNS void
     LANGUAGE plpgsql
@@ -40,7 +38,6 @@ BEGIN
   WHERE id = ANY(section_ids[2:]);
 END
 $$;
-ALTER FUNCTION macrostrat_api.combine_sections(section_ids integer[]) OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_api.get_col_strat_names(_col_id integer) RETURNS TABLE(id integer, strat_name character varying, rank character varying, ref_id integer, concept_id integer, author character varying, source text)
     LANGUAGE plpgsql
@@ -105,7 +102,6 @@ WHERE u.col_id NOT IN (SELECT a.id FROM a)
 ;
 END
 $$;
-ALTER FUNCTION macrostrat_api.get_col_strat_names(_col_id integer) OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) RETURNS TABLE(id integer, strat_name character varying, rank character varying, author character varying, parent text)
     LANGUAGE plpgsql
@@ -132,7 +128,6 @@ RETURN QUERY
     ;
 END
 $$;
-ALTER FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) RETURNS TABLE(id integer, strat_name character varying, rank character varying, ref_id integer, concept_id integer, author character varying, source text, parent text)
     LANGUAGE plpgsql
@@ -150,7 +145,6 @@ BEGIN
     ;
 END
 $$;
-ALTER FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_api.get_units_with_collections(column_id integer) RETURNS TABLE(id integer, strat_name character varying, strat_name_data jsonb, color character varying, outcrop character varying, fo integer, lo integer, position_bottom numeric, position_top numeric, max_thick numeric, min_thick numeric, section_id integer, col_id integer, notes text, name_fo character varying, age_bottom numeric, name_lo character varying, age_top numeric, lith_unit jsonb, environ_unit jsonb)
     LANGUAGE plpgsql
@@ -171,7 +165,6 @@ RETURN QUERY
   ORDER BY u.position_bottom;
 END
 $$;
-ALTER FUNCTION macrostrat_api.get_units_with_collections(column_id integer) OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat_api.insert_people() RETURNS trigger
     LANGUAGE plpgsql
@@ -182,7 +175,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat_api.insert_people() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat_api.people_view_insert_trigger() RETURNS trigger
     LANGUAGE plpgsql
@@ -200,7 +192,6 @@ BEGIN
 END;
 $$;
 
-ALTER FUNCTION macrostrat_api.people_view_insert_trigger() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat_api.split_section(unit_ids integer[]) RETURNS void
     LANGUAGE plpgsql
@@ -217,75 +208,48 @@ BEGIN
     WHERE id = ANY(unit_ids);
 END
 $$;
-ALTER FUNCTION macrostrat_api.split_section(unit_ids integer[]) OWNER TO macrostrat;
 
-CREATE VIEW macrostrat_api.col_filter AS
- SELECT row_number() OVER () AS id,
-    combined.name,
-    combined.color,
-    combined.lex_id,
-    combined.type
-   FROM ( SELECT liths.lith AS name,
-            liths.lith_color AS color,
-            liths.id AS lex_id,
-            'lithology'::text AS type
-           FROM macrostrat.liths
-        UNION ALL
-         SELECT strat_names.strat_name AS name,
-            NULL::character varying AS color,
-            strat_names.id AS lex_id,
-            'strat name'::text AS type
-           FROM macrostrat.strat_names
-        UNION ALL
-         SELECT intervals.interval_name AS name,
-            intervals.interval_color AS color,
-            intervals.id AS lex_id,
-            'interval'::text AS type
-           FROM macrostrat.intervals
-        UNION ALL
-         SELECT units.strat_name AS name,
-            NULL::character varying AS color,
-            units.id AS lex_id,
-            'unit'::text AS type
-           FROM macrostrat.units) combined;
-ALTER TABLE macrostrat_api.col_filter OWNER TO macrostrat_admin;
-
-CREATE VIEW macrostrat_api.col_filters AS
- SELECT concat('lith:', (l.id)::text) AS uid,
-    l.lith AS name,
-    l.lith_color AS color,
-    l.id AS lex_id,
-    'lithology'::text AS type
-   FROM macrostrat.liths l
+/** Entities that can be used to filter columns */
+CREATE OR REPLACE VIEW macrostrat_api.col_filters AS
+SELECT
+  concat('lith:', l.id::text) AS uid,
+  l.lith AS name,
+  l.lith_color AS color,
+  l.id AS lex_id,
+  'lithology'::text AS type
+FROM macrostrat.liths l
 UNION ALL
- SELECT concat('int:', (i.id)::text) AS uid,
-    i.interval_name AS name,
-    i.interval_color AS color,
-    i.id AS lex_id,
-    'interval'::text AS type
-   FROM macrostrat.intervals i
+SELECT
+  concat('int:', i.id::text) AS uid,
+  i.interval_name AS name,
+  i.interval_color AS color,
+  i.id AS lex_id,
+  'interval'::text AS type
+FROM macrostrat.intervals i
 UNION ALL
- SELECT concat('env:', (e.id)::text) AS uid,
-    e.environ AS name,
-    e.environ_color AS color,
-    e.id AS lex_id,
-    'environment'::text AS type
-   FROM macrostrat.environs e
+SELECT
+  concat('env:', e.id::text) AS uid,
+  e.environ AS name,
+  e.environ_color AS color,
+  e.id AS lex_id,
+  'environment'::text AS type
+FROM macrostrat.environs e
 UNION ALL
- SELECT concat('concept:', (c.concept_id)::text) AS uid,
-    c.name,
-    NULL::character varying AS color,
-    c.concept_id AS lex_id,
-    'concept'::text AS type
-   FROM macrostrat.strat_names_meta c
+SELECT
+  concat('concept:', c.concept_id::text) AS uid,
+  c.name AS name,
+  NULL::character varying AS color,
+  c.concept_id AS lex_id,
+  'concept'::text AS type
+FROM macrostrat.strat_names_meta c
 UNION ALL
- SELECT concat('strat_name:', (sn.id)::text) AS uid,
-    sn.strat_name AS name,
-    NULL::character varying AS color,
-    sn.id AS lex_id,
-    'strat name'::text AS type
-   FROM macrostrat.strat_names sn;
-ALTER TABLE macrostrat_api.col_filters OWNER TO macrostrat_admin;
+SELECT
+  concat('strat_name:', sn.id::text) AS uid,
+  sn.strat_name AS name,
+  NULL::character varying AS color,
+  sn.id AS lex_id,
+  'strat name'::text AS type
+FROM macrostrat.strat_names sn;
 
 CREATE VIEW macrostrat_api.col_group_with_cols AS
  SELECT cg.id,
@@ -298,7 +262,6 @@ CREATE VIEW macrostrat_api.col_group_with_cols AS
      LEFT JOIN macrostrat.cols c ON ((c.col_group_id = cg.id)))
      LEFT JOIN macrostrat.projects p ON ((p.id = cg.project_id)))
   GROUP BY cg.id, c.project_id, p.project;
-ALTER TABLE macrostrat_api.col_group_with_cols OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.col_groups AS
  SELECT col_groups.id,
@@ -306,7 +269,6 @@ CREATE VIEW macrostrat_api.col_groups AS
     col_groups.col_group_long,
     col_groups.project_id
    FROM macrostrat.col_groups;
-ALTER TABLE macrostrat_api.col_groups OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.col_ref_expanded AS
  SELECT c.id AS col_id,
@@ -319,14 +281,12 @@ CREATE VIEW macrostrat_api.col_ref_expanded AS
    FROM ((macrostrat.cols c
      LEFT JOIN macrostrat.col_refs cr ON ((c.id = cr.col_id)))
      LEFT JOIN macrostrat.refs r ON ((cr.ref_id = r.id)));
-ALTER TABLE macrostrat_api.col_ref_expanded OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.col_refs AS
  SELECT col_refs.id,
     col_refs.col_id,
     col_refs.ref_id
    FROM macrostrat.col_refs;
-ALTER TABLE macrostrat_api.col_refs OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.col_section_data AS
  WITH a AS (
@@ -356,7 +316,6 @@ CREATE VIEW macrostrat_api.col_section_data AS
    FROM a
   WINDOW w AS (PARTITION BY a.col_id, a.section_id ORDER BY a.fo_age DESC), w1 AS (PARTITION BY a.col_id, a.section_id ORDER BY a.lo_age)
   ORDER BY a.col_id, a.section_id;
-ALTER TABLE macrostrat_api.col_section_data OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.col_sections AS
  SELECT c.id AS col_id,
@@ -370,7 +329,6 @@ CREATE VIEW macrostrat_api.col_sections AS
      LEFT JOIN macrostrat.units u ON ((u.col_id = c.id)))
      LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
      LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
-ALTER TABLE macrostrat_api.col_sections OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.cols AS
  SELECT cols.id,
@@ -389,7 +347,6 @@ CREATE VIEW macrostrat_api.cols AS
     cols.wkt,
     cols.poly_geom
    FROM macrostrat.cols;
-ALTER TABLE macrostrat_api.cols OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.cols_with_groups AS
  SELECT mt.id,
@@ -411,7 +368,6 @@ CREATE VIEW macrostrat_api.cols_with_groups AS
     cg.col_group
    FROM (macrostrat.cols mt
      JOIN macrostrat.col_groups cg ON ((mt.col_group_id = cg.id)));
-ALTER TABLE macrostrat_api.cols_with_groups OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.dataset AS
  SELECT d.id,
@@ -428,7 +384,6 @@ CREATE VIEW macrostrat_api.dataset AS
     dt.organization
    FROM (integrations.dataset d
      JOIN integrations.dataset_type dt ON ((d.type = dt.id)));
-ALTER TABLE macrostrat_api.dataset OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.dataset_type AS
  SELECT dataset_type.id,
@@ -436,7 +391,6 @@ CREATE VIEW macrostrat_api.dataset_type AS
     dataset_type.organization,
     dataset_type.updated_at
    FROM integrations.dataset_type;
-ALTER TABLE macrostrat_api.dataset_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.econ_unit AS
  SELECT e.id,
@@ -448,7 +402,6 @@ CREATE VIEW macrostrat_api.econ_unit AS
     ue.ref_id
    FROM (macrostrat.econs e
      JOIN macrostrat.unit_econs ue ON ((e.id = ue.econ_id)));
-ALTER TABLE macrostrat_api.econ_unit OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.environ_unit AS
  SELECT e.id,
@@ -461,7 +414,6 @@ CREATE VIEW macrostrat_api.environ_unit AS
     ue.ref_id
    FROM (macrostrat.environs e
      JOIN macrostrat.unit_environs ue ON ((e.id = ue.environ_id)));
-ALTER TABLE macrostrat_api.environ_unit OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.environs AS
  SELECT environs.id,
@@ -471,7 +423,6 @@ CREATE VIEW macrostrat_api.environs AS
     environs.environ_fill,
     environs.environ_color
    FROM macrostrat.environs;
-ALTER TABLE macrostrat_api.environs OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.extraction_feedback AS
  SELECT extraction_feedback.note_id,
@@ -479,7 +430,6 @@ CREATE VIEW macrostrat_api.extraction_feedback AS
     extraction_feedback.date,
     extraction_feedback.custom_note
    FROM macrostrat_xdd.extraction_feedback;
-ALTER TABLE macrostrat_api.extraction_feedback OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.extraction_feedback_combined AS
  SELECT f.feedback_id,
@@ -491,13 +441,11 @@ CREATE VIEW macrostrat_api.extraction_feedback_combined AS
      LEFT JOIN macrostrat_xdd.extraction_feedback_type t ON ((t.type_id = l.type_id)))
   GROUP BY f.feedback_id, f.date, f.custom_note
   ORDER BY f.date DESC;
-ALTER TABLE macrostrat_api.extraction_feedback_combined OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.extraction_feedback_type AS
  SELECT extraction_feedback_type.type_id,
     extraction_feedback_type.type
    FROM macrostrat_xdd.extraction_feedback_type;
-ALTER TABLE macrostrat_api.extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.fossils AS
  SELECT pbdb_collections.collection_no,
@@ -516,7 +464,6 @@ CREATE VIEW macrostrat_api.fossils AS
     pbdb_collections.n_occs,
     pbdb_collections.geom
    FROM macrostrat.pbdb_collections;
-ALTER TABLE macrostrat_api.fossils OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.intervals AS
  SELECT intervals.id,
@@ -529,7 +476,6 @@ CREATE VIEW macrostrat_api.intervals AS
     intervals.orig_color,
     intervals.rank
    FROM macrostrat.intervals;
-ALTER TABLE macrostrat_api.intervals OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_entities AS
  WITH strat_names AS (
@@ -561,7 +507,6 @@ CREATE VIEW macrostrat_api.kg_entities AS
      LEFT JOIN strat_names sn ON ((sn.strat_name_id = e.strat_name_id)))
      LEFT JOIN liths l ON ((l.lith_id = e.lith_id)))
      LEFT JOIN lith_atts la ON ((la.lith_att_id = e.lith_att_id)));
-ALTER TABLE macrostrat_api.kg_entities OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_entity_tree AS
  WITH RECURSIVE start_entities AS (
@@ -620,7 +565,6 @@ CREATE VIEW macrostrat_api.kg_entity_tree AS
      JOIN macrostrat_xdd.model_run mr ON ((mr.id = tree.model_run)))
      JOIN macrostrat_xdd.source_text st ON ((st.id = mr.source_text_id)))
   WHERE (tree.parent_id IS NULL);
-ALTER TABLE macrostrat_api.kg_entity_tree OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_context_entities AS
  WITH entities AS (
@@ -644,7 +588,6 @@ CREATE VIEW macrostrat_api.kg_context_entities AS
    FROM ((macrostrat_xdd.source_text st
      LEFT JOIN macrostrat_xdd.model_run mr ON ((mr.source_text_id = st.id)))
      LEFT JOIN entities e ON ((e.model_run = mr.id)));
-ALTER TABLE macrostrat_api.kg_context_entities OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_entity_type AS
  SELECT entity_type.id,
@@ -652,13 +595,11 @@ CREATE VIEW macrostrat_api.kg_entity_type AS
     entity_type.description,
     entity_type.color
    FROM macrostrat_xdd.entity_type;
-ALTER TABLE macrostrat_api.kg_entity_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_extraction_feedback_type AS
  SELECT extraction_feedback_type.type_id,
     extraction_feedback_type.type
    FROM macrostrat_xdd.extraction_feedback_type;
-ALTER TABLE macrostrat_api.kg_extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_source_text AS
  WITH stats AS (
@@ -689,7 +630,6 @@ CREATE VIEW macrostrat_api.kg_source_text AS
     s.last_update
    FROM (macrostrat_xdd.source_text st
      JOIN stats s ON ((s.source_text_id = st.id)));
-ALTER TABLE macrostrat_api.kg_source_text OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_matches AS
  WITH all_lith_ids AS (
@@ -718,7 +658,6 @@ CREATE VIEW macrostrat_api.kg_matches AS
    FROM ((all_lith_ids a
      LEFT JOIN parsed_kg_entities k ON ((((a.lith_id IS NOT NULL) AND (k.lith_id = a.lith_id)) OR ((a.lith_att_id IS NOT NULL) AND (k.lith_att_id = a.lith_att_id)))))
      LEFT JOIN macrostrat_api.kg_source_text s ON ((k.source = s.id)));
-ALTER TABLE macrostrat_api.kg_matches OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_model AS
  SELECT m.id,
@@ -735,7 +674,6 @@ CREATE VIEW macrostrat_api.kg_model AS
      LEFT JOIN macrostrat_xdd.model_run mr ON ((mr.model_id = m.id)))
      LEFT JOIN macrostrat_xdd.entity e ON ((e.run_id = mr.id)))
   GROUP BY m.id;
-ALTER TABLE macrostrat_api.kg_model OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_model_run AS
  SELECT mr.id,
@@ -755,7 +693,6 @@ CREATE VIEW macrostrat_api.kg_model_run AS
      JOIN macrostrat_xdd.model m ON ((m.id = mr.model_id)))
      JOIN macrostrat_xdd.source_text st ON ((st.id = mr.source_text_id)))
   ORDER BY mr.id;
-ALTER TABLE macrostrat_api.kg_model_run OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_publication_entities AS
  WITH paper_strat_names AS (
@@ -785,7 +722,6 @@ CREATE VIEW macrostrat_api.kg_publication_entities AS
      LEFT JOIN paper_strat_names p ON ((pub.paper_id = p.paper_id)))
      LEFT JOIN entities e ON ((p.paper_id = e.paper_id)))
   ORDER BY p.n_matches DESC;
-ALTER TABLE macrostrat_api.kg_publication_entities OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.kg_source_text_casted AS
  SELECT (t.id)::text AS id,
@@ -805,7 +741,6 @@ CREATE VIEW macrostrat_api.kg_source_text_casted AS
      LEFT JOIN macrostrat_api.kg_model m ON ((m.id = e.model_id)))
      LEFT JOIN macrostrat_api.kg_model_run r ON ((t.id = r.source_text_id)))
   GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
-ALTER TABLE macrostrat_api.kg_source_text_casted OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.legend AS
  WITH _intervals AS (
@@ -856,7 +791,6 @@ CREATE VIEW macrostrat_api.legend AS
    FROM (maps.legend l
      JOIN legend_liths2 ll USING (legend_id))
   GROUP BY l.legend_id;
-ALTER TABLE macrostrat_api.legend OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.legend_liths AS
  SELECT l.legend_id,
@@ -866,7 +800,6 @@ CREATE VIEW macrostrat_api.legend_liths AS
    FROM (maps.legend l
      LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
   GROUP BY l.legend_id, l.source_id, l.name;
-ALTER TABLE macrostrat_api.legend_liths OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.lith_attr_unit AS
  SELECT la.id AS lith_attr_id,
@@ -889,7 +822,6 @@ CREATE VIEW macrostrat_api.lith_attr_unit AS
      JOIN macrostrat.unit_liths_atts ula ON ((ula.lith_att_id = la.id)))
      JOIN macrostrat.unit_liths ul ON ((ul.id = ula.unit_lith_id)))
      JOIN macrostrat.liths l ON ((ul.lith_id = l.id)));
-ALTER TABLE macrostrat_api.lith_attr_unit OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.lith_unit AS
  SELECT l.id,
@@ -906,7 +838,6 @@ CREATE VIEW macrostrat_api.lith_unit AS
     ul.unit_id
    FROM (macrostrat.liths l
      JOIN macrostrat.unit_liths ul ON ((ul.lith_id = l.id)));
-ALTER TABLE macrostrat_api.lith_unit OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.liths AS
  SELECT liths.id,
@@ -921,7 +852,6 @@ CREATE VIEW macrostrat_api.liths AS
     liths.bulk_density,
     liths.lith_color
    FROM macrostrat.liths;
-ALTER TABLE macrostrat_api.liths OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.location_tags AS
  SELECT location_tags.id,
@@ -929,20 +859,17 @@ CREATE VIEW macrostrat_api.location_tags AS
     location_tags.description,
     location_tags.color
    FROM user_features.location_tags;
-ALTER TABLE macrostrat_api.location_tags OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.location_tags_intersect AS
  SELECT location_tags_intersect.tag_id,
     location_tags_intersect.user_id,
     location_tags_intersect.location_id
    FROM user_features.location_tags_intersect;
-ALTER TABLE macrostrat_api.location_tags_intersect OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.lookup_extraction_type AS
  SELECT lookup_extraction_type.note_id,
     lookup_extraction_type.type_id
    FROM macrostrat_xdd.lookup_extraction_type;
-ALTER TABLE macrostrat_api.lookup_extraction_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.macrostrat_stats AS
  SELECT count(*) AS total_rows,
@@ -952,7 +879,6 @@ CREATE VIEW macrostrat_api.macrostrat_stats AS
             ELSE NULL::integer
         END) AS rows_last_24_hours
    FROM usage_stats.macrostrat_stats;
-ALTER TABLE macrostrat_api.macrostrat_stats OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.map_ingest AS
  SELECT ingest_process.id,
@@ -971,7 +897,6 @@ CREATE VIEW macrostrat_api.map_ingest AS
     ingest_process.ingested_by,
     ingest_process.slug
    FROM maps_metadata.ingest_process;
-ALTER TABLE macrostrat_api.map_ingest OWNER TO macrostrat;
 
 
 CREATE VIEW macrostrat_api.map_ingest_metadata AS
@@ -991,13 +916,11 @@ CREATE VIEW macrostrat_api.map_ingest_metadata AS
     ingest_process.ingested_by,
     ingest_process.slug
    FROM maps_metadata.ingest_process;
-ALTER TABLE macrostrat_api.map_ingest_metadata OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.map_ingest_tags AS
  SELECT ingest_process_tag.ingest_process_id,
     ingest_process_tag.tag
    FROM maps_metadata.ingest_process_tag;
-ALTER TABLE macrostrat_api.map_ingest_tags OWNER TO macrostrat;
 
 CREATE VIEW macrostrat_api.mapped_sources AS
  SELECT s.source_id,
@@ -1024,7 +947,6 @@ CREATE VIEW macrostrat_api.mapped_sources AS
      LEFT JOIN ( SELECT polygons.source_id
            FROM maps.polygons
           GROUP BY polygons.source_id) psi ON ((s.source_id = psi.source_id)));
-ALTER TABLE macrostrat_api.mapped_sources OWNER TO postgres;
 
 CREATE VIEW macrostrat_api.maps_sources AS
  SELECT sources.source_id,
@@ -1054,7 +976,6 @@ CREATE VIEW macrostrat_api.maps_sources AS
     sources.language,
     sources.description
    FROM maps.sources;
-ALTER TABLE macrostrat_api.maps_sources OWNER TO macrostrat;
 
 CREATE VIEW macrostrat_api.measurements_with_type AS
  SELECT m.id,
@@ -1080,7 +1001,6 @@ CREATE VIEW macrostrat_api.measurements_with_type AS
    FROM ((macrostrat.measuremeta m
      LEFT JOIN macrostrat.liths l ON ((m.lith_id = l.id)))
      LEFT JOIN macrostrat.intervals i ON (((m.age)::text = (i.interval_name)::text)));
-ALTER TABLE macrostrat_api.measurements_with_type OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.minerals AS
  SELECT minerals.id,
@@ -1097,7 +1017,6 @@ CREATE VIEW macrostrat_api.minerals AS
     minerals.url,
     minerals.paragenesis
    FROM macrostrat.minerals;
-ALTER TABLE macrostrat_api.minerals OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.new_legend AS
  WITH legend_ages AS (
@@ -1183,7 +1102,6 @@ CREATE VIEW macrostrat_api.new_legend AS
      LEFT JOIN strat_names_agg s ON ((s.legend_id = legend.legend_id)))
      LEFT JOIN macrostrat.intervals min_intervals ON (((min_intervals.interval_name)::text = legend_ages.min_age)))
      LEFT JOIN macrostrat.intervals max_intervals ON (((max_intervals.interval_name)::text = legend_ages.max_age)));
-ALTER TABLE macrostrat_api.new_legend OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.people AS
  SELECT people.person_id,
@@ -1195,13 +1113,11 @@ CREATE VIEW macrostrat_api.people AS
     people.active_start,
     people.active_end
    FROM ecosystem.people;
-ALTER TABLE macrostrat_api.people OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.people_roles AS
  SELECT people_roles.person_id,
     people_roles.role_id
    FROM ecosystem.people_roles;
-ALTER TABLE macrostrat_api.people_roles OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.people_with_roles AS
  SELECT p.person_id,
@@ -1217,7 +1133,6 @@ CREATE VIEW macrostrat_api.people_with_roles AS
      LEFT JOIN ecosystem.people_roles pr ON ((p.person_id = pr.person_id)))
      LEFT JOIN ecosystem.roles r ON ((pr.role_id = r.role_id)))
   GROUP BY p.person_id;
-ALTER TABLE macrostrat_api.people_with_roles OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.projects AS
  SELECT projects.id,
@@ -1227,7 +1142,6 @@ CREATE VIEW macrostrat_api.projects AS
     projects.is_composite,
     projects.slug
    FROM macrostrat.projects;
-ALTER TABLE macrostrat_api.projects OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.refs AS
  SELECT refs.id,
@@ -1239,7 +1153,6 @@ CREATE VIEW macrostrat_api.refs AS
     refs.url,
     refs.rgeom
    FROM macrostrat.refs;
-ALTER TABLE macrostrat_api.refs OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.rockd_stats AS
  SELECT count(*) AS total_rows,
@@ -1249,14 +1162,12 @@ CREATE VIEW macrostrat_api.rockd_stats AS
             ELSE NULL::integer
         END) AS rows_last_24_hours
    FROM usage_stats.rockd_stats;
-ALTER TABLE macrostrat_api.rockd_stats OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.roles AS
  SELECT roles.role_id,
     roles.name,
     roles.description
    FROM ecosystem.roles;
-ALTER TABLE macrostrat_api.roles OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sections AS
  SELECT sections.id,
@@ -1266,7 +1177,6 @@ CREATE VIEW macrostrat_api.sections AS
     sections.lo,
     sections.lo_h
    FROM macrostrat.sections;
-ALTER TABLE macrostrat_api.sections OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sgp_analyses AS
  SELECT sgp_analyses.sample_id,
@@ -1279,7 +1189,6 @@ CREATE VIEW macrostrat_api.sgp_analyses AS
     sgp_analyses.ana_method_id,
     sgp_analyses.reference_id
    FROM integrations.sgp_analyses;
-ALTER TABLE macrostrat_api.sgp_analyses OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sgp_matches AS
  SELECT sgp_matches.sample_id,
@@ -1318,7 +1227,6 @@ CREATE VIEW macrostrat_api.sgp_matches AS
     sgp_matches.age_span_delta,
     sgp_matches.mid_age_delta
    FROM integrations.sgp_matches;
-ALTER TABLE macrostrat_api.sgp_matches OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sgp_samples AS
  SELECT sgp_samples.sample_id,
@@ -1341,7 +1249,6 @@ CREATE VIEW macrostrat_api.sgp_samples AS
     sgp_samples.coll_event_id,
     sgp_samples.macrostrat_id
    FROM integrations.sgp_samples;
-ALTER TABLE macrostrat_api.sgp_samples OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sgp_unit_matches AS
  SELECT sgp_matches.match_col_id AS col_id,
@@ -1350,7 +1257,6 @@ CREATE VIEW macrostrat_api.sgp_unit_matches AS
    FROM integrations.sgp_matches
   WHERE (sgp_matches.match_unit_id IS NOT NULL)
   GROUP BY sgp_matches.match_col_id, sgp_matches.match_unit_id;
-ALTER TABLE macrostrat_api.sgp_unit_matches OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sources AS
  SELECT s.source_id,
@@ -1375,7 +1281,6 @@ CREATE VIEW macrostrat_api.sources AS
     s.scale_denominator,
     s.lines_oriented
    FROM maps.sources s;
-ALTER TABLE macrostrat_api.sources OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sources_ingestion AS
  SELECT s.source_id,
@@ -1404,7 +1309,6 @@ CREATE VIEW macrostrat_api.sources_ingestion AS
     s.scale_denominator
    FROM (maps.sources_metadata s
      JOIN maps_metadata.ingest_process i ON ((i.source_id = s.source_id)));
-ALTER TABLE macrostrat_api.sources_ingestion OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.sources_metadata AS
  SELECT sources_metadata.source_id,
@@ -1429,7 +1333,6 @@ CREATE VIEW macrostrat_api.sources_metadata AS
     sources_metadata.lines_oriented,
     sources_metadata.is_finalized AS is_mapped
    FROM maps.sources_metadata;
-ALTER TABLE macrostrat_api.sources_metadata OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_concepts_with_names AS
  SELECT m.concept_id,
@@ -1450,7 +1353,6 @@ CREATE VIEW macrostrat_api.strat_concepts_with_names AS
    FROM (macrostrat.strat_names_meta m
      LEFT JOIN macrostrat.strat_names s ON ((m.concept_id = s.concept_id)))
   GROUP BY m.concept_id;
-ALTER TABLE macrostrat_api.strat_concepts_with_names OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_names_test AS
  SELECT m.id,
@@ -1467,7 +1369,6 @@ CREATE VIEW macrostrat_api.strat_names_test AS
      LEFT JOIN macrostrat.strat_names_meta s ON ((m.concept_id = s.concept_id)))
   GROUP BY m.id
   ORDER BY m.id;
-ALTER TABLE macrostrat_api.strat_names_test OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_combined AS
  SELECT strat_concepts_with_names.concept_id,
@@ -1492,7 +1393,6 @@ UNION ALL
     NULL::text AS strat_ranks
    FROM macrostrat_api.strat_names_test
   WHERE (strat_names_test.concept_id IS NULL);
-ALTER TABLE macrostrat_api.strat_combined OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_concepts_test AS
  SELECT m.concept_id,
@@ -1512,7 +1412,6 @@ CREATE VIEW macrostrat_api.strat_concepts_test AS
    FROM (macrostrat.strat_names_meta m
      LEFT JOIN macrostrat.strat_names s ON ((m.concept_id = s.concept_id)))
   GROUP BY m.concept_id;
-ALTER TABLE macrostrat_api.strat_concepts_test OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_combined_test AS
  WITH combined_data AS (
@@ -1543,7 +1442,6 @@ CREATE VIEW macrostrat_api.strat_combined_test AS
     combined_data.concept_name,
     combined_data.id
    FROM combined_data;
-ALTER TABLE macrostrat_api.strat_combined_test OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_name_concepts AS
  SELECT strat_names_meta.concept_id,
@@ -1559,7 +1457,6 @@ CREATE VIEW macrostrat_api.strat_name_concepts AS
     strat_names_meta.url,
     strat_names_meta.ref_id
    FROM macrostrat.strat_names_meta;
-ALTER TABLE macrostrat_api.strat_name_concepts OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_names AS
  SELECT strat_names.id,
@@ -1572,7 +1469,6 @@ CREATE VIEW macrostrat_api.strat_names AS
     strat_names.places,
     strat_names.orig_id
    FROM macrostrat.strat_names;
-ALTER TABLE macrostrat_api.strat_names OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_names_meta AS
  SELECT strat_names_meta.concept_id,
@@ -1588,7 +1484,6 @@ CREATE VIEW macrostrat_api.strat_names_meta AS
     strat_names_meta.url,
     strat_names_meta.ref_id
    FROM macrostrat.strat_names_meta;
-ALTER TABLE macrostrat_api.strat_names_meta OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_names_ref AS
  SELECT s.id,
@@ -1599,7 +1494,6 @@ CREATE VIEW macrostrat_api.strat_names_ref AS
    FROM ((macrostrat.strat_names s
      LEFT JOIN macrostrat.refs r ON ((r.id = s.ref_id)))
      LEFT JOIN macrostrat.strat_names_meta sm ON ((sm.concept_id = s.concept_id)));
-ALTER TABLE macrostrat_api.strat_names_ref OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.strat_tree AS
  SELECT strat_tree.id,
@@ -1609,19 +1503,16 @@ CREATE VIEW macrostrat_api.strat_tree AS
     strat_tree.ref_id,
     strat_tree.check_me
    FROM macrostrat.strat_tree;
-ALTER TABLE macrostrat_api.strat_tree OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.test_helper_functions AS
  SELECT public.current_app_role() AS current_app_role,
     public.current_app_user_id() AS current_app_user_id;
-ALTER TABLE macrostrat_api.test_helper_functions OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.timescales AS
  SELECT timescales.id,
     timescales.timescale,
     timescales.ref_id
    FROM macrostrat.timescales;
-ALTER TABLE macrostrat_api.timescales OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.type_lookup AS
  SELECT liths.lith AS name,
@@ -1638,7 +1529,6 @@ UNION ALL
     intervals.id,
     'interval'::text AS type
    FROM macrostrat.intervals;
-ALTER TABLE macrostrat_api.type_lookup OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_boundaries AS
  SELECT unit_boundaries.id,
@@ -1655,7 +1545,6 @@ CREATE VIEW macrostrat_api.unit_boundaries AS
     unit_boundaries.paleo_lng,
     unit_boundaries.ref_id
    FROM macrostrat.unit_boundaries;
-ALTER TABLE macrostrat_api.unit_boundaries OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_environs AS
  SELECT unit_environs.id,
@@ -1666,14 +1555,12 @@ CREATE VIEW macrostrat_api.unit_environs AS
     unit_environs.ref_id,
     unit_environs.date_mod
    FROM macrostrat.unit_environs;
-ALTER TABLE macrostrat_api.unit_environs OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_intervals AS
  SELECT i.id AS int_id,
     u.unit_id
    FROM (macrostrat.intervals i
      JOIN macrostrat.lookup_units u ON (((u.b_age <= i.age_bottom) AND (u.t_age >= i.age_top))));
-ALTER TABLE macrostrat_api.unit_intervals OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_liths AS
  SELECT unit_liths.id,
@@ -1687,7 +1574,6 @@ CREATE VIEW macrostrat_api.unit_liths AS
     unit_liths.ref_id,
     unit_liths.date_mod
    FROM macrostrat.unit_liths;
-ALTER TABLE macrostrat_api.unit_liths OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_strat_name_expanded AS
  SELECT usn.id,
@@ -1714,7 +1600,6 @@ CREATE VIEW macrostrat_api.unit_strat_name_expanded AS
      LEFT JOIN macrostrat.strat_names sn ON ((usn.strat_name_id = sn.id)))
      LEFT JOIN macrostrat.intervals fo ON ((u.fo = fo.id)))
      LEFT JOIN macrostrat.intervals lo ON ((u.lo = lo.id)));
-ALTER TABLE macrostrat_api.unit_strat_name_expanded OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.unit_strat_names AS
  SELECT unit_strat_names.id,
@@ -1722,7 +1607,6 @@ CREATE VIEW macrostrat_api.unit_strat_names AS
     unit_strat_names.strat_name_id,
     unit_strat_names.old_strat_name_id
    FROM macrostrat.unit_strat_names;
-ALTER TABLE macrostrat_api.unit_strat_names OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.units AS
  SELECT units.id,
@@ -1741,7 +1625,6 @@ CREATE VIEW macrostrat_api.units AS
     units.col_id,
     units.date_mod
    FROM macrostrat.units;
-ALTER TABLE macrostrat_api.units OWNER TO macrostrat_admin;
 
 CREATE VIEW macrostrat_api.user_locations_view WITH (security_invoker='true') AS
  SELECT user_locations.id,
@@ -1756,7 +1639,6 @@ CREATE VIEW macrostrat_api.user_locations_view WITH (security_invoker='true') AS
     user_locations.pitch,
     user_locations.map_layers
    FROM user_features.user_locations;
-ALTER TABLE macrostrat_api.user_locations_view OWNER TO macrostrat_admin;
 
 CREATE OR REPLACE VIEW macrostrat_api.autocomplete as
 SELECT autocomplete.id,
@@ -1789,7 +1671,6 @@ SELECT strat_names.id,
        'strat_names'::character varying AS category
 FROM macrostrat.strat_names
 where concept_id is null;
-ALTER TABLE macrostrat_api.autocomplete OWNER TO macrostrat_admin;
 
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
@@ -2031,13 +1912,13 @@ GRANT INSERT(pitch),UPDATE(pitch) ON TABLE macrostrat_api.user_locations_view TO
 GRANT INSERT(map_layers),UPDATE(map_layers) ON TABLE macrostrat_api.user_locations_view TO web_user;
 GRANT INSERT(map_layers),UPDATE(map_layers) ON TABLE macrostrat_api.user_locations_view TO web_admin;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
 
 --this is important so that postgrest works for the ingest process
 GRANT USAGE ON SCHEMA macrostrat_api TO web_admin;

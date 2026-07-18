@@ -46,20 +46,42 @@ macrostrat schema sync --target maps --no-dependents   # just one subsystem's
 `--target` / `--no-dependents` are a shared option block (used by both `provision` and
 `sync`). Tests build schema the same way via `DatabaseTestHarness` (progressively, chunk by chunk).
 
-# Direction
+# Subsystems
 
-We are in the process of reorienting the schema around modular **subsystem chunks** (see the
-`schema-management` module). Today `core` is only coarsely split (`public → macrostrat → core`), the `.sql` still
-lives centrally in this directory, and stateful migrations are a separate system.
-The intent is to:
+Schema is organized into **subsystems**, discovered from the filesystem by a
+frontmatter header (see `schema_management/discovery.py`). A subsystem is either:
 
-- Colocate each subsystem's SQL with its owning code (as `map-topology`
-  already does), discovering chunks rather than listing them centrally;
-- Decompose `core` into finer named subsystems (`maps`, `tiles`, …); and
-- Fold migrations into the same dependency graph, so a subsystem's structure,
-  transitions, and seed data live together.
+- a directory containing an `_index.sql` **lead file**, whose header carries the
+  metadata and whose SQL is applied first, then the rest of the directory in
+  filename order; or
+- a standalone `.sql` file with a frontmatter header.
 
-Until then, add new `.sql` here — it lands in the `core` chunk by default.
+```sql
+-- @subsystem: maps
+-- @depends-on: macrostrat
+/** Maps subsystem: sources, geometries, carto views. */
+```
+
+`@subsystem` (name; defaults to the directory/file name) and `@depends-on`
+(comma/space list) define the chunk and its graph edges. **Which environments a
+subsystem applies to is *not* declared in SQL** — it's assigned externally by the
+loader, based on where the chunk is loaded from (the way `core/` vs `development/`
+already works). `maps` (`schema/maps/`) is the first subsystem migrated to this
+convention.
+
+## Direction (in progress)
+
+The reorientation isn't finished. The remainder of the old flat `core` is still
+bracketed into temporary `macrostrat` (everything before `maps`) and `core`
+(everything after) buckets to preserve filename-ordered application. Remaining:
+
+- Decompose those buckets into finer named subsystems (`tiles`, `storage`, …) —
+  each just needs a directory with an `_index.sql`.
+- Fold migrations into the same graph (via each `Migration`'s `subsystem`), so a
+  subsystem's structure, transitions, and seed data live together.
+
+Until a file is pulled into a subsystem, add new `.sql` under `core/` — it lands
+in one of the temporary buckets by filename order.
 
 ## Known deficiencies in migration process
 

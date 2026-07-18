@@ -3,14 +3,12 @@
 CREATE SCHEMA maps_metadata;
 CREATE SCHEMA IF NOT EXISTS sources;
 
-ALTER SCHEMA maps_metadata OWNER TO macrostrat;
 
 CREATE TABLE maps_metadata.ingest_state (
   id               text not null primary key,
   description      text,
   color            varchar(25)
 );
-ALTER TABLE maps_metadata.ingest_state OWNER TO macrostrat;
 
 /** Is there a difference between ingest_state and tags? */
 

@@ -9,7 +9,7 @@ CREATE TYPE public.saved_locations_enum AS ENUM (
     'Want to go',
     'Geological wonder'
 );
-ALTER TYPE public.saved_locations_enum OWNER TO macrostrat_admin;
+ALTER TYPE public.saved_locations_enum OWNER TO macrostrat;
 
 CREATE FUNCTION public.count_estimate(query text) RETURNS integer
     LANGUAGE plpgsql STRICT
@@ -32,14 +32,14 @@ CREATE FUNCTION public.current_app_role() RETURNS text
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
 $$;
-ALTER FUNCTION public.current_app_role() OWNER TO macrostrat_admin;
+ALTER FUNCTION public.current_app_role() OWNER TO macrostrat;
 
 CREATE FUNCTION public.current_app_user_id() RETURNS integer
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
 $$;
-ALTER FUNCTION public.current_app_user_id() OWNER TO macrostrat_admin;
+ALTER FUNCTION public.current_app_user_id() OWNER TO macrostrat;
 
 CREATE FUNCTION public.update_updated_on() RETURNS trigger
     LANGUAGE plpgsql
@@ -186,7 +186,7 @@ ALTER TABLE public.map_ids OWNER TO macrostrat;
 CREATE TABLE public.next_id (
     id integer
 );
-ALTER TABLE public.next_id OWNER TO macrostrat_admin;
+ALTER TABLE public.next_id OWNER TO macrostrat;
 
 CREATE TABLE public.ref_boundaries (
     ref_id integer,
@@ -237,7 +237,7 @@ CREATE TABLE public.temp_names (
     map_id integer,
     match_text text
 );
-ALTER TABLE public.temp_names OWNER TO macrostrat_admin;
+ALTER TABLE public.temp_names OWNER TO macrostrat;
 
 CREATE TABLE public.temp_rocks (
     map_ids integer[],
@@ -253,7 +253,7 @@ CREATE TABLE public.temp_rocks (
     b_interval integer,
     envelope public.geometry
 );
-ALTER TABLE public.temp_rocks OWNER TO macrostrat_admin;
+ALTER TABLE public.temp_rocks OWNER TO macrostrat;
 
 CREATE TABLE public.units (
     mapunit text,
@@ -268,7 +268,7 @@ CREATE TABLE public.usage_stats (
     lat double precision NOT NULL,
     lng double precision NOT NULL
 );
-ALTER TABLE public.usage_stats OWNER TO macrostrat_admin;
+ALTER TABLE public.usage_stats OWNER TO macrostrat;
 
 CREATE SEQUENCE public.usage_stats_id_seq
     AS integer
@@ -277,7 +277,7 @@ CREATE SEQUENCE public.usage_stats_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE public.usage_stats_id_seq OWNER TO macrostrat_admin;
+ALTER TABLE public.usage_stats_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE public.usage_stats_id_seq OWNED BY public.usage_stats.id;
 

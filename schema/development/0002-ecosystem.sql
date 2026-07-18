@@ -11,7 +11,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA ecosystem;
-ALTER SCHEMA ecosystem OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -23,7 +22,6 @@ CREATE TABLE ecosystem.contributions (
     date timestamp with time zone DEFAULT now() NOT NULL,
     url text
 );
-ALTER TABLE ecosystem.contributions OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE ecosystem.contributions_contribution_id_seq
     AS integer
@@ -32,7 +30,6 @@ CREATE SEQUENCE ecosystem.contributions_contribution_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE ecosystem.contributions_contribution_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE ecosystem.contributions_contribution_id_seq OWNED BY ecosystem.contributions.contribution_id;
 
@@ -46,13 +43,11 @@ CREATE TABLE ecosystem.people (
     active_start timestamp with time zone DEFAULT now(),
     active_end timestamp with time zone
 );
-ALTER TABLE ecosystem.people OWNER TO macrostrat_admin;
 
 CREATE TABLE ecosystem.people_contributions (
     person_id integer NOT NULL,
     contribution_id integer NOT NULL
 );
-ALTER TABLE ecosystem.people_contributions OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE ecosystem.people_person_id_seq
     AS integer
@@ -61,7 +56,6 @@ CREATE SEQUENCE ecosystem.people_person_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE ecosystem.people_person_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE ecosystem.people_person_id_seq OWNED BY ecosystem.people.person_id;
 
@@ -69,14 +63,12 @@ CREATE TABLE ecosystem.people_roles (
     person_id integer NOT NULL,
     role_id integer NOT NULL
 );
-ALTER TABLE ecosystem.people_roles OWNER TO macrostrat_admin;
 
 CREATE TABLE ecosystem.roles (
     role_id integer NOT NULL,
     name text NOT NULL,
     description text NOT NULL
 );
-ALTER TABLE ecosystem.roles OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE ecosystem.roles_role_id_seq
     AS integer
@@ -85,7 +77,6 @@ CREATE SEQUENCE ecosystem.roles_role_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE ecosystem.roles_role_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE ecosystem.roles_role_id_seq OWNED BY ecosystem.roles.role_id;
 
