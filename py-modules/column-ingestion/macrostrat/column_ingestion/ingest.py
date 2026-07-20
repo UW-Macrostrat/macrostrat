@@ -1,7 +1,9 @@
 from openpyxl import load_workbook
 
 from macrostrat.core.database import get_database
+from macrostrat.database import on_conflict
 
+from .age_model import build_age_model
 from .columns import (
     get_column_data,
     get_or_create_column,
@@ -10,12 +12,17 @@ from .columns import (
 )
 from .database import get_or_create_project
 from .metadata import get_metadata
-from .units import get_units, write_units
+from .units import PositionAxisType, get_units, write_units
 
 
-def ingest_columns_from_file(data_file):
+def ingest_columns_from_file(
+    db,
+    data_file,
+):
     # Get sheet names
-    workbook = load_workbook(data_file, read_only=True)
+    workbook = load_workbook(
+        data_file, read_only=True, data_only=True, keep_links=False
+    )
     sheet_names = workbook.sheetnames
 
     print(f"Sheets: {sheet_names}")
@@ -32,14 +39,18 @@ def ingest_columns_from_file(data_file):
     if "columns" in sheet_names:
         columns = get_column_data(data_file, meta)
 
-    units = get_units(data_file)
+    # Interpret positions as ordinal if the axis type is age
+    position = PositionAxisType.HEIGHT
+    if meta.axis_type == "age":
+        position = PositionAxisType.ORDINAL
+
+    units = get_units(db, data_file, position=position, fill_values=meta.fill_values)
 
     for col in columns:
         col.units = units.get(col.local_id, [])
         if len(col.units) == 0:
             print(f"Warning: No units found for column {col.local_id}")
 
-    db = get_database()
     if project is None:
         raise ValueError("Project not found in the data file")
 
@@ -62,5 +73,8 @@ def ingest_columns_from_file(data_file):
             for unit in col.units:
                 unit.col_id = col_id
                 unit.section_id = section_id
-            write_units(db, col.units)
+            units = write_units(db, col.units)
+
+            build_age_model(db, units)
+
         db.session.commit()

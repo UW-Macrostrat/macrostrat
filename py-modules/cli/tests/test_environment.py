@@ -1,5 +1,8 @@
 from pytest import mark
 
+# These environment checks require access to the live/canonical Macrostrat database.
+pytestmark = mark.requires_canonical_db
+
 
 def test_database_connection(db):
     """Test that the database connection works."""
@@ -7,6 +10,7 @@ def test_database_connection(db):
     assert res[0][0] == 1
 
 
+@mark.requires_canonical_db
 def test_columns_table_exists(db):
     """Check that the Macrostrat columns table exists and has more than 100 columns."""
 

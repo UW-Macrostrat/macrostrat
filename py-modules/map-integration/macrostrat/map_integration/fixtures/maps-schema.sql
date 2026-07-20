@@ -269,7 +269,8 @@ CREATE TABLE maps.sources (
     date_finalized timestamp with time zone DEFAULT null,
     ingested_by text
 );
-
+GRANT USAGE ON SCHEMA maps TO web_admin;
+GRANT SELECT ON TABLE maps.sources TO web_admin;
 --
 -- Name: sources_source_id_seq; Type: SEQUENCE; Schema: maps; Owner: -
 --

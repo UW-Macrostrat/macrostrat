@@ -219,7 +219,11 @@ SELECT
     st.hashed_text,
     st.preprocessor_id,
     mr.model_id,
-    mr.version_id
+    mr.version_id,
+    CASE
+          WHEN mr.model_id IS NULL THEN 1
+          ELSE NULL
+      END AS user_id
 FROM  macrostrat_xdd.source_text st
 LEFT JOIN macrostrat_xdd.model_run mr
   ON mr.source_text_id = st.id

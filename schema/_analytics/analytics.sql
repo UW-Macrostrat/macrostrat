@@ -21,3 +21,21 @@ SELECT
 FROM pg_stat_user_tables
 ORDER BY schemaname, relname;
 
+--returns schema, view name, and sql definition for all views dependent on a specified table
+
+SELECT DISTINCT
+    n.nspname AS view_schema,
+    c.relname AS view_name,
+    pg_get_viewdef(c.oid, true) AS view_definition
+FROM pg_depend d
+JOIN pg_rewrite r
+    ON d.objid = r.oid
+JOIN pg_class c
+    ON r.ev_class = c.oid
+JOIN pg_namespace n
+    ON c.relnamespace = n.oid
+WHERE d.refobjid = 'maps_metadata.ingest_process'::regclass
+  AND c.relkind = 'v'
+ORDER BY n.nspname, c.relname;
+
+

@@ -1,6 +1,6 @@
 from contextlib import contextmanager
+from pathlib import Path
 
-import docker
 from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
@@ -8,7 +8,12 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.dinosaur.cluster import database_cluster
+from macrostrat.utils.logs import get_logger, suppress_loggers
+
+from .composer import build_schema
+
+log = get_logger(__name__)
 
 
 def is_unsafe_statement(s: str) -> bool:
@@ -54,61 +59,61 @@ def apply_schema_for_environment(
     db: Database,
     env: str,
     *,
-    recursive: bool = True,
-    statement_filter=lambda s, p: True,
-    pattern: str = "*",
+    statement_filter=None,
+    transform_statement=None,
+    suppress_logging: bool = True,
+    target: str | None = None,
+    chunks=None,
 ):
-    if "*" not in pattern:
-        pattern = f"*{pattern}*"
+    """Build the declarative schema for ``env``.
 
-    for env_dir in schema_dirs_for_environment(env):
-        schema_dir = env_dir
-        if not schema_dir.exists():
-            continue
+    :param target: a subsystem (chunk) name; when given, only that chunk and its
+        transitive dependencies are applied. When omitted, the full schema for
+        the environment is built.
+    :param chunks: a pre-resolved chunk list (e.g. from ``selected_chunks``);
+        takes precedence over ``target``.
+    """
+    _suppressed_loggers = []
+    if suppress_logging:
+        _suppressed_loggers = ["sqlalchemy.engine", "macrostrat.database.query"]
 
-        func = schema_dir.rglob if recursive else schema_dir.glob
-        fixtures = sorted(list(func(pattern + ".sql")))
-        fixtures = [f for f in fixtures if not f.name.endswith(".plan.sql")]
-
-        if len(fixtures) == 0:
-            continue
-        db.run_fixtures(
-            fixtures, recursive=recursive, statement_filter=statement_filter
+    with suppress_loggers(*_suppressed_loggers):
+        build_schema(
+            db,
+            env,
+            chunks,
+            transform_statement=transform_statement,
+            statement_filter=statement_filter,
+            target=target,
         )
+    return db
 
 
 @contextmanager
-def planning_database(environment):
+def test_database_cluster(**kwargs):
+    """Context manager to create a temporary database cluster"""
+    image_tag = kwargs.pop("image", "macrostrat.local/database:latest")
+    build_context = kwargs.pop("context", settings.srcroot / "base-images" / "database")
+    optimize_for_testing = kwargs.pop("optimize", True)
+    config = {
+        "shared_preload_libraries": "pgaudit,pg_stat_statements",
+    }
+
+    with database_cluster(
+        image_tag,
+        context=build_context,
+        optimize_for_testing=optimize_for_testing,
+        config=config,
+        **kwargs,
+    ) as db:
+        yield db
+
+
+@contextmanager
+def planning_database(environment, **kwargs):
     """Context manager to create a temporary database for planning schema changes"""
-    client = docker.from_env()
-
-    img_root = settings.srcroot / "base-images" / "database"
-
-    # Build postgres pgaudit image
-    img_tag = "macrostrat.local/database:latest"
-
-    client.images.build(path=str(img_root), tag=img_tag)
-
     # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        _url = f"postgresql://postgres@localhost:{port}/postgres"
-        plan_db = Database(_url)
-
-        # Optimize postgres for fast testing
-        # TODO: this must be integrated with the database_cluster context manager
-        plan_db.run_sql(
-            """
-            SET fsync TO off;
-            SET synchronous_commit TO off;
-            SET full_page_writes TO off;
-            SET temp_buffers TO '16MB';
-            SET work_mem TO '64MB';
-            SET maintenance_work_mem TO '128MB';
-            SET autovacuum TO off;
-        """
-        )
-
+    with test_database_cluster(**kwargs) as plan_db:
         apply_schema_for_environment(plan_db, environment)
         yield plan_db
 
@@ -122,14 +127,11 @@ class OurPostgreSQL(PostgreSQL):
             self.included_schemas = schemas
 
     def filter_schema(self, schema=None, exclude_schema=None):
-        def is_managed_schema(x):
-            return x.schema in self.included_schemas
-
-        comparator = is_managed_schema
-
         for prop in PROPS.split():
             att = getattr(self, prop)
-            filtered = {k: v for k, v in att.items() if comparator(v)}
+            filtered = {
+                k: v for k, v in att.items() if v.schema in self.included_schemas
+            }
             setattr(self, prop, filtered)
 
 

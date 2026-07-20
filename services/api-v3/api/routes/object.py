@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import Any
 
 import starlette.requests
-from api.database import get_async_session, get_engine
+from api.database import DatabaseDep
 from api.routes.security import has_access
 from fastapi import APIRouter, Depends, HTTPException
 from minio import Minio
@@ -175,6 +175,7 @@ def _row_to_dict(row) -> dict[str, Any]:
 
 @router.get("")
 async def list_objects(
+    database: DatabaseDep,
     limit: int = 50,
     before_id: int | None = None,
     slug: str | None = None,
@@ -208,9 +209,7 @@ async def list_objects(
     ORDER BY id DESC
     LIMIT :limit
     """
-    engine = get_engine()
-    async_session = get_async_session(engine)
-    async with async_session() as session:
+    async with database.async_session() as session:
         res = await session.execute(text(sql), params)
         items = [_row_to_dict(r) for r in res.mappings().all()]
         next_before_id = items[-1]["id"] if items else None
@@ -218,11 +217,8 @@ async def list_objects(
 
 
 @router.get("/{id}")
-async def get_object(id: int):
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+async def get_object(id: int, database: DatabaseDep):
+    async with database.async_session() as session:
         res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
         row = res.mappings().first()
 
@@ -237,6 +233,7 @@ async def get_object(id: int):
 @router.post("")
 async def create_object(
     request: starlette.requests.Request,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """
@@ -263,12 +260,9 @@ async def create_object(
     host, bucket = get_storage_host_bucket()
     s3_client = get_s3_client()
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
     created: list[dict[str, Any]] = []
 
-    async with async_session() as session:
+    async with database.async_session() as session:
         for upload in uploads:
             if not isinstance(upload, StarletteUploadFile):
                 continue
@@ -328,6 +322,7 @@ async def create_object(
 async def patch_object(
     id: int,
     body: dict[str, Any],
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """
@@ -345,10 +340,7 @@ async def patch_object(
     if isinstance(source, dict):
         source = json.dumps(source)
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         res = await session.execute(
             text(SQL_PATCH_OBJECT),
             dict(id=id, key=key, mime_type=mime_type, source=source),
@@ -366,6 +358,7 @@ async def patch_object(
 @router.delete("/{id}")
 async def delete_object(
     id: int,
+    database: DatabaseDep,
     hard: bool = True,
     user_has_access: bool = Depends(has_access),
 ):
@@ -381,10 +374,7 @@ async def delete_object(
 
     s3_client = get_s3_client()
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         # fetch the object row first (source of truth for bucket/key)
         res = await session.execute(text(SQL_GET_OBJECT_BY_ID), dict(id=id))
         obj = res.mappings().first()

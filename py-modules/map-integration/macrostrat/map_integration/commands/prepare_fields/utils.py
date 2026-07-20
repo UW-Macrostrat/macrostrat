@@ -1,4 +1,4 @@
-from psycopg2.sql import SQL, Identifier
+from psycopg.sql import SQL, Identifier
 from sqlalchemy.exc import NoSuchTableError
 
 from ...utils import column_exists, table_exists
@@ -126,6 +126,7 @@ class LineworkTableUpdater(SourcesTableUpdater):
     column_spec = {
         **common_columns,
         "descrip": "text",
+        "comments": "text",
         "name": "character varying(255)",
         "type": "character varying(100)",
         "direction": "character varying(20)",

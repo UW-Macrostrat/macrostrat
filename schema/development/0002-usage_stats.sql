@@ -5,14 +5,12 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA usage_stats;
-ALTER SCHEMA usage_stats OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -24,7 +22,6 @@ CREATE TABLE usage_stats.macrostrat_stats (
     lng double precision NOT NULL,
     matomo_id integer NOT NULL
 );
-ALTER TABLE usage_stats.macrostrat_stats OWNER TO macrostrat_admin;
 
 CREATE TABLE usage_stats.rockd_stats (
     id integer NOT NULL,
@@ -34,7 +31,6 @@ CREATE TABLE usage_stats.rockd_stats (
     lng double precision NOT NULL,
     matomo_id integer NOT NULL
 );
-ALTER TABLE usage_stats.rockd_stats OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE usage_stats.macrostrat_stats_id_seq
     AS integer
@@ -43,7 +39,6 @@ CREATE SEQUENCE usage_stats.macrostrat_stats_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE usage_stats.macrostrat_stats_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE usage_stats.macrostrat_stats_id_seq OWNED BY usage_stats.macrostrat_stats.id;
 
@@ -54,7 +49,6 @@ CREATE SEQUENCE usage_stats.rockd_stats_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE usage_stats.rockd_stats_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE usage_stats.rockd_stats_id_seq OWNED BY usage_stats.rockd_stats.id;
 

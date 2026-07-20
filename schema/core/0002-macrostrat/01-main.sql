@@ -1,6 +1,5 @@
 
 CREATE SCHEMA macrostrat;
-ALTER SCHEMA macrostrat OWNER TO macrostrat;
 
 CREATE TYPE macrostrat.colors_color AS ENUM (
     '',
@@ -26,20 +25,17 @@ CREATE TYPE macrostrat.colors_color AS ENUM (
     'steel blue',
     'white'
 );
-ALTER TYPE macrostrat.colors_color OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.cols_col_position AS ENUM (
     '',
     'onshore',
     'offshore'
 );
-ALTER TYPE macrostrat.cols_col_position OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.cols_col_type AS ENUM (
     'column',
     'section'
 );
-ALTER TYPE macrostrat.cols_col_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.cols_status_code AS ENUM (
     '',
@@ -47,7 +43,6 @@ CREATE TYPE macrostrat.cols_status_code AS ENUM (
     'in process',
     'obsolete'
 );
-ALTER TYPE macrostrat.cols_status_code OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.econs_econ_class AS ENUM (
     '',
@@ -56,7 +51,6 @@ CREATE TYPE macrostrat.econs_econ_class AS ENUM (
     'precious commodity',
     'water'
 );
-ALTER TYPE macrostrat.econs_econ_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.econs_econ_type AS ENUM (
     '',
@@ -67,14 +61,12 @@ CREATE TYPE macrostrat.econs_econ_type AS ENUM (
     'coal',
     'aquifer'
 );
-ALTER TYPE macrostrat.econs_econ_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.environs_environ_class AS ENUM (
     '',
     'marine',
     'non-marine'
 );
-ALTER TYPE macrostrat.environs_environ_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.environs_environ_type AS ENUM (
     '',
@@ -86,7 +78,6 @@ CREATE TYPE macrostrat.environs_environ_type AS ENUM (
     'glacial',
     'eolian'
 );
-ALTER TYPE macrostrat.environs_environ_type OWNER TO macrostrat_admin;
 CREATE TYPE macrostrat.boundary_status AS ENUM (
     '',
     'modeled',
@@ -94,7 +85,6 @@ CREATE TYPE macrostrat.boundary_status AS ENUM (
     'absolute',
     'spike'
 );
-ALTER TYPE macrostrat.boundary_status OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.intervals_interval_type AS ENUM (
     'supereon',
@@ -112,7 +102,6 @@ CREATE TYPE macrostrat.intervals_interval_type AS ENUM (
     'subchron',
     'subzone'
 );
-ALTER TYPE macrostrat.intervals_interval_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.lith_atts_att_type AS ENUM (
     '',
@@ -123,7 +112,6 @@ CREATE TYPE macrostrat.lith_atts_att_type AS ENUM (
     'lithology',
     'structure'
 );
-ALTER TYPE macrostrat.lith_atts_att_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.liths_lith_class AS ENUM (
     '',
@@ -131,7 +119,6 @@ CREATE TYPE macrostrat.liths_lith_class AS ENUM (
     'igneous',
     'metamorphic'
 );
-ALTER TYPE macrostrat.liths_lith_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.liths_lith_group AS ENUM (
     'sandstones',
@@ -144,7 +131,6 @@ CREATE TYPE macrostrat.liths_lith_group AS ENUM (
     'mafic',
     'ultramafic'
 );
-ALTER TYPE macrostrat.liths_lith_group OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.liths_lith_type AS ENUM (
     '',
@@ -164,7 +150,6 @@ CREATE TYPE macrostrat.liths_lith_type AS ENUM (
     'regolith',
     'cataclastic'
 );
-ALTER TYPE macrostrat.liths_lith_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.measurement_class AS ENUM (
     '',
@@ -172,7 +157,6 @@ CREATE TYPE macrostrat.measurement_class AS ENUM (
     'geochemical',
     'sedimentological'
 );
-ALTER TYPE macrostrat.measurement_class OWNER TO macrostrat_admin;
 CREATE TYPE macrostrat.measurement_type AS ENUM (
     '',
     'material properties',
@@ -184,7 +168,6 @@ CREATE TYPE macrostrat.measurement_type AS ENUM (
     'petrologic',
     'environmental'
 );
-ALTER TYPE macrostrat.measurement_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.lookup_strat_names_rank AS ENUM (
     '',
@@ -195,7 +178,6 @@ CREATE TYPE macrostrat.lookup_strat_names_rank AS ENUM (
     'Mbr',
     'Bed'
 );
-ALTER TYPE macrostrat.lookup_strat_names_rank OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.map_scale AS ENUM (
     'tiny',
@@ -203,7 +185,6 @@ CREATE TYPE macrostrat.map_scale AS ENUM (
     'medium',
     'large'
 );
-ALTER TYPE macrostrat.map_scale OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.pbdb_intervals_interval_type AS ENUM (
     'supereon',
@@ -221,7 +202,6 @@ CREATE TYPE macrostrat.pbdb_intervals_interval_type AS ENUM (
     'subchron',
     'subzone'
 );
-ALTER TYPE macrostrat.pbdb_intervals_interval_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.refs_compilation_code AS ENUM (
     '',
@@ -230,14 +210,12 @@ CREATE TYPE macrostrat.refs_compilation_code AS ENUM (
     'Canada',
     'GNS Folio Series 1'
 );
-ALTER TYPE macrostrat.refs_compilation_code OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.rockd_features_feature_class AS ENUM (
     '',
     'structure',
     'geomorphology'
 );
-ALTER TYPE macrostrat.rockd_features_feature_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.rockd_features_feature_type AS ENUM (
     '',
@@ -245,7 +223,6 @@ CREATE TYPE macrostrat.rockd_features_feature_type AS ENUM (
     'glacial',
     'deformation'
 );
-ALTER TYPE macrostrat.rockd_features_feature_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.stats_project AS ENUM (
     '',
@@ -262,7 +239,6 @@ CREATE TYPE macrostrat.stats_project AS ENUM (
     'eODP',
     'Northern Eurasia'
 );
-ALTER TYPE macrostrat.stats_project OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.strat_names_lookup_rank AS ENUM (
     '',
@@ -272,7 +248,6 @@ CREATE TYPE macrostrat.strat_names_lookup_rank AS ENUM (
     'Mbr',
     'Bed'
 );
-ALTER TYPE macrostrat.strat_names_lookup_rank OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.strat_names_rank AS ENUM (
     '',
@@ -283,22 +258,18 @@ CREATE TYPE macrostrat.strat_names_rank AS ENUM (
     'Mbr',
     'Bed'
 );
-ALTER TYPE macrostrat.strat_names_rank OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.strat_tree_rel AS ENUM (
     '',
     'parent',
     'synonym'
 );
-ALTER TYPE macrostrat.strat_tree_rel OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.structure_atts_att_class AS ENUM (
 );
-ALTER TYPE macrostrat.structure_atts_att_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.structure_atts_att_type AS ENUM (
 );
-ALTER TYPE macrostrat.structure_atts_att_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.structures_structure_class AS ENUM (
     '',
@@ -308,11 +279,9 @@ CREATE TYPE macrostrat.structures_structure_class AS ENUM (
     'sedimentology',
     'igneous'
 );
-ALTER TYPE macrostrat.structures_structure_class OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.structures_structure_group AS ENUM (
 );
-ALTER TYPE macrostrat.structures_structure_group OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.structures_structure_type AS ENUM (
     '',
@@ -326,7 +295,6 @@ CREATE TYPE macrostrat.structures_structure_type AS ENUM (
     'contact',
     'intrusion'
 );
-ALTER TYPE macrostrat.structures_structure_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.tectonics_basin_setting AS ENUM (
     '',
@@ -336,7 +304,6 @@ CREATE TYPE macrostrat.tectonics_basin_setting AS ENUM (
     'transform',
     'hybrid'
 );
-ALTER TYPE macrostrat.tectonics_basin_setting OWNER TO macrostrat_admin;
 CREATE TYPE macrostrat.boundary_type AS ENUM (
     '',
     'unconformity',
@@ -346,7 +313,6 @@ CREATE TYPE macrostrat.boundary_type AS ENUM (
     'non-conformity',
     'angular unconformity'
 );
-ALTER TYPE macrostrat.boundary_type OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_contacts_contact AS ENUM (
     'above',
@@ -356,7 +322,6 @@ CREATE TYPE macrostrat.unit_contacts_contact AS ENUM (
     'lateral-top',
     'within'
 );
-ALTER TYPE macrostrat.unit_contacts_contact OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_contacts_old_contact AS ENUM (
     'above',
@@ -366,7 +331,6 @@ CREATE TYPE macrostrat.unit_contacts_old_contact AS ENUM (
     'lateral-top',
     'within'
 );
-ALTER TYPE macrostrat.unit_contacts_old_contact OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_dates_system AS ENUM (
     '',
@@ -381,14 +345,12 @@ CREATE TYPE macrostrat.unit_dates_system AS ENUM (
     'Amino Acid',
     'Ur-Series'
 );
-ALTER TYPE macrostrat.unit_dates_system OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_liths_dom AS ENUM (
     '',
     'dom',
     'sub'
 );
-ALTER TYPE macrostrat.unit_liths_dom OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_seq_strat_seq_order AS ENUM (
     '',
@@ -398,7 +360,6 @@ CREATE TYPE macrostrat.unit_seq_strat_seq_order AS ENUM (
     '5th',
     '6th'
 );
-ALTER TYPE macrostrat.unit_seq_strat_seq_order OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.unit_seq_strat_seq_strat AS ENUM (
     '',
@@ -408,7 +369,6 @@ CREATE TYPE macrostrat.unit_seq_strat_seq_strat AS ENUM (
     'LST',
     'SQ'
 );
-ALTER TYPE macrostrat.unit_seq_strat_seq_strat OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.units_color AS ENUM (
     '',
@@ -434,7 +394,6 @@ CREATE TYPE macrostrat.units_color AS ENUM (
     'steel blue',
     'white'
 );
-ALTER TYPE macrostrat.units_color OWNER TO macrostrat_admin;
 
 CREATE TYPE macrostrat.units_outcrop AS ENUM (
     '',
@@ -442,7 +401,6 @@ CREATE TYPE macrostrat.units_outcrop AS ENUM (
     'subsurface',
     'both'
 );
-ALTER TYPE macrostrat.units_outcrop OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.check_column_project_non_composite() RETURNS trigger
     LANGUAGE plpgsql
@@ -455,7 +413,6 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.check_column_project_non_composite() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.check_composite_parent() RETURNS trigger
     LANGUAGE plpgsql
@@ -467,14 +424,12 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.check_composite_parent() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.core_project_ids() RETURNS integer[]
     LANGUAGE sql STABLE
     AS $$
 SELECT macrostrat.flattened_project_ids(ARRAY[id]) FROM macrostrat.projects WHERE slug = 'core';
 $$;
-ALTER FUNCTION macrostrat.core_project_ids() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.flattened_project_ids(project_ids integer[]) RETURNS integer[]
     LANGUAGE plpgsql STABLE
@@ -496,7 +451,6 @@ BEGIN
   RETURN ARRAY(SELECT DISTINCT unnest(result_ids));
 END;
 $$;
-ALTER FUNCTION macrostrat.flattened_project_ids(project_ids integer[]) OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -510,7 +464,6 @@ CREATE TABLE macrostrat.projects (
     CONSTRAINT idx_44157270_primary PRIMARY KEY (id),
     CONSTRAINT projects_slug_key UNIQUE (slug)
 );
-ALTER TABLE macrostrat.projects OWNER TO macrostrat;
 
 COMMENT ON TABLE macrostrat.projects IS 'Last updated from MariaDB - 2023-07-28 16:57';
 
@@ -521,7 +474,6 @@ CREATE SEQUENCE macrostrat.projects_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.projects_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat.projects_id_seq OWNED BY macrostrat.projects.id;
 
@@ -537,7 +489,6 @@ CREATE TABLE macrostrat.projects_tree (
   parent_id integer NOT NULL,
   child_id integer NOT NULL
 );
-ALTER TABLE macrostrat.projects_tree OWNER TO macrostrat;
 
 ALTER TABLE macrostrat.projects_tree
   ADD CONSTRAINT projects_tree_parent_id_child_id_key UNIQUE (parent_id, child_id);
@@ -561,7 +512,6 @@ BEGIN
   RETURN unique_slug;
 END;
 $$;
-ALTER FUNCTION macrostrat.generate_project_slug(_project macrostrat.projects) OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.generate_project_slug(project_name text) RETURNS text
     LANGUAGE plpgsql
@@ -581,7 +531,6 @@ BEGIN
   RETURN unique_slug;
 END;
 $$;
-ALTER FUNCTION macrostrat.generate_project_slug(project_name text) OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.get_lith_comp_prop(_unit_id integer) RETURNS TABLE(dom_prop numeric, sub_prop numeric)
     LANGUAGE plpgsql
@@ -614,7 +563,6 @@ BEGIN
     ON dom.unit_id = sub.unit_id;
 END
 $$;
-ALTER FUNCTION macrostrat.get_lith_comp_prop(_unit_id integer) OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.lng_lat_insert_trigger() RETURNS trigger
     LANGUAGE plpgsql
@@ -628,7 +576,6 @@ BEGIN
   RETURN new;
 END;
 $$;
-ALTER FUNCTION macrostrat.lng_lat_insert_trigger() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_offshore_baggage() RETURNS trigger
     LANGUAGE plpgsql
@@ -638,7 +585,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_offshore_baggage() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_offshore_fossils() RETURNS trigger
     LANGUAGE plpgsql
@@ -648,7 +594,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_offshore_fossils() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_dates() RETURNS trigger
     LANGUAGE plpgsql
@@ -658,7 +603,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_dates() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_econs() RETURNS trigger
     LANGUAGE plpgsql
@@ -668,7 +612,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_econs() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_environs() RETURNS trigger
     LANGUAGE plpgsql
@@ -678,7 +621,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_environs() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_liths() RETURNS trigger
     LANGUAGE plpgsql
@@ -688,7 +630,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_liths() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_liths_atts() RETURNS trigger
     LANGUAGE plpgsql
@@ -698,7 +639,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_liths_atts() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_unit_notes() RETURNS trigger
     LANGUAGE plpgsql
@@ -708,7 +648,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_unit_notes() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.on_update_current_timestamp_units() RETURNS trigger
     LANGUAGE plpgsql
@@ -718,7 +657,6 @@ BEGIN
    RETURN NEW;
 END;
 $$;
-ALTER FUNCTION macrostrat.on_update_current_timestamp_units() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION macrostrat.update_unit_lith_comp_props(_unit_id integer) RETURNS void
     LANGUAGE plpgsql
@@ -731,7 +669,6 @@ BEGIN
   WHERE ul.unit_id = _unit_id;
 END
 $$;
-ALTER FUNCTION macrostrat.update_unit_lith_comp_props(_unit_id integer) OWNER TO macrostrat_admin;
 
 
 CREATE TABLE macrostrat.refs (
@@ -745,7 +682,6 @@ CREATE TABLE macrostrat.refs (
   rgeom public.geometry,
   CONSTRAINT idx_44157277_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.refs OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.refs_id_seq
   AS integer
@@ -754,7 +690,6 @@ CREATE SEQUENCE macrostrat.refs_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.refs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.refs_id_seq OWNED BY macrostrat.refs.id;
 
@@ -765,7 +700,6 @@ CREATE TABLE macrostrat.autocomplete (
     type character varying(20) DEFAULT ''::character varying NOT NULL,
     category character varying(10) DEFAULT ''::character varying NOT NULL
 );
-ALTER TABLE macrostrat.autocomplete OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.autocomplete_old (
     id integer DEFAULT 0 NOT NULL,
@@ -773,7 +707,6 @@ CREATE TABLE macrostrat.autocomplete_old (
     type character varying(20) DEFAULT ''::character varying NOT NULL,
     category character varying(10) DEFAULT ''::character varying NOT NULL
 );
-ALTER TABLE macrostrat.autocomplete_old OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.canada_lexicon_dump (
     strat_unit_id character varying(6) NOT NULL,
@@ -801,7 +734,6 @@ CREATE TABLE macrostrat.canada_lexicon_dump (
     url character varying(255) NOT NULL,
     descrip text NOT NULL
 );
-ALTER TABLE macrostrat.canada_lexicon_dump OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.col_areas (
     id integer NOT NULL,
@@ -810,7 +742,6 @@ CREATE TABLE macrostrat.col_areas (
     col_area public.geometry,
     wkt text
 );
-ALTER TABLE macrostrat.col_areas OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.col_areas_6april2016 (
     id integer DEFAULT 0 NOT NULL,
@@ -818,7 +749,6 @@ CREATE TABLE macrostrat.col_areas_6april2016 (
     gmap text NOT NULL,
     col_area public.geometry
 );
-ALTER TABLE macrostrat.col_areas_6april2016 OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.col_areas_id_seq
     AS integer
@@ -827,7 +757,6 @@ CREATE SEQUENCE macrostrat.col_areas_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.col_areas_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_areas_id_seq OWNED BY macrostrat.col_areas.id;
 
@@ -837,7 +766,6 @@ CREATE TABLE macrostrat.col_equiv (
     col_2 integer NOT NULL,
     CONSTRAINT idx_44157034_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.col_equiv OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.col_equiv_id_seq
     AS integer
@@ -846,7 +774,6 @@ CREATE SEQUENCE macrostrat.col_equiv_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.col_equiv_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_equiv_id_seq OWNED BY macrostrat.col_equiv.id;
 
@@ -855,7 +782,6 @@ CREATE TABLE macrostrat.col_notes (
     col_id integer NOT NULL,
     notes text NOT NULL
 );
-ALTER TABLE macrostrat.col_notes OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.col_notes_id_seq
     AS integer
@@ -864,7 +790,6 @@ CREATE SEQUENCE macrostrat.col_notes_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.col_notes_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_notes_id_seq OWNED BY macrostrat.col_notes.id;
 
@@ -875,7 +800,6 @@ CREATE TABLE macrostrat.col_groups (
   project_id integer NOT NULL,
   CONSTRAINT idx_44157039_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.col_groups OWNER TO macrostrat_admin;
 
 ALTER TABLE macrostrat.col_groups
   ADD CONSTRAINT col_groups_project_fk FOREIGN KEY (project_id)
@@ -888,7 +812,6 @@ CREATE SEQUENCE macrostrat.col_groups_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.col_groups_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_groups_id_seq OWNED BY macrostrat.col_groups.id;
 
@@ -900,7 +823,7 @@ CREATE TABLE macrostrat.cols (
   col_type macrostrat.cols_col_type NOT NULL,
   col_position macrostrat.cols_col_position NOT NULL,
   col numeric(6,2) NOT NULL,
-  col_name character varying(75) NOT NULL,
+  col_name text NOT NULL,
   lat numeric(8,5) NOT NULL,
   lng numeric(8,5) NOT NULL,
   col_area double precision NOT NULL,
@@ -912,7 +835,6 @@ CREATE TABLE macrostrat.cols (
   CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE,
   CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE
 );
-ALTER TABLE macrostrat.cols OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.cols_id_seq
   AS integer
@@ -921,7 +843,6 @@ CREATE SEQUENCE macrostrat.cols_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.cols_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.cols_id_seq OWNED BY macrostrat.cols.id;
 
@@ -939,7 +860,6 @@ CREATE TABLE macrostrat.col_refs (
     CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
     CONSTRAINT col_refs_unique UNIQUE (col_id, ref_id)
 );
-ALTER TABLE macrostrat.col_refs OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.col_refs_id_seq
     AS integer
@@ -948,7 +868,6 @@ CREATE SEQUENCE macrostrat.col_refs_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.col_refs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.col_refs_id_seq OWNED BY macrostrat.col_refs.id;
 
@@ -958,13 +877,11 @@ CREATE TABLE macrostrat.colors (
     text_hex character varying(9) DEFAULT '#000000'::character varying NOT NULL,
     unit_class character varying(4) DEFAULT NULL::character varying
 );
-ALTER TABLE macrostrat.colors OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.concepts_places (
     concept_id integer NOT NULL,
     place_id bigint NOT NULL
 );
-ALTER TABLE macrostrat.concepts_places OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.econs (
     id integer NOT NULL,
@@ -973,7 +890,6 @@ CREATE TABLE macrostrat.econs (
     econ_class macrostrat.econs_econ_class NOT NULL,
     econ_color character varying(7) NOT NULL
 );
-ALTER TABLE macrostrat.econs OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.econs_id_seq
     AS integer
@@ -982,7 +898,6 @@ CREATE SEQUENCE macrostrat.econs_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.econs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.econs_id_seq OWNED BY macrostrat.econs.id;
 
@@ -994,7 +909,6 @@ CREATE TABLE macrostrat.environs (
     environ_fill integer NOT NULL,
     environ_color character varying(7) NOT NULL
 );
-ALTER TABLE macrostrat.environs OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.environs_id_seq
     AS integer
@@ -1003,7 +917,6 @@ CREATE SEQUENCE macrostrat.environs_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.environs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.environs_id_seq OWNED BY macrostrat.environs.id;
 
@@ -1017,7 +930,6 @@ CREATE TABLE macrostrat.grainsize (
     max_size numeric,
     classification text
 );
-ALTER TABLE macrostrat.grainsize OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.interval_boundaries (
     id integer NOT NULL,
@@ -1031,7 +943,6 @@ CREATE TABLE macrostrat.interval_boundaries (
     timescale_id integer NOT NULL,
     boundary_status macrostrat.boundary_status DEFAULT ''::macrostrat.boundary_status NOT NULL
 );
-ALTER TABLE macrostrat.interval_boundaries OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.interval_boundaries_scratch (
     id integer NOT NULL,
@@ -1045,7 +956,6 @@ CREATE TABLE macrostrat.interval_boundaries_scratch (
     timescale_id integer NOT NULL,
     boundary_status macrostrat.boundary_status DEFAULT ''::macrostrat.boundary_status NOT NULL
 );
-ALTER TABLE macrostrat.interval_boundaries_scratch OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.intervals (
     id integer NOT NULL,
@@ -1055,11 +965,10 @@ CREATE TABLE macrostrat.intervals (
     interval_abbrev character varying(40) DEFAULT NULL::character varying,
     interval_type macrostrat.intervals_interval_type DEFAULT 'supereon'::macrostrat.intervals_interval_type,
     interval_color character varying(7) NOT NULL,
-    orig_color character varying(7) NOT NULL,
+    orig_color character varying(7),
     rank integer,
     CONSTRAINT idx_44157069_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.intervals OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.intervals_id_seq
     AS integer
@@ -1068,7 +977,6 @@ CREATE SEQUENCE macrostrat.intervals_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.intervals_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.intervals_id_seq OWNED BY macrostrat.intervals.id;
 
@@ -1079,7 +987,6 @@ CREATE SEQUENCE macrostrat.intervals_new_id_seq1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.intervals_new_id_seq1 OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.intervals_new_id_seq1 OWNED BY macrostrat.intervals.id;
 
@@ -1090,7 +997,6 @@ CREATE TABLE macrostrat.lith_atts (
     att_type macrostrat.lith_atts_att_type NOT NULL,
     lith_att_fill integer NOT NULL
 );
-ALTER TABLE macrostrat.lith_atts OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.lith_atts_id_seq
     AS integer
@@ -1099,7 +1005,6 @@ CREATE SEQUENCE macrostrat.lith_atts_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.lith_atts_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.lith_atts_id_seq OWNED BY macrostrat.lith_atts.id;
 
@@ -1116,7 +1021,6 @@ CREATE TABLE macrostrat.liths (
     bulk_density numeric(3,2) NOT NULL,
     lith_color character varying(7) DEFAULT NULL::character varying
 );
-ALTER TABLE macrostrat.liths OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.liths_id_seq
     AS integer
@@ -1125,7 +1029,6 @@ CREATE SEQUENCE macrostrat.liths_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.liths_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.liths_id_seq OWNED BY macrostrat.liths.id;
 
@@ -1154,7 +1057,6 @@ CREATE TABLE macrostrat.lookup_measurements (
     ref character varying(255) NOT NULL,
     units character varying(255) NOT NULL
 );
-ALTER TABLE macrostrat.lookup_measurements OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_strat_names (
     strat_name_id integer NOT NULL,
@@ -1186,7 +1088,6 @@ CREATE TABLE macrostrat.lookup_strat_names (
     ref_id integer NOT NULL,
     c_interval character varying(100) DEFAULT NULL::character varying
 );
-ALTER TABLE macrostrat.lookup_strat_names OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_strat_names_new (
     strat_name_id integer,
@@ -1218,7 +1119,6 @@ CREATE TABLE macrostrat.lookup_strat_names_new (
     ref_id integer,
     c_interval character varying(100)
 );
-ALTER TABLE macrostrat.lookup_strat_names_new OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_unit_attrs_api (
     unit_id integer,
@@ -1228,7 +1128,6 @@ CREATE TABLE macrostrat.lookup_unit_attrs_api (
     measure_short bytea,
     measure_long bytea
 );
-ALTER TABLE macrostrat.lookup_unit_attrs_api OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_unit_intervals (
     unit_id integer NOT NULL,
@@ -1252,7 +1151,6 @@ CREATE TABLE macrostrat.lookup_unit_intervals (
     eon_id integer NOT NULL,
     best_interval_id integer
 );
-ALTER TABLE macrostrat.lookup_unit_intervals OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_unit_liths (
     unit_id integer NOT NULL,
@@ -1264,7 +1162,6 @@ CREATE TABLE macrostrat.lookup_unit_liths (
     environ_type character varying(100) NOT NULL,
     environ character varying(255) NOT NULL
 );
-ALTER TABLE macrostrat.lookup_unit_liths OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.lookup_units (
     unit_id integer DEFAULT 0 NOT NULL,
@@ -1303,7 +1200,6 @@ CREATE TABLE macrostrat.lookup_units (
     eon character varying(200) DEFAULT NULL::character varying,
     eon_id integer
 );
-ALTER TABLE macrostrat.lookup_units OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.measurements (
     id integer NOT NULL,
@@ -1311,7 +1207,6 @@ CREATE TABLE macrostrat.measurements (
     measurement_type macrostrat.measurement_type NOT NULL,
     measurement character varying(150) NOT NULL
 );
-ALTER TABLE macrostrat.measurements OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.measurements_id_seq
     AS integer
@@ -1320,7 +1215,6 @@ CREATE SEQUENCE macrostrat.measurements_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measurements_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measurements_id_seq OWNED BY macrostrat.measurements.id;
 
@@ -1331,7 +1225,6 @@ CREATE SEQUENCE macrostrat.measurements_new_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measurements_new_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measurements_new_id_seq OWNED BY macrostrat.measurements.id;
 
@@ -1352,14 +1245,12 @@ CREATE TABLE macrostrat.measuremeta (
     ref_id integer NOT NULL,
     geometry public.geometry(Point,4326)
 );
-ALTER TABLE macrostrat.measuremeta OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.measuremeta_cols (
     id integer NOT NULL,
     col_id integer NOT NULL,
     measuremeta_id integer NOT NULL
 );
-ALTER TABLE macrostrat.measuremeta_cols OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.measuremeta_cols_id_seq
     AS integer
@@ -1368,7 +1259,6 @@ CREATE SEQUENCE macrostrat.measuremeta_cols_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measuremeta_cols_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measuremeta_cols_id_seq OWNED BY macrostrat.measuremeta_cols.id;
 
@@ -1379,7 +1269,6 @@ CREATE SEQUENCE macrostrat.measuremeta_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measuremeta_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measuremeta_id_seq OWNED BY macrostrat.measuremeta.id;
 
@@ -1390,7 +1279,6 @@ CREATE SEQUENCE macrostrat.measuremeta_new_id_seq1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measuremeta_new_id_seq1 OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measuremeta_new_id_seq1 OWNED BY macrostrat.measuremeta.id;
 
@@ -1409,7 +1297,6 @@ CREATE TABLE macrostrat.measures (
     v_type character varying(100) NOT NULL,
     v_n integer
 );
-ALTER TABLE macrostrat.measures OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.measures_id_seq
     AS integer
@@ -1418,7 +1305,6 @@ CREATE SEQUENCE macrostrat.measures_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measures_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measures_id_seq OWNED BY macrostrat.measures.id;
 
@@ -1429,7 +1315,6 @@ CREATE SEQUENCE macrostrat.measures_new_id_seq1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.measures_new_id_seq1 OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.measures_new_id_seq1 OWNED BY macrostrat.measures.id;
 
@@ -1448,7 +1333,6 @@ CREATE TABLE macrostrat.minerals (
     url character varying(155) NOT NULL,
     paragenesis character varying(150) DEFAULT NULL::character varying
 );
-ALTER TABLE macrostrat.minerals OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.offshore_baggage (
     id bigint NOT NULL,
@@ -1490,7 +1374,6 @@ CREATE TABLE macrostrat.offshore_baggage (
     unit_id integer NOT NULL,
     neptune_bin integer NOT NULL
 );
-ALTER TABLE macrostrat.offshore_baggage OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.offshore_baggage_units (
     offshore_baggage_id integer NOT NULL,
@@ -1499,7 +1382,6 @@ CREATE TABLE macrostrat.offshore_baggage_units (
     unit_lith_sub_id integer NOT NULL,
     col_id integer NOT NULL
 );
-ALTER TABLE macrostrat.offshore_baggage_units OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.offshore_fossils (
     id bigint NOT NULL,
@@ -1523,7 +1405,6 @@ CREATE TABLE macrostrat.offshore_fossils (
     pbdb_interval_no integer NOT NULL,
     collection_no integer NOT NULL
 );
-ALTER TABLE macrostrat.offshore_fossils OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.offshore_hole_ages (
     id integer NOT NULL,
@@ -1534,7 +1415,6 @@ CREATE TABLE macrostrat.offshore_hole_ages (
     bottom_core integer,
     interval_id integer NOT NULL
 );
-ALTER TABLE macrostrat.offshore_hole_ages OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.offshore_hole_ages_id_seq
     AS integer
@@ -1543,7 +1423,6 @@ CREATE SEQUENCE macrostrat.offshore_hole_ages_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.offshore_hole_ages_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.offshore_hole_ages_id_seq OWNED BY macrostrat.offshore_hole_ages.id;
 
@@ -1560,7 +1439,6 @@ CREATE TABLE macrostrat.offshore_sections (
     top_mbsf numeric(6,2) NOT NULL,
     bottom_mbsf numeric(6,2) NOT NULL
 );
-ALTER TABLE macrostrat.offshore_sections OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.offshore_sites (
     id integer NOT NULL,
@@ -1596,7 +1474,6 @@ CREATE TABLE macrostrat.offshore_sites (
     comments character varying(255) NOT NULL,
     ref_id integer NOT NULL
 );
-ALTER TABLE macrostrat.offshore_sites OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.pbdb_collections (
     collection_no integer NOT NULL,
@@ -1615,14 +1492,12 @@ CREATE TABLE macrostrat.pbdb_collections (
     n_occs integer,
     geom public.geometry
 );
-ALTER TABLE macrostrat.pbdb_collections OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.pbdb_collections_strat_names (
     collection_no integer NOT NULL,
     strat_name_id integer NOT NULL,
     basis_col text
 );
-ALTER TABLE macrostrat.pbdb_collections_strat_names OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.pbdb_intervals (
     id integer NOT NULL,
@@ -1635,7 +1510,6 @@ CREATE TABLE macrostrat.pbdb_intervals (
     orig_color character varying(7) NOT NULL,
     pbdb_interval_no integer NOT NULL
 );
-ALTER TABLE macrostrat.pbdb_intervals OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.pbdb_intervals_id_seq
     AS integer
@@ -1644,7 +1518,6 @@ CREATE SEQUENCE macrostrat.pbdb_intervals_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.pbdb_intervals_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.pbdb_intervals_id_seq OWNED BY macrostrat.pbdb_intervals.id;
 
@@ -1653,7 +1526,6 @@ CREATE TABLE macrostrat.pbdb_liths (
     lith character varying(100) NOT NULL,
     pbdb_lith character varying(100) NOT NULL
 );
-ALTER TABLE macrostrat.pbdb_liths OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.pbdb_matches (
     id integer NOT NULL,
@@ -1669,7 +1541,6 @@ CREATE TABLE macrostrat.pbdb_matches (
     ref_id integer NOT NULL,
     coordinate public.geometry(Point,4326)
 );
-ALTER TABLE macrostrat.pbdb_matches OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.pbdb_matches_id_seq
     AS integer
@@ -1678,7 +1549,6 @@ CREATE SEQUENCE macrostrat.pbdb_matches_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.pbdb_matches_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.pbdb_matches_id_seq OWNED BY macrostrat.pbdb_matches.id;
 
@@ -1691,7 +1561,6 @@ CREATE TABLE macrostrat.places (
     country_abbrev text,
     geom public.geometry
 );
-ALTER TABLE macrostrat.places OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.places_place_id_seq
     START WITH 1
@@ -1699,7 +1568,6 @@ CREATE SEQUENCE macrostrat.places_place_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.places_place_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.places_place_id_seq OWNED BY macrostrat.places.place_id;
 
@@ -1710,7 +1578,6 @@ CREATE TABLE macrostrat.rockd_features (
     feature_type macrostrat.rockd_features_feature_type NOT NULL,
     feature_class macrostrat.rockd_features_feature_class NOT NULL
 );
-ALTER TABLE macrostrat.rockd_features OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.rockd_features_id_seq
     AS integer
@@ -1719,7 +1586,6 @@ CREATE SEQUENCE macrostrat.rockd_features_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.rockd_features_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.rockd_features_id_seq OWNED BY macrostrat.rockd_features.id;
 
@@ -1743,18 +1609,16 @@ CREATE TABLE macrostrat.ronov_sediment (
     glacial numeric(3,1) NOT NULL,
     cherty numeric(3,1) NOT NULL
 );
-ALTER TABLE macrostrat.ronov_sediment OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.sections (
     id bigint NOT NULL,
     col_id integer NOT NULL,
     fo integer DEFAULT 0 NOT NULL,
-    fo_h smallint NOT NULL,
     lo integer DEFAULT 0 NOT NULL,
-    lo_h smallint NOT NULL,
+    fo_h smallint,
+    lo_h smallint,
     CONSTRAINT idx_44157294_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.sections OWNER TO macrostrat;
 
 COMMENT ON TABLE macrostrat.sections IS 'Last updated from MariaDB - 2023-07-28 18:11';
 
@@ -1764,7 +1628,6 @@ CREATE SEQUENCE macrostrat.sections_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.sections_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat.sections_id_seq OWNED BY macrostrat.sections.id;
 
@@ -1778,7 +1641,6 @@ CREATE TABLE macrostrat.stats (
     measurements bigint DEFAULT '0'::bigint NOT NULL,
     burwell_polygons bigint DEFAULT '0'::bigint
 );
-ALTER TABLE macrostrat.stats OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.strat_name_footprints (
     strat_name_id integer,
@@ -1790,7 +1652,6 @@ CREATE TABLE macrostrat.strat_name_footprints (
     best_t_age numeric,
     best_b_age numeric
 );
-ALTER TABLE macrostrat.strat_name_footprints OWNER TO macrostrat_admin;
 
 /* Strat name concepts */
 CREATE TABLE macrostrat.strat_names_meta (
@@ -1811,7 +1672,6 @@ CREATE TABLE macrostrat.strat_names_meta (
     FOREIGN KEY (interval_id) REFERENCES macrostrat.intervals(id)
 );
 
-ALTER TABLE macrostrat.strat_names_meta OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
   AS integer
@@ -1820,7 +1680,6 @@ CREATE SEQUENCE macrostrat.strat_names_meta_concept_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.strat_names_meta_concept_id_seq OWNER TO macrostrat_admin;
 ALTER SEQUENCE macrostrat.strat_names_meta_concept_id_seq OWNED BY macrostrat.strat_names_meta.concept_id;
 
 /** Constraints that need validation */
@@ -1833,17 +1692,16 @@ ALTER TABLE macrostrat.strat_names_meta ADD CONSTRAINT strat_names_meta_refs_fk
 
 CREATE TABLE macrostrat.strat_names (
     id integer NOT NULL,
-    old_id integer NOT NULL,
     concept_id integer,  -- TODO: Should be set NOT NULL in future
     strat_name character varying(75) DEFAULT NULL::character varying,
     rank macrostrat.strat_names_rank,
-    old_strat_name_id integer NOT NULL,
     ref_id integer,
     places text,
-    orig_id integer NOT NULL,
+    old_id integer,
+    old_strat_name_id integer,
+    orig_id integer,
     CONSTRAINT idx_44157311_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.strat_names OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.strat_names_id_seq
     AS integer
@@ -1852,7 +1710,6 @@ CREATE SEQUENCE macrostrat.strat_names_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.strat_names_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.strat_names_id_seq OWNED BY macrostrat.strat_names.id;
 
@@ -1870,7 +1727,6 @@ CREATE SEQUENCE macrostrat.strat_names_new_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.strat_names_new_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.strat_names_new_id_seq OWNED BY macrostrat.strat_names.id;
 
@@ -1893,16 +1749,14 @@ CREATE TABLE macrostrat.strat_names_lookup (
   sgp_id integer NOT NULL,
   sgp_name character varying(100) NOT NULL
 );
-ALTER TABLE macrostrat.strat_names_lookup OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.strat_names_places (
     strat_name_id integer NOT NULL,
     place_id integer NOT NULL
 );
-ALTER TABLE macrostrat.strat_names_places OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.strat_tree (
-    id integer,
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     parent integer,
     rel macrostrat.strat_tree_rel,
     child integer,
@@ -1913,7 +1767,6 @@ CREATE TABLE macrostrat.strat_tree (
       REFERENCES macrostrat.strat_names(id)
       ON DELETE CASCADE
 );
-ALTER TABLE macrostrat.strat_tree OWNER TO macrostrat_admin;
 
 ALTER TABLE macrostrat.strat_tree ADD CONSTRAINT strat_tree_refs_fk
   FOREIGN KEY (ref_id)
@@ -1931,7 +1784,6 @@ CREATE TABLE macrostrat.structure_atts (
     att_type macrostrat.structure_atts_att_type,
     att_class macrostrat.structure_atts_att_class
 );
-ALTER TABLE macrostrat.structure_atts OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.structure_atts_id_seq
     START WITH 1
@@ -1939,7 +1791,6 @@ CREATE SEQUENCE macrostrat.structure_atts_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.structure_atts_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.structure_atts_id_seq OWNED BY macrostrat.structure_atts.id;
 
@@ -1950,7 +1801,6 @@ CREATE TABLE macrostrat.structures (
     structure_type macrostrat.structures_structure_type NOT NULL,
     structure_class macrostrat.structures_structure_class NOT NULL
 );
-ALTER TABLE macrostrat.structures OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.structures_id_seq
     AS integer
@@ -1959,7 +1809,6 @@ CREATE SEQUENCE macrostrat.structures_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.structures_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.structures_id_seq OWNED BY macrostrat.structures.id;
 
@@ -1968,7 +1817,6 @@ CREATE TABLE macrostrat.tectonics (
     basin_type character varying(100) NOT NULL,
     basin_setting macrostrat.tectonics_basin_setting NOT NULL
 );
-ALTER TABLE macrostrat.tectonics OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.tectonics_id_seq
     AS integer
@@ -1977,7 +1825,6 @@ CREATE SEQUENCE macrostrat.tectonics_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.tectonics_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.tectonics_id_seq OWNED BY macrostrat.tectonics.id;
 
@@ -1985,14 +1832,12 @@ CREATE TABLE macrostrat.temp_areas (
     areas double precision NOT NULL,
     col_id integer NOT NULL
 );
-ALTER TABLE macrostrat.temp_areas OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.timescales (
     id integer NOT NULL,
     timescale character varying(255) DEFAULT NULL::character varying,
     ref_id integer NOT NULL
 );
-ALTER TABLE macrostrat.timescales OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.timescales_id_seq
     AS integer
@@ -2001,7 +1846,6 @@ CREATE SEQUENCE macrostrat.timescales_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.timescales_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.timescales_id_seq OWNED BY macrostrat.timescales.id;
 
@@ -2009,7 +1853,6 @@ CREATE TABLE macrostrat.timescales_intervals (
     timescale_id integer NOT NULL,
     interval_id integer NOT NULL
 );
-ALTER TABLE macrostrat.timescales_intervals OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.uniquedatafiles2 (
     id integer NOT NULL,
@@ -2074,7 +1917,6 @@ CREATE TABLE macrostrat.uniquedatafiles2 (
     date character varying(100) NOT NULL,
     added_unit bytea DEFAULT '\x7827333127'::bytea NOT NULL
 );
-ALTER TABLE macrostrat.uniquedatafiles2 OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.uniquedatafiles2_id_seq
     AS integer
@@ -2083,7 +1925,6 @@ CREATE SEQUENCE macrostrat.uniquedatafiles2_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.uniquedatafiles2_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.uniquedatafiles2_id_seq OWNED BY macrostrat.uniquedatafiles2.id;
 
@@ -2092,17 +1933,18 @@ CREATE TABLE macrostrat.unit_boundaries (
     t1 integer NOT NULL,
     t1_prop numeric(6,5) NOT NULL,
     t1_age numeric(8,4) NOT NULL,
-    unit_id integer NOT NULL,
-    unit_id_2 integer NOT NULL,
+    unit_id integer,
+    unit_id_2 integer,
     section_id integer NOT NULL,
     boundary_position numeric(7,3) DEFAULT NULL::numeric,
     boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
     boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
-    ref_id integer DEFAULT 217 NOT NULL
+    ref_id integer DEFAULT 217 NOT NULL,
+    -- At least one of unit_id and unit_id_2 need to be filled
+    CHECK ((unit_id IS NOT NULL) OR (unit_id_2 IS NOT NULL))
 );
-ALTER TABLE macrostrat.unit_boundaries OWNER TO macrostrat;
 
 CREATE TABLE macrostrat.unit_boundaries_backup (
     id integer NOT NULL,
@@ -2119,7 +1961,6 @@ CREATE TABLE macrostrat.unit_boundaries_backup (
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
     ref_id integer DEFAULT 217 NOT NULL
 );
-ALTER TABLE macrostrat.unit_boundaries_backup OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_boundaries_backup_id_seq
     AS integer
@@ -2128,7 +1969,6 @@ CREATE SEQUENCE macrostrat.unit_boundaries_backup_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.unit_boundaries_backup_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_boundaries_backup_id_seq OWNED BY macrostrat.unit_boundaries_backup.id;
 
@@ -2139,7 +1979,6 @@ CREATE SEQUENCE macrostrat.unit_boundaries_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.unit_boundaries_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat.unit_boundaries_id_seq OWNED BY macrostrat.unit_boundaries.id;
 
@@ -2158,7 +1997,6 @@ CREATE TABLE macrostrat.unit_boundaries_scratch (
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
     ref_id integer DEFAULT 217 NOT NULL
 );
-ALTER TABLE macrostrat.unit_boundaries_scratch OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_boundaries_scratch_id_seq
     AS integer
@@ -2167,7 +2005,6 @@ CREATE SEQUENCE macrostrat.unit_boundaries_scratch_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.unit_boundaries_scratch_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_boundaries_scratch_id_seq OWNED BY macrostrat.unit_boundaries_scratch.id;
 
@@ -2184,7 +2021,6 @@ CREATE TABLE macrostrat.unit_boundaries_scratch_old (
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric
 );
-ALTER TABLE macrostrat.unit_boundaries_scratch_old OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_boundaries_scratch_old_id_seq
     AS integer
@@ -2193,7 +2029,6 @@ CREATE SEQUENCE macrostrat.unit_boundaries_scratch_old_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.unit_boundaries_scratch_old_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_boundaries_scratch_old_id_seq OWNED BY macrostrat.unit_boundaries_scratch_old.id;
 
@@ -2205,7 +2040,6 @@ CREATE TABLE macrostrat.unit_contacts (
   old_with_unit integer NOT NULL,
   with_unit integer NOT NULL
 );
-ALTER TABLE macrostrat.unit_contacts OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_contacts_id_seq
   AS integer
@@ -2214,7 +2048,6 @@ CREATE SEQUENCE macrostrat.unit_contacts_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_contacts_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_contacts_id_seq OWNED BY macrostrat.unit_contacts.id;
 
@@ -2228,7 +2061,6 @@ CREATE TABLE macrostrat.unit_dates (
   ref_id integer NOT NULL,
   date_mod timestamp with time zone
 );
-ALTER TABLE macrostrat.unit_dates OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_dates_id_seq
   AS integer
@@ -2237,7 +2069,6 @@ CREATE SEQUENCE macrostrat.unit_dates_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_dates_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_dates_id_seq OWNED BY macrostrat.unit_dates.id;
 
@@ -2249,7 +2080,6 @@ CREATE TABLE macrostrat.unit_econs (
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157447_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.unit_econs OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_econs_id_seq
   AS integer
@@ -2258,7 +2088,6 @@ CREATE SEQUENCE macrostrat.unit_econs_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_econs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_econs_id_seq OWNED BY macrostrat.unit_econs.id;
 
@@ -2272,7 +2101,6 @@ CREATE TABLE macrostrat.unit_environs (
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157452_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.unit_environs OWNER TO macrostrat_admin;
 
 
 CREATE SEQUENCE macrostrat.unit_environs_id_seq
@@ -2282,7 +2110,6 @@ CREATE SEQUENCE macrostrat.unit_environs_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_environs_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_environs_id_seq OWNED BY macrostrat.unit_environs.id;
 
@@ -2291,7 +2118,6 @@ CREATE TABLE macrostrat.unit_equiv (
   unit_id integer NOT NULL,
   new_unit_id integer NOT NULL
 );
-ALTER TABLE macrostrat.unit_equiv OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_equiv_id_seq
   AS integer
@@ -2300,7 +2126,6 @@ CREATE SEQUENCE macrostrat.unit_equiv_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_equiv_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_equiv_id_seq OWNED BY macrostrat.unit_equiv.id;
 
@@ -2311,7 +2136,6 @@ CREATE TABLE macrostrat.unit_lith_atts (
   ref_id integer,
   date_mod text
 );
-ALTER TABLE macrostrat.unit_lith_atts OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.unit_liths (
   id integer NOT NULL,
@@ -2326,7 +2150,6 @@ CREATE TABLE macrostrat.unit_liths (
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157463_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.unit_liths OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.unit_liths_atts (
   id integer NOT NULL,
@@ -2336,7 +2159,6 @@ CREATE TABLE macrostrat.unit_liths_atts (
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157469_primary PRIMARY KEY (id)
 );
-ALTER TABLE macrostrat.unit_liths_atts OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_liths_atts_id_seq
   AS integer
@@ -2345,7 +2167,6 @@ CREATE SEQUENCE macrostrat.unit_liths_atts_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_liths_atts_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_liths_atts_id_seq OWNED BY macrostrat.unit_liths_atts.id;
 
@@ -2356,7 +2177,6 @@ CREATE SEQUENCE macrostrat.unit_liths_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_liths_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_liths_id_seq OWNED BY macrostrat.unit_liths.id;
 
@@ -2368,7 +2188,6 @@ CREATE TABLE macrostrat.unit_measures (
   match_basis character varying(10) NOT NULL,
   rel_position numeric(6,5) DEFAULT NULL::numeric
 );
-ALTER TABLE macrostrat.unit_measures OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_measures_id_seq
   AS integer
@@ -2377,7 +2196,6 @@ CREATE SEQUENCE macrostrat.unit_measures_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_measures_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_measures_id_seq OWNED BY macrostrat.unit_measures.id;
 
@@ -2388,7 +2206,6 @@ CREATE SEQUENCE macrostrat.unit_measures_new_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_measures_new_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_measures_new_id_seq OWNED BY macrostrat.unit_measures.id;
 
@@ -2403,7 +2220,6 @@ CREATE TABLE macrostrat.unit_measures_pbdb (
   t_age numeric(9,5) NOT NULL,
   strat_match text NOT NULL
 );
-ALTER TABLE macrostrat.unit_measures_pbdb OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.unit_notes (
   id integer NOT NULL,
@@ -2411,7 +2227,6 @@ CREATE TABLE macrostrat.unit_notes (
   unit_id integer NOT NULL,
   date_mod timestamp with time zone
 );
-ALTER TABLE macrostrat.unit_notes OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_notes_id_seq
   AS integer
@@ -2420,7 +2235,6 @@ CREATE SEQUENCE macrostrat.unit_notes_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_notes_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_notes_id_seq OWNED BY macrostrat.unit_notes.id;
 
@@ -2430,7 +2244,6 @@ CREATE TABLE macrostrat.unit_seq_strat (
   seq_strat macrostrat.unit_seq_strat_seq_strat NOT NULL,
   seq_order macrostrat.unit_seq_strat_seq_order NOT NULL
 );
-ALTER TABLE macrostrat.unit_seq_strat OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_seq_strat_id_seq
   AS integer
@@ -2439,7 +2252,6 @@ CREATE SEQUENCE macrostrat.unit_seq_strat_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_seq_strat_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_seq_strat_id_seq OWNED BY macrostrat.unit_seq_strat.id;
 
@@ -2449,7 +2261,6 @@ CREATE TABLE macrostrat.unit_strat_names (
   strat_name_id integer NOT NULL,
   old_strat_name_id integer NOT NULL
 );
-ALTER TABLE macrostrat.unit_strat_names OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_strat_names_id_seq
   AS integer
@@ -2458,7 +2269,6 @@ CREATE SEQUENCE macrostrat.unit_strat_names_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_strat_names_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_strat_names_id_seq OWNED BY macrostrat.unit_strat_names.id;
 
@@ -2469,7 +2279,6 @@ CREATE SEQUENCE macrostrat.unit_strat_names_new_id_seq1
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_strat_names_new_id_seq1 OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_strat_names_new_id_seq1 OWNED BY macrostrat.unit_strat_names.id;
 
@@ -2478,7 +2287,6 @@ CREATE TABLE macrostrat.unit_tectonics (
   unit_id integer NOT NULL,
   tectonic_id integer NOT NULL
 );
-ALTER TABLE macrostrat.unit_tectonics OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.unit_tectonics_id_seq
   AS integer
@@ -2487,7 +2295,6 @@ CREATE SEQUENCE macrostrat.unit_tectonics_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.unit_tectonics_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.unit_tectonics_id_seq OWNED BY macrostrat.unit_tectonics.id;
 
@@ -2513,14 +2320,14 @@ CREATE TABLE macrostrat.units (
   color macrostrat.units_color NOT NULL,
   outcrop macrostrat.units_outcrop NOT NULL,
   fo integer DEFAULT 0 NOT NULL,
-  fo_h smallint DEFAULT '0'::smallint NOT NULL,
   lo integer DEFAULT 0 NOT NULL,
-  lo_h smallint DEFAULT '0'::smallint NOT NULL,
+  fo_h smallint,
+  lo_h smallint,
   position_bottom numeric(7,3) NOT NULL,
   position_top numeric(7,3) NOT NULL,
-  max_thick numeric(7,2) NOT NULL,
-  min_thick numeric(7,2) NOT NULL,
-  section_id integer DEFAULT 0 NOT NULL,
+  max_thick numeric(7,2),
+  min_thick numeric(7,2),
+  section_id integer, -- TODO: re-add this NOT NULL constraint, but without a default value
   col_id integer NOT NULL,
   date_mod timestamp with time zone,
   CONSTRAINT idx_44157375_primary PRIMARY KEY (id),
@@ -2529,13 +2336,11 @@ CREATE TABLE macrostrat.units (
   CONSTRAINT units_intervals_fo_fk FOREIGN KEY (fo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT,
   CONSTRAINT units_intervals_lo_fk FOREIGN KEY (lo) REFERENCES macrostrat.intervals(id) ON DELETE RESTRICT
 );
-ALTER TABLE macrostrat.units OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat.units_datafiles (
   unit_id integer NOT NULL,
   datafile_id integer NOT NULL
 );
-ALTER TABLE macrostrat.units_datafiles OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.units_id_seq
   AS integer
@@ -2544,7 +2349,6 @@ CREATE SEQUENCE macrostrat.units_id_seq
   NO MINVALUE
   NO MAXVALUE
   CACHE 1;
-ALTER TABLE macrostrat.units_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.units_id_seq OWNED BY macrostrat.units.id;
 
@@ -2554,7 +2358,6 @@ CREATE TABLE macrostrat.units_sections (
   section_id integer NOT NULL,
   col_id integer NOT NULL
 );
-ALTER TABLE macrostrat.units_sections OWNER TO macrostrat_admin;
 
 CREATE SEQUENCE macrostrat.units_sections_id_seq
     AS integer
@@ -2563,7 +2366,6 @@ CREATE SEQUENCE macrostrat.units_sections_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.units_sections_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.units_sections_id_seq OWNED BY macrostrat.units_sections.id;
 
@@ -2574,7 +2376,6 @@ CREATE SEQUENCE macrostrat.units_sections_new_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat.units_sections_new_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat.units_sections_new_id_seq OWNED BY macrostrat.units_sections.id;
 

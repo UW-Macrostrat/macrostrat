@@ -48,4 +48,3 @@ BEGIN
 END;
 $$;
 
-alter function tile_layers.fossils(integer, integer, integer, json) owner to macrostrat_admin;

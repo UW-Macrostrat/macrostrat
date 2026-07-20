@@ -1,0 +1,1495 @@
+-- Additional macrostrat_api objects carried over from the former
+-- development/9000-macrostrat_api.sql (pg_dump). The core views/functions are
+-- defined cleanly in 01-views.sql / 02-functions.sql; these are the remainder
+-- (extra views, the auth/people functions + triggers) plus the API grants.
+
+CREATE FUNCTION macrostrat_api.auth_status() RETURNS jsonb
+    LANGUAGE sql
+    AS $$
+  SELECT jsonb_build_object(
+    'token', current_setting('request.jwt.claims', true)::jsonb,
+    'role', current_user
+  );
+$$;
+
+CREATE FUNCTION macrostrat_api.insert_people() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  INSERT INTO people (name, email)
+  VALUES (NEW.name, NEW.email);
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION macrostrat_api.people_view_insert_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  inserted_row ecosystem.people%ROWTYPE;
+BEGIN
+  INSERT INTO ecosystem.people (name, email, title, img_id)
+  VALUES (NEW.name, NEW.email, NEW.title, NEW.img_id)
+  RETURNING * INTO inserted_row;
+  -- Optionally copy inserted_row columns back to NEW:
+  NEW.id := inserted_row.id;
+  -- Add other columns as needed
+  RETURN NEW;
+END;
+$$;
+
+/** Entities that can be used to filter columns */
+CREATE OR REPLACE VIEW macrostrat_api.col_filters AS
+SELECT
+  concat('lith:', l.id::text) AS uid,
+  l.lith AS name,
+  l.lith_color AS color,
+  l.id AS lex_id,
+  'lithology'::text AS type
+FROM macrostrat.liths l
+UNION ALL
+SELECT
+  concat('int:', i.id::text) AS uid,
+  i.interval_name AS name,
+  i.interval_color AS color,
+  i.id AS lex_id,
+  'interval'::text AS type
+FROM macrostrat.intervals i
+UNION ALL
+SELECT
+  concat('env:', e.id::text) AS uid,
+  e.environ AS name,
+  e.environ_color AS color,
+  e.id AS lex_id,
+  'environment'::text AS type
+FROM macrostrat.environs e
+UNION ALL
+SELECT
+  concat('concept:', c.concept_id::text) AS uid,
+  c.name AS name,
+  NULL::character varying AS color,
+  c.concept_id AS lex_id,
+  'concept'::text AS type
+FROM macrostrat.strat_names_meta c
+UNION ALL
+SELECT
+  concat('strat_name:', sn.id::text) AS uid,
+  sn.strat_name AS name,
+  NULL::character varying AS color,
+  sn.id AS lex_id,
+  'strat name'::text AS type
+FROM macrostrat.strat_names sn;
+
+CREATE VIEW macrostrat_api.cols_with_groups AS
+ SELECT mt.id,
+    mt.col_group_id,
+    mt.project_id,
+    mt.status_code,
+    mt.col_type,
+    mt.col_position,
+    mt.col,
+    mt.col_name,
+    mt.lat,
+    mt.lng,
+    mt.col_area,
+    mt.created,
+    mt.coordinate,
+    mt.wkt,
+    mt.poly_geom,
+    cg.col_group_long,
+    cg.col_group
+   FROM (macrostrat.cols mt
+     JOIN macrostrat.col_groups cg ON ((mt.col_group_id = cg.id)));
+
+CREATE VIEW macrostrat_api.dataset AS
+ SELECT d.id,
+    d.uid,
+    d.name,
+    d.url,
+    d.type,
+    d.geom,
+    d.symbol,
+    d.data,
+    d.created_at,
+    d.updated_at,
+    dt.name AS type_name,
+    dt.organization
+   FROM (integrations.dataset d
+     JOIN integrations.dataset_type dt ON ((d.type = dt.id)));
+
+CREATE VIEW macrostrat_api.dataset_type AS
+ SELECT dataset_type.id,
+    dataset_type.name,
+    dataset_type.organization,
+    dataset_type.updated_at
+   FROM integrations.dataset_type;
+
+CREATE VIEW macrostrat_api.extraction_feedback AS
+ SELECT extraction_feedback.note_id,
+    extraction_feedback.feedback_id,
+    extraction_feedback.date,
+    extraction_feedback.custom_note
+   FROM macrostrat_kg.extraction_feedback;
+
+CREATE VIEW macrostrat_api.extraction_feedback_combined AS
+ SELECT f.feedback_id,
+    f.date,
+    f.custom_note AS note,
+    COALESCE(json_agg(json_build_object('type_id', t.type_id, 'type', t.type)) FILTER (WHERE (t.type_id IS NOT NULL)), '[]'::json) AS types
+   FROM ((macrostrat_kg.extraction_feedback f
+     LEFT JOIN macrostrat_kg.lookup_extraction_type l ON ((l.note_id = f.note_id)))
+     LEFT JOIN macrostrat_kg.extraction_feedback_type t ON ((t.type_id = l.type_id)))
+  GROUP BY f.feedback_id, f.date, f.custom_note
+  ORDER BY f.date DESC;
+
+CREATE VIEW macrostrat_api.extraction_feedback_type AS
+ SELECT extraction_feedback_type.type_id,
+    extraction_feedback_type.type
+   FROM macrostrat_kg.extraction_feedback_type;
+
+CREATE VIEW macrostrat_api.fossils AS
+ SELECT pbdb_collections.collection_no,
+    pbdb_collections.name,
+    pbdb_collections.early_age,
+    pbdb_collections.late_age,
+    pbdb_collections.grp,
+    pbdb_collections.grp_clean,
+    pbdb_collections.formation,
+    pbdb_collections.formation_clean,
+    pbdb_collections.member,
+    pbdb_collections.member_clean,
+    pbdb_collections.lithologies,
+    pbdb_collections.environment,
+    pbdb_collections.reference_no,
+    pbdb_collections.n_occs,
+    pbdb_collections.geom
+   FROM macrostrat.pbdb_collections;
+
+CREATE VIEW macrostrat_api.kg_entities AS
+WITH matches AS (SELECT ge.global_entity_id,
+                        json_build_object(
+                                'global_entity_id', ge.global_entity_id,
+                                'entity_id', ge.entity_id,
+                                'entity_table', split_part(ge.entity_table, '.', 2),
+                                'name', ge.normalized_name
+                        ) AS match
+                 FROM macrostrat_kg.global_entity ge)
+SELECT e.id,
+       et.id                                                AS type,
+       e.name,
+       ARRAY [e.start_index, e.end_index]                   AS indices,
+       mr.id                                                AS model_run,
+       mr.source_text_id                                    AS source,
+       m.match
+FROM macrostrat_kg.entity e
+         JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
+         JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
+         LEFT JOIN matches m ON m.global_entity_id = e.global_entity_id;
+
+CREATE VIEW macrostrat_api.kg_entity_tree AS
+ WITH RECURSIVE start_entities AS (
+         SELECT entity.id
+           FROM macrostrat_kg.entity
+        EXCEPT
+         SELECT relationship.src_entity_id
+           FROM macrostrat_kg.relationship
+        ), e0 AS (
+         SELECT e.model_run,
+            e.id,
+            jsonb_strip_nulls(((to_jsonb(e.*) - 'model_run'::text) - 'source'::text)) AS tree,
+            ((e.match IS NOT NULL))::integer AS n_matches
+           FROM macrostrat_api.kg_entities e
+        ), tree AS (
+         SELECT e0.model_run,
+            r.src_entity_id AS parent_id,
+            se.id AS entity_id,
+            e0.tree,
+            0 AS depth,
+            1 AS n_entities,
+            e0.n_matches
+           FROM ((e0
+             JOIN start_entities se ON ((se.id = e0.id)))
+             LEFT JOIN macrostrat_kg.relationship r ON ((r.dst_entity_id = se.id)))
+        UNION
+         SELECT a.model_run,
+            a.src_entity_id,
+            a.parent_id,
+            (e0.tree || jsonb_build_object('children', json_agg(a.tree))),
+            (a.depth + 1),
+            ((sum(a.n_entities))::integer + 1),
+            ((sum(a.n_matches))::integer + e0.n_matches)
+           FROM (( SELECT tree_1.model_run,
+                    r1.src_entity_id,
+                    tree_1.parent_id,
+                    tree_1.tree,
+                    tree_1.depth,
+                    tree_1.n_entities,
+                    tree_1.n_matches
+                   FROM (tree tree_1
+                     LEFT JOIN macrostrat_kg.relationship r1 ON ((r1.dst_entity_id = tree_1.parent_id)))) a
+             JOIN e0 ON ((e0.id = a.parent_id)))
+          GROUP BY a.model_run, a.depth, e0.tree, e0.n_matches, a.src_entity_id, a.parent_id
+        )
+ SELECT st.paper_id,
+    tree.model_run,
+    tree.entity_id AS entity,
+    (tree.tree ->> 'type'::text) AS type,
+    mr.source_text_id AS source_text,
+    tree.n_entities,
+    tree.n_matches,
+    tree.tree,
+    tree.depth
+   FROM ((tree
+     JOIN macrostrat_kg.model_run mr ON ((mr.id = tree.model_run)))
+     JOIN macrostrat_kg.source_text st ON ((st.id = mr.source_text_id)))
+  WHERE (tree.parent_id IS NULL);
+
+CREATE VIEW macrostrat_api.kg_context_entities AS
+ WITH entities AS (
+         SELECT kg_entity_tree.source_text,
+            kg_entity_tree.paper_id,
+            kg_entity_tree.model_run,
+            jsonb_agg(kg_entity_tree.tree) AS entities
+           FROM macrostrat_api.kg_entity_tree
+          GROUP BY kg_entity_tree.source_text, kg_entity_tree.paper_id, kg_entity_tree.model_run
+        )
+ SELECT st.id AS source_text,
+    st.paper_id,
+    mr.id AS model_run,
+    COALESCE(e.entities, '[]'::jsonb) AS entities,
+    st.weaviate_id,
+    st.paragraph_text,
+    st.hashed_text,
+    st.preprocessor_id,
+    mr.model_id,
+    mr.version_id,
+    mr.user_id
+   FROM ((macrostrat_kg.source_text st
+     LEFT JOIN macrostrat_kg.model_run mr ON ((mr.source_text_id = st.id)))
+     LEFT JOIN entities e ON ((e.model_run = mr.id)));
+
+CREATE VIEW macrostrat_api.kg_entity_type AS
+ SELECT entity_type.id,
+    entity_type.name,
+    entity_type.description,
+    entity_type.color
+   FROM macrostrat_kg.entity_type;
+
+CREATE VIEW macrostrat_api.kg_extraction_feedback_type AS
+ SELECT extraction_feedback_type.type_id,
+    extraction_feedback_type.type
+   FROM macrostrat_kg.extraction_feedback_type;
+
+CREATE VIEW macrostrat_api.kg_source_text AS
+ WITH stats AS (
+         SELECT mr.source_text_id,
+            count(DISTINCT mr.id) AS n_runs,
+            count(DISTINCT e.id) AS n_entities,
+            count((COALESCE(e.strat_name_id, e.lith_id, e.lith_att_id))::boolean) AS n_matches,
+            count((e.strat_name_id)::boolean) AS n_strat_names,
+            min(mr."timestamp") AS created,
+            max(mr."timestamp") AS last_update
+           FROM (macrostrat_kg.model_run mr
+             LEFT JOIN macrostrat_kg.entity e ON ((e.run_id = mr.id)))
+          GROUP BY mr.source_text_id
+        )
+ SELECT st.preprocessor_id,
+    st.paper_id,
+    st.hashed_text,
+    st.weaviate_id,
+    st.paragraph_text,
+    st.id,
+    st.map_legend_id,
+    st.source_text_type,
+    s.n_runs,
+    s.n_entities,
+    s.n_matches,
+    s.n_strat_names,
+    s.created,
+    s.last_update
+   FROM (macrostrat_kg.source_text st
+     JOIN stats s ON ((s.source_text_id = st.id)));
+
+CREATE VIEW macrostrat_api.kg_matches AS
+ WITH all_lith_ids AS (
+         SELECT (liths.id)::text AS lith_id,
+            NULL::text AS lith_att_id
+           FROM macrostrat.liths
+        UNION ALL
+         SELECT NULL::text AS lith_id,
+            (lith_atts.id)::text AS lith_att_id
+           FROM macrostrat.lith_atts
+        ), parsed_kg_entities AS (
+         SELECT kg_entities.id,
+            (kg_entities.match)::jsonb AS match,
+            kg_entities.source,
+            kg_entities.indices,
+            ((kg_entities.match)::jsonb ->> 'lith_id'::text) AS lith_id,
+            ((kg_entities.match)::jsonb ->> 'lith_att_id'::text) AS lith_att_id
+           FROM macrostrat_api.kg_entities
+        )
+ SELECT a.lith_id,
+    a.lith_att_id,
+    k.match,
+    k.source,
+    k.indices,
+    s.paragraph_text AS context_text
+   FROM ((all_lith_ids a
+     LEFT JOIN parsed_kg_entities k ON ((((a.lith_id IS NOT NULL) AND (k.lith_id = a.lith_id)) OR ((a.lith_att_id IS NOT NULL) AND (k.lith_att_id = a.lith_att_id)))))
+     LEFT JOIN macrostrat_api.kg_source_text s ON ((k.source = s.id)));
+
+CREATE VIEW macrostrat_api.kg_model AS
+ SELECT m.id,
+    m.name,
+    m.description,
+    m.url,
+    min(mr."timestamp") AS first_run,
+    max(mr."timestamp") AS last_run,
+    count(DISTINCT mr.id) AS n_runs,
+    count(DISTINCT e.id) AS n_entities,
+    count((COALESCE(e.strat_name_id, e.lith_id, e.lith_att_id))::boolean) AS n_matches,
+    count((e.strat_name_id)::boolean) AS n_strat_names
+   FROM ((macrostrat_kg.model m
+     LEFT JOIN macrostrat_kg.model_run mr ON ((mr.model_id = m.id)))
+     LEFT JOIN macrostrat_kg.entity e ON ((e.run_id = mr.id)))
+  GROUP BY m.id;
+
+CREATE VIEW macrostrat_api.kg_model_run AS
+ SELECT mr.id,
+    mr.user_id,
+    mr."timestamp",
+    mr.model_id,
+    m.name AS model_name,
+    mr.version_id,
+    mr.source_text_id,
+    st.source_text_type,
+    st.map_legend_id,
+    st.weaviate_id,
+    mr.supersedes,
+    mr1.id AS superseded_by
+   FROM (((macrostrat_kg.model_run mr
+     LEFT JOIN macrostrat_kg.model_run mr1 ON ((mr1.supersedes = mr.id)))
+     JOIN macrostrat_kg.model m ON ((m.id = mr.model_id)))
+     JOIN macrostrat_kg.source_text st ON ((st.id = mr.source_text_id)))
+  ORDER BY mr.id;
+
+CREATE VIEW macrostrat_api.kg_publication_entities AS
+ WITH paper_strat_names AS (
+         SELECT p_1.paper_id,
+            array_agg(DISTINCT mr.model_id) AS models,
+            array_agg(DISTINCT e_1.strat_name_id) AS strat_name_matches,
+            count(DISTINCT e_1.strat_name_id) AS n_matches
+           FROM (((macrostrat_kg.publication p_1
+             JOIN macrostrat_kg.source_text st ON ((st.paper_id = p_1.paper_id)))
+             JOIN macrostrat_kg.model_run mr ON ((mr.source_text_id = st.id)))
+             JOIN macrostrat_kg.entity e_1 ON ((mr.id = e_1.run_id)))
+          WHERE (e_1.strat_name_id IS NOT NULL)
+          GROUP BY p_1.paper_id
+        ), entities AS (
+         SELECT kg_entity_tree.paper_id,
+            jsonb_agg((kg_entity_tree.tree || jsonb_build_object('model_run', kg_entity_tree.model_run, 'depth', kg_entity_tree.depth, 'source', kg_entity_tree.source_text))) AS entities
+           FROM macrostrat_api.kg_entity_tree
+          GROUP BY kg_entity_tree.paper_id
+        )
+ SELECT pub.paper_id,
+    pub.citation,
+    p.strat_name_matches,
+    p.n_matches,
+    p.models,
+    e.entities
+   FROM ((macrostrat_kg.publication pub
+     LEFT JOIN paper_strat_names p ON ((pub.paper_id = p.paper_id)))
+     LEFT JOIN entities e ON ((p.paper_id = e.paper_id)))
+  ORDER BY p.n_matches DESC;
+
+CREATE VIEW macrostrat_api.kg_source_text_casted AS
+ SELECT (t.id)::text AS id,
+    (t.created)::text AS created,
+    (t.last_update)::text AS last_update,
+    t.paper_id,
+    t.paragraph_text,
+    t.n_runs,
+    t.n_entities,
+    t.n_matches,
+    t.n_strat_names,
+    e.model_id,
+    m.name AS model_name,
+    bool_or((r.user_id IS NOT NULL)) AS has_feedback
+   FROM (((macrostrat_api.kg_source_text t
+     LEFT JOIN macrostrat_api.kg_context_entities e ON ((e.source_text = t.id)))
+     LEFT JOIN macrostrat_api.kg_model m ON ((m.id = e.model_id)))
+     LEFT JOIN macrostrat_api.kg_model_run r ON ((t.id = r.source_text_id)))
+  GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
+
+CREATE VIEW macrostrat_api.legend AS
+ WITH _intervals AS (
+         SELECT intervals.id,
+            json_build_object('id', intervals.id, 'name', intervals.interval_name, 'color', intervals.interval_color, 'rank', intervals.rank, 'b_age', intervals.age_bottom, 't_age', intervals.age_top) AS _interval
+           FROM macrostrat.intervals
+        ), legend_liths AS (
+         SELECT legend_liths.legend_id,
+            legend_liths.lith_id,
+            json_agg(legend_liths.basis_col) AS basis_cols
+           FROM maps.legend_liths
+          GROUP BY legend_liths.legend_id, legend_liths.lith_id
+        ), legend_liths2 AS (
+         SELECT ll_1.legend_id,
+            json_build_object('lith_id', ll_1.lith_id, 'basis_col', ll_1.basis_cols, 'name', l_1.lith, 'color', l_1.lith_color, 'fill', l_1.lith_fill) AS liths
+           FROM (legend_liths ll_1
+             JOIN macrostrat.liths l_1 ON ((ll_1.lith_id = l_1.id)))
+        )
+ SELECT l.legend_id,
+    l.source_id,
+    l.name,
+    l.strat_name,
+    l.age,
+    l.lith,
+    l.descrip,
+    l.comments,
+    ( SELECT _intervals._interval
+           FROM _intervals
+          WHERE (_intervals.id = l.b_interval)) AS b_interval,
+    ( SELECT _intervals._interval
+           FROM _intervals
+          WHERE (_intervals.id = l.t_interval)) AS t_interval,
+    l.best_age_bottom,
+    l.best_age_top,
+    l.color,
+    l.unit_ids,
+    l.concept_ids,
+    l.strat_name_ids,
+    l.strat_name_children,
+    l.lith_ids,
+    l.lith_types,
+    l.lith_classes,
+    l.all_lith_ids,
+    l.all_lith_types,
+    l.all_lith_classes,
+    l.area,
+    json_agg(ll.liths) AS liths
+   FROM (maps.legend l
+     JOIN legend_liths2 ll USING (legend_id))
+  GROUP BY l.legend_id;
+
+CREATE VIEW macrostrat_api.legend_liths AS
+ SELECT l.legend_id,
+    l.source_id,
+    l.name AS map_unit_name,
+    array_agg(ll.lith_id) FILTER (WHERE (ll.lith_id IS NOT NULL)) AS lith_ids
+   FROM (maps.legend l
+     LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
+  GROUP BY l.legend_id, l.source_id, l.name;
+
+CREATE VIEW macrostrat_api.location_tags AS
+ SELECT location_tags.id,
+    location_tags.name,
+    location_tags.description,
+    location_tags.color
+   FROM user_features.location_tags;
+
+CREATE VIEW macrostrat_api.location_tags_intersect AS
+ SELECT location_tags_intersect.tag_id,
+    location_tags_intersect.user_id,
+    location_tags_intersect.location_id
+   FROM user_features.location_tags_intersect;
+
+CREATE VIEW macrostrat_api.lookup_extraction_type AS
+ SELECT lookup_extraction_type.note_id,
+    lookup_extraction_type.type_id
+   FROM macrostrat_kg.lookup_extraction_type;
+
+CREATE VIEW macrostrat_api.macrostrat_stats AS
+ SELECT count(*) AS total_rows,
+    count(
+        CASE
+            WHEN (macrostrat_stats.date >= (now() - '1 day'::interval)) THEN 1
+            ELSE NULL::integer
+        END) AS rows_last_24_hours
+   FROM usage_stats.macrostrat_stats;
+
+CREATE VIEW macrostrat_api.map_ingest AS
+ SELECT ingest_process.id,
+    ingest_process.state,
+    ingest_process.comments,
+    ingest_process.source_id,
+    ingest_process.created_on,
+    ingest_process.completed_on,
+    ingest_process.map_id,
+    ingest_process.type,
+    ingest_process.polygon_state,
+    ingest_process.line_state,
+    ingest_process.point_state,
+    ingest_process.ingest_pipeline,
+    ingest_process.map_url,
+    ingest_process.ingested_by,
+    ingest_process.slug
+   FROM maps_metadata.ingest_process;
+
+CREATE VIEW macrostrat_api.map_ingest_metadata AS
+ SELECT ingest_process.id,
+    ingest_process.state,
+    ingest_process.comments,
+    ingest_process.source_id,
+    ingest_process.created_on,
+    ingest_process.completed_on,
+    ingest_process.map_id,
+    ingest_process.type,
+    ingest_process.polygon_state,
+    ingest_process.line_state,
+    ingest_process.point_state,
+    ingest_process.ingest_pipeline,
+    ingest_process.map_url,
+    ingest_process.ingested_by,
+    ingest_process.slug
+   FROM maps_metadata.ingest_process;
+
+CREATE VIEW macrostrat_api.map_ingest_tags AS
+ SELECT ingest_process_tag.ingest_process_id,
+    ingest_process_tag.tag
+   FROM maps_metadata.ingest_process_tag;
+
+CREATE VIEW macrostrat_api.mapped_sources AS
+ SELECT s.source_id,
+    s.slug,
+    s.name,
+    s.url,
+    s.ref_title,
+    s.authors,
+    s.ref_year,
+    s.ref_source,
+    s.isbn_doi,
+    s.license AS licence,
+    s.scale,
+    s.features,
+    s.area,
+    s.display_scales,
+    s.raster_url,
+    s.web_geom AS envelope,
+        CASE
+            WHEN (psi.source_id IS NULL) THEN false
+            ELSE true
+        END AS is_mapped
+   FROM (maps.sources s
+     LEFT JOIN ( SELECT polygons.source_id
+           FROM maps.polygons
+          GROUP BY polygons.source_id) psi ON ((s.source_id = psi.source_id)));
+
+CREATE VIEW macrostrat_api.maps_sources AS
+ SELECT sources.source_id,
+    sources.name,
+    sources.url,
+    sources.ref_title,
+    sources.authors,
+    sources.ref_year,
+    sources.ref_source,
+    sources.isbn_doi,
+    sources.scale,
+    sources.license,
+    sources.features,
+    sources.area,
+    sources.priority,
+    sources.display_scales,
+    sources.new_priority,
+    sources.status_code,
+    sources.slug,
+    sources.raster_url,
+    sources.scale_denominator,
+    sources.is_finalized,
+    sources.lines_oriented,
+    sources.date_finalized,
+    sources.ingested_by,
+    sources.keywords,
+    sources.language,
+    sources.description
+   FROM maps.sources;
+
+CREATE VIEW macrostrat_api.measurements_with_type AS
+ SELECT m.id,
+    m.sample_name,
+    m.lat,
+    m.lng,
+    m.sample_geo_unit,
+    m.sample_lith,
+    m.lith_id,
+    l.lith_color,
+    m.lith_att_id,
+    m.age AS int_name,
+    i.id AS int_id,
+    i.interval_color AS int_color,
+    m.sample_descrip,
+    m.ref,
+    m.ref_id,
+    m.geometry,
+    ( SELECT ms.measurement_id
+           FROM macrostrat.measures ms
+          WHERE (ms.measuremeta_id = m.id)
+         LIMIT 1) AS measurement_id
+   FROM ((macrostrat.measuremeta m
+     LEFT JOIN macrostrat.liths l ON ((m.lith_id = l.id)))
+     LEFT JOIN macrostrat.intervals i ON (((m.age)::text = (i.interval_name)::text)));
+
+CREATE VIEW macrostrat_api.minerals AS
+ SELECT minerals.id,
+    minerals.mineral,
+    minerals.mineral_type,
+    minerals.min_type,
+    minerals.hardness_min,
+    minerals.hardness_max,
+    minerals.crystal_form,
+    minerals.color,
+    minerals.lustre,
+    minerals.formula,
+    minerals.formula_tags,
+    minerals.url,
+    minerals.paragenesis
+   FROM macrostrat.minerals;
+
+CREATE VIEW macrostrat_api.new_legend AS
+ WITH legend_ages AS (
+         SELECT legend_1.legend_id,
+            legend_1.age,
+            TRIM(BOTH FROM split_part(legend_1.age, '-'::text, 1)) AS min_age,
+            NULLIF(TRIM(BOTH FROM split_part(legend_1.age, '-'::text, 2)), ''::text) AS max_age
+           FROM maps.legend legend_1
+        ), units_agg AS (
+         SELECT legend_1.legend_id,
+                CASE
+                    WHEN (count(units.id) = 0) THEN NULL::jsonb
+                    ELSE jsonb_agg(jsonb_build_object('unit_id', units.id, 'col_id', units.col_id, 'name', units.strat_name))
+                END AS units
+           FROM ((maps.legend legend_1
+             LEFT JOIN LATERAL unnest(legend_1.unit_ids) unit_id(unit_id) ON (true))
+             LEFT JOIN macrostrat.units units ON ((units.id = unit_id.unit_id)))
+          GROUP BY legend_1.legend_id
+        ), liths_agg AS (
+         SELECT legend_1.legend_id,
+                CASE
+                    WHEN (count(liths.id) = 0) THEN NULL::jsonb
+                    ELSE jsonb_agg(jsonb_build_object('lith_id', liths.id, 'lith_name', liths.lith, 'color', liths.lith_color))
+                END AS lithologies
+           FROM ((maps.legend legend_1
+             LEFT JOIN LATERAL unnest(legend_1.all_lith_ids) lith_id(lith_id) ON (true))
+             LEFT JOIN macrostrat.liths liths ON ((liths.id = lith_id.lith_id)))
+          GROUP BY legend_1.legend_id
+        ), strat_names_agg AS (
+         SELECT legend_1.legend_id,
+                CASE
+                    WHEN (count(sn.id) = 0) THEN NULL::jsonb
+                    ELSE jsonb_agg(jsonb_build_object('strat_name_id', sn.id, 'strat_name', sn.strat_name))
+                END AS strat_names
+           FROM ((maps.legend legend_1
+             LEFT JOIN LATERAL unnest(legend_1.strat_name_ids) sn_id(sn_id) ON (true))
+             LEFT JOIN macrostrat.strat_names sn ON ((sn.id = sn_id.sn_id)))
+          GROUP BY legend_1.legend_id
+        )
+ SELECT legend.legend_id,
+    legend.source_id,
+    legend.name,
+    legend.strat_name,
+    legend.age,
+    legend.lith,
+    legend.descrip,
+    legend.comments,
+    legend.b_interval,
+    legend.t_interval,
+    legend.best_age_bottom,
+    legend.best_age_top,
+    legend.color,
+    legend.unit_ids,
+    legend.concept_ids,
+    legend.strat_name_ids,
+    legend.strat_name_children,
+    legend.lith_ids,
+    legend.lith_types,
+    legend.lith_classes,
+    legend.all_lith_ids,
+    legend.all_lith_types,
+    legend.all_lith_classes,
+    legend.area,
+    legend.tiny_area,
+    legend.small_area,
+    legend.medium_area,
+    legend.large_area,
+    u.units,
+    l.lithologies,
+    s.strat_names,
+        CASE
+            WHEN (min_intervals.id IS NULL) THEN NULL::jsonb
+            ELSE jsonb_build_object('int_id', min_intervals.id, 'name', min_intervals.interval_name, 'color', min_intervals.interval_color)
+        END AS min_age_interval,
+        CASE
+            WHEN (max_intervals.id IS NULL) THEN NULL::jsonb
+            ELSE jsonb_build_object('int_id', max_intervals.id, 'name', max_intervals.interval_name, 'color', max_intervals.interval_color)
+        END AS max_age_interval
+   FROM ((((((maps.legend legend
+     JOIN legend_ages ON ((legend.legend_id = legend_ages.legend_id)))
+     LEFT JOIN units_agg u ON ((u.legend_id = legend.legend_id)))
+     LEFT JOIN liths_agg l ON ((l.legend_id = legend.legend_id)))
+     LEFT JOIN strat_names_agg s ON ((s.legend_id = legend.legend_id)))
+     LEFT JOIN macrostrat.intervals min_intervals ON (((min_intervals.interval_name)::text = legend_ages.min_age)))
+     LEFT JOIN macrostrat.intervals max_intervals ON (((max_intervals.interval_name)::text = legend_ages.max_age)));
+
+CREATE VIEW macrostrat_api.people AS
+ SELECT people.person_id,
+    people.name,
+    people.email,
+    people.title,
+    people.website,
+    people.img_id,
+    people.active_start,
+    people.active_end
+   FROM ecosystem.people;
+
+CREATE VIEW macrostrat_api.people_roles AS
+ SELECT people_roles.person_id,
+    people_roles.role_id
+   FROM ecosystem.people_roles;
+
+CREATE VIEW macrostrat_api.people_with_roles AS
+ SELECT p.person_id,
+    p.name,
+    p.email,
+    p.title,
+    p.website,
+    p.img_id,
+    p.active_start,
+    p.active_end,
+    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE (r.role_id IS NOT NULL))) AS roles
+   FROM ((ecosystem.people p
+     LEFT JOIN ecosystem.people_roles pr ON ((p.person_id = pr.person_id)))
+     LEFT JOIN ecosystem.roles r ON ((pr.role_id = r.role_id)))
+  GROUP BY p.person_id;
+
+CREATE VIEW macrostrat_api.rockd_stats AS
+ SELECT count(*) AS total_rows,
+    count(
+        CASE
+            WHEN (rockd_stats.date >= (now() - '1 day'::interval)) THEN 1
+            ELSE NULL::integer
+        END) AS rows_last_24_hours
+   FROM usage_stats.rockd_stats;
+
+CREATE VIEW macrostrat_api.roles AS
+ SELECT roles.role_id,
+    roles.name,
+    roles.description
+   FROM ecosystem.roles;
+
+CREATE VIEW macrostrat_api.sgp_analyses AS
+ SELECT sgp_analyses.sample_id,
+    sgp_analyses.original_num,
+    sgp_analyses.analyte_det_id,
+    sgp_analyses.analyte_code,
+    sgp_analyses.abundance,
+    sgp_analyses.determination_unit,
+    sgp_analyses.exp_method_id,
+    sgp_analyses.ana_method_id,
+    sgp_analyses.reference_id
+   FROM integrations.sgp_analyses;
+
+CREATE VIEW macrostrat_api.sgp_matches AS
+ SELECT sgp_matches.sample_id,
+    sgp_matches.match_set,
+    sgp_matches.created_at,
+    sgp_matches.original_num,
+    sgp_matches.is_standard,
+    sgp_matches.max_depth,
+    sgp_matches.composite_height_m,
+    sgp_matches.geom,
+    sgp_matches.interpreted_age,
+    sgp_matches.interpreted_age_notes,
+    sgp_matches.min_age,
+    sgp_matches.max_age,
+    sgp_matches.age_by,
+    sgp_matches.data_source,
+    sgp_matches.source_text,
+    sgp_matches.col_id,
+    sgp_matches.count,
+    sgp_matches.strat_names,
+    sgp_matches.match_strat_name_id,
+    sgp_matches.match_strat_name,
+    sgp_matches.match_strat_name_clean,
+    sgp_matches.match_rank,
+    sgp_matches.match_parent_id,
+    sgp_matches.match_concept_id,
+    sgp_matches.match_unit_id,
+    sgp_matches.match_col_id,
+    sgp_matches.match_depth,
+    sgp_matches.match_basis,
+    sgp_matches.match_spatial_basis,
+    sgp_matches.match_min_age,
+    sgp_matches.match_max_age,
+    sgp_matches.match_mid_age,
+    sgp_matches.match_age_span,
+    sgp_matches.age_span_delta,
+    sgp_matches.mid_age_delta
+   FROM integrations.sgp_matches;
+
+CREATE VIEW macrostrat_api.sgp_samples AS
+ SELECT sgp_samples.sample_id,
+    sgp_samples.igsn,
+    sgp_samples.original_num,
+    sgp_samples.is_standard,
+    sgp_samples.min_depth,
+    sgp_samples.max_depth,
+    sgp_samples.height_depth_m,
+    sgp_samples.composite_height_m,
+    sgp_samples.geom,
+    sgp_samples.verbatim_strat,
+    sgp_samples.verbatim_lith,
+    sgp_samples.strat_notes,
+    sgp_samples.coll_event_notes,
+    sgp_samples.url,
+    sgp_samples.data_source,
+    sgp_samples.geol_context_id,
+    sgp_samples.lithostrat_id,
+    sgp_samples.coll_event_id,
+    sgp_samples.macrostrat_id
+   FROM integrations.sgp_samples;
+
+CREATE VIEW macrostrat_api.sgp_unit_matches AS
+ SELECT sgp_matches.match_col_id AS col_id,
+    sgp_matches.match_unit_id AS unit_id,
+    jsonb_agg(jsonb_build_object('id', sgp_matches.sample_id, 'name', sgp_matches.original_num)) AS sgp_samples
+   FROM integrations.sgp_matches
+  WHERE (sgp_matches.match_unit_id IS NOT NULL)
+  GROUP BY sgp_matches.match_col_id, sgp_matches.match_unit_id;
+
+CREATE VIEW macrostrat_api.sources AS
+ SELECT s.source_id,
+    s.slug,
+    s.name,
+    s.url,
+    s.ref_title,
+    s.authors,
+    s.ref_year,
+    s.ref_source,
+    s.isbn_doi,
+    s.license,
+    s.scale,
+    s.features,
+    s.area,
+    s.display_scales,
+    s.priority,
+    s.status_code,
+    s.raster_url,
+    s.web_geom AS envelope,
+    s.is_finalized,
+    s.scale_denominator,
+    s.lines_oriented
+   FROM maps.sources s;
+
+CREATE VIEW macrostrat_api.sources_ingestion AS
+ SELECT s.source_id,
+    s.slug,
+    s.name,
+    s.url,
+    s.ref_title,
+    s.authors,
+    s.ref_year,
+    s.ref_source,
+    s.isbn_doi,
+    s.scale,
+    s.license,
+    s.features,
+    s.area,
+    s.display_scales,
+    s.priority,
+    s.status_code,
+    s.raster_url,
+    i.state,
+    i.comments,
+    i.created_on,
+    i.completed_on,
+    i.map_id,
+    s.is_finalized,
+    s.scale_denominator
+   FROM (maps.sources_metadata s
+     JOIN maps_metadata.ingest_process i ON ((i.source_id = s.source_id)));
+
+CREATE VIEW macrostrat_api.sources_metadata AS
+ SELECT sources_metadata.source_id,
+    sources_metadata.slug,
+    sources_metadata.name,
+    sources_metadata.url,
+    sources_metadata.ref_title,
+    sources_metadata.authors,
+    sources_metadata.ref_year,
+    sources_metadata.ref_source,
+    sources_metadata.isbn_doi,
+    sources_metadata.scale,
+    sources_metadata.license,
+    sources_metadata.features,
+    sources_metadata.area,
+    sources_metadata.display_scales,
+    sources_metadata.priority,
+    sources_metadata.status_code,
+    sources_metadata.raster_url,
+    sources_metadata.scale_denominator,
+    sources_metadata.is_finalized,
+    sources_metadata.lines_oriented,
+    sources_metadata.is_finalized AS is_mapped
+   FROM maps.sources_metadata;
+
+CREATE VIEW macrostrat_api.strat_concepts_with_names AS
+ SELECT m.concept_id,
+    m.orig_id,
+    m.name,
+    m.geologic_age,
+    m.interval_id,
+    m.b_int,
+    m.t_int,
+    m.usage_notes,
+    m.other,
+    m.province,
+    m.url,
+    m.ref_id,
+    string_agg((s.id)::text, ','::text) AS strat_ids,
+    string_agg((s.strat_name)::text, ','::text) AS strat_names,
+    string_agg((s.rank)::text, ','::text) AS strat_ranks
+   FROM (macrostrat.strat_names_meta m
+     LEFT JOIN macrostrat.strat_names s ON ((m.concept_id = s.concept_id)))
+  GROUP BY m.concept_id;
+
+CREATE VIEW macrostrat_api.strat_names_test AS
+ SELECT m.id,
+    m.old_id,
+    m.concept_id,
+    m.strat_name AS name,
+    m.rank,
+    m.old_strat_name_id,
+    m.ref_id,
+    m.places,
+    m.orig_id,
+    string_agg((s.name)::text, ','::text) AS concept_name
+   FROM (macrostrat.strat_names m
+     LEFT JOIN macrostrat.strat_names_meta s ON ((m.concept_id = s.concept_id)))
+  GROUP BY m.id
+  ORDER BY m.id;
+
+CREATE VIEW macrostrat_api.strat_combined AS
+ SELECT strat_concepts_with_names.concept_id,
+    NULL::integer AS id,
+    strat_concepts_with_names.name,
+    NULL::macrostrat.strat_names_rank AS rank,
+    strat_concepts_with_names.strat_names,
+    strat_concepts_with_names.strat_ids,
+    concat(strat_concepts_with_names.name, ',', strat_concepts_with_names.strat_names) AS all_names,
+    strat_concepts_with_names.concept_id AS combined_id,
+    strat_concepts_with_names.strat_ranks
+   FROM macrostrat_api.strat_concepts_with_names
+UNION ALL
+ SELECT strat_names_test.concept_id,
+    strat_names_test.id,
+    strat_names_test.name,
+    strat_names_test.rank,
+    NULL::text AS strat_names,
+    NULL::text AS strat_ids,
+    strat_names_test.name AS all_names,
+    (100000 + strat_names_test.id) AS combined_id,
+    NULL::text AS strat_ranks
+   FROM macrostrat_api.strat_names_test
+  WHERE (strat_names_test.concept_id IS NULL);
+
+CREATE VIEW macrostrat_api.strat_concepts_test AS
+ SELECT m.concept_id,
+    m.orig_id,
+    m.name,
+    m.geologic_age,
+    m.interval_id,
+    m.b_int,
+    m.t_int,
+    m.usage_notes,
+    m.other,
+    m.province,
+    m.url,
+    m.ref_id,
+    string_agg((s.id)::text, ','::text) AS strat_ids,
+    string_agg((s.strat_name)::text, ','::text) AS strat_names
+   FROM (macrostrat.strat_names_meta m
+     LEFT JOIN macrostrat.strat_names s ON ((m.concept_id = s.concept_id)))
+  GROUP BY m.concept_id;
+
+CREATE VIEW macrostrat_api.strat_combined_test AS
+ WITH combined_data AS (
+         SELECT strat_concepts_test.concept_id,
+            strat_concepts_test.name,
+            strat_concepts_test.strat_names,
+            strat_concepts_test.strat_ids,
+            NULL::character varying AS strat_name,
+            NULL::text AS concept_name,
+            NULL::integer AS id
+           FROM macrostrat_api.strat_concepts_test
+        UNION
+         SELECT strat_names_test.concept_id,
+            strat_names_test.concept_name AS name,
+            NULL::text AS strat_names,
+            NULL::text AS strat_ids,
+            strat_names_test.name AS strat_name,
+            strat_names_test.concept_name,
+            strat_names_test.id
+           FROM macrostrat_api.strat_names_test
+        )
+ SELECT row_number() OVER (ORDER BY combined_data.concept_id, combined_data.name) AS combined_id,
+    combined_data.concept_id,
+    combined_data.name,
+    combined_data.strat_names,
+    combined_data.strat_ids,
+    combined_data.strat_name,
+    combined_data.concept_name,
+    combined_data.id
+   FROM combined_data;
+
+CREATE VIEW macrostrat_api.strat_name_concepts AS
+ SELECT strat_names_meta.concept_id,
+    strat_names_meta.orig_id,
+    strat_names_meta.name,
+    strat_names_meta.geologic_age,
+    strat_names_meta.interval_id,
+    strat_names_meta.b_int,
+    strat_names_meta.t_int,
+    strat_names_meta.usage_notes,
+    strat_names_meta.other,
+    strat_names_meta.province,
+    strat_names_meta.url,
+    strat_names_meta.ref_id
+   FROM macrostrat.strat_names_meta;
+
+CREATE VIEW macrostrat_api.test_helper_functions AS
+ SELECT public.current_app_role() AS current_app_role,
+    public.current_app_user_id() AS current_app_user_id;
+
+CREATE VIEW macrostrat_api.type_lookup AS
+ SELECT liths.lith AS name,
+    liths.id,
+    'lith'::text AS type
+   FROM macrostrat.liths
+UNION ALL
+ SELECT strat_names.strat_name AS name,
+    strat_names.id,
+    'strat_name'::text AS type
+   FROM macrostrat.strat_names
+UNION ALL
+ SELECT intervals.interval_name AS name,
+    intervals.id,
+    'interval'::text AS type
+   FROM macrostrat.intervals;
+
+CREATE VIEW macrostrat_api.unit_intervals AS
+ SELECT i.id AS int_id,
+    u.unit_id
+   FROM (macrostrat.intervals i
+     JOIN macrostrat.lookup_units u ON (((u.b_age <= i.age_bottom) AND (u.t_age >= i.age_top))));
+
+CREATE VIEW macrostrat_api.user_locations_view WITH (security_invoker='true') AS
+ SELECT user_locations.id,
+    user_locations.user_id,
+    user_locations.name,
+    user_locations.description,
+    user_locations.point,
+    user_locations.zoom,
+    user_locations.meters_from_point,
+    user_locations.elevation,
+    user_locations.azimuth,
+    user_locations.pitch,
+    user_locations.map_layers
+   FROM user_features.user_locations;
+
+CREATE OR REPLACE VIEW macrostrat_api.autocomplete as
+SELECT autocomplete.id,
+       autocomplete.name,
+       autocomplete.type,
+       autocomplete.category
+FROM macrostrat.autocomplete
+UNION ALL
+SELECT sources.source_id AS id,
+       sources.name,
+       'sources'::character varying AS type,
+       'maps'::character varying AS category
+FROM maps.sources
+UNION ALL
+SELECT cols.id,
+       cols.col_name AS name,
+       'col'::character varying AS type,
+       'columns'::character varying AS category
+FROM macrostrat.cols
+UNION ALL
+SELECT projects.id,
+       projects.project::text AS name,
+       'project'::character varying AS type,
+       'projects'::character varying AS category
+FROM macrostrat.projects
+UNION ALL
+SELECT strat_names.id,
+       strat_names.strat_name::text AS name,
+       'strat_name'::character varying AS type,
+       'strat_names'::character varying AS category
+FROM macrostrat.strat_names
+where concept_id is null;
+
+CREATE OR REPLACE VIEW macrostrat_api.feedback AS
+
+WITH selected_runs AS (
+    SELECT *
+    FROM macrostrat_kg.all_runs
+    WHERE user_id IS NOT NULL
+),
+
+entities AS (
+    SELECT
+        e.run_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'id', e.id,
+                'text', e.name,
+                'type', et.name,
+                'start', e.start_index,
+                'end', e.end_index
+            )
+        ) AS entities
+    FROM macrostrat_kg.entity e
+    JOIN selected_runs sr
+        ON sr.id = e.run_id
+    LEFT JOIN macrostrat_kg.entity_type et
+        ON et.id = e.entity_type_id
+    GROUP BY e.run_id
+),
+
+relations AS (
+    SELECT
+        parent.run_id,
+        jsonb_agg(
+            jsonb_build_object(
+                'head', r.src_entity_id,
+                'tail', r.dst_entity_id
+            )
+        ) AS relations
+    FROM macrostrat_kg.relationship r
+    JOIN macrostrat_kg.entity parent
+        ON parent.id = r.src_entity_id
+    JOIN selected_runs sr
+        ON sr.id = parent.run_id
+    GROUP BY parent.run_id
+),
+
+feedback_meta AS (
+    SELECT
+        ef.feedback_id AS run_id,
+        ef.custom_note AS extraction_note,
+        eft.type AS extraction_feedback_type
+    FROM macrostrat_kg.extraction_feedback ef
+    LEFT JOIN macrostrat_kg.lookup_extraction_type let
+        ON let.note_id = ef.note_id
+    LEFT JOIN macrostrat_kg.extraction_feedback_type eft
+        ON eft.type_id = let.type_id
+)
+
+SELECT
+    sr.*,
+    ge.name AS root_entity_name,
+    ge.entity_table AS root_entity_table,
+    fm.extraction_note,
+    fm.extraction_feedback_type,
+    COALESCE(ent.entities, '[]'::jsonb) AS entities,
+    COALESCE(rel.relations, '[]'::jsonb) AS relations
+
+FROM selected_runs sr
+LEFT JOIN entities ent
+    ON ent.run_id = sr.id
+LEFT JOIN relations rel
+    ON rel.run_id = sr.id
+LEFT JOIN feedback_meta fm
+    ON fm.run_id = sr.id
+LEFT JOIN macrostrat_kg.global_entity ge
+    ON ge.global_entity_id = sr.root_id;
+
+ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
+
+
+
+GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
+
+GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
+
+GRANT ALL ON FUNCTION macrostrat_api.combine_sections(section_ids integer[]) TO web_anon;
+
+GRANT ALL ON FUNCTION macrostrat_api.get_col_strat_names(_col_id integer) TO web_anon;
+
+GRANT ALL ON FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) TO web_anon;
+
+GRANT ALL ON FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) TO web_anon;
+
+GRANT ALL ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_filter TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_filters TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_group_with_cols TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_groups TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_ref_expanded TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_refs TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_section_data TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.col_sections TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.cols TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.cols_with_groups TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.dataset TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.dataset_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.econ_unit TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.environ_unit TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.environs TO web_anon;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.extraction_feedback_combined TO web_anon;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.fossils TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.intervals TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_entities TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_tree TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_context_entities TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_user;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+
+GRANT UPDATE(name) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+
+GRANT UPDATE(description) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+
+GRANT UPDATE(color) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_extraction_feedback_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_user;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_matches TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_user;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_model_run TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_model_run TO web_user;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_publication_entities TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text_casted TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.legend TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.legend_liths TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.lith_attr_unit TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.lith_unit TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.liths TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.location_tags TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.location_tags TO web_user;
+
+GRANT SELECT ON TABLE macrostrat_api.location_tags TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.location_tags_intersect TO web_anon;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.location_tags_intersect TO web_user;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.location_tags_intersect TO web_admin;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.lookup_extraction_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.macrostrat_stats TO web_anon;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest TO web_user;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.map_ingest TO web_anon;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_metadata TO web_user;
+
+GRANT SELECT ON TABLE macrostrat_api.map_ingest_metadata TO web_anon;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_user;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.map_ingest_tags TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.mapped_sources TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.mapped_sources TO web_user;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.maps_sources TO web_user;
+
+GRANT SELECT,UPDATE ON TABLE macrostrat_api.maps_sources TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.maps_sources TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.measurements_with_type TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.minerals TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.new_legend TO web_anon;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people TO web_anon;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people_roles TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.people_with_roles TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.projects TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.refs TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.rockd_stats TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.roles TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sections TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sgp_analyses TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sgp_matches TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sgp_samples TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sgp_unit_matches TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sources TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sources_ingestion TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.sources_metadata TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_concepts_with_names TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_names_test TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_combined TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_concepts_test TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_combined_test TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_name_concepts TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_names TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_names_meta TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_names_ref TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.strat_tree TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.test_helper_functions TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.timescales TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.type_lookup TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_boundaries TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_environs TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_intervals TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_liths TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_strat_name_expanded TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.unit_strat_names TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.units TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.user_locations_view TO web_anon;
+
+GRANT SELECT,DELETE ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT SELECT,DELETE ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT UPDATE(id) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT UPDATE(id) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(user_id),UPDATE(user_id) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(user_id),UPDATE(user_id) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(name),UPDATE(name) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(name),UPDATE(name) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(description),UPDATE(description) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(description),UPDATE(description) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(point),UPDATE(point) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(point),UPDATE(point) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(zoom),UPDATE(zoom) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(zoom),UPDATE(zoom) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(meters_from_point),UPDATE(meters_from_point) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(meters_from_point),UPDATE(meters_from_point) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(elevation),UPDATE(elevation) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(elevation),UPDATE(elevation) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(azimuth),UPDATE(azimuth) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(azimuth),UPDATE(azimuth) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(pitch),UPDATE(pitch) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(pitch),UPDATE(pitch) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+GRANT INSERT(map_layers),UPDATE(map_layers) ON TABLE macrostrat_api.user_locations_view TO web_user;
+
+GRANT INSERT(map_layers),UPDATE(map_layers) ON TABLE macrostrat_api.user_locations_view TO web_admin;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
+
+--this is important so that postgrest works for the ingest process
+GRANT USAGE ON SCHEMA macrostrat_api TO web_admin;
+
+GRANT INSERT, SELECT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA macrostrat_api
+TO web_admin;
+
+NOTIFY pgrst, 'reload schema';

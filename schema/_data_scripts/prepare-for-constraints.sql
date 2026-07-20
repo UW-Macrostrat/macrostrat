@@ -17,8 +17,6 @@
 
 */
 
-SET search_path TO macrostrat,public;
-
 SELECT id
 FROM macrostrat.cols
 WHERE id NOT IN (SELECT col_id FROM macrostrat.col_refs);

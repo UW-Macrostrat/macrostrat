@@ -4,18 +4,18 @@ from pathlib import Path
 import typer
 from rich import print
 from rich.traceback import install
+from tileserver_stats import app as tileserver_stats_app
 from typer import Argument, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.main import env_text, set_app_state
+from macrostrat.core.utils import env_text, set_app_state
 from macrostrat.schema_management import schema_app
 from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
 from .subsystems.dev import dev_app
-from .subsystems.macrostrat_api import MacrostratAPISubsystem
 from .subsystems.paleogeography import (
     SubsystemLoadError,
     build_paleogeography_subsystem,
@@ -27,6 +27,9 @@ from .v1_entrypoint import v1_cli
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
+
+app.warnings = []
+app.info = []
 
 install(show_locals=False)
 
@@ -46,27 +49,33 @@ rockd_url = settings.get("ROCKD_DATABASE") or settings.get("rockd_database")
 if rockd_url and "ROCKD_DATABASE" not in environ:
     environ["ROCKD_DATABASE"] = rockd_url
 
+# Patch to ensure weird out-of-order loading still works.
+db_subsystem.app = app
 app.subsystems.add(db_subsystem)
 # app.subsystems.add(rockd_subsystem)
 
+_env_text = app.settings.env
+if _env_text is None:
+    _env_text = "None"
+
 help_text = f"""[bold]Macrostrat[/] control interface
 
-
-Active environment: [bold cyan]{environ.get('MACROSTRAT_ENV') or 'None'}[/]
 """
 
+app.info.append(f"Active environment: [bold cyan]{_env_text}[/]")
 
-warnings = []
 if not settings.pg_database:
-    warnings.append("No database URL found in settings")
+    app.warnings.append("No database URL found in settings")
 reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
 if reinstall_warning is not None:
     if len(reinstall_warning) < 2:
         reinstall_warning = "Macrostrat needs to be reinstalled."
-    warnings.append(f"{reinstall_warning} Please run [bold cyan]macrostrat install[/].")
+    app.warnings.append(
+        f"{reinstall_warning} Please run [bold cyan]macrostrat install[/]."
+    )
 if environ.get("MACROSTRAT_PYROOT") is not None:
-    warnings.append(
-        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]. This is not recommended for normal operation."
+    app.warnings.append(
+        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]\n  [dim]This is not recommended for normal operation."
     )
 
 # TODO: load all subsystems before rendering help so that warnings can be shown
@@ -76,7 +85,7 @@ try:
     pcli = build_paleogeography_subsystem(app, db_subsystem)
     subsystem_commands.append(pcli)
 except SubsystemLoadError as err:
-    warnings.append(str(err))
+    app.warnings.append(str(err))
 
 # If the user has macrostrat-<command> on their path, we want to run it as a subprocess
 # and return the output, instead of continuing with the CLI.
@@ -84,10 +93,12 @@ except SubsystemLoadError as err:
 # existing commands.
 run_user_command_if_provided(*settings.script_dirs)
 
+if app.info:
+    help_text += "\n".join([f"- {w}" for w in app.info]) + "\n"
+
 # Now, we render the warnings in the CLI help text
-if warnings:
-    help_text += "\n[bold yellow]Warnings[/]:\n"
-    help_text += "\n".join([f"- [yellow]{w}[/]" for w in warnings]) + "\n"
+if app.warnings:
+    help_text += "\n".join([f"- [yellow]{w}[/]" for w in app.warnings]) + "\n"
 
 main = app.control_command(
     add_completion=True,
@@ -120,6 +131,13 @@ main.add_typer(
     rebuild_cli,
     name="rebuild",  # command group name
     short_help="Rebuild scripts",  # shows in --help
+    rich_help_panel="Subsystems",
+)
+
+main.add_typer(
+    tileserver_stats_app,
+    name="tileserver-stats",
+    short_help="Tileserver stats",
     rich_help_panel="Subsystems",
 )
 
@@ -193,10 +211,10 @@ def environments():
 
 main.add_typer(cfg_app)
 
-from .subsystems.maps import cli as maps_cli
+from macrostrat.map_topology import cli as topo_cli
 
 main.add_typer(
-    maps_cli,
+    topo_cli,
     name="topo",
     rich_help_panel="Subsystems",
     short_help="Manage the Macrostrat maps topology",
@@ -304,19 +322,21 @@ except ImportError as err:
 
 # Get subsystems config
 subsystems = getattr(settings, "subsystems", {})
-if subsystems.get("criticalmaas", False):
-    # TODO: add a hint somewhere for which subsystems are disabled
-    # - This could also provide ways to dynamically load them and report
-    #   errors etc.
-    from .subsystems.criticalmaas import app as criticalmaas_app
 
-    main.add_typer(
-        criticalmaas_app,
-        name="criticalmaas",
-        rich_help_panel="Integrations",
-        short_help="Tools for the CriticalMAAS program",
-        deprecated=True,
-    )
+# CRITICALMAAS subsystem depends on outdated python package. We could update this to re-enable
+# if subsystems.get("criticalmaas", False):
+#     # TODO: add a hint somewhere for which subsystems are disabled
+#     # - This could also provide ways to dynamically load them and report
+#     #   errors etc.
+#     from .subsystems.criticalmaas import app as criticalmaas_app
+#
+#     main.add_typer(
+#         criticalmaas_app,
+#         name="criticalmaas",
+#         rich_help_panel="Integrations",
+#         short_help="Tools for the CriticalMAAS program",
+#         deprecated=True,
+#     )
 
 
 if kube_namespace := getattr(settings, "kube_namespace", None):
@@ -340,16 +360,6 @@ main.add_typer(
 )
 
 
-from .subsystems.mapboard import MapboardSubsystem
-
-if subsystems.get("mapboard", False):
-    if mapboard_url := getattr(settings, "mapboard_database", None):
-        app.subsystems.add(MapboardSubsystem(app))
-    else:
-        app.console.print(
-            "Mapboard subsystem enabled, but no mapboard_database setting found"
-        )
-
 from macrostrat.integrations import app as integrations_app
 
 main.add_typer(
@@ -360,10 +370,8 @@ main.add_typer(
 )
 
 
-app.subsystems.add(MacrostratAPISubsystem(app))
-
 if sgp_url := getattr(settings, "sgp_database", None):
-    from .subsystems.sgp import sgp
+    from macrostrat.integrations.sgp import sgp
 
     main.add_typer(sgp, rich_help_panel="Integrations")
 
@@ -390,7 +398,7 @@ main.add_typer(
 )
 
 ## Testing subsystem
-from .subsystems.test import cli as test_app
+from .test_runner import cli as test_app
 
 main.add_typer(test_app, name="test", rich_help_panel="Subsystems")
 
@@ -460,7 +468,10 @@ def show_app_dir():
 
 
 @self_app.command()
-def state():
+def state(clear: bool = False):
+    if clear:
+        app.state.clear()
+
     """Show the current state of the application"""
     app.console.print(app.state.get())
 

@@ -124,9 +124,6 @@ class Object(Base):
         {"schema": "storage"},
     )
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    object_group_id: Mapped[int] = mapped_column(
-        ForeignKey("storage.object_group.id"), nullable=True
-    )
     scheme: Mapped[str] = mapped_column(Enum(SchemeEnum))
     host: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     bucket: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
@@ -144,21 +141,6 @@ class Object(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # Relationships
-    object_group: Mapped["ObjectGroup"] = relationship(back_populates="objects")
-
-
-class ObjectGroup(Base):
-    __tablename__ = "object_group"
-    __table_args__ = {"schema": "storage"}
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    # Relationships
-    objects: Mapped[List["Object"]] = relationship(back_populates="object_group")
-    ingest_process: Mapped["IngestProcess"] = relationship(
-        back_populates="object_group"
-    )
-
 
 class IngestState(enum.Enum):
     pending = "pending"
@@ -172,6 +154,14 @@ class IngestState(enum.Enum):
 class IngestType(enum.Enum):
     raster = "vector"
     ta1_output = "ta1_output"
+
+
+class MapFile(Base):
+    __tablename__ = "map_files"
+    __table_args__ = {"schema": "maps"}
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("maps.sources.source_id"))
+    object_id: Mapped[int] = mapped_column(ForeignKey("storage.object.id"))
 
 
 class IngestProcess(Base):
@@ -195,10 +185,7 @@ class IngestProcess(Base):
     access_group_id: Mapped[int] = mapped_column(
         ForeignKey("macrostrat_auth.group.id"), nullable=True
     )
-    # TODO remove all object_group_id associations
-    object_group_id: Mapped[ObjectGroup] = mapped_column(
-        ForeignKey("storage.object_group.id")
-    )
+
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -206,13 +193,15 @@ class IngestProcess(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # Relationships
-    object_group: Mapped[ObjectGroup] = relationship(
-        back_populates="ingest_process", lazy="joined"
-    )
     source: Mapped[Sources] = relationship(back_populates="ingest_process")
     tags: Mapped[List["IngestProcessTag"]] = relationship(
         back_populates="ingest_process", lazy="joined"
+    )
+
+    # Map objects that were ingested via the map_files join table
+    object_ids: Mapped[List[int]] = relationship(
+        secondary=MapFile.__table__,
+        lazy="joined",
     )
 
 

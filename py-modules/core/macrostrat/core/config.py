@@ -10,9 +10,13 @@ from toml import load as load_toml
 
 from macrostrat.utils import get_logger
 
-from .exc import MacrostratError
 from .resolvers import cast_sources, setup_source_roots_environment
-from .utils import convert_to_string, find_macrostrat_config, path_list_resolver
+from .utils import (
+    convert_to_string,
+    find_macrostrat_config,
+    normalize_macrostrat_env,
+    path_list_resolver,
+)
 
 log = get_logger(__name__)
 
@@ -20,6 +24,13 @@ log = get_logger(__name__)
 class BackendType(str, Enum):
     Kubernetes = "kubernetes"
     DockerCompose = "docker-compose"
+
+
+def get_default_environment():
+    cfg = find_macrostrat_config()
+    if cfg is None:
+        return None
+    return _all_environments(cfg)[0]
 
 
 class MacrostratConfig(Dynaconf):
@@ -30,25 +41,32 @@ class MacrostratConfig(Dynaconf):
 
     def __init__(self):
 
-        env = getenv("MACROSTRAT_ENV")
-        if env is None:
-            raise MacrostratError(
-                "MACROSTRAT_ENV must be defined for configuration loading to work"
-            )
-
         cfg = find_macrostrat_config()
         settings_files = []
+        should_load_environments = False
+
         if cfg is not None:
             settings_files.append(cfg)
+            env = normalize_macrostrat_env()
+            if env is not None:
+                should_load_environments = True
+
+        env_kwargs = dict()
+        if should_load_environments:
+            env_kwargs = dict(
+                environments=True,
+                env_switcher="MACROSTRAT_ENV",
+            )
 
         super().__init__(
             envvar_prefix="MACROSTRAT",
-            environments=True,
-            env_switcher="MACROSTRAT_ENV",
             settings_files=settings_files,
             # We load dotenv files on our own
             load_dotenv=False,
+            **env_kwargs,
         )
+        if not hasattr(self, "env") or not should_load_environments:
+            self.env = None
 
         self.config_file = None
         if cfg is not None:
@@ -60,11 +78,7 @@ class MacrostratConfig(Dynaconf):
 
     def all_environments(self):
         # Parse out top-level headers from TOML file
-        with open(self.config_file, "r") as f:
-            cfg = load_toml(f)
-            keys = iter(cfg.keys())
-            next(keys)
-            return [k for k in keys]
+        return _all_environments(self.config_file)
 
     def get(self, key, default=None):
         if not "." in key:
@@ -76,6 +90,14 @@ class MacrostratConfig(Dynaconf):
                 return default
             self = getattr(self, k)
         return self
+
+
+def _all_environments(config_file: Path):
+    with open(config_file, "r") as f:
+        cfg = load_toml(f)
+        keys = iter(cfg.keys())
+        next(keys)
+        return [k for k in keys]
 
 
 settings = MacrostratConfig()
@@ -98,6 +120,7 @@ settings.validators.register(
     # Settings to control the location of arbitrary named databases
     Validator("databases", default={}),
     Validator("log_modules", cast=list, default=["macrostrat"]),
+    Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
 )
 
 macrostrat_env = getattr(settings, "env", "default")
@@ -177,8 +200,12 @@ environ["PG_DATABASE_CONTAINER"] = getattr(
 # Ideally we should be able to do this in the settings object
 settings.offline = getattr(settings, "offline", False)
 
+project_name = "macrostrat"
+if macrostrat_env is not None:
+    project_name = "macrostrat_" + macrostrat_env
 
-environ["COMPOSE_PROJECT_NAME"] = "macrostrat_" + macrostrat_env
+environ["COMPOSE_PROJECT_NAME"] = project_name
+settings.project_name = environ["COMPOSE_PROJECT_NAME"]
 
 # Docker compose file
 compose_file = getattr(settings, "compose_file", None)
@@ -192,8 +219,6 @@ if compose_file is not None:
     environ["COMPOSE_FILE"] = str(compose_file)
 
 
-settings.project_name = environ["COMPOSE_PROJECT_NAME"]
-
 # A database connection string for MySQL
 # This should eventually become optional if it isn't already
 MYSQL_DATABASE = getattr(settings, "mysql_database", None)
@@ -203,7 +228,6 @@ if mapbox_token := getattr(settings, "mapbox_token", None):
 
 if secret_key := getattr(settings, "secret_key", None):
     environ["SECRET_KEY"] = secret_key
-
 
 environ["MACROSTRAT_ROOT"] = str(settings.srcroot)
 

@@ -3,6 +3,7 @@ services:
     image: caddy:2.9-alpine
     ports:
       - "8080:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
     labels:
@@ -38,6 +39,17 @@ services:
       - 5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
+  #redis broker for the Celery task queue. Exposed on the host so a locally-run worker
+  #can share the same broker as api_v3
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    labels:
+      - dev.orbstack.domains=redis.macrostrat.local
+    ports:
+      - "6379:6379"
+    expose:
+      - 6379
   api_v2:
     image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
     build: ${MACROSTRAT_API_SRC:-""}
@@ -56,6 +68,8 @@ services:
         py-modules: ../py-modules
     environment:
       - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - REDIRECT_URI_ENV=https://macrostrat.local/api/v3/security/callback
       - SECRET_KEY=${SECRET_KEY}
       - JWT_ENCRYPTION_ALGORITHM=HS256
@@ -64,6 +78,31 @@ services:
       - OAUTH_CLIENT_SECRET
       - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
       - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
+  # Celery worker for background tasks. Lightweight image and does NOT bundle the GIS stack.
+  # This is a long-running worker that stays up with the stack and picks up
+  # tasks as they arrive. docker-compose can't spin a container up per-task.
+  celery_worker:
+    build:
+      # The worker package is the build context; its local dependency
+      # macrostrat.map_utils (in py-modules) is provided as a named context.
+      context: ../services/worker
+      additional_contexts:
+        py-modules: ../py-modules
+    restart: unless-stopped
+    command: celery -A macrostrat.worker.app worker -Q maps --loglevel=info --concurrency=2
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      # Optional S3/MinIO staging cleanup. Leave S3_BUCKET unset to run DB-only.
+      - S3_ENDPOINT=storage:9000
+      - S3_ACCESS_KEY=${STORAGE_ACCESS_KEY}
+      - S3_SECRET_KEY=${STORAGE_SECRET_KEY}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_SECURE=false
+    depends_on:
+      - redis
+      - database
   postgrest:
     image: postgrest/postgrest:v12.2.3
     environment:
@@ -96,8 +135,6 @@ services:
         py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
-      # Ideally the system would fail gracefully if we didn't provide the Rockd database URL but that's not the case.
-      # - ROCKD_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/rockd
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.

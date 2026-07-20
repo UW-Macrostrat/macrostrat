@@ -1,6 +1,6 @@
 import inspect
 from enum import Enum
-from functools import lru_cache
+from functools import lru_cache, total_ordering
 from graphlib import TopologicalSorter
 from os import environ
 from time import time
@@ -12,8 +12,8 @@ from rich import print
 
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
-from macrostrat.database.utils import OutputMode
-from macrostrat.dinosaur.upgrade_cluster.utils import database_cluster
+from macrostrat.database.query import OutputMode
+from macrostrat.dinosaur.cluster import database_cluster
 
 from .inspect_utils import *
 
@@ -37,25 +37,40 @@ _MIN_READINESS_BY_ENV = {"dev": "alpha", "staging": "beta", "prod": "ga"}
 _READINESS_ORDER = {"alpha": 0, "beta": 1, "ga": 2}
 
 
+@total_ordering
 class ReadinessState(Enum):
     ALPHA = "alpha"
     BETA = "beta"
     GA = "ga"
 
+    def __gt__(self, other):
+        if not isinstance(other, ReadinessState):
+            return NotImplemented
+        return _READINESS_ORDER[self.value] > _READINESS_ORDER[other.value]
+
+    def __eq__(self, other):
+        if not isinstance(other, ReadinessState):
+            return NotImplemented
+        return self.value == other.value
+
+    def __hash__(self):
+        return hash(self.value)
+
 
 # based on set_env in macrostrat/cli/macrostrat/cli/entrypoint.py
 def _get_active_env() -> str:
     env = getattr(settings, "env", None)
+    state = None
     if not env and _app is not None:
-        env = getattr(getattr(_app, "settings", None), "env", None) or (
-            getattr(_app, "state", None).get().get("active_env")
-            if getattr(_app, "state", None)
-            else None
-        )
+        state_mgr = getattr(_app, "state", None)
+        if state_mgr is not None:
+            state = state_mgr.get()
+        if state is not None:
+            env = getattr(state, "active_env", None)
     if not env:
         env = environ.get("MACROSTRAT_ENV")
     env = (env or "dev").lower()
-    return _ENV_ALIASES.get(env, "dev")
+    return _ENV_ALIASES.get(env, "development")
 
 
 def _env_allows_migration(
@@ -225,30 +240,24 @@ def dry_run_migrations(wait=False, legacy=False):
 
 def _dry_run_migrations(legacy=False):
     # Spin up a docker container with a temporary database
-    image = settings.get("pg_database_container", "postgres:15")
-
-    client = docker.from_env()
-
     img_root = settings.srcroot / "base-images" / "database"
 
     # Build postgres pgaudit image
     img_tag = "macrostrat.local/database:latest"
 
-    client.images.build(path=str(img_root), tag=img_tag)
-
     # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        print(container)
-        url = f"postgresql://postgres@localhost:{port}/postgres"
-        db = Database(url)
+    with database_cluster(img_tag, context=img_root, build=True) as db:
         return _run_migrations_in_database(db, legacy=legacy)
 
 
-def _run_migrations_in_database(db, legacy=False):
+def _run_migrations_in_database(
+    db, *, legacy=False, raise_errors=False, readiness_level=None
+):
     t_start = time()
 
-    _migrations = applyable_migrations(db, allow_destructive=True, legacy=legacy)
+    _migrations = applyable_migrations(
+        db, allow_destructive=True, legacy=legacy, readiness_level=ReadinessState.GA
+    )
     _next_migrations = None
     n_total = 0
     n_migrations = len(_migrations)
@@ -256,6 +265,8 @@ def _run_migrations_in_database(db, legacy=False):
 
         if _migrations == _next_migrations:
             print("No changes in applyable migrations, exiting")
+            if raise_errors:
+                raise ValueError("No migrations to apply")
             break
 
         _migrations = _next_migrations
@@ -281,10 +292,13 @@ def _run_migrations_in_database(db, legacy=False):
 
 
 @lru_cache(10)
-def _get_all_migrations(legacy: bool = False):
+def _get_all_migrations(
+    *, legacy: bool = False, readiness_level: ReadinessState = None
+):
     """
     Get all migrations in the system
     :param legacy: Include legacy migrations
+    :param readiness_level: Include migrations with readiness level greater than or equal to this value
     :return: List of migration instances
     """
 
@@ -309,6 +323,17 @@ def _get_all_migrations(legacy: bool = False):
         for cls in migrations
         if (legacy or not getattr(cls, "legacy", False)) and hasattr(cls, "name")
     ]
+
+    _state = lambda s: ReadinessState(s) if not isinstance(s, ReadinessState) else s
+
+    if readiness_level is not None:
+        expected_level = _state(readiness_level)
+        instances = [
+            inst
+            for inst in instances
+            if _state(getattr(inst, "readiness_state", "alpha")) >= expected_level
+        ]
+
     graph = {inst.name: inst.depends_on for inst in instances}
     order = list(TopologicalSorter(graph).static_order())
     instances.sort(key=lambda i: order.index(i.name))
@@ -435,10 +460,12 @@ def _run_migrations(
     return run_counter, set(completed_migrations)
 
 
-def applyable_migrations(db, *, allow_destructive=False, legacy=False) -> set[str]:
+def applyable_migrations(
+    db, *, allow_destructive=False, legacy=False, readiness_level=None
+) -> set[str]:
     """Check if there are any migrations that can be applied"""
     _res = set()
-    migrations = _get_all_migrations(legacy=legacy)
+    migrations = _get_all_migrations(legacy=legacy, readiness_level=readiness_level)
     for _migration in migrations:
         if _migration.destructive and not allow_destructive:
             continue

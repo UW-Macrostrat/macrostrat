@@ -1,13 +1,11 @@
 
 CREATE SCHEMA macrostrat_auth;
-ALTER SCHEMA macrostrat_auth OWNER TO macrostrat;
 
 CREATE FUNCTION macrostrat_auth.current_app_user_id() RETURNS integer
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int
 $$;
-ALTER FUNCTION macrostrat_auth.current_app_user_id() OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -15,7 +13,6 @@ CREATE TABLE macrostrat_auth."group" (
     id integer NOT NULL,
     name character varying(255) NOT NULL
 );
-ALTER TABLE macrostrat_auth."group" OWNER TO macrostrat;
 
 CREATE SEQUENCE macrostrat_auth.group_id_seq
     AS integer
@@ -24,7 +21,6 @@ CREATE SEQUENCE macrostrat_auth.group_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_auth.group_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat_auth.group_id_seq OWNED BY macrostrat_auth."group".id;
 
@@ -33,7 +29,6 @@ CREATE TABLE macrostrat_auth.group_members (
     group_id integer NOT NULL,
     user_id integer NOT NULL
 );
-ALTER TABLE macrostrat_auth.group_members OWNER TO macrostrat;
 
 CREATE SEQUENCE macrostrat_auth.group_members_id_seq
     AS integer
@@ -42,7 +37,6 @@ CREATE SEQUENCE macrostrat_auth.group_members_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_auth.group_members_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat_auth.group_members_id_seq OWNED BY macrostrat_auth.group_members.id;
 
@@ -54,7 +48,6 @@ CREATE TABLE macrostrat_auth.token (
     expires_on timestamp with time zone NOT NULL,
     created_on timestamp with time zone DEFAULT now() NOT NULL
 );
-ALTER TABLE macrostrat_auth.token OWNER TO macrostrat;
 
 CREATE SEQUENCE macrostrat_auth.token_id_seq
     AS integer
@@ -63,7 +56,6 @@ CREATE SEQUENCE macrostrat_auth.token_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_auth.token_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat_auth.token_id_seq OWNED BY macrostrat_auth.token.id;
 
@@ -75,7 +67,6 @@ CREATE TABLE macrostrat_auth."user" (
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     updated_on timestamp with time zone DEFAULT now() NOT NULL
 );
-ALTER TABLE macrostrat_auth."user" OWNER TO macrostrat;
 
 CREATE SEQUENCE macrostrat_auth.user_id_seq
     AS integer
@@ -84,7 +75,6 @@ CREATE SEQUENCE macrostrat_auth.user_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_auth.user_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE macrostrat_auth.user_id_seq OWNED BY macrostrat_auth."user".id;
 

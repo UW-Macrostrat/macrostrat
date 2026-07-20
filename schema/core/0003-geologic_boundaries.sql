@@ -1,5 +1,4 @@
 CREATE SCHEMA geologic_boundaries;
-ALTER SCHEMA geologic_boundaries OWNER TO macrostrat;
 
 CREATE TABLE geologic_boundaries.boundaries (
     boundary_id integer NOT NULL,
@@ -13,7 +12,6 @@ CREATE TABLE geologic_boundaries.boundaries (
     wiki_link text,
     geom public.geometry(Geometry,4326)
 );
-ALTER TABLE geologic_boundaries.boundaries OWNER TO macrostrat;
 
 CREATE SEQUENCE geologic_boundaries.boundaries_boundary_id_seq
     START WITH 1
@@ -21,7 +19,6 @@ CREATE SEQUENCE geologic_boundaries.boundaries_boundary_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE geologic_boundaries.boundaries_boundary_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE geologic_boundaries.boundaries_boundary_id_seq OWNED BY geologic_boundaries.boundaries.boundary_id;
 
@@ -45,7 +42,6 @@ CREATE TABLE geologic_boundaries.sources (
     display_scales text[],
     web_geom public.geometry
 );
-ALTER TABLE geologic_boundaries.sources OWNER TO macrostrat;
 
 ALTER TABLE ONLY geologic_boundaries.boundaries ALTER COLUMN boundary_id SET DEFAULT nextval('geologic_boundaries.boundaries_boundary_id_seq'::regclass);
 
@@ -62,6 +58,4 @@ CREATE INDEX boundaries_orig_id_idx ON geologic_boundaries.boundaries USING btre
 
 CREATE INDEX boundaries_source_id_idx ON geologic_boundaries.boundaries USING btree (source_id);
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA geologic_boundaries GRANT SELECT, USAGE ON SEQUENCES TO macrostrat;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA geologic_boundaries GRANT SELECT ON TABLES TO macrostrat;
 

@@ -155,7 +155,14 @@ localhost, macrostrat.local {
 dev.macrostrat.local {
     # Proxy to the locally running frontend application, if running
     tls internal
-    reverse_proxy docker.host.internal:3000
+    reverse_proxy host.docker.internal:3000
+}
+
+dev.macrostrat.local:24678 {
+    # Proxy to the locally running frontend application
+    # for autoreloader websocket
+    tls internal
+    reverse_proxy host.docker.internal:24678
 }
 
 offline.macrostrat.local {

@@ -9,8 +9,14 @@ on:
 jobs:
   install-and-test:
     runs-on: ubuntu-latest
-
+    env:
+      FORCE_COLOR: "1"
     steps:
+
+    - name: Install system dependencies (GDAL)
+      run: |
+        sudo apt-get update
+        sudo apt-get install gdal-bin
 
     - name: Checkout code
       uses: actions/checkout@v5
@@ -27,13 +33,10 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install system dependencies (GDAL)
-      run: |
-        sudo apt update
-        sudo apt install -y gdal-bin libgdal-dev python3-dev
-
     - name: Install dependencies and build macrostrat
       run: make all
 
     - name: Run macrostrat tests
-      run: make test
+      run: |
+        curl -I https://macrostrat.org/api/v2/
+        make test

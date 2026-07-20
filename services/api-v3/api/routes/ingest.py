@@ -6,14 +6,18 @@ import api.models.object as Object
 import api.schemas as schemas
 import minio
 import starlette.requests
-from api.database import get_async_session, get_engine
+from api.celery_app import celery_app
+from api.database import DatabaseDep
 from api.query_parser import QueryParser, get_filter_query_params
 from api.routes.security import has_access
 from api.schemas import IngestProcess as IngestProcessSchema
 from api.schemas import IngestProcessTag, MapFiles
 from api.schemas import Object as ObjectORM
 from api.schemas import Sources
+from celery.exceptions import TimeoutError as CeleryTimeoutError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
 from starlette.responses import Response
@@ -25,23 +29,99 @@ router = APIRouter(
 )
 
 
+class DeleteMapRequest(BaseModel):
+    slug: str
+
+
+# How long the API waits for the Celery delete task to finish before giving up.
+# Override with the DELETE_TASK_TIMEOUT env var (seconds).
+DELETE_TASK_TIMEOUT = float(os.environ.get("DELETE_TASK_TIMEOUT", "30"))
+
+
+@router.post("/delete-map")
+async def delete_map(
+    request: DeleteMapRequest, user_has_access: bool = Depends(has_access)
+):
+    """Delete a staged map via the Celery worker, surfacing any failure.
+
+    The task runs in the `celery_worker` container (calling `macrostrat.map_utils`).
+    We enqueue it and wait for the result so errors can be returned to the caller
+    for debugging rather than failing silently:
+
+    * 403 — caller lacks access
+    * 503 — task couldn't be enqueued (broker / Celery container unreachable)
+    * 504 — no worker finished it within DELETE_TASK_TIMEOUT (worker down, or
+            nothing consuming the `maps` queue)
+    * 502 — error talking to the result backend while waiting
+    * 500 — the task itself raised in the worker (includes the worker-side error
+            message and traceback from map_utils / the DB / etc.)
+    """
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="User does not have access to delete a map"
+        )
+
+    # Enqueue. A failure here means the broker (Redis / Celery container) is
+    # unreachable.
+    try:
+        task = celery_app.send_task("macrostrat.maps.delete", args=[request.slug])
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not enqueue delete task — is the Celery broker reachable? {e}",
+        )
+
+    # Wait for the worker to finish within DELETE_TASK_TIMEOUT timeframe.
+    try:
+        result = await run_in_threadpool(
+            task.get, timeout=DELETE_TASK_TIMEOUT, propagate=False
+        )
+    except CeleryTimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"Delete task {task.id} for slug '{request.slug}' did not finish "
+                f"within {DELETE_TASK_TIMEOUT:.0f}s. It may still be running, or no "
+                f"worker is consuming the 'maps' queue (check the celery_worker "
+                f"container)."
+            ),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error while waiting for delete task {task.id}: {e}",
+        )
+
+    # The task ran but error raised inside the map_utils function
+    if task.failed():
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": f"Delete task failed for slug '{request.slug}'",
+                "task_id": task.id,
+                "error": str(task.result),
+                "traceback": task.traceback,
+            },
+        )
+
+    return {"task_id": task.id, "slug": request.slug, "result": result}
+
+
 @router.get("", response_model=list[IngestProcessModel.Get])
 async def get_multiple_ingest_process(
     response: Response,
+    database: DatabaseDep,
     page: int = 0,
     page_size: int = 50,
     filter_query_params=Depends(get_filter_query_params),
 ):
     """Get all ingestion processes"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
     query_parser = QueryParser(
         columns=IngestProcessSchema.__table__.c, query_params=filter_query_params
     )
 
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         select_stmt = (
             select(IngestProcessSchema)
@@ -78,13 +158,10 @@ async def get_multiple_ingest_process(
 
 
 @router.get("/tags", response_model=list[str])
-async def get_all_tags():
+async def get_all_tags(database: DatabaseDep):
     """Get all tags"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         select_stmt = select(IngestProcessTag.tag).distinct()
         results = await session.execute(select_stmt)
 
@@ -92,13 +169,10 @@ async def get_all_tags():
 
 
 @router.get("/{id}", response_model=IngestProcessModel.Get)
-async def get_ingest_process(id: int):
+async def get_ingest_process(id: int, database: DatabaseDep):
     """Get a single object"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         select_stmt = (
             select(IngestProcessSchema)
             .where(and_(IngestProcessSchema.id == id))
@@ -122,7 +196,9 @@ async def get_ingest_process(id: int):
 
 @router.post("", response_model=IngestProcessModel.Get)
 async def create_ingest_process(
-    object: IngestProcessModel.Post, user_has_access: bool = Depends(has_access)
+    object: IngestProcessModel.Post,
+    database: DatabaseDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
 
@@ -131,10 +207,7 @@ async def create_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine, expire_on_commit=False)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         if object.tags is None:
             object.tags = []
@@ -155,6 +228,7 @@ async def create_ingest_process(
 async def patch_ingest_process(
     id: int,
     object: IngestProcessModel.Patch,
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Update a object"""
@@ -164,10 +238,7 @@ async def patch_ingest_process(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
         update_stmt = (
             update(IngestProcessSchema)
             .where(IngestProcessSchema.id == id)
@@ -184,7 +255,10 @@ async def patch_ingest_process(
 
 @router.post("/{id}/tags", response_model=list[str])
 async def add_ingest_process_tag(
-    id: int, tag: IngestProcessModel.Tag, user_has_access: bool = Depends(has_access)
+    id: int,
+    tag: IngestProcessModel.Tag,
+    database: DatabaseDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Add a tag to an ingest process"""
 
@@ -193,10 +267,7 @@ async def add_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_process = await session.get(IngestProcessSchema, id)
 
@@ -216,7 +287,10 @@ async def add_ingest_process_tag(
 
 @router.delete("/{id}/tags/{tag}", response_model=list[str])
 async def delete_ingest_process_tag(
-    id: int, tag: str, user_has_access: bool = Depends(has_access)
+    id: int,
+    tag: str,
+    database: DatabaseDep,
+    user_has_access: bool = Depends(has_access),
 ):
     """Delete a tag from an ingest process"""
 
@@ -225,10 +299,7 @@ async def delete_ingest_process_tag(
             status_code=403, detail="User does not have access to create an object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_process = await session.get(IngestProcessSchema, id)
 
@@ -251,13 +322,10 @@ async def delete_ingest_process_tag(
 
 
 @router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
-async def get_ingest_process_objects(id: int):
+async def get_ingest_process_objects(id: int, database: DatabaseDep):
     """Get all objects for an ingestion process"""
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         select_stmt = select(IngestProcessSchema).where(
             and_(IngestProcessSchema.id == id)
@@ -305,6 +373,7 @@ async def create_object(
     request: starlette.requests.Request,
     id: int,
     object: list[UploadFile],
+    database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
 ):
     """Create/Register a new object"""
@@ -314,12 +383,9 @@ async def create_object(
             status_code=403, detail="User does not have access to create object"
         )
 
-    engine = get_engine()
-    async_session = get_async_session(engine)
-
     response_objects = []
 
-    async with async_session() as session:
+    async with database.async_session() as session:
 
         ingest_stmt = select(IngestProcessSchema).where(IngestProcessSchema.id == id)
         ingest_process = await session.scalar(ingest_stmt)

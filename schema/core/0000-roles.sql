@@ -7,6 +7,17 @@ GRANT macrostrat_admin TO "macrostrat-admin";
 
 CREATE ROLE macrostrat;
 
+-- The declarative build applies each subsystem as its owning role (SET ROLE), so
+-- objects are born owned rather than re-owned with ALTER … OWNER TO. That needs:
+--   1. the connector to be able to SET ROLE macrostrat — superusers already can;
+--      this covers a non-superuser connector (it connects via macrostrat_admin).
+GRANT macrostrat TO macrostrat_admin;
+--   2. macrostrat to create (and thereby own) its own schemas in whatever database
+--      it is applied to. current_database() can't appear in a plain GRANT, so wrap it.
+DO $$ BEGIN
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO macrostrat', current_database());
+END $$;
+
 -- Role for read-only access from Rockd
 CREATE ROLE rockd_reader;
 GRANT rockd_reader TO "rockd-reader";

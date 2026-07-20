@@ -1,0 +1,35 @@
+CREATE SCHEMA IF NOT EXISTS maps_metadata;
+
+CREATE TABLE maps_metadata.ingest_process
+(
+    id                serial primary key,
+    state             maps.ingest_state,
+    slug              text,
+    type              maps.ingest_type,
+    ingest_pipeline   text,
+    comments          text,
+    source_id         integer
+        references maps.sources,
+    access_group_id   integer
+        references macrostrat_auth."group",
+    created_on        timestamp with time zone default now() not null,
+    completed_on      timestamp with time zone,
+    map_id            text,
+    map_url           text,
+    ingested_by       text
+);
+
+
+CREATE TABLE maps_metadata.ingest_process_tag (
+    ingest_process_id integer NOT NULL
+        references maps_metadata.ingest_process,
+    tag character varying(255) NOT NULL
+);
+
+
+ALTER TABLE maps_metadata.ingest_process
+ADD CONSTRAINT ingest_process_slug_fkey
+FOREIGN KEY (slug)
+REFERENCES maps.sources(slug);
+
+GRANT USAGE ON SCHEMA maps_metadata TO web_admin;

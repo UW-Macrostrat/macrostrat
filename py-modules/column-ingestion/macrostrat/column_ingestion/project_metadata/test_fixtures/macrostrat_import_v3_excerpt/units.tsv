@@ -1,0 +1,7 @@
+unit_id	col_id	section_id	position	b_int	b_prop	t_int	t_prop	unit_name	strat_name	environment	unit_description	lithology	minor_lith	min_thickness	max_thickness	basal_surface	lateral_relationship	comments
+1	9999	1	1	Cambrian		Early Cambrian		Test Formation	"Test Formation, Awesome Group"	non-marine	Very cool unit	"stromatolitic,dolomite;cross-bedded,quartz arenite"	"red, shale"	50	100			
+2	9999	1	2	Ediacaran	0.5	Ediacaran		Evgeny Formation	"Evgeny Formation, Awesome Group, Totally Supergroup"	marine		"arkosic,sandstone;black,shale"	"ooidal,dolomite"		120			
+3	9999	1	2	Ediacaran	0.01	Ediacaran	0.5	Mazko Formation	"Mazko Formation, Awesome Group"	shoreface	another cool unit	"tabular, thickly bedded, cross-bedded,sandstone;flute casts,siltstone"		10	50			I'm not sure I like the lithology convention.
+4	9999	2	1	Rhyacian		Rhyacian		unnamed granite				"pegmatitic,granite"						
+5	9999	3	1	Mesoarchean		Mesoarchean		Quinn Metamorphic Complex	Quinn Metamorphic Complex			"felsic,gneiss"	gabbro					
+6	2215	1	1	Katian	0.5	Katian	0.8	unnamed limestone	unnamed	marine		limestone	dolomite		50			

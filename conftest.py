@@ -2,13 +2,16 @@
 
 import importlib
 from pathlib import Path
+from typing import Optional
 
-import docker
 from pytest import fixture, mark, skip
+from sqlalchemy import make_url
 from typer.testing import CliRunner
 
 from macrostrat.database import Database
-from macrostrat.dinosaur.upgrade_cluster import database_cluster
+from macrostrat.database.query import StatementContext, StatementDirective
+from macrostrat.database.utils import temporary_database
+from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
 runner = CliRunner()
@@ -20,10 +23,10 @@ __here__ = Path(__file__).parent
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--skip-test-database",
+        "--skip-database",
         action="store_true",
         default=False,
-        help="skip test database creation",
+        help="skip local database creation",
     )
 
     parser.addoption(
@@ -42,6 +45,20 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="skip slow tests",
+    )
+
+    parser.addoption(
+        "--optimize-database",
+        action="store_true",
+        default=True,
+        help="optimize database for fast testing",
+    )
+
+    parser.addoption(
+        "--no-optimize-database",
+        action="store_false",
+        dest="optimize_database",
+        help="do not optimize database for fast testing",
     )
 
 
@@ -67,9 +84,7 @@ def env_config(request):
     if request.config.getoption("--skip-env"):
         skip("skipping environment tests")
 
-    kwargs = {
-        "NO_COLOR": "1",
-    }
+    kwargs = {}
     env = request.config.getoption("--env")
     if env is not None:
         log.info("Overriding environment to %s", env)
@@ -80,6 +95,9 @@ def env_config(request):
         # Print the current environment to the PyTest output
         log.info("Current env: %s", mod_instance.settings.env)
 
+        if mod_instance.settings.env is None:
+            skip("No environment configured")
+
         yield mod_instance.settings
 
 
@@ -89,22 +107,37 @@ def env_config(request):
 # prod, or empty databases as needed.
 
 
-# TODO: ensure that tests on "live" environments are read-only by connecting to a read-only user.
 @fixture(scope="session")
-def db(env_config):
-    """The actually operational database for the current environment."""
+def env_db(env_config):
+    """A read-only connection to the current environment's database.
 
-    if env_config is None:
-        skip("No environment configured")
+    Read-only is *enforced*, not advisory: a throwaway login role (owning no write
+    privileges) is minted for the session and verified before use, so tests
+    against a live environment cannot mutate it. See
+    ``macrostrat.schema_management.readonly``.
+    """
+    from sqlalchemy.exc import DBAPIError, OperationalError
 
-    if env_config.pg_database is None:
-        skip("No database configured for this environment")
+    from macrostrat.schema_management.readonly import assert_read_only, readonly_login
 
-    db = Database(env_config.pg_database)
-    # Change the user on the connection
-    # db.run_sql("SET ROLE macrostrat_reader;")
+    if env_config is None or env_config.pg_database is None:
+        skip("No environment database configured")
 
-    yield db
+    log.info("Connecting to environment database: %s", env_config.pg_database)
+    try:
+        with readonly_login(env_config.pg_database) as ro_url:
+            db = Database(ro_url)
+            assert_read_only(db)  # fail closed if the connection can write
+            yield db
+            db.engine.dispose()
+    except (RuntimeError, DBAPIError, OperationalError) as e:
+        skip(f"read-only environment database unavailable: {e}")
+
+
+@fixture(scope="class")
+def db(env_db):
+    with env_db.transaction(rollback=True):
+        yield env_db
 
 
 def load_config_module():
@@ -113,43 +146,123 @@ def load_config_module():
     return mod_instance
 
 
-@fixture()
-def cfg():
-    cfg_file = __here__ / "macrostrat" / "cli" / "tests" / "macrostrat.test.toml"
-    with override_environment(MACROSTRAT_CONFIG=str(cfg_file), NO_COLOR="1"):
-        mod_instance = load_config_module()
+@fixture(scope="session")
+def empty_db(request):
+    """A temporary, initially empty database for Macorstrat testing."""
+    # Get the current settings without an override
+    if request.config.getoption("--skip-database"):
+        skip("skipping Docker test database")
 
-        assert cfg_file == mod_instance.settings.config_file
-        yield mod_instance.settings
+    optimize = request.config.getoption("--optimize-database")
+
+    from macrostrat.core.config import settings
+
+    # If we have settings.databases.test defined, do the testing with a local database
+    if settings.databases.get("test") and not request.config.getoption("--skip-env"):
+        log.info("Using local database for testing")
+
+        uri = settings.databases["test"]
+        uri = make_url(uri)
+        # https://github.com/psycopg/psycopg2/issues/916
+        # We should probably integrate this into macrostrat.database module
+        # https://github.com/UW-Macrostrat/python-libraries/issues/49
+        uri = uri.set(drivername="postgresql+psycopg")
+        log.info("Database URL: %s", uri)
+
+        # Kludge to make sure we drop the database before creating it.
+        # This solves a subtle
+        with temporary_database(uri, ensure_empty=True, drop=False) as engine:
+            assert engine.url.drivername == "postgresql+psycopg"
+            log.info("Created temporary database: %s", engine.url)
+            yield Database(engine)
+        return
+
+    with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
+        yield db
 
 
 @fixture(scope="session")
-def test_db(request):
-    """A temporary, initially empty database for Macorstrat testing."""
-    # Get the current settings without an override
-    cfg = load_config_module().settings
-    if request.config.getoption("--skip-test-database"):
-        import pytest
+def schema_harness(request, empty_db: Database):
+    """Progressive, chunk-based schema builder shared across the session.
 
-        pytest.skip("skipping Docker test database")
+    The ``optimize`` transform (skipping indexes/grants/ownership) is applied by
+    default for a faster build; disable with ``--no-optimize-database``.
+    """
+    from macrostrat.core.config import settings
+    from macrostrat.schema_management.test_harness import DatabaseTestHarness
 
-    # Spin up a docker container with a temporary database using the
-    # pg_database_container image
+    optimize = request.config.getoption("--optimize-database")
+    return DatabaseTestHarness(empty_db, env=settings.env, optimize=optimize)
 
-    image = cfg.get("pg_database_container", "postgres:15")
 
-    client = docker.from_env()
+from macrostrat.core.defs_provider import (
+    MacrostratAPIConfig,
+    MacrostratAPIDataProvider,
+    MacrostratDatabaseDataProvider,
+    MacrostratDataProvider,
+    MacrostratMetadataPopulator,
+)
 
-    img_root = cfg.srcroot / "base-images" / "database"
 
-    # Build postgres pgaudit image
-    img_tag = "macrostrat-local-database:latest"
+@fixture(scope="session")
+def data_provider(request):
+    from macrostrat.core import get_database
+    from macrostrat.core.config import settings
 
-    client.images.build(path=str(img_root), tag=img_tag)
+    source_db = None
+    log.info("Attempting to connect to database %s", settings.pg_database)
+    if not request.config.getoption("--skip-env"):
+        try:
+            source_db = get_database()
+        except RuntimeError as e:
+            log.warning("Could not connect to environment database: %s", e)
+            log.warning("Defs will not be loaded from the API configuration")
 
-    # Spin up an image with this container
-    port = 54884
-    with database_cluster(client, img_tag, port=port) as container:
-        url = f"postgresql://postgres@localhost:{port}/postgres"
-        db = Database(url)
+    base_url = settings.base_url
+    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
+    data_provider = MacrostratAPIDataProvider(cfg)
+    if source_db is not None:
+        data_provider = MacrostratDatabaseDataProvider(source_db)
+        log.info(
+            "Set up Macrostrat data provider from database: %s", source_db.engine.url
+        )
+    else:
+        log.info("Set up Macrostrat data provider using API: %s", cfg.base_url)
+    yield data_provider
+
+
+@fixture(scope="session")
+def test_db_macrostrat_schema_only(
+    schema_harness, data_provider: MacrostratDataProvider
+):
+    """A minimal database: the ``macrostrat`` subsystem and its dependencies."""
+    db = schema_harness.load_schema(target="macrostrat")
+
+    loader = MacrostratMetadataPopulator(data_provider, db)
+    loader.populate_all()
+    db.session.close()
+    db.engine.dispose()
+    yield db
+
+
+@fixture(scope="class")
+def test_db(test_db_macrostrat_schema_only: Database):
+    db = test_db_macrostrat_schema_only
+    with db.transaction(rollback=True):
         yield db
+
+
+@fixture(scope="session")
+def test_db_base(schema_harness, test_db_macrostrat_schema_only: Database):
+    """The full-schema database used for testing.
+
+    Builds every remaining chunk (maps, storage, tiles, …) on top of the minimal
+    macrostrat build, so tests relying on e.g. ``macrostrat.maps`` have it.
+    """
+    return schema_harness.load_schema()
+
+
+@fixture(scope="class")
+def test_db_full(test_db_base: Database):
+    with test_db_base.transaction(rollback=True):
+        yield test_db_base

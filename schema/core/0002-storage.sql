@@ -1,13 +1,11 @@
 
 CREATE SCHEMA storage;
-ALTER SCHEMA storage OWNER TO macrostrat;
 
 CREATE TYPE storage.scheme AS ENUM (
     's3',
     'https',
     'http'
 );
-ALTER TYPE storage.scheme OWNER TO macrostrat;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -24,16 +22,10 @@ CREATE TABLE storage.objects (
     updated_on timestamp with time zone DEFAULT now() NOT NULL,
     deleted_on timestamp with time zone
 );
-ALTER TABLE storage.objects OWNER TO macrostrat;
 
 CREATE SEQUENCE IF NOT EXISTS storage.objects_id_seq;
 ALTER TABLE storage.objects
 ALTER COLUMN id SET DEFAULT nextval('storage.objects_id_seq');
-SELECT setval(
-  'storage.objects_id_seq',
-  COALESCE((SELECT MAX(id) FROM storage.objects), 0) + 1,
-  false
-);
 
 ALTER TABLE ONLY storage.objects
     ADD CONSTRAINT object_pkey PRIMARY KEY (id);

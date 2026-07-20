@@ -262,6 +262,11 @@ def staging_upload_dir(
         except Exception:
             pass
 
+        try:
+            minio_client._http.clear()
+        except Exception:
+            pass
+
 
 # --------------------DELETIONS-------------------
 def confirm_delete(count: int) -> bool:

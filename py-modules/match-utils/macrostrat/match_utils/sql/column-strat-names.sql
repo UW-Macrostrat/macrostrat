@@ -36,10 +36,12 @@ WITH RECURSIVE cols AS (
     sn.strat_name,
     sn.rank,
     st.parent::integer parent_id,
-    concept_id
+    sn.concept_id,
+    snm.name concept_name
   FROM macrostrat.strat_names sn
   LEFT JOIN macrostrat.strat_tree st
     ON sn.id = st.child
+  LEFT JOIN macrostrat.strat_names_meta snm ON sn.concept_id = snm.concept_id
 ), base_unit AS (
   SELECT sn.*,
          u.id unit_id,
@@ -90,10 +92,11 @@ WITH RECURSIVE cols AS (
   UNION ALL
   SELECT
     sn.strat_name_id,
-    snm.name strat_name,
+    snm.name concept_name,
     null,
     null,
     snm.concept_id,
+    snm.name concept_name,
     sn.unit_id,
     sn.col_id,
     sn.depth,
@@ -112,6 +115,7 @@ WITH RECURSIVE cols AS (
     sn3.rank,
     null,
     snm.concept_id,
+    snm.name concept_name,
     sn.unit_id,
     sn.col_id,
     sn.depth,
@@ -137,6 +141,7 @@ with_footprints_index AS (
     rank,
     parent_id,
     concept_id,
+    concept_name,
     lc.unit_id,
     lc.col_id,
     depth,
@@ -155,6 +160,7 @@ with_footprints_index AS (
     null rank,
     null parent_id,
     snf.concept_id,
+    null concept_name,
     null unit_id,
     null col_id,
     null depth,
@@ -185,6 +191,7 @@ with_footprints_index AS (
     rank strat_rank,
     parent_id,
     concept_id,
+    concept_name,
     unit_id,
     col_id,
     depth,

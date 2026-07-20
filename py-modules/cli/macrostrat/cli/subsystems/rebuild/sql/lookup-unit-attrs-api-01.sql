@@ -78,8 +78,7 @@ WITH
         'prop', comp_prop,
         'atts', to_json(array_remove(array_agg(lith_atts.lith_att), NULL))
       ) AS lith
-    FROM units
-    LEFT JOIN unit_liths ON units.id = unit_liths.unit_id
+    FROM unit_liths
     LEFT JOIN liths ON lith_id = liths.id
     LEFT JOIN unit_liths_atts ON unit_liths.id = unit_liths_atts.unit_lith_id
     LEFT JOIN lith_atts ON unit_liths_atts.lith_att_id = lith_atts.id
@@ -89,9 +88,11 @@ INSERT
 INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith)
 -- We keep this in text format for now for parallelism with v1, but we should consider
 -- changing this to JSONB in the future
-SELECT unit_id, json_agg(lith)::text::bytea
-FROM a
-GROUP BY unit_id;
+SELECT u.id unit_id,
+       json_agg(lith)::text::bytea lith
+FROM units u
+LEFT JOIN a ON u.id = a.unit_id
+GROUP BY u.id;
 
 
 /** Environments */

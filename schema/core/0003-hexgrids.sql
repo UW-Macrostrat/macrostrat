@@ -1,26 +1,22 @@
 CREATE SCHEMA IF NOT EXISTS hexgrids;
-ALTER SCHEMA hexgrids OWNER TO macrostrat;
 
 CREATE TABLE hexgrids.bedrock_index (
     legend_id integer NOT NULL,
     hex_id integer NOT NULL,
     coverage numeric
 );
-ALTER TABLE hexgrids.bedrock_index OWNER TO macrostrat;
 
 CREATE TABLE hexgrids.hexgrids (
     hex_id integer NOT NULL,
     res integer,
     geom public.geometry
 );
-ALTER TABLE hexgrids.hexgrids OWNER TO macrostrat;
 
 CREATE TABLE hexgrids.pbdb_index (
     collection_no integer NOT NULL,
     hex_id integer NOT NULL
 );
 
-ALTER TABLE hexgrids.pbdb_index OWNER TO macrostrat;
 
 CREATE TABLE hexgrids.r10 (
     hex_id integer NOT NULL,
@@ -28,7 +24,6 @@ CREATE TABLE hexgrids.r10 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r10 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r10_ogc_fid_seq
     AS integer
@@ -37,14 +32,12 @@ CREATE SEQUENCE hexgrids.r10_ogc_fid_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE hexgrids.r10_ogc_fid_seq OWNER TO macrostrat;
 ALTER SEQUENCE hexgrids.r10_ogc_fid_seq OWNED BY hexgrids.r10.hex_id;
 CREATE TABLE hexgrids.r11 (
     hex_id integer NOT NULL,
     geom public.geometry(MultiPolygon,4326),
     web_geom public.geometry
 );
-ALTER TABLE hexgrids.r11 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r11_ogc_fid_seq
     AS integer
@@ -54,7 +47,6 @@ CREATE SEQUENCE hexgrids.r11_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r11_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r11_ogc_fid_seq OWNED BY hexgrids.r11.hex_id;
 
@@ -64,7 +56,6 @@ CREATE TABLE hexgrids.r12 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r12 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r12_ogc_fid_seq
     AS integer
@@ -74,7 +65,6 @@ CREATE SEQUENCE hexgrids.r12_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r12_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r12_ogc_fid_seq OWNED BY hexgrids.r12.hex_id;
 
@@ -84,7 +74,6 @@ CREATE TABLE hexgrids.r5 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r5 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r5_ogc_fid_seq
     AS integer
@@ -94,7 +83,6 @@ CREATE SEQUENCE hexgrids.r5_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r5_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r5_ogc_fid_seq OWNED BY hexgrids.r5.hex_id;
 
@@ -104,7 +92,6 @@ CREATE TABLE hexgrids.r6 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r6 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r6_ogc_fid_seq
     AS integer
@@ -114,7 +101,6 @@ CREATE SEQUENCE hexgrids.r6_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r6_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r6_ogc_fid_seq OWNED BY hexgrids.r6.hex_id;
 
@@ -124,7 +110,6 @@ CREATE TABLE hexgrids.r7 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r7 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r7_ogc_fid_seq
     AS integer
@@ -134,7 +119,6 @@ CREATE SEQUENCE hexgrids.r7_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r7_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r7_ogc_fid_seq OWNED BY hexgrids.r7.hex_id;
 
@@ -144,7 +128,6 @@ CREATE TABLE hexgrids.r8 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r8 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r8_ogc_fid_seq
     AS integer
@@ -154,7 +137,6 @@ CREATE SEQUENCE hexgrids.r8_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r8_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r8_ogc_fid_seq OWNED BY hexgrids.r8.hex_id;
 
@@ -164,7 +146,6 @@ CREATE TABLE hexgrids.r9 (
     web_geom public.geometry
 );
 
-ALTER TABLE hexgrids.r9 OWNER TO macrostrat;
 
 CREATE SEQUENCE hexgrids.r9_ogc_fid_seq
     AS integer
@@ -174,7 +155,6 @@ CREATE SEQUENCE hexgrids.r9_ogc_fid_seq
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE hexgrids.r9_ogc_fid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE hexgrids.r9_ogc_fid_seq OWNED BY hexgrids.r9.hex_id;
 
@@ -260,7 +240,5 @@ CREATE INDEX r9_geom_idx ON hexgrids.r9 USING gist (geom);
 CREATE INDEX r9_geom_idx1 ON hexgrids.r9 USING gist (geom);
 CREATE INDEX r9_web_geom_idx ON hexgrids.r9 USING gist (web_geom);
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA hexgrids GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA hexgrids GRANT SELECT ON TABLES  TO macrostrat;
 

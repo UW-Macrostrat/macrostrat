@@ -19,7 +19,7 @@ format:
 test:
 	# These tests may fail due to an older GDAL version in use.
 	# We need to figure out how to bundle GDAL or run in a Docker context
-	uv run macrostrat test all --skip-env -x -s
+	uv run macrostrat test all --skip-env -x --show-capture=log
 
 test-ci:
 	# We need a fairly recent version of GDAL (3.10) for map integration tests to pass.
@@ -36,4 +36,4 @@ reset:
 
 v3-local:
 	docker build -t macrostrat-api-v3 -f services/api-v3/Dockerlocal .
-	docker run --rm -p 8080:80 --env-file services/api-v3/.env macrostrat-api-v3
+	docker run --rm -p 80:80 --env-file services/api-v3/.env macrostrat-api-v3

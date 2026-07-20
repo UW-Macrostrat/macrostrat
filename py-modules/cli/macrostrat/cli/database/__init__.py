@@ -4,7 +4,6 @@ from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
 
 import typer
-from psycopg2.sql import Identifier
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -12,16 +11,15 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.database import get_database
-from macrostrat.database import Database
+from macrostrat.database import Database, reset_sequence
+from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
 from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.database.utils import get_sql_files
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
-from .sequences import reset_sequences
 
 # NOTE: right now, this is quite implicit.
 from .utils import engine_for_db_name, setup_postgrest_access
@@ -202,8 +200,8 @@ def dump(
     asyncio.run(task)
 
 
-@db_app.command()
-def reset_sequence(
+@db_app.command(name="reset-sequence", rich_help_panel="Helpers")
+def _reset_sequence(
     table: str = Argument(..., help="Table to fix the identity sequence for"),
     database: str = Option(None, help="Database to connect to"),
     column: str = Option(None, help="Identity column to fix"),
@@ -211,7 +209,11 @@ def reset_sequence(
     """Fix an identity sequence for a given table and column"""
     engine = engine_for_db_name(database)
     db = Database(engine)
-    reset_sequences(db, table, column)
+    res = reset_sequence(db, table, column)
+    print(f"table:     [bold]{res.table}[/]")
+    print(f"column:    [bold]{res.column}[/]")
+    print(f"sequence:  [bold]{res.sequence}[/]")
+    print(f"new value: [bold green]{res.new_value}[/]")
 
 
 @db_app.command()
@@ -385,3 +387,34 @@ def field_title(name):
     # expand the title to 20 characters
     title = title.ljust(12)
     return "[dim]" + title + "[/]" + " "
+
+
+@db_app.command(
+    name="activity",
+    rich_help_panel="Helpers",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def activity(ctx: typer.Context):
+    """Monitor live database activity with the pg_activity TUI.
+
+    Extra arguments are passed straight through to pg_activity, e.g.
+    `macrostrat db activity --rds --duration-mode backend`.
+    """
+    import sys
+
+    from pgactivity.cli import main as pg_activity_main
+
+    db = get_db()
+    # Strip the SQLAlchemy driver suffix (e.g. "+psycopg") — libpq/pg_activity
+    # want a plain "postgresql://" URI, not the dialect form.
+    dsn = raw_database_url(db.engine.url.set(drivername="postgresql"))
+
+    # pg_activity takes the connection string as a positional argument (a libpq
+    # URI or key/value DSN), with options before it. Drive its argparse-based
+    # entrypoint directly rather than shelling out to the executable.
+    prev_argv = sys.argv
+    sys.argv = ["pg_activity", *ctx.args, dsn]
+    try:
+        pg_activity_main()
+    finally:
+        sys.argv = prev_argv

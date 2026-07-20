@@ -1,0 +1,27 @@
+[project]
+name = "macrostrat.map-topology"
+version = "0.1.0"
+description = "Utilities to tile geologic maps globally"
+authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+    "macrostrat.database>=4.2.0",
+    "macrostrat.core",
+    "mapboard.topology-manager",
+    "pytest>=8.3.4,<10",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+"mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
+"macrostrat.core" = { path = "../core", editable = true }
