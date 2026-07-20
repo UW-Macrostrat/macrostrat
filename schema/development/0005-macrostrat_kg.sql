@@ -395,60 +395,30 @@ ALTER TABLE ONLY macrostrat_kg.all_runs
 ALTER TABLE ONLY macrostrat_kg.all_runs
     ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_kg.global_entity(global_entity_id) ON DELETE SET NULL;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_kg.extraction_feedback TO web_anon;
+-- Allow PostgREST anonymous role to access objects in the schema
+GRANT USAGE ON SCHEMA macrostrat_kg TO web_anon;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_kg.extraction_feedback_type TO web_anon;
+GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_kg TO web_anon;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_kg.lookup_extraction_type TO web_anon;
+GRANT SELECT, USAGE ON SEQUENCE
+  macrostrat_kg.extraction_feedback_note_id_seq,
+  macrostrat_kg.extraction_feedback_type_type_id_seq
+  TO web_anon;
 
-GRANT SELECT ON TABLE macrostrat_kg.all_runs TO web_anon;
+GRANT SELECT, USAGE ON ALL SEQUENCES IN SCHEMA macrostrat_kg TO web_user;
 
-GRANT SELECT ON TABLE macrostrat_kg.entity TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg
+  GRANT SELECT ON TABLES TO web_anon;
 
-GRANT SELECT ON TABLE macrostrat_kg.entity_type TO web_anon;
+/** Logged in users can create feedback */
+GRANT INSERT, UPDATE, DELETE ON TABLE
+  macrostrat_kg.extraction_feedback,
+  macrostrat_kg.extraction_feedback_type,
+  macrostrat_kg.lookup_extraction_type
+  TO web_users;
 
-GRANT SELECT ON TABLE macrostrat_kg.model_run TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_kg.relationship TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_kg.source_text TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_kg.model TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_kg.publication TO web_anon;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.entity_id_seq TO web_user;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.entity_type_id_seq TO web_user;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.extraction_feedback_note_id_seq TO web_user;
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.extraction_feedback_note_id_seq TO web_anon;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.extraction_feedback_type_type_id_seq TO web_user;
-
-GRANT SELECT ON TABLE macrostrat_kg.latest_run_per_text TO web_anon;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.model_run_id_seq TO web_user;
-
-GRANT SELECT ON TABLE macrostrat_kg.model_version TO web_anon;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.model_versions_version_id_seq TO web_user;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.models_model_id_seq TO web_user;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.relationship_id_seq TO web_user;
-
-GRANT SELECT ON TABLE macrostrat_kg.relationship_type TO web_anon;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.relationship_type_id_seq TO web_user;
-
-GRANT SELECT,USAGE ON SEQUENCE macrostrat_kg.source_text_id_seq TO web_user;
-
-GRANT SELECT ON TABLE macrostrat_kg.users TO web_anon;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg GRANT SELECT ON TABLES  TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg
+  GRANT SELECT, USAGE ON SEQUENCES TO web_user;
 
 
 -- xdd_writer write access. These tables used to be owned by xdd_writer, which gave it
