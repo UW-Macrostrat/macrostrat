@@ -11,21 +11,18 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA user_features;
-ALTER SCHEMA user_features OWNER TO macrostrat_admin;
 
 CREATE FUNCTION user_features.current_app_role() RETURNS text
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
 $$;
-ALTER FUNCTION user_features.current_app_role() OWNER TO macrostrat_admin;
 
 CREATE FUNCTION user_features.current_app_user_id() RETURNS integer
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
 $$;
-ALTER FUNCTION user_features.current_app_user_id() OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -35,14 +32,12 @@ CREATE TABLE user_features.location_tags (
     description text,
     color character varying(30)
 );
-ALTER TABLE user_features.location_tags OWNER TO macrostrat;
 
 CREATE TABLE user_features.location_tags_intersect (
     tag_id integer NOT NULL,
     user_id integer NOT NULL,
     location_id integer NOT NULL
 );
-ALTER TABLE user_features.location_tags_intersect OWNER TO macrostrat;
 
 CREATE TABLE user_features.user_locations (
     id integer NOT NULL,
@@ -59,7 +54,6 @@ CREATE TABLE user_features.user_locations (
     created_at timestamp without time zone DEFAULT now() NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
-ALTER TABLE user_features.user_locations OWNER TO macrostrat;
 
 CREATE SEQUENCE user_features.location_tags_id_seq
     AS integer
@@ -68,7 +62,6 @@ CREATE SEQUENCE user_features.location_tags_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE user_features.location_tags_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE user_features.location_tags_id_seq OWNED BY user_features.location_tags.id;
 

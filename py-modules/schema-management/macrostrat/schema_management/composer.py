@@ -16,8 +16,27 @@ relocated into owning modules.
 from graphlib import TopologicalSorter
 from typing import Optional
 
+from psycopg.sql import Identifier
+
 from macrostrat.core import SchemaDefinition
 from macrostrat.database import Database
+
+
+def _set_applying_role(db: Database, owner: Optional[str]) -> None:
+    """Establish the role that applies the next chunk.
+
+    Re-established at the *top of every chunk* (not once for the whole build) so a
+    mid-chunk failure can't silently carry a role forward into the next chunk.
+    ``owner=None`` runs as the connector (superuser) for foundational DDL.
+
+    ``SET ROLE`` is session-level (non-``LOCAL``), so it persists across
+    ``run_fixtures``' per-statement commits on the shared session connection —
+    the same basis :func:`macrostrat.schema_management.readonly.as_role` relies on.
+    """
+    if owner:
+        db.run_sql("SET ROLE {role}", dict(role=Identifier(owner)), raise_errors=True)
+    else:
+        db.run_sql("RESET ROLE", raise_errors=True)
 
 
 def order_chunks(chunks: list[SchemaDefinition]) -> list[SchemaDefinition]:
@@ -113,11 +132,17 @@ def build_schema(
         keep = dependency_closure(chunks, target)
         ordered = [c for c in ordered if c.name in keep]
 
-    for chunk in ordered:
-        chunk.apply(
-            db,
-            transform_statement=transform_statement,
-            statement_filter=statement_filter,
-        )
+    try:
+        for chunk in ordered:
+            _set_applying_role(db, chunk.owner)
+            chunk.apply(
+                db,
+                transform_statement=transform_statement,
+                statement_filter=statement_filter,
+            )
+    finally:
+        # Never leave the session masquerading as an application role, even if a
+        # chunk raised partway through.
+        db.run_sql("RESET ROLE", raise_errors=True)
 
     return db

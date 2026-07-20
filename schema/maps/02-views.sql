@@ -93,7 +93,4 @@ FROM (maps.legend l
   LEFT JOIN maps.legend_liths ll ON ((ll.legend_id = l.legend_id)))
 GROUP BY l.legend_id, l.source_id, l.name;
 
-GRANT USAGE ON SCHEMA maps TO macrostrat;
-GRANT SELECT ON ALL TABLES IN SCHEMA maps TO macrostrat;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA maps TO macrostrat;
 

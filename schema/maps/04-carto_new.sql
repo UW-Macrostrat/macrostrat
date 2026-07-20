@@ -1,6 +1,5 @@
 
 CREATE SCHEMA carto_new;
-ALTER SCHEMA carto_new OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -9,7 +8,6 @@ CREATE TABLE carto_new.hex_index (
     scale text,
     hex_id integer
 );
-ALTER TABLE carto_new.hex_index OWNER TO macrostrat;
 
 CREATE TABLE carto_new.pbdb_hex_index (
   collection_no integer NOT NULL,
@@ -93,8 +91,5 @@ CREATE INDEX pbdb_hex_index_hex_id_idx ON carto_new.pbdb_hex_index USING btree (
 
 CREATE INDEX pbdb_hex_index_scale_idx ON carto_new.pbdb_hex_index USING btree (scale);
 
-GRANT SELECT ON ALL TABLES IN SCHEMA carto_new TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto_new GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA carto_new GRANT SELECT ON TABLES  TO macrostrat;
 

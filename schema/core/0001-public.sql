@@ -9,13 +9,7 @@ CREATE TYPE public.saved_locations_enum AS ENUM (
     'Want to go',
     'Geological wonder'
 );
-ALTER TYPE public.saved_locations_enum OWNER TO macrostrat_admin;
-
-CREATE TYPE public.schemeenum AS ENUM (
-    'http',
-    's3'
-);
-ALTER TYPE public.schemeenum OWNER TO macrostrat;
+ALTER TYPE public.saved_locations_enum OWNER TO macrostrat;
 
 CREATE FUNCTION public.count_estimate(query text) RETURNS integer
     LANGUAGE plpgsql STRICT
@@ -38,33 +32,14 @@ CREATE FUNCTION public.current_app_role() RETURNS text
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
 $$;
-ALTER FUNCTION public.current_app_role() OWNER TO macrostrat_admin;
+ALTER FUNCTION public.current_app_role() OWNER TO macrostrat;
 
 CREATE FUNCTION public.current_app_user_id() RETURNS integer
     LANGUAGE sql STABLE
     AS $$
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
 $$;
-ALTER FUNCTION public.current_app_user_id() OWNER TO macrostrat_admin;
-
-CREATE FUNCTION public.group_items_by_type(name_filter text DEFAULT NULL::text) RETURNS json
-    LANGUAGE plpgsql STABLE
-    AS $$
-BEGIN
-  RETURN (
-    SELECT json_agg(grouped)
-    FROM (
-      SELECT
-        type,
-        json_agg(to_jsonb(t) - 'type') AS items
-      FROM your_table t
-      WHERE (name_filter IS NULL OR t.name ILIKE name_filter)
-      GROUP BY type
-    ) grouped
-  );
-END;
-$$;
-ALTER FUNCTION public.group_items_by_type(name_filter text) OWNER TO macrostrat_admin;
+ALTER FUNCTION public.current_app_user_id() OWNER TO macrostrat;
 
 CREATE FUNCTION public.update_updated_on() RETURNS trigger
     LANGUAGE plpgsql
@@ -84,32 +59,6 @@ CREATE AGGREGATE public.array_agg_mult(anycompatiblearray) (
 ALTER AGGREGATE public.array_agg_mult(anycompatiblearray) OWNER TO postgres;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
-
-CREATE TABLE public.export_table (
-    source_id integer,
-    name character varying(255),
-    primary_table character varying(255),
-    url character varying(255),
-    ref_title text,
-    authors character varying(255),
-    ref_year text,
-    ref_source character varying(255),
-    isbn_doi character varying(100),
-    scale character varying(20),
-    primary_line_table character varying(50),
-    licence character varying(100),
-    features integer,
-    area integer,
-    priority boolean,
-    rgeom public.geometry,
-    display_scales text[],
-    web_geom public.geometry,
-    new_priority integer,
-    status_code text,
-    slug text,
-    raster_url text
-);
-ALTER TABLE public.export_table OWNER TO postgres;
 
 CREATE SEQUENCE public.geologic_boundary_source_seq
     START WITH 1
@@ -237,7 +186,7 @@ ALTER TABLE public.map_ids OWNER TO macrostrat;
 CREATE TABLE public.next_id (
     id integer
 );
-ALTER TABLE public.next_id OWNER TO macrostrat_admin;
+ALTER TABLE public.next_id OWNER TO macrostrat;
 
 CREATE TABLE public.ref_boundaries (
     ref_id integer,
@@ -288,7 +237,7 @@ CREATE TABLE public.temp_names (
     map_id integer,
     match_text text
 );
-ALTER TABLE public.temp_names OWNER TO macrostrat_admin;
+ALTER TABLE public.temp_names OWNER TO macrostrat;
 
 CREATE TABLE public.temp_rocks (
     map_ids integer[],
@@ -304,7 +253,7 @@ CREATE TABLE public.temp_rocks (
     b_interval integer,
     envelope public.geometry
 );
-ALTER TABLE public.temp_rocks OWNER TO macrostrat_admin;
+ALTER TABLE public.temp_rocks OWNER TO macrostrat;
 
 CREATE TABLE public.units (
     mapunit text,
@@ -319,7 +268,7 @@ CREATE TABLE public.usage_stats (
     lat double precision NOT NULL,
     lng double precision NOT NULL
 );
-ALTER TABLE public.usage_stats OWNER TO macrostrat_admin;
+ALTER TABLE public.usage_stats OWNER TO macrostrat;
 
 CREATE SEQUENCE public.usage_stats_id_seq
     AS integer
@@ -328,7 +277,7 @@ CREATE SEQUENCE public.usage_stats_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE public.usage_stats_id_seq OWNER TO macrostrat_admin;
+ALTER TABLE public.usage_stats_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE public.usage_stats_id_seq OWNED BY public.usage_stats.id;
 

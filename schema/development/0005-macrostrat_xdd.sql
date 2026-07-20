@@ -11,7 +11,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA macrostrat_xdd;
-ALTER SCHEMA macrostrat_xdd OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -21,19 +20,16 @@ CREATE TABLE macrostrat_xdd.extraction_feedback (
     date timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     custom_note text
 );
-ALTER TABLE macrostrat_xdd.extraction_feedback OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.extraction_feedback_type (
     type_id integer NOT NULL,
     type text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.extraction_feedback_type OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.lookup_extraction_type (
     note_id integer NOT NULL,
     type_id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.lookup_extraction_type OWNER TO macrostrat_admin;
 
 CREATE TABLE macrostrat_xdd.all_runs (
     user_id uuid,
@@ -46,7 +42,6 @@ CREATE TABLE macrostrat_xdd.all_runs (
     source_text_id integer NOT NULL,
     supersedes integer
 );
-ALTER TABLE macrostrat_xdd.all_runs OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity (
     name text NOT NULL,
@@ -61,7 +56,6 @@ CREATE TABLE macrostrat_xdd.entity (
     entity_type_id integer NOT NULL,
     str_match_type text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.entity OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.entity_type (
     name text NOT NULL,
@@ -69,7 +63,6 @@ CREATE TABLE macrostrat_xdd.entity_type (
     id integer NOT NULL,
     color text
 );
-ALTER TABLE macrostrat_xdd.entity_type OWNER TO xdd_writer;
 
 CREATE VIEW macrostrat_xdd.model_run AS
  SELECT all_runs.user_id,
@@ -82,7 +75,6 @@ CREATE VIEW macrostrat_xdd.model_run AS
     all_runs.source_text_id,
     all_runs.supersedes
    FROM macrostrat_xdd.all_runs;
-ALTER TABLE macrostrat_xdd.model_run OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.relationship (
     id integer NOT NULL,
@@ -92,7 +84,6 @@ CREATE TABLE macrostrat_xdd.relationship (
     relationship_type_id integer NOT NULL,
     reasoning text
 );
-ALTER TABLE macrostrat_xdd.relationship OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.source_text (
     preprocessor_id text,
@@ -105,7 +96,6 @@ CREATE TABLE macrostrat_xdd.source_text (
     source_text_type text NOT NULL,
     xdd_tags text
 );
-ALTER TABLE macrostrat_xdd.source_text OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.model (
     id integer NOT NULL,
@@ -113,7 +103,6 @@ CREATE TABLE macrostrat_xdd.model (
     description text,
     url text
 );
-ALTER TABLE macrostrat_xdd.model OWNER TO xdd_writer;
 
 CREATE TABLE macrostrat_xdd.publication (
     paper_id text NOT NULL,
@@ -121,7 +110,6 @@ CREATE TABLE macrostrat_xdd.publication (
     citation jsonb NOT NULL,
     url text
 );
-ALTER TABLE macrostrat_xdd.publication OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.entity_id_seq
     AS integer
@@ -130,7 +118,6 @@ CREATE SEQUENCE macrostrat_xdd.entity_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.entity_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.entity_id_seq OWNED BY macrostrat_xdd.entity.id;
 
@@ -141,7 +128,6 @@ CREATE SEQUENCE macrostrat_xdd.entity_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.entity_type_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.entity_type_id_seq OWNED BY macrostrat_xdd.entity_type.id;
 
@@ -152,7 +138,6 @@ CREATE SEQUENCE macrostrat_xdd.extraction_feedback_note_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.extraction_feedback_note_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat_xdd.extraction_feedback_note_id_seq OWNED BY macrostrat_xdd.extraction_feedback.note_id;
 
@@ -163,7 +148,6 @@ CREATE SEQUENCE macrostrat_xdd.extraction_feedback_type_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.extraction_feedback_type_type_id_seq OWNER TO macrostrat_admin;
 
 ALTER SEQUENCE macrostrat_xdd.extraction_feedback_type_type_id_seq OWNED BY macrostrat_xdd.extraction_feedback_type.type_id;
 
@@ -181,7 +165,6 @@ CREATE VIEW macrostrat_xdd.latest_run_per_text AS
    FROM macrostrat_xdd.all_runs all_runs,
     latest_run
   WHERE ((all_runs.source_text_id = latest_run.src_text_id) AND (all_runs."timestamp" = latest_run.latest_timestamp));
-ALTER TABLE macrostrat_xdd.latest_run_per_text OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.model_run_id_seq
     AS integer
@@ -190,7 +173,6 @@ CREATE SEQUENCE macrostrat_xdd.model_run_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.model_run_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.model_run_id_seq OWNED BY macrostrat_xdd.all_runs.id;
 
@@ -200,7 +182,6 @@ CREATE TABLE macrostrat_xdd.model_version (
     description text,
     model_id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.model_version OWNER TO xdd_writer;
 
 ALTER TABLE macrostrat_xdd.model_version ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME macrostrat_xdd.model_versions_version_id_seq
@@ -227,7 +208,6 @@ CREATE SEQUENCE macrostrat_xdd.relationship_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.relationship_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.relationship_id_seq OWNED BY macrostrat_xdd.relationship.id;
 
@@ -236,7 +216,6 @@ CREATE TABLE macrostrat_xdd.relationship_type (
     description text,
     id integer NOT NULL
 );
-ALTER TABLE macrostrat_xdd.relationship_type OWNER TO xdd_writer;
 
 CREATE SEQUENCE macrostrat_xdd.relationship_type_id_seq
     AS integer
@@ -245,7 +224,6 @@ CREATE SEQUENCE macrostrat_xdd.relationship_type_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.relationship_type_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.relationship_type_id_seq OWNED BY macrostrat_xdd.relationship_type.id;
 
@@ -256,7 +234,6 @@ CREATE SEQUENCE macrostrat_xdd.source_text_id_seq
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-ALTER TABLE macrostrat_xdd.source_text_id_seq OWNER TO xdd_writer;
 
 ALTER SEQUENCE macrostrat_xdd.source_text_id_seq OWNED BY macrostrat_xdd.source_text.id;
 
@@ -264,7 +241,6 @@ CREATE TABLE macrostrat_xdd.users (
     internal_user_id uuid DEFAULT gen_random_uuid() NOT NULL,
     external_user_id text NOT NULL
 );
-ALTER TABLE macrostrat_xdd.users OWNER TO xdd_writer;
 
 ALTER TABLE ONLY macrostrat_xdd.all_runs ALTER COLUMN id SET DEFAULT nextval('macrostrat_xdd.model_run_id_seq'::regclass);
 
@@ -448,7 +424,19 @@ GRANT SELECT,USAGE ON SEQUENCE macrostrat_xdd.source_text_id_seq TO web_user;
 
 GRANT SELECT ON TABLE macrostrat_xdd.users TO web_anon;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_xdd GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd GRANT SELECT,USAGE ON SEQUENCES  TO web_user;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_xdd GRANT SELECT ON TABLES  TO web_anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd GRANT SELECT ON TABLES  TO web_anon;
+
+-- xdd_writer write access. These tables used to be owned by xdd_writer, which gave it
+-- write access implicitly; now they are macrostrat-owned (create-as-owner), so the
+-- writer's access must be granted explicitly. CREATE is included because the writer
+-- may create/drop its own working tables at runtime — drop it if it is DML-only.
+GRANT USAGE, CREATE ON SCHEMA macrostrat_xdd TO xdd_writer;
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA macrostrat_xdd TO xdd_writer;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA macrostrat_xdd TO xdd_writer;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd
+  GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO xdd_writer;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd
+  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO xdd_writer;
 

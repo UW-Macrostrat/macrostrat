@@ -1,6 +1,5 @@
 
 CREATE SCHEMA lines;
-ALTER SCHEMA lines OWNER TO macrostrat;
 
 CREATE VIEW lines.large AS
  SELECT lines.line_id,
@@ -58,7 +57,5 @@ CREATE VIEW lines.tiny AS
    FROM maps.lines
   WHERE (lines.scale = 'tiny'::maps.map_scale);
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA lines GRANT SELECT,USAGE ON SEQUENCES  TO macrostrat;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA lines GRANT SELECT ON TABLES  TO macrostrat;
 

@@ -31,6 +31,11 @@ class SchemaDefinition:
     # Environments in which this chunk applies. ``None`` means all environments.
     environments: Optional[frozenset[str]] = None
     database: str = "macrostrat"
+    # Role that applies this chunk (via session ``SET ROLE``), so the chunk's
+    # objects are *born owned* by it — replacing per-object ``ALTER … OWNER TO``.
+    # ``None`` applies the chunk as the connector (superuser) for foundational DDL
+    # (extensions, roles, the ``public`` schema) that an application role can't do.
+    owner: Optional[str] = None
 
     def applies_to(self, env: str) -> bool:
         return self.environments is None or env in self.environments
