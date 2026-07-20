@@ -117,5 +117,7 @@ def discover_chunks(
         elif entry.suffix == ".sql" and entry.name != INDEX_FILE:
             meta = parse_frontmatter(entry.read_text())
             if _SUBSYSTEM_KEYS & meta.keys():
-                chunks.append(_chunk_from(meta, entry.stem, [entry], environments, owner))
+                chunks.append(
+                    _chunk_from(meta, entry.stem, [entry], environments, owner)
+                )
     return chunks
