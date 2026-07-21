@@ -1,5 +1,5 @@
 -- @subsystem: geomag-sites
--- @depends-on: core
+-- @depends-on: core, development
 
 SET search_path = integrations, public;
 
@@ -42,8 +42,7 @@ create table integrations.geomag_sites
 ALTER TABLE geomag_sites
     ADD CONSTRAINT geomag_sites_external_site_key
     UNIQUE (external_id, site_name);
-alter table geomag_sites
-    owner to "macrostrat-admin";
+
 create index geomag_sites_external_id_idx on geomag_sites (external_id);
 create index geomag_sites_last_updated_idx on geomag_sites (last_updated);
 create index geomag_sites_geometry_idx on geomag_sites using gist (geometry);
@@ -63,7 +62,6 @@ CREATE TABLE integrations.geomag_units (
 --add nearest col function
 --look at postgrest routes sgp, paleomag data, weaver schema/route, fossils, measures/measuremeta, integrations.dataset strabo data and see if we can serve a single data structure from same routes?
 --create a standardize route and figure out how to unify all of the tables. run CRUD ops on this standardized table. can add a json data column.
-alter table geomag_units owner to "macrostrat-admin";
 
 create index geomag_units_unit_id_idx on geomag_units (unit_id);
 create index geomag_units_strat_name_id_idx on geomag_units (strat_name_id);
