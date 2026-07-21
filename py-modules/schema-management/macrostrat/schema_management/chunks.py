@@ -117,6 +117,13 @@ def all_chunks() -> list[SchemaDefinition]:
             owner=_APP_OWNER,
         ),
         TopologySchema,
+        SchemaDefinition(
+            name="macrostrat_gbdb",
+            depends_on=["macrostrat", "macrostrat_api"],
+            provides=[schema_dir / "macrostrat_gbdb"],
+            environments=_DEV_ENVS,
+            owner=_APP_OWNER,
+        )
     ]
 
 

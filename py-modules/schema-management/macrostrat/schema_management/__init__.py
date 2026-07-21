@@ -144,7 +144,7 @@ def review(edit=False):
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
-    archive: bool = Option(True, "--archive/--no-archive"),
+    archive: bool = Option(False, "--archive/--no-archive"),
 ):
     """Apply migration plan to database"""
     db = get_database()

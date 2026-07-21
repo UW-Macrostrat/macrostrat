@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
+from warnings import warn
 
 from macrostrat.core import app
 from macrostrat.core.database import get_database
@@ -173,9 +174,16 @@ def dump(
         None,
         "--database",
     ),
-    schema: bool = False,
 ):
-    """Export a database using [cyan]pg_dump[/]"""
+    """Export a database using [cyan]pg_dump[/]. Extra arguments are passed through to pg_dump. Common options:
+
+    -t, --table=TABLE: Dump only tables matching TABLE (can be repeated)
+    -n, --schema=SCHEMA: Dump only schemas matching SCHEMA (can be repeated)
+    -s, --schema-only: Dump only the schema
+    -a, --data-only: Dump only the data, no schema
+
+    Custom-format dumps are used by default, except when -s/--schema-only is used.
+    """
 
     db_container = app.settings.get("pg_database_container", "postgres:15")
 
@@ -186,9 +194,10 @@ def dump(
 
     args = ctx.args
     custom_format = True
-    if schema:
-        args.append("--schema-only")
+
+    if "--schema-only" in args or "-s" in args:
         custom_format = False
+        warn("Disabling custom format dump")
 
     task = pg_dump_to_file(
         engine,

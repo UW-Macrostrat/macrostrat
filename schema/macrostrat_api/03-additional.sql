@@ -507,46 +507,6 @@ CREATE VIEW macrostrat_api.macrostrat_stats AS
         END) AS rows_last_24_hours
    FROM usage_stats.macrostrat_stats;
 
-CREATE VIEW macrostrat_api.map_ingest AS
- SELECT ingest_process.id,
-    ingest_process.state,
-    ingest_process.comments,
-    ingest_process.source_id,
-    ingest_process.created_on,
-    ingest_process.completed_on,
-    ingest_process.map_id,
-    ingest_process.type,
-    ingest_process.polygon_state,
-    ingest_process.line_state,
-    ingest_process.point_state,
-    ingest_process.ingest_pipeline,
-    ingest_process.map_url,
-    ingest_process.ingested_by,
-    ingest_process.slug
-   FROM maps_metadata.ingest_process;
-
-CREATE VIEW macrostrat_api.map_ingest_metadata AS
- SELECT ingest_process.id,
-    ingest_process.state,
-    ingest_process.comments,
-    ingest_process.source_id,
-    ingest_process.created_on,
-    ingest_process.completed_on,
-    ingest_process.map_id,
-    ingest_process.type,
-    ingest_process.polygon_state,
-    ingest_process.line_state,
-    ingest_process.point_state,
-    ingest_process.ingest_pipeline,
-    ingest_process.map_url,
-    ingest_process.ingested_by,
-    ingest_process.slug
-   FROM maps_metadata.ingest_process;
-
-CREATE VIEW macrostrat_api.map_ingest_tags AS
- SELECT ingest_process_tag.ingest_process_id,
-    ingest_process_tag.tag
-   FROM maps_metadata.ingest_process_tag;
 
 CREATE VIEW macrostrat_api.mapped_sources AS
  SELECT s.source_id,
@@ -901,11 +861,10 @@ CREATE VIEW macrostrat_api.sources_ingestion AS
     i.comments,
     i.created_on,
     i.completed_on,
-    i.map_id,
     s.is_finalized,
     s.scale_denominator
-   FROM (maps.sources_metadata s
-     JOIN maps_metadata.ingest_process i ON ((i.source_id = s.source_id)));
+   FROM  maps.sources_metadata s
+  JOIN maps_metadata.ingest_process i ON i.source_id = s.source_id;
 
 CREATE VIEW macrostrat_api.sources_metadata AS
  SELECT sources_metadata.source_id,
