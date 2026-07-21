@@ -1,0 +1,2 @@
+-- @subsystem: macrostrat-api
+-- @depends-on: macrostrat

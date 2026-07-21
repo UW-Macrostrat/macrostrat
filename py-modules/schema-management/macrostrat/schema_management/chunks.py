@@ -96,19 +96,6 @@ def all_chunks() -> list[SchemaDefinition]:
             environments=_DEV_ENVS,
             owner=_APP_OWNER,
         ),
-        # PostgREST API layer (macrostrat_api schema): views over the core relational
-        # model plus a few API functions. Consolidated from the old
-        # `development/9000-macrostrat_api.sql` pg_dump and the `column_builder` migration
-        # (which supplied the clean core views/functions in 01/02). Depends on
-        # `development` because some views read `macrostrat_kg`; dev-only for the same
-        # reason.
-        SchemaDefinition(
-            name="macrostrat-api",
-            depends_on=["development"],
-            provides=[schema_dir / "macrostrat_api"],
-            environments=_DEV_ENVS,
-            owner=_APP_OWNER,
-        ),
         SchemaDefinition(
             name="local",
             depends_on=["development"],

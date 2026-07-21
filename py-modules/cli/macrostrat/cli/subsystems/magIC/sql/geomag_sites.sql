@@ -1,3 +1,6 @@
+-- @subsystem: geomag-sites
+-- @depends-on: core
+
 SET search_path = integrations, public;
 
 DROP INDEX IF EXISTS geomag_sites_external_id_idx;

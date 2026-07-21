@@ -1,0 +1,1 @@
+../../py-modules/cli/macrostrat/cli/subsystems/magIC/sql/geomag_sites.sql
