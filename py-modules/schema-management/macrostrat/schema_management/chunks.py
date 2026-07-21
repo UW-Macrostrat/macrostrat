@@ -17,9 +17,10 @@ pulled out; the dependency chain preserves today's exact application order.
 
 from pathlib import Path
 
+from tileserver_stats import build_schema_config
+
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import TopologySchema
-from tileserver_stats import build_schema_config
 
 from .composer import SchemaDefinition
 from .discovery import discover_chunks
@@ -105,8 +106,10 @@ def all_chunks() -> list[SchemaDefinition]:
             owner=_APP_OWNER,
         ),
         TopologySchema,
-        *discover_chunks(schema_dir / "_dev_definitions", owner=_APP_OWNER, environments=_DEV_ENVS),
-        *build_schema_config()
+        *discover_chunks(
+            schema_dir / "_dev_definitions", owner=_APP_OWNER, environments=_DEV_ENVS
+        ),
+        *build_schema_config(),
     ]
 
 

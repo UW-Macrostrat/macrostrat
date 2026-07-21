@@ -2,13 +2,13 @@ import asyncio
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
+from warnings import warn
 
 import typer
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
 from typer import Argument, Option
-from warnings import warn
 
 from macrostrat.core import app
 from macrostrat.core.database import get_database
