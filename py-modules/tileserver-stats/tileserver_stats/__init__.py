@@ -21,6 +21,8 @@ from macrostrat.database.transfer import move_tables
 
 from .params import Smoothing, is_valid_range
 
+here = Path(__file__).parent
+
 app = Typer(no_args_is_help=True, short_help="Compile tileserver statistics")
 
 
@@ -247,6 +249,20 @@ def get_config_attrs(config) -> S3Params:
         access_key=config.get("access_key"),
         secret_key=config.get("secret_key"),
     )
+
+def build_schema_config():
+    from macrostrat.schema_management.composer import SchemaDefinition
+
+    main_def = SchemaDefinition(name="tileserver-stats", depends_on=["public"], provides=[
+        here / "schema" / "tileserver-stats.sql",
+    ],  environments=frozenset({"local", "development", "production"}), owner="macrostrat")
+
+    legacy = SchemaDefinition(name="tileserver-stats-legacy", depends_on=["tileserver-stats"], provides=[
+        here / "schema" / "tileserver-stats.legacy.sql"
+    ], environments=frozenset({"development", "production"}), owner="macrostrat")
+
+    return [main_def, legacy]
+
 
 
 # A tile request path is `/<layer>/<z>/<x>/<y>[.ext]`, where <layer> may span
