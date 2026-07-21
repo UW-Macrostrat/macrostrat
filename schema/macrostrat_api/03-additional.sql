@@ -184,9 +184,7 @@ SELECT e.id,
 FROM macrostrat_kg.entity e
 JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
 JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
-LEFT JOIN matches m ON m.global_entity_id = e.macrostrat_terms_id;
--- NOTE: I changed global_entity_id to macrostrat_terms_id to match the apparent realized
--- structure of the database.
+LEFT JOIN matches m ON m.global_entity_id = e.global_entity_id;
 
 CREATE VIEW macrostrat_api.kg_entity_tree AS
  WITH RECURSIVE start_entities AS (

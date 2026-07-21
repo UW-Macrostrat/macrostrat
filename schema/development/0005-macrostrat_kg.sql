@@ -414,7 +414,7 @@ GRANT INSERT, UPDATE, DELETE ON TABLE
   macrostrat_kg.extraction_feedback,
   macrostrat_kg.extraction_feedback_type,
   macrostrat_kg.lookup_extraction_type
-  TO web_users;
+  TO web_user;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT, USAGE ON SEQUENCES TO web_user;
