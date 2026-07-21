@@ -59,13 +59,13 @@ def all_chunks() -> list[SchemaDefinition]:
     public = set(_PUBLIC_FILES)
 
     entries = sorted(core.iterdir())
-    before_maps = [p for p in entries if p.name not in public and p.name < _MAPS_BOUNDARY]
+    before_maps = [
+        p for p in entries if p.name not in public and p.name < _MAPS_BOUNDARY
+    ]
     # `after_maps` is the `core` remainder minus the permissions file, which becomes
     # its own superuser-owned chunk applied last.
     after_maps = [
-        p
-        for p in entries
-        if p.name > _MAPS_BOUNDARY and p.name != _PERMISSIONS_FILE
+        p for p in entries if p.name > _MAPS_BOUNDARY and p.name != _PERMISSIONS_FILE
     ]
 
     return [

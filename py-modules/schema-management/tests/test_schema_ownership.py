@@ -37,6 +37,7 @@ def _load_ownership_migration():
     spec.loader.exec_module(module)
     return module.OwnershipUnificationMigration()
 
+
 _ENV = "development"
 
 # Schemas whose ownership is *not* create-as-owner and is excluded from the check:
@@ -85,14 +86,18 @@ def test_application_objects_are_macrostrat_owned():
             for row in db.run_query(_OWNERSHIP_QUERY, params)
             if row.owner != "macrostrat"
         ]
-        assert not bad_objects, f"non-macrostrat-owned application objects: {bad_objects}"
+        assert (
+            not bad_objects
+        ), f"non-macrostrat-owned application objects: {bad_objects}"
 
         bad_schemas = [
             (row.schema, row.owner)
             for row in db.run_query(_SCHEMA_OWNER_QUERY, params)
             if row.owner != "macrostrat"
         ]
-        assert not bad_schemas, f"non-macrostrat-owned application schemas: {bad_schemas}"
+        assert (
+            not bad_schemas
+        ), f"non-macrostrat-owned application schemas: {bad_schemas}"
 
 
 @mark.docker
@@ -113,9 +118,9 @@ def test_xdd_writer_retains_write_access():
             """
         ).one()
         assert privs.schema_usage, "xdd_writer lost USAGE on macrostrat_kg"
-        assert privs.ins and privs.upd and privs.dlt, (
-            f"xdd_writer lost write access on macrostrat_kg.entity: {privs}"
-        )
+        assert (
+            privs.ins and privs.upd and privs.dlt
+        ), f"xdd_writer lost write access on macrostrat_kg.entity: {privs}"
 
 
 def _owner_of(db, schema, name):

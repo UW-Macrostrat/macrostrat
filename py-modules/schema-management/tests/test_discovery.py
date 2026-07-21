@@ -37,9 +37,7 @@ def test_discover_chunks(tmp_path: Path):
     beta = root / "beta"
     beta.mkdir()
     (beta / "_index.sql").write_text(
-        "-- @depends-on: alpha\n"
-        "-- @environments: local\n"
-        "CREATE SCHEMA beta;\n"
+        "-- @depends-on: alpha\n" "-- @environments: local\n" "CREATE SCHEMA beta;\n"
     )
     (beta / "01-tables.sql").write_text("CREATE TABLE beta.t (id int);\n")
     (beta / "02-views.sql").write_text("CREATE VIEW beta.v AS SELECT 1;\n")
