@@ -70,6 +70,8 @@ def rebuild(maps: list[str] = Argument(None)):
     """Rebuild topology fixtures"""
     mgr = get_topo_manager()
 
+    mgr.rebuild_layer_constraints()
+
     if maps is not None:
         all_maps = get_map_list(mgr.database, maps)
         for map in all_maps:
@@ -99,7 +101,6 @@ def mark_all():
     mgr.database.session.commit()
 
     print(f"Marked {res} dirty faces")
-
 
 @cli.command("identify", rich_help_panel="Utils")
 def update_identity():
