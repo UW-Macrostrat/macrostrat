@@ -1,2 +1,3 @@
 -- @subsystem: macrostrat-api
--- @depends-on: macrostrat
+-- @depends-on: development
+-- @environments: development, local
