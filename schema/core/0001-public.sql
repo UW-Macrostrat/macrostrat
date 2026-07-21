@@ -156,7 +156,7 @@ CREATE TABLE public.lookup_tiny (
     strat_name_children integer[],
     legend_id integer
 );
-ALTER TABLE public.lookup_tiny OWNER TO postgres;
+ALTER TABLE public.lookup_tiny OWNER TO macrostrat;
 
 CREATE TABLE public.macrostrat_union (
     id integer NOT NULL,

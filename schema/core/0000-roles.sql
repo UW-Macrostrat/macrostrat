@@ -55,3 +55,4 @@ GRANT web_user TO web_admin;
 
 
 GRANT REFERENCES ON spatial_ref_sys TO macrostrat;
+GRANT SELECT ON spatial_ref_sys TO macrostrat;
