@@ -77,15 +77,15 @@ SELECT
 """
 
 # Restores xdd_writer's write access after its tables are re-owned to macrostrat.
-# Mirrors the declarative grants in schema/development/0005-macrostrat_xdd.sql, so a
+# Mirrors the declarative grants in schema/development/0005-macrostrat_kg.sql, so a
 # reconciled DB matches a fresh build. Guarded on the schema existing (dev/local only).
 _XDD_GRANTS = """
-GRANT USAGE, CREATE ON SCHEMA macrostrat_xdd TO xdd_writer;
-GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA macrostrat_xdd TO xdd_writer;
-GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA macrostrat_xdd TO xdd_writer;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd
+GRANT USAGE, CREATE ON SCHEMA macrostrat_kg TO xdd_writer;
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA macrostrat_kg TO xdd_writer;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA macrostrat_kg TO xdd_writer;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO xdd_writer;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_xdd
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO xdd_writer;
 """
 
@@ -108,10 +108,10 @@ class OwnershipUnificationMigration(Migration):
         # Run as a fixture (file) so the SQL's format() `%` placeholders survive.
         db.run_fixtures(Path(__file__).parent / "reassign_ownership.sql")
 
-        # Re-owning macrostrat_xdd's tables away from xdd_writer stripped its
+        # Re-owning macrostrat_kg's tables away from xdd_writer stripped its
         # (ownership-implicit) write access; restore it explicitly. Dev/local only.
         has_xdd = db.run_query(
-            "SELECT to_regnamespace('macrostrat_xdd') IS NOT NULL AS present"
+            "SELECT to_regnamespace('macrostrat_kg') IS NOT NULL AS present"
         ).scalar()
         if has_xdd:
             db.run_sql(_XDD_GRANTS)

@@ -167,24 +167,26 @@ CREATE VIEW macrostrat_api.fossils AS
 
 CREATE VIEW macrostrat_api.kg_entities AS
 WITH matches AS (SELECT ge.global_entity_id,
-                        json_build_object(
-                                'global_entity_id', ge.global_entity_id,
-                                'entity_id', ge.entity_id,
-                                'entity_table', split_part(ge.entity_table, '.', 2),
-                                'name', ge.normalized_name
-                        ) AS match
+                   json_build_object(
+                     'global_entity_id', ge.global_entity_id,
+                     'entity_id', ge.entity_id,
+                     'entity_table', split_part(ge.entity_table, '.', 2),
+                     'name', ge.normalized_name
+                   ) AS match
                  FROM macrostrat_kg.global_entity ge)
 SELECT e.id,
-       et.id                                                AS type,
-       e.name,
-       ARRAY [e.start_index, e.end_index]                   AS indices,
-       mr.id                                                AS model_run,
-       mr.source_text_id                                    AS source,
-       m.match
+  et.id                                                AS type,
+  e.name,
+  ARRAY [e.start_index, e.end_index]                   AS indices,
+  mr.id                                                AS model_run,
+  mr.source_text_id                                    AS source,
+  m.match
 FROM macrostrat_kg.entity e
-         JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
-         JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
-         LEFT JOIN matches m ON m.global_entity_id = e.global_entity_id;
+JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
+JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
+LEFT JOIN matches m ON m.global_entity_id = e.macrostrat_terms_id;
+-- NOTE: I changed global_entity_id to macrostrat_terms_id to match the apparent realized
+-- structure of the database.
 
 CREATE VIEW macrostrat_api.kg_entity_tree AS
  WITH RECURSIVE start_entities AS (

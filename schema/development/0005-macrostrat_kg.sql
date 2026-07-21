@@ -12,7 +12,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 CREATE SCHEMA macrostrat_kg;
-ALTER SCHEMA macrostrat_kg OWNER TO macrostrat_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -369,7 +368,7 @@ ALTER TABLE ONLY macrostrat_kg.entity
     ADD CONSTRAINT fk_model_run_id FOREIGN KEY (run_id) REFERENCES macrostrat_kg.all_runs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat_kg.entity
-    ADD CONSTRAINT fk_global_entity_id FOREIGN KEY (global_entity_id) REFERENCES macrostrat_kg.global_entity(lobal_entity_id) ;
+    ADD CONSTRAINT fk_global_entity_id FOREIGN KEY (global_entity_id) REFERENCES macrostrat_kg.global_entity(global_entity_id);
 
 ALTER TABLE ONLY macrostrat_kg.relationship
     ADD CONSTRAINT fk_src_entity_id FOREIGN KEY (src_entity_id) REFERENCES macrostrat_kg.entity(id) ON DELETE CASCADE;
@@ -407,7 +406,7 @@ GRANT SELECT, USAGE ON SEQUENCE
 
 GRANT SELECT, USAGE ON ALL SEQUENCES IN SCHEMA macrostrat_kg TO web_user;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT ON TABLES TO web_anon;
 
 /** Logged in users can create feedback */
@@ -417,7 +416,7 @@ GRANT INSERT, UPDATE, DELETE ON TABLE
   macrostrat_kg.lookup_extraction_type
   TO web_users;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat_admin IN SCHEMA macrostrat_kg
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT, USAGE ON SEQUENCES TO web_user;
 
 
