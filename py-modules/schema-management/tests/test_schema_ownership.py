@@ -7,7 +7,7 @@ boilerplate in the SQL. The foundational ``public`` schema is deliberately exclu
 (it is applied as the connector/superuser and its ownership stays explicit).
 
 Also asserts the one intentional exception: ``xdd_writer`` keeps write access to
-``macrostrat_xdd`` (previously implicit via ownership, now via explicit grants).
+``macrostrat_kg`` (previously implicit via ownership, now via explicit grants).
 
 The structural drift test can't catch an ownership regression — both its sides go
 through the same ``build_schema`` — so this is the dedicated check.
@@ -107,20 +107,20 @@ def test_xdd_writer_retains_write_access():
     with test_database_cluster(username="macrostrat_admin") as db:
         build_schema(db, _ENV)
 
-        # A representative macrostrat_xdd table the writer must still be able to write.
+        # A representative macrostrat_kg table the writer must still be able to write.
         privs = db.run_query(
             """
             SELECT
-              pg_catalog.has_schema_privilege('xdd_writer', 'macrostrat_xdd', 'USAGE') AS schema_usage,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_xdd.entity', 'INSERT') AS ins,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_xdd.entity', 'UPDATE') AS upd,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_xdd.entity', 'DELETE') AS dlt
+              pg_catalog.has_schema_privilege('xdd_writer', 'macrostrat_kg', 'USAGE') AS schema_usage,
+              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS ins,
+              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'UPDATE') AS upd,
+              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'DELETE') AS dlt
             """
         ).one()
-        assert privs.schema_usage, "xdd_writer lost USAGE on macrostrat_xdd"
+        assert privs.schema_usage, "xdd_writer lost USAGE on macrostrat_kg"
         assert (
             privs.ins and privs.upd and privs.dlt
-        ), f"xdd_writer lost write access on macrostrat_xdd.entity: {privs}"
+        ), f"xdd_writer lost write access on macrostrat_kg.entity: {privs}"
 
 
 def _owner_of(db, schema, name):
@@ -149,9 +149,9 @@ def test_ownership_migration_reconciles_legacy_owners():
 
         # Simulate a legacy database: hand objects back to the pre-unification owners.
         db.run_sql("ALTER TABLE maps.sources OWNER TO macrostrat_admin;")
-        db.run_sql("ALTER TABLE macrostrat_xdd.entity OWNER TO xdd_writer;")
+        db.run_sql("ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;")
         assert _owner_of(db, "maps", "sources") == "macrostrat_admin"
-        assert _owner_of(db, "macrostrat_xdd", "entity") == "xdd_writer"
+        assert _owner_of(db, "macrostrat_kg", "entity") == "xdd_writer"
 
         migration = _load_ownership_migration()
         assert migration.should_apply(db) == ApplicationStatus.CAN_APPLY
@@ -161,9 +161,9 @@ def test_ownership_migration_reconciles_legacy_owners():
         # Ownership converged, migration now a no-op, and xdd_writer still writable.
         assert migration.should_apply(db) == ApplicationStatus.APPLIED
         assert _owner_of(db, "maps", "sources") == "macrostrat"
-        assert _owner_of(db, "macrostrat_xdd", "entity") == "macrostrat"
+        assert _owner_of(db, "macrostrat_kg", "entity") == "macrostrat"
 
         can_write = db.run_query(
-            "SELECT has_table_privilege('xdd_writer', 'macrostrat_xdd.entity', 'INSERT') AS w"
+            "SELECT has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS w"
         ).scalar()
         assert can_write, "xdd_writer lost write access after ownership reconciliation"

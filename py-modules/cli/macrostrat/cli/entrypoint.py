@@ -480,11 +480,10 @@ def state(clear: bool = False):
 from .subsystems.core import core_schema
 
 # Add basic schema hunks
-from .subsystems.xdd import text_vector_schema, xdd_schema
+from .subsystems.xdd import text_vector_schema
 
 # TODO: move these into the migrations system
 db_subsystem.schema_hunks.append(core_schema)
-db_subsystem.schema_hunks.append(xdd_schema)
 db_subsystem.schema_hunks.append(text_vector_schema)
 
 # Discover subsystems in third-party packages

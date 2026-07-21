@@ -11,19 +11,6 @@ from ...database.utils import grant_permissions, grant_schema_ownership
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
 
-# TODO: deprecated.
-xdd_schema = SubsystemSchemaDefinition(
-    name="xdd",
-    fixtures=[
-        fixtures_dir / "kg-views.sql",
-        # setup_postgrest_access("macrostrat_xdd"),
-        grant_schema_ownership("macrostrat_xdd", "xdd-writer"),
-        grant_permissions(
-            "macrostrat_xdd", "web_admin", ["SELECT", "UPDATE"], tables=["source_text"]
-        ),
-    ],
-)
-
 text_vector_schema = SubsystemSchemaDefinition(
     name="vectors",
     fixtures=[
@@ -45,7 +32,7 @@ def cache_citations():
     db = get_db()
     # Find papers that are in the source_text table but not in the publication table
     paper_ids = db.run_query(
-        "SELECT DISTINCT paper_id FROM macrostrat_xdd.source_text EXCEPT SELECT paper_id FROM macrostrat_xdd.publication"
+        "SELECT DISTINCT paper_id FROM macrostrat_kg.source_text EXCEPT SELECT paper_id FROM macrostrat_kg.publication"
     )
 
     for i, paper_id in enumerate(paper_ids.scalars()):
@@ -64,7 +51,7 @@ def cache_citations():
 
         # Insert the citation into the database
         db.run_query(
-            "INSERT INTO macrostrat_xdd.publication (paper_id, doi, url, citation) VALUES (:paper_id, :doi, :url, :citation)",
+            "INSERT INTO macrostrat_kg.publication (paper_id, doi, url, citation) VALUES (:paper_id, :doi, :url, :citation)",
             dict(
                 paper_id=paper_id,
                 doi=doi,
