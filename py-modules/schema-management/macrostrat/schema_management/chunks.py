@@ -78,7 +78,7 @@ def all_chunks() -> list[SchemaDefinition]:
             owner=_APP_OWNER,
         ),
         # `maps` is discovered from schema/maps/ (depends_on macrostrat via frontmatter).
-        *discover_chunks(schema_dir, owner=_APP_OWNER),
+        *discover_chunks(schema_dir / "_definitions", owner=_APP_OWNER),
         # "after maps" — storage, metadata, tiles, … (still flat).
         SchemaDefinition(
             name="core", depends_on=["maps"], provides=after_maps, owner=_APP_OWNER
@@ -103,7 +103,7 @@ def all_chunks() -> list[SchemaDefinition]:
         # `development` because some views read `macrostrat_kg`; dev-only for the same
         # reason.
         SchemaDefinition(
-            name="macrostrat_api",
+            name="macrostrat-api",
             depends_on=["development"],
             provides=[schema_dir / "macrostrat_api"],
             environments=_DEV_ENVS,
@@ -117,13 +117,7 @@ def all_chunks() -> list[SchemaDefinition]:
             owner=_APP_OWNER,
         ),
         TopologySchema,
-        SchemaDefinition(
-            name="macrostrat_gbdb",
-            depends_on=["macrostrat", "macrostrat_api"],
-            provides=[schema_dir / "macrostrat_gbdb"],
-            environments=_DEV_ENVS,
-            owner=_APP_OWNER,
-        )
+        *discover_chunks(schema_dir / "_dev_definitions", owner=_APP_OWNER, environments=_DEV_ENVS),
     ]
 
 

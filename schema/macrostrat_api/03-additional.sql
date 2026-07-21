@@ -534,35 +534,6 @@ CREATE VIEW macrostrat_api.mapped_sources AS
            FROM maps.polygons
           GROUP BY polygons.source_id) psi ON ((s.source_id = psi.source_id)));
 
-CREATE VIEW macrostrat_api.maps_sources AS
- SELECT sources.source_id,
-    sources.name,
-    sources.url,
-    sources.ref_title,
-    sources.authors,
-    sources.ref_year,
-    sources.ref_source,
-    sources.isbn_doi,
-    sources.scale,
-    sources.license,
-    sources.features,
-    sources.area,
-    sources.priority,
-    sources.display_scales,
-    sources.new_priority,
-    sources.status_code,
-    sources.slug,
-    sources.raster_url,
-    sources.scale_denominator,
-    sources.is_finalized,
-    sources.lines_oriented,
-    sources.date_finalized,
-    sources.ingested_by,
-    sources.keywords,
-    sources.language,
-    sources.description
-   FROM maps.sources;
-
 CREATE VIEW macrostrat_api.measurements_with_type AS
  SELECT m.id,
     m.sample_name,

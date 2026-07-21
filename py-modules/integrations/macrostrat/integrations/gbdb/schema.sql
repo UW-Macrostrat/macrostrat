@@ -1,4 +1,11 @@
--- TODO: standardize this...
+-- @subsystem: macrostrat-gbdb
+-- @depends-on: macrostrat-api, macrostrat
+/**
+  * Preliminary GeoBioDiversity Database integration.
+ */
+
+
+
 SET SEARCH_PATH TO macrostrat, public;
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_gbdb;
