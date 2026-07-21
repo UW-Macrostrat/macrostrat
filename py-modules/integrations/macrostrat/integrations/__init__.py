@@ -4,7 +4,6 @@ from macrostrat.schema_management.migrations import run_migrations
 
 from .gbdb import app as gbdb_app
 from .gbdb import update_age_model
-from .schema import IntegrationsBaseSchema
 from .strabospot import populate_strabospot
 
 pipelines = {
@@ -17,21 +16,6 @@ app = Typer(
     no_args_is_help=True,
     help="StraboSpot structural geology data system",
 )
-
-
-@app.command()
-def migrate(
-    apply: bool = False,
-    force: bool = False,
-    data_changes: bool = False,
-):
-    """Run migrations for the integrations subsystem"""
-    run_migrations(
-        subsystem="integrations",
-        apply=apply,
-        force=force,
-        data_changes=data_changes,
-    )
 
 
 @app.command()

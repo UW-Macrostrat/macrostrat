@@ -12,39 +12,10 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO rockd_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA topology TO rockd_reader;
 
 GRANT USAGE ON SCHEMA
-  carto, carto_new, geologic_boundaries, hexgrids, lines,
-  macrostrat, maps, points, sources, topology, public
+  topology, public
   TO macrostrat;
 
-GRANT SELECT ON ALL TABLES IN SCHEMA
-  carto, carto_new, geologic_boundaries, hexgrids, lines,
-  macrostrat, maps, points, sources, topology, public
-  TO macrostrat;
-
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA
-  carto, carto_new, geologic_boundaries, hexgrids, lines,
-  macrostrat, maps, points, sources, topology, public
-  TO macrostrat;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA
-  carto, carto_new, geologic_boundaries, hexgrids, lines,
-  macrostrat, maps, points, sources, topology, public
-  GRANT SELECT ON TABLES TO macrostrat;
-
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA
-  carto, carto_new, geologic_boundaries, hexgrids, lines,
-  macrostrat, maps, points, sources, topology, public
-  GRANT USAGE, SELECT ON SEQUENCES TO macrostrat;
-
-GRANT USAGE ON SCHEMA macrostrat TO "macrostrat";
-GRANT CREATE ON SCHEMA macrostrat TO "macrostrat";
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA macrostrat TO "macrostrat";
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA macrostrat TO "macrostrat";
-
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public, topology TO macrostrat;
-
--- This is mostly here to ensure idempoence of replaying all GRANT statements
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO macrostrat;
+GRANT SELECT ON ALL TABLES IN SCHEMA topology TO macrostrat;
 
 -- xDD writer role
 GRANT USAGE ON SCHEMA maps TO xdd_writer;
@@ -58,10 +29,4 @@ GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_anon;
 
 -- (The RLS helper functions public.current_app_user_id() / public.current_app_role()
 --  are defined as structure in 0001-public.sql; this file is authorization only.)
-
---tileserver permissions
-GRANT USAGE ON SCHEMA tile_cache TO macrostrat;
-GRANT SELECT ON ALL TABLES IN SCHEMA tile_cache TO macrostrat;
-GRANT INSERT, UPDATE ON TABLE tile_cache.tile TO macrostrat;
-ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA tile_cache GRANT SELECT ON TABLES TO macrostrat;
 

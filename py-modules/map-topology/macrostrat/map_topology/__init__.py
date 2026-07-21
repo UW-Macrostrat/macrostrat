@@ -41,6 +41,11 @@ def reset():
     ctx = get_topo_context()
     ctx.database.run_fixtures(proc("reset-topology"))
 
+@cli.command("init")
+def init():
+    mgr = get_topo_manager()
+    mgr.check_setup()
+    mgr.create_tables(check=True)
 
 @cli.command("remove")
 def _remove(maps: list[str] = Argument(None)):
