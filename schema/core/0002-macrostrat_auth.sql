@@ -68,12 +68,13 @@ ALTER TABLE macrostrat_auth.token_id_seq OWNER TO macrostrat;
 ALTER SEQUENCE macrostrat_auth.token_id_seq OWNED BY macrostrat_auth.token.id;
 
 CREATE TABLE macrostrat_auth."user" (
-    id integer NOT NULL,
-    sub character varying(255) NOT NULL,
-    name character varying(255),
-    email character varying(255),
-    created_on timestamp with time zone DEFAULT now() NOT NULL,
-    updated_on timestamp with time zone DEFAULT now() NOT NULL
+    id           serial primary key,
+    sub          varchar(255) not null unique,
+    name         varchar(255),
+    email        varchar(255),
+    display_name varchar(255),
+    created_on   timestamp with time zone default now() not null,
+    updated_on   timestamp with time zone default now() not null,
 );
 ALTER TABLE macrostrat_auth."user" OWNER TO macrostrat;
 

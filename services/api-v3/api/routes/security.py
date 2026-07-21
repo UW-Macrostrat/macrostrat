@@ -178,12 +178,19 @@ async def get_user(
     return user
 
 
+def get_display_name(name: str) -> str:
+    """Parses first name in the name string coming from orcid"""
+    return name.split(" ")[0] if name else ""
+
+
 async def create_user(
     sub: str, name: str, email: str, async_session: async_sessionmaker[AsyncSession]
 ) -> schemas.User:
     """Create a new user"""
 
-    user = schemas.User(sub=sub, name=name, email=email)
+    user = schemas.User(
+        sub=sub, name=name, display_name=get_display_name(name), email=email
+    )
 
     async with async_session() as session:
         session.add(user)
@@ -339,7 +346,7 @@ async def redirect_callback(
 
                 user = await create_user(
                     user_data["sub"],
-                    f"{given_name} {family_name}",
+                    f"{given_name} {family_name}".strip(),
                     user_data.get("email", ""),
                     database.async_sessionmaker,
                 )
@@ -358,6 +365,7 @@ async def redirect_callback(
                 data={
                     "sub": user.sub,
                     "role": role,  # For PostgREST
+                    "name": user.display_name,
                 }
             )
 
@@ -397,6 +405,7 @@ async def redirect_callback(
                 {
                     "sub": user.sub,
                     "type": "refresh",
+                    "name": user.display_name,
                     "exp": datetime.utcnow()
                     + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
                 },
@@ -459,7 +468,7 @@ async def refresh_token(
     )
     # setting new access cookie
     access_token = create_access_token(
-        data={"sub": user.sub, "role": role}
+        data={"sub": user.sub, "role": role, "name": user.display_name}
     )
 
     parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
@@ -552,8 +561,7 @@ async def read_users_me(
             "sub": user.sub,
             "email": user.email,
             "id": user.id,
-            "name": user.name,
+            "display_name": user.display_name,
             "created_on": user.created_on,
             "updated_on": user.updated_on,
-            "groups": [{"name": g.name, "id": g.id} for g in user.groups],
         }
