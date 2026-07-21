@@ -151,7 +151,7 @@ ALTER TABLE ONLY maps_metadata.map_files
     ADD CONSTRAINT map_files_ingest_process_id_fkey FOREIGN KEY (ingest_process_id) REFERENCES maps_metadata.ingest_process(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY maps_metadata.map_files
-    ADD CONSTRAINT map_files_object_id_fkey FOREIGN KEY (object_id) REFERENCES storage.object(id);
+    ADD CONSTRAINT map_files_object_id_fkey FOREIGN KEY (object_id) REFERENCES storage.objects(id);
 
 GRANT SELECT,UPDATE ON TABLE maps_metadata.ingest_process TO web_user;
 

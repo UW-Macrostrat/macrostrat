@@ -1,3 +1,5 @@
+-- TODO: standardize this...
+SET SEARCH_PATH TO macrostrat, public;
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_gbdb;
 

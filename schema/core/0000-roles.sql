@@ -51,3 +51,6 @@ GRANT web_anon TO web_user;
 
 -- Grant web_user capabilities to web_admin
 GRANT web_user TO web_admin;
+
+
+GRANT REFERENCES ON spatial_ref_sys TO macrostrat;

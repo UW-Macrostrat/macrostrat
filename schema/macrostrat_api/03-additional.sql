@@ -1162,10 +1162,6 @@ LEFT JOIN feedback_meta fm
 LEFT JOIN macrostrat_kg.global_entity ge
     ON ge.global_entity_id = sr.root_id;
 
-ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
-
-
-
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
@@ -1179,8 +1175,6 @@ GRANT ALL ON FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) 
 GRANT ALL ON FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) TO web_anon;
 
 GRANT ALL ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_api.col_filter TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.col_filters TO web_anon;
 
