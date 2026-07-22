@@ -22,6 +22,42 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
 $$;
 SET default_tablespace = '';
 
+CREATE TABLE maps.sources (
+  source_id serial PRIMARY KEY,
+  name character varying(255),
+  primary_table character varying(255),
+  url character varying(255),
+  ref_title text,
+  authors character varying(255),
+  ref_year text,
+  ref_source character varying(255),
+  isbn_doi character varying(100),
+  scale character varying(20),
+  primary_line_table character varying(50),
+  license character varying(100),
+  features integer,
+  area integer,
+  priority boolean DEFAULT false,
+  rgeom public.geometry,
+  display_scales text[],
+  web_geom public.geometry,
+  new_priority integer DEFAULT 0,
+  status_code text DEFAULT 'active'::text,
+  slug text NOT NULL UNIQUE,
+  raster_url text,
+  scale_denominator integer,
+  is_finalized boolean DEFAULT false,
+  lines_oriented boolean,
+  date_finalized timestamp with time zone,
+  ingested_by text,
+  keywords text[],
+  language text,
+  description character varying
+);
+
+COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
+
+-- TODO: integrate lines sequence into maps schema
 CREATE TABLE maps.lines (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
     orig_id text,
@@ -39,9 +75,18 @@ CREATE TABLE maps.lines (
 PARTITION BY LIST (scale);
 SET default_table_access_method = heap;
 
+/** TODO: make this sequence a bit more generic */
+CREATE SEQUENCE maps.legend_legend_id_seq
+  AS integer
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+
 CREATE TABLE maps.legend (
-    legend_id integer NOT NULL,
-    source_id integer NOT NULL,
+    legend_id integer DEFAULT nextval('maps.legend_legend_id_seq'::regclass) PRIMARY KEY,
+    source_id integer NOT NULL REFERENCES maps.sources(source_id),
     name text,
     strat_name text,
     age text,
@@ -70,6 +115,9 @@ CREATE TABLE maps.legend (
     large_area numeric
 );
 
+-- Not sure if this is necessary, but it seems like a good idea to link the sequence to the table column
+ALTER SEQUENCE maps.legend_legend_id_seq OWNED BY maps.legend.legend_id;
+
 CREATE TABLE maps.legend_liths (
     legend_id integer NOT NULL,
     lith_id integer NOT NULL,
@@ -97,60 +145,13 @@ CREATE TABLE maps.polygons (
     t_interval integer,
     b_interval integer,
     geom public.geometry(Geometry,4326) NOT NULL,
-    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom))
+    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
+    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
 )
 PARTITION BY LIST (scale);
 
-CREATE TABLE maps.sources (
-    source_id serial PRIMARY KEY,
-    name character varying(255),
-    primary_table character varying(255),
-    url character varying(255),
-    ref_title text,
-    authors character varying(255),
-    ref_year text,
-    ref_source character varying(255),
-    isbn_doi character varying(100),
-    scale character varying(20),
-    primary_line_table character varying(50),
-    license character varying(100),
-    features integer,
-    area integer,
-    priority boolean DEFAULT false,
-    rgeom public.geometry,
-    display_scales text[],
-    web_geom public.geometry,
-    new_priority integer DEFAULT 0,
-    status_code text DEFAULT 'active'::text,
-    slug text NOT NULL,
-    raster_url text,
-    scale_denominator integer,
-    is_finalized boolean DEFAULT false,
-    lines_oriented boolean,
-    date_finalized timestamp with time zone,
-    ingested_by text,
-    keywords text[],
-    language text,
-    description character varying
-);
-
 GRANT USAGE ON SCHEMA maps TO web_admin;
 GRANT SELECT ON TABLE maps.sources TO web_admin;
-
-ALTER TABLE ONLY maps.sources
-  ADD CONSTRAINT sources_slug_key1 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-  ADD CONSTRAINT sources_slug_key2 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-  ADD CONSTRAINT sources_slug_key3 UNIQUE (slug);
-
-ALTER TABLE ONLY maps.sources
-  ADD CONSTRAINT sources_source_id_key UNIQUE (source_id);
-
-
-COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
 
 CREATE TABLE maps.points (
     source_id integer NOT NULL,
@@ -189,18 +190,9 @@ CREATE TABLE maps.polygons_large (
     CONSTRAINT enforce_valid_geom_large CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
+    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
 );
-
-CREATE SEQUENCE maps.legend_legend_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE maps.legend_legend_id_seq OWNED BY maps.legend.legend_id;
 
 CREATE TABLE maps.lines_large (
     line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
@@ -288,11 +280,15 @@ ALTER SEQUENCE maps.manual_matches_match_id_seq OWNED BY maps.manual_matches.mat
 
 CREATE TABLE maps.map_legend (
   -- no cascade delete on legend_id link prevents orphaned polygons if a legend entry is deleted
-  legend_id integer REFERENCES maps.legend(legend_id),
+  legend_id integer NOT NULL REFERENCES maps.legend(legend_id),
   -- we allow polygons to be deleted without restriction, removing downstream map_legend entries
-  map_id integer REFERENCES maps.polygons(map_id) ON DELETE CASCADE,
-  PRIMARY KEY (legend_id, map_id) -- not null, unique constraints subsumed by primary key
+  map_id integer NOT NULL, -- Can't create a foreign key to maps.polygons(id) because it's partitioned.
+    -- Would also need to mention scale. Perhaps we should revisit this (either partitioning or foreign key) in the future.
+  UNIQUE (legend_id, map_id) -- not null, unique constraints ~ primary key
 );
+
+CREATE INDEX map_legend_legend_id_idx ON maps.map_legend USING btree (legend_id);
+CREATE INDEX map_legend_map_id_idx ON maps.map_legend USING btree (map_id);
 
 CREATE TABLE maps.map_liths (
     map_id integer NOT NULL,
@@ -329,7 +325,8 @@ CREATE TABLE maps.polygons_medium (
     CONSTRAINT enforce_valid_geom_medium CHECK (public.st_isvalid(geom)),
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
+    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
 );
 
 CREATE SEQUENCE maps.points_point_id_seq
@@ -357,7 +354,8 @@ CREATE TABLE maps.polygons_small (
     scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
+    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
 );
 
 CREATE TABLE maps.polygons_tiny (
@@ -376,7 +374,8 @@ CREATE TABLE maps.polygons_tiny (
     scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
     CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id)
+    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
+    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
 );
 
 CREATE TABLE maps.source_operations (
@@ -428,8 +427,6 @@ ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_small FOR VALUES I
 
 ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_tiny FOR VALUES IN ('tiny');
 
-ALTER TABLE ONLY maps.legend ALTER COLUMN legend_id SET DEFAULT nextval('maps.legend_legend_id_seq'::regclass);
-
 ALTER TABLE ONLY maps.manual_matches ALTER COLUMN match_id SET DEFAULT nextval('maps.manual_matches_match_id_seq'::regclass);
 
 ALTER TABLE ONLY maps.points ALTER COLUMN point_id SET DEFAULT nextval('maps.points_point_id_seq'::regclass);
@@ -438,9 +435,6 @@ ALTER TABLE ONLY maps.source_operations ALTER COLUMN id SET DEFAULT nextval('map
 
 ALTER TABLE ONLY maps.legend_liths
     ADD CONSTRAINT legend_liths_legend_id_lith_id_basis_col_key UNIQUE (legend_id, lith_id, basis_col);
-
-ALTER TABLE ONLY maps.legend
-    ADD CONSTRAINT legend_pkey PRIMARY KEY (legend_id);
 
 ALTER TABLE ONLY maps.lines
     ADD CONSTRAINT lines_pkey PRIMARY KEY (line_id, scale);
@@ -459,21 +453,6 @@ ALTER TABLE ONLY maps.lines_tiny
 
 ALTER TABLE ONLY maps.sources
     ADD CONSTRAINT map_sources_name_key UNIQUE (primary_table);
-
-ALTER TABLE ONLY maps.polygons
-    ADD CONSTRAINT maps_polygons_pkey PRIMARY KEY (map_id, scale);
-
-ALTER TABLE ONLY maps.polygons_large
-    ADD CONSTRAINT maps_polygons_large_pkey PRIMARY KEY (map_id, scale);
-
-ALTER TABLE ONLY maps.polygons_medium
-    ADD CONSTRAINT maps_polygons_medium_pkey PRIMARY KEY (map_id, scale);
-
-ALTER TABLE ONLY maps.polygons_small
-    ADD CONSTRAINT maps_polygons_small_pkey PRIMARY KEY (map_id, scale);
-
-ALTER TABLE ONLY maps.polygons_tiny
-    ADD CONSTRAINT maps_polygons_tiny_pkey PRIMARY KEY (map_id, scale);
 
 ALTER TABLE ONLY maps.source_operations
     ADD CONSTRAINT source_operations_pkey PRIMARY KEY (id);
