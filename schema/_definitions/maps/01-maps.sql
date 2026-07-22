@@ -287,8 +287,11 @@ CREATE SEQUENCE maps.manual_matches_match_id_seq
 ALTER SEQUENCE maps.manual_matches_match_id_seq OWNED BY maps.manual_matches.match_id;
 
 CREATE TABLE maps.map_legend (
-    legend_id integer NOT NULL,
-    map_id integer NOT NULL
+  -- no cascade delete on legend_id link prevents orphaned polygons if a legend entry is deleted
+  legend_id integer REFERENCES maps.legend(legend_id),
+  -- we allow polygons to be deleted without restriction, removing downstream map_legend entries
+  map_id integer REFERENCES maps.polygons(map_id) ON DELETE CASCADE,
+  PRIMARY KEY (legend_id, map_id) -- not null, unique constraints subsumed by primary key
 );
 
 CREATE TABLE maps.map_liths (
@@ -454,9 +457,6 @@ ALTER TABLE ONLY maps.lines_small
 ALTER TABLE ONLY maps.lines_tiny
     ADD CONSTRAINT lines_tiny_pkey PRIMARY KEY (line_id, scale);
 
-ALTER TABLE ONLY maps.map_legend
-    ADD CONSTRAINT map_legend_legend_id_map_id_key UNIQUE (legend_id, map_id);
-
 ALTER TABLE ONLY maps.sources
     ADD CONSTRAINT map_sources_name_key UNIQUE (primary_table);
 
@@ -553,10 +553,6 @@ CREATE INDEX manual_matches_map_id_idx ON maps.manual_matches USING btree (map_i
 CREATE INDEX manual_matches_strat_name_id_idx ON maps.manual_matches USING btree (strat_name_id);
 
 CREATE INDEX manual_matches_unit_id_idx ON maps.manual_matches USING btree (unit_id);
-
-CREATE INDEX map_legend_legend_id_idx ON maps.map_legend USING btree (legend_id);
-
-CREATE INDEX map_legend_map_id_idx ON maps.map_legend USING btree (map_id);
 
 CREATE INDEX map_liths_lith_id_idx ON maps.map_liths USING btree (lith_id);
 
