@@ -1,46 +1,5 @@
 """
-Integration tests for the **PostgREST → Caddy → cookie→header → RLS** chain.
-
-Unlike the other suites in this directory, these tests do **not** use the FastAPI
-``TestClient``. The whole point is to exercise the real gateway path:
-
-    HTTP request with an ``access_token`` cookie
-        → Caddy ``(schema-proxy)`` copies the cookie into an
-          ``Authorization: Bearer <jwt>`` header  (Caddyfile ``@auth_cookie``)
-        → PostgREST validates the JWT with ``PGRST_JWT_SECRET`` (== ``SECRET_KEY``)
-          and ``SET ROLE``s to the ``role`` claim
-        → Postgres RLS policies on ``user_features.user_locations`` filter rows
-          using ``current_app_role()`` / ``current_app_user_id()`` (JWT claims).
-
-So they must run against a **live ``macrostrat up`` stack** and hit Caddy over
-HTTP. If the gateway isn't reachable the whole module is skipped, so this file is
-safe to leave in the normal collection.
-
-What is covered
----------------
-* No cookie                      → PostgREST falls back to ``web_anon``.
-* Valid ``web_user`` JWT cookie  → role becomes ``web_user`` (chain works).
-* Valid ``web_admin`` JWT cookie → role becomes ``web_admin``.
-* Invalid-signature JWT          → PostgREST 401 (bad cookie is rejected).
-* Expired JWT                    → PostgREST 401.
-* RLS: ``web_admin`` sees all ``user_locations`` rows.
-* RLS: ``web_user`` sees only its own rows, scoped by the JWT ``sub`` claim
-  (``current_app_user_id()`` resolves ``sub`` → integer id).
-* RLS: scoping ignores any ``user_id`` claim — ``sub`` is authoritative.
-* RLS: a ``web_user`` whose ``sub`` maps to no user sees nothing (fail-safe).
-
-The ``sub``-scoping tests need a real ``sub`` → id mapping, which isn't exposed
-over PostgREST, so they use a **read-only** direct DB connection
-(``MACROSTRAT_DATABASE_URL``) purely to discover an existing owner. They skip if
-the database isn't reachable.
-
-Config (env vars; ``.env`` files are auto-loaded as a fallback)
----------------------------------------------------------------
-* ``SECRET_KEY``                - shared HS256 secret; **must equal**
-  PostgREST's ``PGRST_JWT_SECRET`` (set in ``local-root/.env``). Required.
-* ``JWT_ENCRYPTION_ALGORITHM``  - JWT alg, default ``HS256``.
-* ``MACROSTRAT_GATEWAY_URL``    - gateway base, default ``https://macrostrat.local``.
-
+This suite only runs locally for now
 Run
 ---
     uv run pytest -q --confcutdir=api/tests api/tests/test_postgrest_caddy_rls.py
@@ -58,17 +17,9 @@ from dotenv import load_dotenv
 from jose import jwt
 from sqlalchemy import create_engine, text
 
-# --------------------------------------------------------------------------- #
-# Config / env loading
-# --------------------------------------------------------------------------- #
 
-# Repo root is .../macrostrat ; this file is at
-# .../macrostrat/services/api-v3/api/tests/test_postgrest_caddy_rls.py
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
-# Load the api-v3 env first, then local-root (which holds the SECRET_KEY that
-# PostgREST actually uses). ``override=False`` means a real environment variable
-# always wins over the files.
 load_dotenv(_REPO_ROOT / "services" / "api-v3" / ".env", override=False)
 load_dotenv(_REPO_ROOT / "local-root" / ".env", override=False)
 
@@ -79,20 +30,16 @@ GATEWAY_URL = os.environ.get("MACROSTRAT_GATEWAY_URL", "https://macrostrat.local
 )
 PG_BASE = f"{GATEWAY_URL}/api/pg"
 
-# A stable, obviously-fake ORCID-style subject for the synthetic tokens.
+# fake orcid sub for tests
 TEST_SUB = "0000-0000-0000-0001"
 
 # Skip the whole module unless we can actually reach the gateway *and* we have a
-# secret to sign tokens with — these are integration tests, not unit tests.
+# secret to sign tokens with
 pytestmark = pytest.mark.skipif(
     not SECRET_KEY,
     reason="SECRET_KEY not set (needed to mint JWTs matching PostgREST's PGRST_JWT_SECRET)",
 )
 
-
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
 
 def _mint(
     *,
