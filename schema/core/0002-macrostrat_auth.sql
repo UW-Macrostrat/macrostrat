@@ -74,7 +74,7 @@ CREATE TABLE macrostrat_auth."user" (
     email        varchar(255),
     display_name varchar(255),
     created_on   timestamp with time zone default now() not null,
-    updated_on   timestamp with time zone default now() not null,
+    updated_on   timestamp with time zone default now() not null
 );
 ALTER TABLE macrostrat_auth."user" OWNER TO macrostrat;
 
