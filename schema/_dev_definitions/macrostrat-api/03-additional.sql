@@ -507,46 +507,6 @@ CREATE VIEW macrostrat_api.macrostrat_stats AS
         END) AS rows_last_24_hours
    FROM usage_stats.macrostrat_stats;
 
-CREATE VIEW macrostrat_api.map_ingest AS
- SELECT ingest_process.id,
-    ingest_process.state,
-    ingest_process.comments,
-    ingest_process.source_id,
-    ingest_process.created_on,
-    ingest_process.completed_on,
-    ingest_process.map_id,
-    ingest_process.type,
-    ingest_process.polygon_state,
-    ingest_process.line_state,
-    ingest_process.point_state,
-    ingest_process.ingest_pipeline,
-    ingest_process.map_url,
-    ingest_process.ingested_by,
-    ingest_process.slug
-   FROM maps_metadata.ingest_process;
-
-CREATE VIEW macrostrat_api.map_ingest_metadata AS
- SELECT ingest_process.id,
-    ingest_process.state,
-    ingest_process.comments,
-    ingest_process.source_id,
-    ingest_process.created_on,
-    ingest_process.completed_on,
-    ingest_process.map_id,
-    ingest_process.type,
-    ingest_process.polygon_state,
-    ingest_process.line_state,
-    ingest_process.point_state,
-    ingest_process.ingest_pipeline,
-    ingest_process.map_url,
-    ingest_process.ingested_by,
-    ingest_process.slug
-   FROM maps_metadata.ingest_process;
-
-CREATE VIEW macrostrat_api.map_ingest_tags AS
- SELECT ingest_process_tag.ingest_process_id,
-    ingest_process_tag.tag
-   FROM maps_metadata.ingest_process_tag;
 
 CREATE VIEW macrostrat_api.mapped_sources AS
  SELECT s.source_id,
@@ -573,35 +533,6 @@ CREATE VIEW macrostrat_api.mapped_sources AS
      LEFT JOIN ( SELECT polygons.source_id
            FROM maps.polygons
           GROUP BY polygons.source_id) psi ON ((s.source_id = psi.source_id)));
-
-CREATE VIEW macrostrat_api.maps_sources AS
- SELECT sources.source_id,
-    sources.name,
-    sources.url,
-    sources.ref_title,
-    sources.authors,
-    sources.ref_year,
-    sources.ref_source,
-    sources.isbn_doi,
-    sources.scale,
-    sources.license,
-    sources.features,
-    sources.area,
-    sources.priority,
-    sources.display_scales,
-    sources.new_priority,
-    sources.status_code,
-    sources.slug,
-    sources.raster_url,
-    sources.scale_denominator,
-    sources.is_finalized,
-    sources.lines_oriented,
-    sources.date_finalized,
-    sources.ingested_by,
-    sources.keywords,
-    sources.language,
-    sources.description
-   FROM maps.sources;
 
 CREATE VIEW macrostrat_api.measurements_with_type AS
  SELECT m.id,
@@ -901,11 +832,10 @@ CREATE VIEW macrostrat_api.sources_ingestion AS
     i.comments,
     i.created_on,
     i.completed_on,
-    i.map_id,
     s.is_finalized,
     s.scale_denominator
-   FROM (maps.sources_metadata s
-     JOIN maps_metadata.ingest_process i ON ((i.source_id = s.source_id)));
+   FROM  maps.sources_metadata s
+  JOIN maps_metadata.ingest_process i ON i.source_id = s.source_id;
 
 CREATE VIEW macrostrat_api.sources_metadata AS
  SELECT sources_metadata.source_id,
@@ -1203,10 +1133,6 @@ LEFT JOIN feedback_meta fm
 LEFT JOIN macrostrat_kg.global_entity ge
     ON ge.global_entity_id = sr.root_id;
 
-ALTER TABLE macrostrat_api.feedback OWNER TO macrostrat_admin;
-
-
-
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
@@ -1220,8 +1146,6 @@ GRANT ALL ON FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) 
 GRANT ALL ON FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) TO web_anon;
 
 GRANT ALL ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_api.col_filter TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.col_filters TO web_anon;
 

@@ -52,7 +52,7 @@ TopologySchema = SchemaDefinition(
     "map-topology",
     provides=[create_topo_fixtures],
     depends_on=["core"],
-    environments=frozenset({"local"}),
+    environments=frozenset({"local", "development"}),
 )
 
 

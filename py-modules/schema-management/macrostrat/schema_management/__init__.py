@@ -86,6 +86,13 @@ def plan():
         # Extension versions are not important
         m.changes.ignore_extension_versions = True
 
+        m.changes.i_from.constraints = filter_topogeometry_constraints(
+            m.changes.i_from.constraints
+        )
+        m.changes.i_target.constraints = filter_topogeometry_constraints(
+            m.changes.i_target.constraints
+        )
+
         m.set_safety(False)
         m.add_all_changes(privileges=True)
 
@@ -110,6 +117,12 @@ def plan():
                 # Extra newline after statements that span multiple lines
                 if "\n" in statement:
                     f.write("\n")
+
+
+def filter_topogeometry_constraints(constraints):
+    """Filter out the topology layer constraints that do not respond well to schema
+    diffing due to their reliance on stable IDs in the topology.topology table."""
+    return {k: v for k, v in constraints.items() if v.name != "check_topogeom_topo"}
 
 
 def _get_results_db(db: Database) -> results_db:
@@ -144,7 +157,7 @@ def review(edit=False):
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
-    archive: bool = Option(True, "--archive/--no-archive"),
+    archive: bool = Option(False, "--archive/--no-archive"),
 ):
     """Apply migration plan to database"""
     db = get_database()

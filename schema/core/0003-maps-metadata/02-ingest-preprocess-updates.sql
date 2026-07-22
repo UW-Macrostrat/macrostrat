@@ -1,3 +1,4 @@
+CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
 CREATE OR REPLACE VIEW macrostrat_api.map_ingest_metadata AS
 SELECT * FROM maps_metadata.ingest_process;

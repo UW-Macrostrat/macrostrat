@@ -56,3 +56,4 @@ CREATE TABLE IF NOT EXISTS tileserver_stats.location_index (
 -- (the unique constraint above leads with layer/ext, so it can't serve this).
 CREATE INDEX IF NOT EXISTS location_index_zxy
   ON tileserver_stats.location_index (z, x, y);
+

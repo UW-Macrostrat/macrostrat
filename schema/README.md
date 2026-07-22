@@ -66,7 +66,7 @@ frontmatter header (see `schema_management/discovery.py`). A subsystem is either
 (comma/space list) define the chunk and its graph edges. **Which environments a
 subsystem applies to is *not* declared in SQL** — it's assigned externally by the
 loader, based on where the chunk is loaded from (the way `core/` vs `development/`
-already works). `maps` (`schema/maps/`) is the first subsystem migrated to this
+already works). `maps` (`_definitions/maps/`) is the first subsystem migrated to this
 convention.
 
 ## Direction (in progress)

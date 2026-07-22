@@ -12,6 +12,7 @@ CREATE ROLE macrostrat;
 --   1. the connector to be able to SET ROLE macrostrat — superusers already can;
 --      this covers a non-superuser connector (it connects via macrostrat_admin).
 GRANT macrostrat TO macrostrat_admin;
+GRANT macrostrat TO "macrostrat-admin";
 --   2. macrostrat to create (and thereby own) its own schemas in whatever database
 --      it is applied to. current_database() can't appear in a plain GRANT, so wrap it.
 DO $$ BEGIN
@@ -51,3 +52,7 @@ GRANT web_anon TO web_user;
 
 -- Grant web_user capabilities to web_admin
 GRANT web_user TO web_admin;
+
+
+GRANT REFERENCES ON spatial_ref_sys TO macrostrat;
+GRANT SELECT ON spatial_ref_sys TO macrostrat;

@@ -42,6 +42,13 @@ def reset():
     ctx.database.run_fixtures(proc("reset-topology"))
 
 
+@cli.command("init")
+def init():
+    mgr = get_topo_manager()
+    mgr.check_setup()
+    mgr.create_tables(check=True)
+
+
 @cli.command("remove")
 def _remove(maps: list[str] = Argument(None)):
     """Remove topology fixtures"""
@@ -69,6 +76,8 @@ def _clean():
 def rebuild(maps: list[str] = Argument(None)):
     """Rebuild topology fixtures"""
     mgr = get_topo_manager()
+
+    mgr.rebuild_layer_constraints()
 
     if maps is not None:
         all_maps = get_map_list(mgr.database, maps)
