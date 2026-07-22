@@ -153,9 +153,22 @@ localhost, macrostrat.local {
 }
 
 dev.macrostrat.local {
-    # Proxy to the locally running frontend application, if running
     tls internal
-    reverse_proxy host.docker.internal:3000
+
+    handle_path /api/v2/* {
+        reverse_proxy api_v2:5000
+    }
+    handle_path /api/v3/* {
+        reverse_proxy api_v3:80
+    }
+
+    import schema-proxy /api/v3/macrostrat/pg macrostrat_api
+    import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
+    import schema-proxy /api/pg macrostrat_api
+
+    handle {
+        reverse_proxy host.docker.internal:3000
+    }
 }
 
 dev.macrostrat.local:24678 {

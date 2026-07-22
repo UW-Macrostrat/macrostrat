@@ -17,7 +17,7 @@ start-database:
 	macrostrat compose up -d database storage
 
 start-gateway:
-	macrostrat up gateway
+	macrostrat up --force-recreate gateway
 
 build-restart:
 	macrostrat up --force-recreate api_v3

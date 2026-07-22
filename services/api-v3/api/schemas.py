@@ -85,6 +85,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     sub: Mapped[str] = mapped_column(VARCHAR(255))
     name: Mapped[str] = mapped_column(VARCHAR(255))
+    display_name: Mapped[str] = mapped_column(VARCHAR(255), nullable=True)
     email: Mapped[str] = mapped_column(VARCHAR(255))
     groups: Mapped[List[Group]] = relationship(
         secondary="macrostrat_auth.group_members", lazy="joined", back_populates="users"
