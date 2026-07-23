@@ -167,7 +167,7 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
         JOIN maps.sources s
         ON ma.id = s.source_id
         WHERE geometry IS NOT NULL
-            AND geometry_hash IS NULL
+          AND geometry_hash IS NULL
            OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
         """
     ).all()
