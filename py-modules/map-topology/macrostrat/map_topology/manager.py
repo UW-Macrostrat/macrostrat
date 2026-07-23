@@ -215,7 +215,9 @@ def process_map(db, map, **kwargs):
     print()
 
 
-def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256, restart=False):
+def prepare_map_topo_features(
+    db, _map, *, subdivide_vertices: int = 256, restart=False
+):
     """
     The map_topo update loop allows large/complex map_area features to be written and error-checked incrementally.
     This dramatically speeds up initial insertion of certain maps into the topology tables.
@@ -232,7 +234,8 @@ def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256, restar
     # Force insertion
     if restart:
         db.run_query(
-            "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id", dict(map_id=map_id)
+            "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id",
+            dict(map_id=map_id),
         )
 
     res = db.run_query(
