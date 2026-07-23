@@ -167,7 +167,7 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
         JOIN maps.sources s
         ON ma.id = s.source_id
         WHERE geometry IS NOT NULL
-            AND geometry_hash IS NULL
+          AND geometry_hash IS NULL
            OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
         """
     ).all()
@@ -193,10 +193,21 @@ def process_map(db, map, **kwargs):
             dict(map_id=map.map_id),
         ).scalar()
         if res == 1:
+            _print_map_info(map, prefix="  Skipping map ")
+            print("  Geometry has not changed since last update")
+            return
+
+        # We also want to skip this step if the topogeometries for the map are full added and processed
+        query_sql = proc("get-map-topo-status")
+        res = db.run_query(query_sql, dict(map_id=map.map_id)).one()
+        if res.total > 0 and res.processed == res.total:
+            _print_map_info(map, prefix="  Skipping map ")
+            print(f"  {res.processed} topogeometries already processed")
             return
 
     _print_map_info(map, prefix="Processing map ")
 
+    kwargs["restart"] = bulk
     prepare_map_topo_features(db, map, **kwargs)
     print()
     add_topogeometries(db, map.map_id)
@@ -204,7 +215,9 @@ def process_map(db, map, **kwargs):
     print()
 
 
-def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
+def prepare_map_topo_features(
+    db, _map, *, subdivide_vertices: int = 256, restart=False
+):
     """
     The map_topo update loop allows large/complex map_area features to be written and error-checked incrementally.
     This dramatically speeds up initial insertion of certain maps into the topology tables.
@@ -219,9 +232,11 @@ def prepare_map_topo_features(db, _map, *, subdivide_vertices: int = 256):
     t_start = time.time()
 
     # Force insertion
-    db.run_query(
-        "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id", dict(map_id=map_id)
-    )
+    if restart:
+        db.run_query(
+            "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id",
+            dict(map_id=map_id),
+        )
 
     res = db.run_query(
         proc("insert-map-topo-features"),

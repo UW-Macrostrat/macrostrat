@@ -84,14 +84,8 @@ def plan():
         m.changes.i_from = get_inspector(from_db, schemas)
         m.changes.i_target = get_inspector(target_db, schemas)
         # Extension versions are not important
-        m.changes.ignore_extension_versions = True
 
-        m.changes.i_from.constraints = filter_topogeometry_constraints(
-            m.changes.i_from.constraints
-        )
-        m.changes.i_target.constraints = filter_topogeometry_constraints(
-            m.changes.i_target.constraints
-        )
+        filter_changes_from_plan(m.changes)
 
         m.set_safety(False)
         m.add_all_changes(privileges=True)
@@ -119,10 +113,27 @@ def plan():
                     f.write("\n")
 
 
-def filter_topogeometry_constraints(constraints):
+def filter_changes_from_plan(changes):
+    """Filter topogeometry changes"""
+    changes.ignore_extension_versions = True
+
+    filter_topogeometry_elements(changes.i_from)
+    filter_topogeometry_elements(changes.i_target)
+
+
+def filter_topogeometry_elements(inspector):
     """Filter out the topology layer constraints that do not respond well to schema
     diffing due to their reliance on stable IDs in the topology.topology table."""
-    return {k: v for k, v in constraints.items() if v.name != "check_topogeom_topo"}
+    inspector.constraints = {
+        k: v
+        for k, v in inspector.constraints.items()
+        if v.name != "check_topogeom_topo"
+    }
+    inspector.sequences = {
+        k: v
+        for k, v in inspector.sequences.items()
+        if not v.name.startswith("topogeo_s_")
+    }
 
 
 def _get_results_db(db: Database) -> results_db:

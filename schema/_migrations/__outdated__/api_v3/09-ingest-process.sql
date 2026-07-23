@@ -4,7 +4,7 @@ CREATE TABLE maps_metadata.ingest_process
 (
     id                serial primary key,
     state             maps.ingest_state,
-    slug              text,
+    slug              text REFERENCES maps.sources(slug),
     type              maps.ingest_type,
     ingest_pipeline   text,
     comments          text,
@@ -25,11 +25,5 @@ CREATE TABLE maps_metadata.ingest_process_tag (
         references maps_metadata.ingest_process,
     tag character varying(255) NOT NULL
 );
-
-
-ALTER TABLE maps_metadata.ingest_process
-ADD CONSTRAINT ingest_process_slug_fkey
-FOREIGN KEY (slug)
-REFERENCES maps.sources(slug);
 
 GRANT USAGE ON SCHEMA maps_metadata TO web_admin;

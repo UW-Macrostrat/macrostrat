@@ -9,10 +9,9 @@ from macrostrat.core.database import get_database
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import working_directory
 
-from .config import create_topo_context, get_topo_context, get_topo_manager
+from .config import get_topo_context, get_topo_manager
 from .manager import (
     _print_map_info,
-    _remove_map_topo_elements,
     filter_maps,
     get_map_list,
     get_maps_with_changed_geometries,
@@ -44,6 +43,7 @@ def reset():
 
 @cli.command("init")
 def init():
+    """Initialize map topology"""
     mgr = get_topo_manager()
     mgr.check_setup()
     mgr.create_tables(check=True)
@@ -65,14 +65,14 @@ def _remove(maps: list[str] = Argument(None)):
     mgr.remove_maps(all_map_ids)
 
 
-@cli.command("clean")
+@cli.command("clean", rich_help_panel="Utils")
 def _clean():
     """Clean topology fixtures"""
     mgr = get_topo_manager()
     mgr.clean_topology()
 
 
-@cli.command("rebuild")
+@cli.command("rebuild", rich_help_panel="Utils")
 def rebuild(maps: list[str] = Argument(None)):
     """Rebuild topology fixtures"""
     mgr = get_topo_manager()
@@ -87,7 +87,7 @@ def rebuild(maps: list[str] = Argument(None)):
     mgr.rebuild_edge_relations()
 
 
-@cli.command("mark-all")
+@cli.command("mark-all", rich_help_panel="Utils")
 def mark_all():
     """Mark all map faces as dirty"""
     mgr = get_topo_manager()

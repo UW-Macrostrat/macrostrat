@@ -127,6 +127,40 @@ $$
 $$
 LANGUAGE plpgsql VOLATILE;
 
+/** Trigger to force map_area recalculation when a map_topo's topogeometry
+  is updated, or a map_topo row is deleted, for a given map_id. */
+CREATE OR REPLACE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change()
+RETURNS trigger
+AS $$
+DECLARE
+  map_id integer;
+BEGIN
+  map_id := NULL;
+  IF (TG_OP = 'DELETE' AND OLD.topo IS NOT NULL) THEN
+    -- No change to topology if the topo column is null, so we can ignore this change
+    map_id := OLD.map_id;
+  ELSEIF (TG_OP = 'UPDATE' AND OLD.topo IS DISTINCT FROM NEW.topo) THEN
+    map_id := NEW.map_id;
+  ELSEIF (TG_OP = 'INSERT' AND NEW.topo IS NOT NULL) THEN
+    map_id := NEW.map_id;
+  END IF;
+  IF (map_id IS NULL) THEN
+    -- No change to topology, so we can ignore this change
+    RETURN NULL;
+  END IF;
+  /** Ensure that the map_area's geometry_hash is cleared so that it will be recalculated. */
+  UPDATE map_bounds.map_area
+  SET geometry_hash = null
+  WHERE id = map_id;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add the trigger
+CREATE TRIGGER update_map_area_from_topo
+AFTER INSERT OR UPDATE OR DELETE ON map_bounds.map_topo
+FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change();
+
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
   RETURNS integer AS $$
 SELECT ml.id

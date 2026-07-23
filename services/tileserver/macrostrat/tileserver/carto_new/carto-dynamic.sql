@@ -36,9 +36,9 @@ unit_features AS (
     ON b.source_id = p.source_id
    AND p.scale::text = b.scale::text
    AND ST_Intersects(p.geom, b.geometry)
-  LEFT JOIN maps.map_legend
+  JOIN maps.map_legend
     ON p.map_id = map_legend.map_id
-  LEFT JOIN tile_layers.map_legend_info AS l
+  JOIN tile_layers.map_legend_info AS l
     ON l.legend_id = map_legend.legend_id
 ),
 -- Lines
