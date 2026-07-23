@@ -53,6 +53,7 @@ DBCallable = Callable[[Database], None]
 
 schema_app = CommandBase()
 
+
 @schema_app.command(name="plan", rich_help_panel="Automated migrations")
 def plan():
     """Compare schema with target database"""
