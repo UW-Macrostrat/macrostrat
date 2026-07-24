@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 from jose import jwt
 from sqlalchemy import create_engine, text
 
-
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
 load_dotenv(_REPO_ROOT / "services" / "api-v3" / ".env", override=False)
@@ -25,9 +24,9 @@ load_dotenv(_REPO_ROOT / "local-root" / ".env", override=False)
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("JWT_ENCRYPTION_ALGORITHM", "HS256")
-GATEWAY_URL = os.environ.get("MACROSTRAT_GATEWAY_URL", "https://macrostrat.local").rstrip(
-    "/"
-)
+GATEWAY_URL = os.environ.get(
+    "MACROSTRAT_GATEWAY_URL", "https://macrostrat.local"
+).rstrip("/")
 PG_BASE = f"{GATEWAY_URL}/api/pg"
 
 # fake orcid sub for tests
@@ -100,6 +99,7 @@ def _auth_status(client, token: str | None):
 # The cookie → header → SET ROLE chain (via macrostrat_api.auth_status)
 # --------------------------------------------------------------------------- #
 
+
 def test_no_cookie_falls_back_to_web_anon(client):
     """No cookie ⇒ Caddy injects no Authorization ⇒ PostgREST uses web_anon."""
     resp = _auth_status(client, None)
@@ -161,6 +161,7 @@ def test_expired_cookie_is_rejected(client):
 # --------------------------------------------------------------------------- #
 # Row-Level Security on user_features.user_locations (read-only)
 # --------------------------------------------------------------------------- #
+
 
 def _get_locations(client, token: str):
     return client.get("/user_locations_view", headers=_cookie_header(token))
@@ -247,9 +248,7 @@ def test_web_user_scoping_ignores_user_id_claim(client, owner_with_locations):
     Locks in the new contract: even with a bogus ``user_id`` claim, the rows
     returned are still those of the ``sub``'s user, never the forged id's.
     """
-    token = _mint(
-        role="web_user", sub=owner_with_locations["sub"], user_id=999_999_999
-    )
+    token = _mint(role="web_user", sub=owner_with_locations["sub"], user_id=999_999_999)
     resp = _get_locations(client, token)
     assert resp.status_code == 200, resp.text
     rows = resp.json()
@@ -345,6 +344,7 @@ def test_refresh_issues_access_cookie_tracking_jwt_exp(client, existing_user_sub
 #   valid refresh cookie   -> fresh, PostgREST-usable access token
 #   missing/expired refresh -> 401 (client stays anonymous)
 # --------------------------------------------------------------------------- #
+
 
 def _extract_access_jwt(resp) -> str | None:
     """Pull the bare JWT out of the access_token Set-Cookie (value is 'Bearer <jwt>')."""
