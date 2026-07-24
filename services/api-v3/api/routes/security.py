@@ -35,7 +35,7 @@ import api.schemas as schemas
 from api.database import DatabaseDep
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # can change to 1m for manual testing
 GROUP_TOKEN_LENGTH = 32
 GROUP_TOKEN_SALT = (
     b"$2b$12$yQrslvQGWDFjwmDBMURAUe"  # Hardcode salt so hashes are consistent
@@ -396,6 +396,11 @@ async def redirect_callback(
                 access_token_key,
                 f"Bearer {access_token}",
                 domain=cookie_domain,
+                # Cookie lifetime tracks the access-token `exp`, so a
+                # browser stops auto-sending it the moment it expires. Caddy then
+                # adds no Authorization header and PostgREST falls back to
+                # web_anon instead of 401ing on a stale token.
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 httponly=True,
                 samesite=samesite,
                 secure=secure,
@@ -417,6 +422,9 @@ async def redirect_callback(
                 refresh_token_key,
                 refresh_jwt,
                 domain=cookie_domain,
+                # Refresh cookie outlives the access cookie (7d vs 24h); once it
+                # too expires the browser drops it and the user is fully anon.
+                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
                 httponly=True,
                 samesite=samesite,
                 secure=secure,
@@ -477,6 +485,8 @@ async def refresh_token(
         access_token_key,
         f"Bearer {access_token}",
         domain=cookie_domain,
+        # Same as the callback: cookie lifetime tracks the fresh access-token exp.
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
         samesite="lax",
         secure=(parsed_url.scheme == "https"),

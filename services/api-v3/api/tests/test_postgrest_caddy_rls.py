@@ -105,6 +105,7 @@ def test_no_cookie_falls_back_to_web_anon(client):
     resp = _auth_status(client, None)
     assert resp.status_code == 200, resp.text
     body = resp.json()
+    print("test_no_cookie_falls_back_to_web_anon", body)
     assert body["role"] == "web_anon"
     # No JWT ⇒ no authenticated subject. PostgREST may report the anon claims as
     # null / absent / ``{"role": "web_anon"}`` depending on version, so assert
@@ -119,6 +120,7 @@ def test_valid_web_user_cookie_sets_role(client):
     resp = _auth_status(client, token)
     assert resp.status_code == 200, resp.text
     body = resp.json()
+    print("test_valid_web_user_cookie_sets_role", body)
     assert body["role"] == "web_user"
     # The claims PostgREST decoded from the cookie-derived Authorization header.
     assert body["token"] is not None
@@ -132,6 +134,7 @@ def test_valid_web_admin_cookie_sets_role(client):
     resp = _auth_status(client, token)
     assert resp.status_code == 200, resp.text
     body = resp.json()
+    print("test_valid_web_admin_cookie_sets_role", body)
     assert body["role"] == "web_admin"
     assert body["token"]["role"] == "web_admin"
 
@@ -140,6 +143,7 @@ def test_invalid_signature_cookie_is_rejected(client):
     """A JWT signed with the wrong secret must be rejected by PostgREST (401)."""
     token = _mint(role="web_admin", secret=(SECRET_KEY or "") + "-tampered")
     resp = _auth_status(client, token)
+    print("test_invalid_signature_cookie_is_rejected", resp.json())
     assert resp.status_code == 401, resp.text
     # PostgREST reports a JWSError for a bad signature; assert leniently.
     assert "jw" in resp.text.lower()
@@ -149,6 +153,7 @@ def test_expired_cookie_is_rejected(client):
     """An expired JWT must be rejected by PostgREST (401), not honored."""
     token = _mint(role="web_admin", expires_delta=timedelta(hours=-1))
     resp = _auth_status(client, token)
+    print("test_expired_cookie_is_rejected", resp.json())
     assert resp.status_code == 401, resp.text
     assert "expired" in resp.text.lower()
 
@@ -173,9 +178,8 @@ def _db_url() -> str | None:
 @pytest.fixture(scope="module")
 def db_engine():
     """Read-only SQLAlchemy engine used *only* to discover a real sub→id owner.
-
-    Connects with the URL's (privileged) role, which bypasses RLS — that's fine,
-    we only read. Skips if there's no URL or the DB isn't reachable.
+    Connects with the URL's (privileged) role, which bypasses RLS.
+    Skips if there's no URL or the DB isn't reachable.
     """
     url = _db_url()
     if not url:
@@ -184,7 +188,7 @@ def db_engine():
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-    except Exception as exc:  # noqa: BLE001 - any connect failure ⇒ skip
+    except Exception as exc:
         engine.dispose()
         pytest.skip(f"Database not reachable for RLS discovery: {exc}")
     yield engine
@@ -196,7 +200,7 @@ def owner_with_locations(db_engine):
     """A real ``(sub, user_id, n)`` triple: the user who owns the most rows.
 
     This is the sub→id mapping the RLS scoping now depends on but which PostgREST
-    does not expose, hence the direct read.
+    does not expose.
     """
     sql = text(
         """
@@ -232,7 +236,6 @@ def test_web_user_rls_scopes_rows_to_owner_by_sub(client, owner_with_locations):
     resp = _get_locations(client, token)
     assert resp.status_code == 200, resp.text
     rows = resp.json()
-    # Exactly this user's rows — no more, no fewer.
     assert rows, "web_user should see its own rows"
     assert all(r["user_id"] == owner_with_locations["user_id"] for r in rows)
     assert len(rows) == owner_with_locations["n"]
@@ -266,3 +269,130 @@ def test_web_user_unknown_sub_sees_nothing(client):
     resp = _get_locations(client, token)
     assert resp.status_code == 200, resp.text
     assert resp.json() == []
+
+
+# --------------------------------------------------------------------------- #
+# Cookie Max-Age — so a browser drops the cookie on expiry and future requests
+# are cookie-less → web_anon (instead of shipping a stale token that 401s).
+# --------------------------------------------------------------------------- #
+
+# Mirrors security.ACCESS_TOKEN_EXPIRE_MINUTES (1440) * 60.
+EXPECTED_ACCESS_COOKIE_MAX_AGE = 24 * 60 * 60
+
+
+def _mint_refresh(sub: str, *, expires_delta: timedelta = timedelta(days=1)) -> str:
+    """Mint a refresh JWT the way /security/callback does (type=refresh)."""
+    claims = {
+        "sub": sub,
+        "type": "refresh",
+        "name": "Test",
+        "exp": datetime.now(timezone.utc) + expires_delta,
+    }
+    return jwt.encode(claims, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def _find_set_cookie(resp, name: str) -> str | None:
+    for raw in resp.headers.get_list("set-cookie"):
+        if raw.startswith(f"{name}="):
+            return raw
+    return None
+
+
+@pytest.fixture(scope="module")
+def existing_user_sub(db_engine):
+    """Any real user's `sub` — /security/refresh 404s if the sub is unknown."""
+    with db_engine.connect() as conn:
+        sub = conn.execute(
+            text('SELECT sub FROM macrostrat_auth."user" ORDER BY id LIMIT 1')
+        ).scalar()
+    if not sub:
+        pytest.skip("No users present to exercise /security/refresh")
+    return sub
+
+
+def test_refresh_issues_access_cookie_tracking_jwt_exp(client, existing_user_sub):
+    """POST /security/refresh must set an access_token cookie whose Max-Age tracks
+    the JWT lifetime.
+
+    That Max-Age is the whole mechanism: a cooperating browser auto-drops the
+    cookie the instant the token expires, so the next PostgREST request arrives
+    cookie-less and Caddy's presence-based bridge yields web_anon rather than a
+    401 on a stale token. (`client` is depended on only so the module skips when
+    the gateway is down; the POST uses a throwaway client to avoid polluting the
+    shared cookie jar.)
+    """
+    refresh_jwt = _mint_refresh(existing_user_sub)
+    with httpx.Client(verify=False, timeout=10.0) as c:
+        resp = c.post(
+            f"{GATEWAY_URL}/api/v3/security/refresh",
+            headers={"Cookie": f"refresh_token={refresh_jwt}"},
+        )
+
+    assert resp.status_code == 200, resp.text
+    cookie = _find_set_cookie(resp, "access_token")
+    assert cookie is not None, resp.headers.get_list("set-cookie")
+
+    lowered = cookie.lower()
+    assert "bearer" in lowered  # value is "Bearer <jwt>"
+    assert f"max-age={EXPECTED_ACCESS_COOKIE_MAX_AGE}" in lowered
+    assert "httponly" in lowered
+
+
+# --------------------------------------------------------------------------- #
+# Server half of the web client's silent-refresh-on-load flow. The client-side
+# `canRefresh` decision + hook live in the `web` repo (Vike/TS) and can't be
+# tested here, but the /security/refresh contract they rely on can:
+#   valid refresh cookie   -> fresh, PostgREST-usable access token
+#   missing/expired refresh -> 401 (client stays anonymous)
+# --------------------------------------------------------------------------- #
+
+def _extract_access_jwt(resp) -> str | None:
+    """Pull the bare JWT out of the access_token Set-Cookie (value is 'Bearer <jwt>')."""
+    raw = _find_set_cookie(resp, "access_token")
+    if raw is None:
+        return None
+    value = raw.split(";", 1)[0].split("=", 1)[1].strip().strip('"')
+    if value.lower().startswith("bearer "):
+        value = value[len("bearer ") :]
+    return value
+
+
+def _post_refresh(refresh_jwt: str | None):
+    headers = {"Cookie": f"refresh_token={refresh_jwt}"} if refresh_jwt else {}
+    with httpx.Client(verify=False, timeout=10.0) as c:
+        return c.post(f"{GATEWAY_URL}/api/v3/security/refresh", headers=headers)
+
+
+def test_refresh_without_token_is_rejected(client):
+    """No refresh cookie ⇒ nothing to refresh ⇒ 401 (a plain anon visitor)."""
+    resp = _post_refresh(None)
+    assert resp.status_code == 401, resp.text
+
+
+def test_expired_refresh_token_is_rejected(client, existing_user_sub):
+    """A lapsed refresh token (past the 7-day window) can't silently re-auth."""
+    expired = _mint_refresh(existing_user_sub, expires_delta=timedelta(hours=-1))
+    resp = _post_refresh(expired)
+    assert resp.status_code == 401, resp.text
+
+
+def test_refreshed_access_token_authenticates_against_postgrest(
+    client, existing_user_sub
+):
+    """End-to-end: a valid refresh cookie yields an access token PostgREST accepts.
+
+    This is exactly what the web client does on load when `canRefresh` is set —
+    POST /security/refresh, then use the fresh cookie. Here we prove the minted
+    token drives a real SET ROLE (not web_anon) once bridged to PostgREST.
+    """
+    refresh_resp = _post_refresh(_mint_refresh(existing_user_sub))
+    assert refresh_resp.status_code == 200, refresh_resp.text
+
+    access_jwt = _extract_access_jwt(refresh_resp)
+    assert access_jwt, refresh_resp.headers.get_list("set-cookie")
+
+    resp = _auth_status(client, access_jwt)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["role"] in ("web_user", "web_admin")  # authenticated, not web_anon
+    assert body["token"]["sub"] == existing_user_sub
