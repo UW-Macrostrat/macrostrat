@@ -34,12 +34,21 @@ CREATE FUNCTION public.current_app_role() RETURNS text
 $$;
 ALTER FUNCTION public.current_app_role() OWNER TO macrostrat;
 
-CREATE FUNCTION public.current_app_user_id() RETURNS integer
-    LANGUAGE sql STABLE
+-- Derive the integer user id from the JWT `sub` (ORCID) claim. The access token
+-- no longer carries a `user_id` claim (refactor-jwt), so we look the id up from
+-- macrostrat_auth."user".sub
+SET check_function_bodies = off;
+CREATE OR REPLACE FUNCTION public.current_app_user_id() RETURNS integer
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path = pg_catalog
     AS $$
-  SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
+  SELECT id
+  FROM macrostrat_auth."user"
+  WHERE sub = current_setting('request.jwt.claims', true)::json ->> 'sub';
 $$;
+SET check_function_bodies = on;
 ALTER FUNCTION public.current_app_user_id() OWNER TO macrostrat;
+GRANT EXECUTE ON FUNCTION public.current_app_user_id() TO web_anon, web_user, web_admin;
 
 CREATE FUNCTION public.update_updated_on() RETURNS trigger
     LANGUAGE plpgsql

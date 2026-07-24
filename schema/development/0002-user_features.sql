@@ -18,11 +18,18 @@ CREATE FUNCTION user_features.current_app_role() RETURNS text
   SELECT (current_setting('request.jwt.claims', true)::json ->> 'role')::text;
 $$;
 
-CREATE FUNCTION user_features.current_app_user_id() RETURNS integer
-    LANGUAGE sql STABLE
+SET check_function_bodies = off;
+CREATE OR REPLACE FUNCTION user_features.current_app_user_id() RETURNS integer
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path = pg_catalog
     AS $$
-  SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int;
+  SELECT id
+  FROM macrostrat_auth."user"
+  WHERE sub = current_setting('request.jwt.claims', true)::json ->> 'sub';
 $$;
+SET check_function_bodies = on;
+ALTER FUNCTION user_features.current_app_user_id() OWNER TO macrostrat;
+GRANT EXECUTE ON FUNCTION user_features.current_app_user_id() TO web_anon, web_user, web_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
