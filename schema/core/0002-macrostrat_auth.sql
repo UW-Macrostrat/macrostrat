@@ -1,11 +1,19 @@
 
 CREATE SCHEMA macrostrat_auth;
 
-CREATE FUNCTION macrostrat_auth.current_app_user_id() RETURNS integer
-    LANGUAGE sql STABLE
+-- Derive the integer user id from the JWT `sub` (ORCID) claim.
+SET check_function_bodies = off;
+CREATE OR REPLACE FUNCTION macrostrat_auth.current_app_user_id() RETURNS integer
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path = pg_catalog
     AS $$
-  SELECT (current_setting('request.jwt.claims', true)::json ->> 'user_id')::int
+  SELECT id
+  FROM macrostrat_auth."user"
+  WHERE sub = current_setting('request.jwt.claims', true)::json ->> 'sub';
 $$;
+SET check_function_bodies = on;
+ALTER FUNCTION macrostrat_auth.current_app_user_id() OWNER TO macrostrat;
+GRANT EXECUTE ON FUNCTION macrostrat_auth.current_app_user_id() TO web_anon, web_user, web_admin;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
@@ -68,6 +76,14 @@ CREATE TABLE macrostrat_auth."user" (
     created_on   timestamp with time zone default now() not null,
     updated_on   timestamp with time zone default now() not null
 );
+
+-- current_app_user_id() is SECURITY DEFINER owned by `macrostrat`, but this
+-- schema/table are owned by the (superuser) `macrostrat_admin`. Grant the
+-- definer role just enough to resolve sub → id: read-only on this one table.
+-- (Owning the function with `macrostrat` rather than the superuser keeps the
+-- definer least-privilege.)
+GRANT USAGE ON SCHEMA macrostrat_auth TO macrostrat;
+GRANT SELECT ON macrostrat_auth."user" TO macrostrat;
 
 CREATE SEQUENCE macrostrat_auth.user_id_seq
     AS integer
