@@ -12,9 +12,10 @@
 --
 -- THINGS YOU MUST ADAPT (marked "ADAPT" below):
 --   1. Role names (app role vs. the owner that runs migrations).
---   2. The columns-path pk/FK convention: this file assumes macrostrat.cols
---      has pk `id` and child/link tables reference it as `col_id`. Change the
---      key names in audit.column_history() if your convention differs.
+--   2. The columns-path FK convention: audit.column_history() assumes child/
+--      link tables reference the column as `col_id`. Change that key name if
+--      your convention differs. (Primary keys are handled automatically now --
+--      see note below -- so only the FK sweep needs adapting.)
 --   3. Your app MUST propagate the human actor into each transaction
 --      (see audit.set_context). Without it you only ever capture "the app".
 -- =============================================================================
@@ -37,9 +38,22 @@ create table if not exists audit.record_history (
   table_name   text        not null,
   actor_id     text,                              -- from app.actor_id GUC
   batch_id     text,                              -- from app.batch_id GUC
+  record_pk    jsonb,                             -- normalized pk {col: val};
+  --   null if table has no pk
   old_record   jsonb,                             -- null on INSERT/TRUNCATE
   new_record   jsonb                              -- null on DELETE/TRUNCATE
 );
+-- record_pk is derived ONCE at enable() time (pk columns introspected from the
+-- catalog and baked into the trigger args), then written from whichever of
+-- NEW/OLD is present. It's stored as jsonb so single and composite keys are
+-- handled uniformly. This buys a single clean index + clean row-lifecycle
+-- queries across every table, at the cost of a re-coupling to pk *definition*
+-- changes (rare; re-run audit.enable() to refresh). Tables with no declared pk
+-- get null and fall back to blob queries -- graceful, not a failure.
+--   Lighter alternative: drop record_pk entirely and query the pk out of the
+--   JSONB blobs (new_record->>'id' ...). Fewer moving parts, but every
+--   row-lifecycle query needs the OLD-or-NEW dance and per-key expression
+--   indexes. Preferred here only if most of your tables lack simple pks.
 
 -- Coarse provenance lookups
 create index if not exists record_history_table_time_idx
@@ -51,15 +65,21 @@ create index if not exists record_history_batch_idx
 create index if not exists record_history_txid_idx
   on audit.record_history (txid);
 
--- Hot-path JSONB lookups for the columns tree. Expression indexes are far
--- more effective here than a blanket GIN, because our queries are equality on
--- a specific key (->>'col_id' = ...), not containment.
+-- Row-lifecycle lookups ("this row's whole story"): one btree covers every
+-- table, because the pk is normalized into record_pk. jsonb has btree equality
+-- ops, so `record_pk = jsonb_build_object('id', 991)` uses this directly.
+create index if not exists record_history_pk_idx
+  on audit.record_history (table_name, record_pk);
+
+-- FK-sweep lookups for the columns tree (find every link/child row pointing at
+-- a column). record_pk does NOT help here -- it's a foreign-key traversal, not
+-- a pk lookup -- so we keep targeted expression indexes on col_id. They beat a
+-- blanket GIN because the query is key equality (->>'col_id' = ...), not
+-- containment.
 create index if not exists record_history_new_colid_idx
   on audit.record_history ((new_record->>'col_id'));
 create index if not exists record_history_old_colid_idx
   on audit.record_history ((old_record->>'col_id'));
-create index if not exists record_history_new_col_pk_idx
-  on audit.record_history ((new_record->>'id')) where table_name = 'cols';
 -- Add a GIN index only if you also want ad-hoc containment queries:
 --   create index on audit.record_history using gin (new_record jsonb_path_ops);
 
@@ -104,6 +124,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- SECURITY DEFINER so it can write to a table the app role can't.
 -- Explicit search_path closes the classic definer-function hijack vector.
+-- TG_ARGV holds the pk column names, baked in by enable() at attach time.
 create or replace function audit.capture()
   returns trigger
   language plpgsql
@@ -113,6 +134,8 @@ as $$
 declare
   v_old jsonb;
   v_new jsonb;
+  v_row jsonb;
+  v_pk  jsonb;
 begin
   if tg_op = 'UPDATE' then
     v_old := to_jsonb(old);
@@ -124,14 +147,26 @@ begin
   end if;
   -- TRUNCATE: statement-level, no OLD/NEW; we still record that it happened.
 
+  -- Normalized pk from whichever image is present. Null pk args (table has no
+  -- pk) or TRUNCATE (no row) -> v_pk stays null and we fall back to blobs.
+  if tg_nargs > 0 then
+    v_row := coalesce(v_new, v_old);
+    if v_row is not null then
+      select jsonb_object_agg(k, v_row -> k)
+      into v_pk
+      from unnest(tg_argv) as k;
+    end if;
+  end if;
+
   insert into audit.record_history (
-    action, schema_name, table_name,
+    action, schema_name, table_name, record_pk,
     actor_id, batch_id, old_record, new_record
   )
   values (
     tg_op,
     tg_table_schema,
     tg_table_name,
+    v_pk,
     nullif(current_setting('app.actor_id', true), ''),  -- '' / unset -> null
     nullif(current_setting('app.batch_id', true), ''),
     v_old,
@@ -148,20 +183,39 @@ $$;
 -- AFTER triggers so we capture the final row (post any BEFORE-trigger mutation).
 -- The zzz_ name prefix makes these fire last among AFTER triggers.
 -- %s on a regclass expands to the schema-qualified, properly-quoted name.
+--
+-- We introspect the pk columns ONCE here and pass them as trigger arguments
+-- (a comma-separated list of quoted literals). No pk -> no args -> capture()
+-- records a null record_pk for that table. Re-run enable() after any change to
+-- a table's pk definition to refresh the baked-in columns.
 create or replace function audit.enable(target_table regclass)
   returns void
   language plpgsql
 as $outer$
+declare
+  v_pk_args text;
 begin
+  select string_agg(quote_literal(a.attname), ', '
+                    order by array_position(i.indkey::smallint[], a.attnum))
+  into v_pk_args
+  from pg_index i
+  join pg_attribute a
+  on a.attrelid = i.indrelid
+    and a.attnum = any(i.indkey::smallint[])
+  where i.indrelid = target_table
+    and i.indisprimary;
+
   execute format('drop trigger if exists zzz_audit_row on %s', target_table);
   execute format(
     'create trigger zzz_audit_row after insert or update or delete on %s '
-      'for each row execute function audit.capture()', target_table);
+      'for each row execute function audit.capture(%s)',
+    target_table, coalesce(v_pk_args, ''));
 
   execute format('drop trigger if exists zzz_audit_truncate on %s', target_table);
   execute format(
     'create trigger zzz_audit_truncate after truncate on %s '
-      'for each statement execute function audit.capture()', target_table);
+      'for each statement execute function audit.capture(%s)',
+    target_table, coalesce(v_pk_args, ''));
 end;
 $outer$;
 
@@ -205,7 +259,7 @@ $$;
 create or replace view audit.changes as
 select
   h.id, h.changed_at, h.txid, h.actor_id, h.batch_id,
-  h.schema_name, h.table_name, h.action,
+  h.schema_name, h.table_name, h.record_pk, h.action,
   audit.diff(h.old_record, h.new_record) as changed,
   h.old_record, h.new_record
 from audit.record_history h;
