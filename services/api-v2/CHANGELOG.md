@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.8] - 2026-07-28
+
+- Fix unit ordering in `/mobile/map_query`
+
 ## [2.3.1-beta.2] - 2026-02-21
 
 - Fix SQL error with fossil route filtering by concept IDs
