@@ -425,35 +425,6 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION macrostrat.core_project_ids() RETURNS integer[]
-    LANGUAGE sql STABLE
-    AS $$
-SELECT macrostrat.flattened_project_ids(ARRAY[id]) FROM macrostrat.projects WHERE slug = 'core';
-$$;
-
-CREATE FUNCTION macrostrat.flattened_project_ids(project_ids integer[]) RETURNS integer[]
-    LANGUAGE plpgsql STABLE
-    AS $$
-DECLARE
-  result_ids integer[] := ARRAY[]::integer[];
-  current_ids integer[] := project_ids;
-  child_ids integer[];
-BEGIN
-  LOOP
-    EXIT WHEN array_length(current_ids, 1) IS NULL;
-    result_ids := result_ids || current_ids;
-    SELECT array_agg(pt.child_id)
-    INTO child_ids
-    FROM macrostrat.projects_tree pt
-    WHERE pt.parent_id = ANY(current_ids);
-    current_ids := child_ids;
-  END LOOP;
-  RETURN ARRAY(SELECT DISTINCT unnest(result_ids));
-END;
-$$;
-SET default_tablespace = '';
-SET default_table_access_method = heap;
-
 CREATE TABLE macrostrat.projects (
     id integer NOT NULL,
     project text NOT NULL,
@@ -492,6 +463,36 @@ CREATE TABLE macrostrat.projects_tree (
 
 ALTER TABLE macrostrat.projects_tree
   ADD CONSTRAINT projects_tree_parent_id_child_id_key UNIQUE (parent_id, child_id);
+
+
+CREATE FUNCTION macrostrat.flattened_project_ids(project_ids integer[]) RETURNS integer[]
+  LANGUAGE plpgsql STABLE
+AS $$
+DECLARE
+  result_ids integer[] := ARRAY[]::integer[];
+  current_ids integer[] := project_ids;
+  child_ids integer[];
+BEGIN
+  LOOP
+    EXIT WHEN array_length(current_ids, 1) IS NULL;
+    result_ids := result_ids || current_ids;
+    SELECT array_agg(pt.child_id)
+    INTO child_ids
+    FROM macrostrat.projects_tree pt
+    WHERE pt.parent_id = ANY(current_ids);
+    current_ids := child_ids;
+  END LOOP;
+  RETURN ARRAY(SELECT DISTINCT unnest(result_ids));
+END;
+$$;
+
+
+CREATE FUNCTION macrostrat.core_project_ids() RETURNS integer[]
+  LANGUAGE sql STABLE
+AS $$
+SELECT macrostrat.flattened_project_ids(ARRAY[id]::integer[])
+FROM macrostrat.projects WHERE slug = 'core';
+$$;
 
 
 CREATE FUNCTION macrostrat.generate_project_slug(_project macrostrat.projects) RETURNS text

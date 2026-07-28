@@ -36,7 +36,7 @@ async def map_bounds_tile(
     y: int,
 ):
     """Bounds for ingested maps"""
-    return await get_rgeom(request.app.state.pool, "rgeom IS NOT null", z=z, x=x, y=y)
+    return await get_rgeom(request.app.state.pool, where="rgeom IS NOT null", z=z, x=x, y=y)
 
 
 @router.get(
