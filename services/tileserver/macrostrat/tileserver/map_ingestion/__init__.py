@@ -4,13 +4,13 @@ from pathlib import Path
 from asyncpg import UndefinedTableError
 from buildpg import Renderer, render
 from fastapi import APIRouter, Request, Response
-
-from ..map_bounds import get_rgeom
 from timvt.resources.enums import MimeTypes
 from titiler.core.models.mapbox import TileJSON
 
 from macrostrat.database.utils import format as format_sql
 from macrostrat.utils import get_logger
+
+from ..map_bounds import get_rgeom
 
 print_sql_statements = False
 
@@ -37,6 +37,7 @@ async def map_bounds_tile(
 ):
     """Bounds for ingested maps"""
     return await get_rgeom(request.app.state.pool, "rgeom IS NOT null", z=z, x=x, y=y)
+
 
 @router.get(
     "/{slug}/tilejson.json",
