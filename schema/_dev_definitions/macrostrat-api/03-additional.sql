@@ -838,28 +838,13 @@ CREATE VIEW macrostrat_api.sources_ingestion AS
   JOIN maps_metadata.ingest_process i ON i.source_id = s.source_id;
 
 CREATE VIEW macrostrat_api.sources_metadata AS
- SELECT sources_metadata.source_id,
-    sources_metadata.slug,
-    sources_metadata.name,
-    sources_metadata.url,
-    sources_metadata.ref_title,
-    sources_metadata.authors,
-    sources_metadata.ref_year,
-    sources_metadata.ref_source,
-    sources_metadata.isbn_doi,
-    sources_metadata.scale,
-    sources_metadata.license,
-    sources_metadata.features,
-    sources_metadata.area,
-    sources_metadata.display_scales,
-    sources_metadata.priority,
-    sources_metadata.status_code,
-    sources_metadata.raster_url,
-    sources_metadata.scale_denominator,
-    sources_metadata.is_finalized,
-    sources_metadata.lines_oriented,
-    sources_metadata.is_finalized AS is_mapped
-   FROM maps.sources_metadata;
+SELECT * FROM maps.sources_metadata;
+
+/** View for active sources only */
+CREATE VIEW macrostrat_api.maps AS
+SELECT * FROM maps.sources_metadata
+WHERE is_finalized
+ORDER BY source_id DESC;
 
 CREATE VIEW macrostrat_api.strat_concepts_with_names AS
  SELECT m.concept_id,
