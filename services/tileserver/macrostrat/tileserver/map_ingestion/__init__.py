@@ -4,6 +4,8 @@ from pathlib import Path
 from asyncpg import UndefinedTableError
 from buildpg import Renderer, render
 from fastapi import APIRouter, Request, Response
+
+from ..map_bounds import get_rgeom
 from timvt.resources.enums import MimeTypes
 from titiler.core.models.mapbox import TileJSON
 
@@ -25,6 +27,16 @@ class FeatureType(str, Enum):
     lines = "lines"
     points = "points"
 
+
+@router.get("/bounds/{z}/{x}/{y}")
+async def map_bounds_tile(
+    request: Request,
+    z: int,
+    x: int,
+    y: int,
+):
+    """Bounds for ingested maps"""
+    return await get_rgeom(request.app.state.pool, "rgeom IS NOT null", z=z, x=x, y=y)
 
 @router.get(
     "/{slug}/tilejson.json",

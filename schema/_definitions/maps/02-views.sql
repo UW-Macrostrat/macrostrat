@@ -1,5 +1,6 @@
 CREATE OR REPLACE VIEW maps.sources_metadata AS
-SELECT s.source_id,
+SELECT
+  s.source_id,
   s.slug,
   s.name,
   s.url,
@@ -18,7 +19,8 @@ SELECT s.source_id,
   s.raster_url,
   s.scale_denominator,
   s.is_finalized,
-  s.lines_oriented
+  s.lines_oriented,
+  s.web_geom
 FROM maps.sources s
 ORDER BY s.source_id DESC;
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
