@@ -576,6 +576,114 @@ def test_age_tolerance_accepts_an_absolute_age_window(client):
     assert 101 in {m["col_id"] for m in matches}
 
 
+# -- spatial_tolerance -------------------------------------------------------
+
+# Column 101 contains the Lawrence collection. Its edge-sharing neighbours are
+# 100, 102, 103, 108 and 109; column 90 lies further out and only comes within
+# reach at a wider tolerance.
+LAWRENCE_NEIGHBOURS = {100, 101, 102, 103, 108, 109}
+
+
+def cols_returned(client, **params):
+    response = client.get(
+        "/strat-names",
+        params={**LAWRENCE, "all": True, **params},
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    return {m["col_id"] for m in matches if m["col_id"] is not None}
+
+
+def test_default_spatial_tolerance_matches_the_old_degree_buffer(client):
+    """The 1.11 km default reproduces the column set the 0.01-degree buffer gave."""
+    assert cols_returned(client, age_tolerance=0.5) <= LAWRENCE_NEIGHBOURS
+
+
+def test_spatial_tolerance_changes_the_search(client):
+    """A larger tolerance reaches further, and always keeps the containing column."""
+    near = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
+    far = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    assert near != far
+    assert 101 in near and 101 in far
+
+
+def test_spatial_tolerance_is_monotonic(client):
+    """Widening the tolerance only adds columns, it never swaps them out.
+
+    This holds because the DISTINCT ON in column-strat-names.sql keys on col_id and
+    unit_id. Keying on strat_name_id alone kept one arbitrary row per name across
+    all adjacent columns, so a distant column could displace a nearer one as the
+    candidate set grew.
+    """
+    near = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
+    far = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    assert near < far, f"expected {near} to be a strict subset of {far}"
+
+
+def test_spatial_tolerance_zero_still_admits_touching_columns(client):
+    """Columns tessellate, so neighbours are at distance 0 and survive a 0 km tolerance.
+
+    ST_DWithin(a, b, 0) is 'touching or overlapping', not 'same column'. Use the
+    adjacent-columns match type to restrict to the containing column.
+    """
+    assert cols_returned(client, age_tolerance=0.5, spatial_tolerance=0) != {101}
+
+
+def test_spatial_tolerance_is_not_cached_across_values(client):
+    """Tolerance changes the SQL, so it must be part of the column-units cache key.
+
+    Requesting a wide tolerance after a narrow one (and vice versa) must not return
+    the earlier result.
+    """
+    wide_first = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    narrow = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
+    wide_again = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    assert wide_first == wide_again
+    assert narrow != wide_first
+
+
+def test_spatial_tolerance_is_bound_in_kilometres_as_supplied(db):
+    """The SQL receives the caller's value verbatim; the km->m conversion is in SQL.
+
+    A tolerance of 1000 km must reach far more columns than 1000 m would, which is
+    what a stray Python-side conversion would silently produce.
+    """
+    from macrostrat.match_utils import create_ignore_list, get_column_units
+
+    create_ignore_list(
+        db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
+    )
+    with db.engine.connect() as conn:
+        near = get_column_units(conn, 101, spatial_tolerance=1)
+        far = get_column_units(conn, 101, spatial_tolerance=1000)
+    assert far.col_id.nunique() > near.col_id.nunique()
+
+
+def test_spatial_tolerance_default_is_used_when_absent(db):
+    """Omitting the parameter falls back to DEFAULT_SPATIAL_TOLERANCE_KM."""
+    from macrostrat.match_utils import (
+        DEFAULT_SPATIAL_TOLERANCE_KM,
+        create_ignore_list,
+        get_column_units,
+    )
+
+    create_ignore_list(
+        db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
+    )
+    with db.engine.connect() as conn:
+        implicit = get_column_units(conn, 101)
+        explicit = get_column_units(
+            conn, 101, spatial_tolerance=DEFAULT_SPATIAL_TOLERANCE_KM
+        )
+    assert set(implicit.col_id.dropna()) == set(explicit.col_id.dropna())
+
+
+def test_negative_spatial_tolerance_is_rejected(client):
+    """A negative distance is meaningless and must be a 422."""
+    response = client.get("/strat-names", params={**LAWRENCE, "spatial_tolerance": -1})
+    assert response.status_code == 422
+
+
 def test_match_types_all_true(client):
     """With all=true, return all API-supported Mancos matches ordered by priority."""
     response = client.get(

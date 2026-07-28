@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from macrostrat.match_utils import (
+    DEFAULT_SPATIAL_TOLERANCE_KM,
     MATCH_STRAT_NAMES_INFO,
     MatchResult,
     create_ignore_list,
@@ -138,6 +139,18 @@ class MatchQueryFields(BaseModel):
             "temporal_basis='adjacent interval'. Requires an age window to widen: "
             "supply `interval`, or both bounds via b_age/b_interval and t_age/t_interval. "
             "Does not affect `priority`."
+        ),
+    )
+    spatial_tolerance: float = Field(
+        DEFAULT_SPATIAL_TOLERANCE_KM,
+        ge=0,
+        description=(
+            "How far, in kilometers, an adjacent column may be from the column "
+            "containing the query location and still contribute matches. Matches from "
+            "outside that column are reported with spatial_basis='adjacent column', "
+            "as before. Note that columns tessellate, so neighbours share edges and "
+            "lie at distance 0: a tolerance of 0 still admits every edge-sharing "
+            "column. Only a larger value reaches columns that do not touch."
         ),
     )
     priority: Literal["strat_name", "location"] = Field(
@@ -678,6 +691,7 @@ def build_match_data(db, params):
                 t_age=age_constraint.t_age,
                 b_age=age_constraint.b_age,
                 age_tolerance=params.age_tolerance,
+                spatial_tolerance=params.spatial_tolerance,
             )
         raw_name = (params.strat_name or params.concept_name or "").strip().lower()
         for row in rows:

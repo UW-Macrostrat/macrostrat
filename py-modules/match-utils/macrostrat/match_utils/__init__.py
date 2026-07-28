@@ -18,6 +18,12 @@ from .utils import stored_procedure
 
 _column_unit_index = {}
 
+# The adjacent-column search previously used a 0.01-degree buffer. That is 1.11 km
+# north-south at any latitude, but only 0.86 km east-west at 39 degrees and 0.29 km
+# at 75 degrees. 1.11 km preserves the north-south reach exactly and makes the
+# east-west reach match it instead of narrowing toward the poles.
+DEFAULT_SPATIAL_TOLERANCE_KM = 1.11
+
 MATCH_STRAT_NAMES_INFO = {
     "success": {
         "v": 2,
@@ -71,6 +77,13 @@ MATCH_STRAT_NAMES_INFO = {
                 "to widen: supply interval, or both bounds via b_age/b_interval and "
                 "t_age/t_interval, otherwise the request is rejected with a 422. Does not "
                 "affect priority.",
+                "spatial_tolerance": "number, how far in kilometres an adjacent column may be "
+                "from the column containing the query location and still contribute matches. "
+                "Default 1.11, which preserves the reach of the 0.01-degree buffer it replaced. "
+                "Matches from outside the containing column are reported with "
+                "spatial_basis='adjacent column'. Columns tessellate, so neighbours share "
+                "edges and lie at distance 0 — a tolerance of 0 still admits every "
+                "edge-sharing column, and only larger values reach columns that do not touch.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
                 "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
@@ -262,18 +275,28 @@ def ensure_single(col_ids, entity="column"):
 column_unit_index = ContextVar("column_unit_index", default={})
 
 
-def get_column_units(conn, col_id, types: list[MatchType] = None):
+def get_column_units(
+    conn,
+    col_id,
+    types: list[MatchType] = None,
+    spatial_tolerance: float = DEFAULT_SPATIAL_TOLERANCE_KM,
+):
     """
     Get a unit that matches a given stratigraphic name
+
+    `spatial_tolerance` is in kilometers and is part of the cache key, since
+    unlike the age filter it changes the SQL rather than being applied afterwards.
     """
+    cache_key = (col_id, spatial_tolerance)
     unit_index = column_unit_index.get()
-    if col_id in unit_index:
-        return unit_index[col_id]
+    if cache_key in unit_index:
+        return unit_index[cache_key]
     # TODO need to update the match types model to exact, concept, rank-up, rank-down
     types = get_match_types(types)
 
     params = dict(
         col_id=col_id,
+        spatial_tolerance=spatial_tolerance,
         use_concepts=MatchType.Concepts in types,
         use_synonyms=MatchType.Synonyms in types,
         use_adjacent_cols=MatchType.AdjacentCols in types,
@@ -298,7 +321,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
 
     # Set the index to a shared cache
     unit_index = column_unit_index.get()
-    unit_index[col_id] = units_df
+    unit_index[cache_key] = units_df
     column_unit_index.set(unit_index)
     return units_df
 
@@ -346,6 +369,7 @@ def get_all_matched_units(
     t_age: float | None = None,
     b_age: float | None = None,
     age_tolerance: float = 0.0,
+    spatial_tolerance: float = DEFAULT_SPATIAL_TOLERANCE_KM,
 ) -> list[tuple]:
     """
     Return all units and stratigraphic names that match the given col_id.
@@ -355,8 +379,13 @@ def get_all_matched_units(
     years on both ends, so a unit falling just short of overlapping it is still
     returned. Each row is stamped with a `temporal_basis` recording which case it
     is.
+
+    `spatial_tolerance` is in kilometres and bounds how far an adjacent column may
+    be from the one containing the query location.
     """
-    units = get_column_units(conn, col_id, types=types)
+    units = get_column_units(
+        conn, col_id, types=types, spatial_tolerance=spatial_tolerance
+    )
     if b_age is not None:
         units = units.loc[units.t_age <= b_age + age_tolerance]
     if t_age is not None:
