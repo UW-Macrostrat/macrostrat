@@ -16,6 +16,7 @@ from . import MatchQuery, router, setup_intervals
 # TODO: just import the enums from the parent module
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
 valid_spatial_bases = {"containing column", "adjacent column"}
+valid_temporal_bases = {"containing interval", "adjacent interval"}
 
 
 def assert_valid_unit_matches(matches):
@@ -29,6 +30,7 @@ def assert_valid_unit_matches(matches):
         assert match["strat_name_id"] is not None
         assert match["name_basis"] in valid_name_bases
         assert match["spatial_basis"] in valid_spatial_bases
+        assert match["temporal_basis"] in valid_temporal_bases
         assert "concept_name" in match
 
 
@@ -459,6 +461,119 @@ def test_invalid_age_constraints(client):
     assert len(results) == 1
     messages = results[0]["messages"]
     assert any("Inconsistent age constraints" in msg["message"] for msg in messages)
+
+
+# -- age_tolerance: PBDB collection 122495 -----------------------------------
+
+# Fossils were collected from the Lawrence Fm, which
+# sits in column 101. The Kasimovian tops out at 303.7 Ma while the Lawrence Fm
+# in that column runs 303.4818–303.2636 Ma, so a strict overlap test misses the
+# collection's own column by 0.2182 Myr and returns only adjacent-column matches.
+LAWRENCE = {
+    "lat": 38.939899,
+    "lng": -95.332901,
+    "strat_name": "Lawrence",
+    "interval": "Kasimovian",
+}
+LAWRENCE_NO_INTERVAL = {k: v for k, v in LAWRENCE.items() if k != "interval"}
+
+
+def test_strict_age_bounds_miss_the_containing_column(client):
+    """Reproduce the bug: without a tolerance, column 101 is filtered out."""
+    response = client.get("/strat-names", params={**LAWRENCE, "all": True})
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert_valid_unit_matches(matches)
+    assert 101 not in {m["col_id"] for m in matches}
+
+
+def test_age_tolerance_recovers_the_containing_column(client):
+    """A 0.5 Myr tolerance surfaces unit 3962 in column 101, tagged as adjacent."""
+    response = client.get(
+        "/strat-names", params={**LAWRENCE, "age_tolerance": 0.5, "all": True}
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert_valid_unit_matches(matches)
+
+    recovered = [m for m in matches if m["col_id"] == 101]
+    assert len(recovered) == 1
+    match = recovered[0]
+    assert match["unit_id"] == 3962
+    assert match["name_basis"] == "exact"
+    assert match["spatial_basis"] == "containing column"
+    assert match["temporal_basis"] == "adjacent interval"
+    # Its age range falls outside the Kasimovian, but within the tolerance of it.
+    assert match["b_age"] < 303.7
+    assert match["b_age"] >= 303.7 - 0.5
+
+
+def test_age_tolerance_ranks_the_containing_column_first(client):
+    """Michael's real call: the default all=false now returns his own column.
+
+    priority is unchanged by this feature — it still keys on name_basis and
+    spatial_basis — and an exact match in the containing column outranks the
+    rank-up adjacent-column matches that a strict query returns.
+    """
+    response = client.get("/strat-names", params={**LAWRENCE, "age_tolerance": 0.5})
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert len(matches) == 1
+    assert matches[0]["unit_id"] == 3962
+    assert matches[0]["col_id"] == 101
+    assert matches[0]["priority"] == 0.0
+
+
+def test_age_tolerance_smaller_than_the_gap_changes_nothing(client):
+    """The gap is 0.2182 Myr, so a 0.1 Myr tolerance must not recover column 101."""
+    response = client.get(
+        "/strat-names", params={**LAWRENCE, "age_tolerance": 0.1, "all": True}
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert 101 not in {m["col_id"] for m in matches}
+
+
+@mark.parametrize(
+    "age_params",
+    [{}, {"interval": "Kasimovian"}, {"b_age": 307.0, "t_age": 303.7}],
+    ids=["unconstrained", "interval", "absolute-ages"],
+)
+def test_temporal_basis_is_containing_without_tolerance(client, age_params):
+    """With no age_tolerance every match overlapped the window outright."""
+    response = client.get(
+        "/strat-names", params={**LAWRENCE_NO_INTERVAL, **age_params, "all": True}
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert len(matches) >= 1
+    assert {m["temporal_basis"] for m in matches} == {"containing interval"}
+
+
+def test_age_tolerance_requires_an_age_window(client):
+    """A tolerance with no window to widen is a 422, not a silent no-op."""
+    response = client.get(
+        "/strat-names", params={**LAWRENCE_NO_INTERVAL, "age_tolerance": 0.5}
+    )
+    assert response.status_code == 422
+    assert "age_tolerance" in response.text
+
+
+def test_age_tolerance_accepts_an_absolute_age_window(client):
+    """An explicit b_age/t_age pair is a valid window for the tolerance."""
+    response = client.get(
+        "/strat-names",
+        params={
+            **LAWRENCE_NO_INTERVAL,
+            "b_age": 307.0,
+            "t_age": 303.7,
+            "age_tolerance": 0.5,
+            "all": True,
+        },
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert 101 in {m["col_id"] for m in matches}
 
 
 def test_match_types_all_true(client):

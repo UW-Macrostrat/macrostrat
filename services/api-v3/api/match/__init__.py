@@ -128,6 +128,18 @@ class MatchQueryFields(BaseModel):
     )
     b_age: float | None = Field(None, description="Early/lower age constraint in Ma")
     t_age: float | None = Field(None, description="Late/upper age constraint in Ma")
+    age_tolerance: float = Field(
+        0.0,
+        ge=0,
+        description=(
+            "Allowable gap, in millions of years, between the query age window and a "
+            "unit's age range. A unit falling short of overlapping the window by no "
+            "more than this amount is still matched, and reported with "
+            "temporal_basis='adjacent interval'. Requires an age window to widen: "
+            "supply `interval`, or both bounds via b_age/b_interval and t_age/t_interval. "
+            "Does not affect `priority`."
+        ),
+    )
     priority: Literal["strat_name", "location"] = Field(
         "location",
         description=(
@@ -197,6 +209,20 @@ class MatchQuery(MatchQueryFields):
         if self.strat_name is not None and self.strat_name_id is not None:
             raise ValueError(
                 "Only one of strat_name or strat_name_id can be provided, not both."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_age_tolerance(self):
+        """A tolerance needs an age window to widen, or it silently does nothing."""
+        has_window = self.interval is not None or (
+            (self.b_age is not None or self.b_interval is not None)
+            and (self.t_age is not None or self.t_interval is not None)
+        )
+        if self.age_tolerance > 0 and not has_window:
+            raise ValueError(
+                "age_tolerance requires an age window to widen: provide `interval`, "
+                "or both `b_age`/`b_interval` and `t_age`/`t_interval`."
             )
         return self
 
@@ -651,6 +677,7 @@ def build_match_data(db, params):
                 names,
                 t_age=age_constraint.t_age,
                 b_age=age_constraint.b_age,
+                age_tolerance=params.age_tolerance,
             )
         raw_name = (params.strat_name or params.concept_name or "").strip().lower()
         for row in rows:

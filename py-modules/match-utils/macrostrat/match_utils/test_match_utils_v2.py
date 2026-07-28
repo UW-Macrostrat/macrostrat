@@ -114,6 +114,7 @@ def test_match_result_name_basis_values():
         depth=0,
         name_basis="exact",
         spatial_basis="containing column",
+        temporal_basis="containing interval",
         t_age=100.0,
         b_age=200.0,
         priority=0.0,

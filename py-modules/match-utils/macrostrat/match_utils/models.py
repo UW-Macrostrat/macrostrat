@@ -18,6 +18,7 @@ class MatchResult(BaseModel):
     depth: Optional[int]
     name_basis: str
     spatial_basis: str
+    temporal_basis: str
     t_age: float
     b_age: float
     priority: float

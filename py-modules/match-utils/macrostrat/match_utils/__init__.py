@@ -1,7 +1,7 @@
 from contextvars import ContextVar
 
 from geopandas import GeoDataFrame
-from pandas import isna, read_sql
+from pandas import Series, isna, read_sql
 from pydantic import BaseModel
 from sqlalchemy.sql import text
 
@@ -64,6 +64,13 @@ MATCH_STRAT_NAMES_INFO = {
                 "Must be greater than t_age.",
                 "t_age": "number, late/upper age constraint in millions of years (Ma). "
                 "Must be less than b_age.",
+                "age_tolerance": "number, allowable gap in millions of years between the query "
+                "age window and a unit's age range. Default 0 (strict overlap). A unit falling "
+                "short of overlapping the window by no more than this amount is still matched, "
+                "and reported with temporal_basis='adjacent interval'. Requires an age window "
+                "to widen: supply interval, or both bounds via b_age/b_interval and "
+                "t_age/t_interval, otherwise the request is rejected with a 422. Does not "
+                "affect priority.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
                 "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
@@ -121,6 +128,11 @@ MATCH_STRAT_NAMES_INFO = {
                 "One of: exact | concept | rank-up | rank-down | synonym",
                 "spatial_basis": "string, spatial relationship of the match. "
                 "One of: containing column | adjacent column",
+                "temporal_basis": "string, temporal relationship of the match. "
+                "One of: containing interval | adjacent interval. 'containing interval' means "
+                "the unit's age range overlaps the query age window; 'adjacent interval' means "
+                "it did not overlap but fell within age_tolerance of it. Without age_tolerance "
+                "every match is 'containing interval'.",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
                 "priority": "number, match priority assigned after applying the selected priority ordering scheme. "
@@ -333,16 +345,36 @@ def get_all_matched_units(
     n_results: int | None = None,
     t_age: float | None = None,
     b_age: float | None = None,
+    age_tolerance: float = 0.0,
 ) -> list[tuple]:
     """
     Return all units and stratigraphic names that match the given col_id.
     Returns list of (row, is_exact_name_match) tuples.
+
+    `age_tolerance` widens the [t_age, b_age] window by that many millions of
+    years on both ends, so a unit falling just short of overlapping it is still
+    returned. Each row is stamped with a `temporal_basis` recording which case it
+    is.
     """
     units = get_column_units(conn, col_id, types=types)
     if b_age is not None:
-        units = units.loc[units.t_age <= b_age]
+        units = units.loc[units.t_age <= b_age + age_tolerance]
     if t_age is not None:
-        units = units.loc[units.b_age >= t_age]
+        units = units.loc[units.b_age >= t_age - age_tolerance]
+
+    # Copy so the frame cached in `column_unit_index` is never mutated. A unit
+    # overlapping the unwidened window is a 'containing interval' match; one that
+    # only fits once the tolerance is applied is an 'adjacent interval' match,
+    # mirroring how spatial_basis distinguishes containing from adjacent columns.
+    units = units.copy()
+    strict = Series(True, index=units.index)
+    if b_age is not None:
+        strict &= units.t_age <= b_age
+    if t_age is not None:
+        strict &= units.b_age >= t_age
+    units["temporal_basis"] = strict.map(
+        {True: "containing interval", False: "adjacent interval"}
+    )
 
     u1 = units[units.strat_name_clean.notnull()]
     matched_rows = []
