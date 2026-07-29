@@ -76,7 +76,7 @@ MATCH_STRAT_NAMES_INFO = {
                 "affect priority.",
                 "location_tolerance": "number, how far in kilometres an adjacent column may be "
                 "from the column containing the query location and still contribute matches. "
-                "Default 1.11, which preserves the reach of the 0.01-degree buffer it replaced. "
+                "Default 0 km. "
                 "Matches from outside the containing column are reported with "
                 "location_basis='adjacent column'. Columns tessellate, so neighbours share "
                 "edges and lie at distance 0 — a tolerance of 0 still admits every "
