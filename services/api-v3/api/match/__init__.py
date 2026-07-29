@@ -4,7 +4,13 @@ from datetime import datetime
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    ValidationError,
+    model_validator,
+)
 
 from macrostrat.match_utils import (
     DEFAULT_SPATIAL_TOLERANCE_KM,
@@ -61,6 +67,19 @@ def setup_matcher(db):
 
 
 router = APIRouter(tags=["match"])
+
+
+def _fold_case(value):
+    """Lower-case incoming strings so enumerated parameters accept any casing."""
+    return value.casefold() if isinstance(value, str) else value
+
+
+class UnknownIntervalError(ValueError):
+    """Raised when an interval name or ID is not present in macrostrat.intervals.
+
+    Surfaced as a 422 rather than the 500 that resolving None used to produce, so a
+    typo in a bulk request reports the bad name instead of crashing.
+    """
 
 
 class AbsoluteAgeConstraint(BaseModel):
@@ -153,7 +172,9 @@ class MatchQueryFields(BaseModel):
             "column. Only a larger value reaches columns that do not touch."
         ),
     )
-    priority: Literal["strat_name", "location"] = Field(
+    priority: Annotated[
+        Literal["strat_name", "location"], BeforeValidator(_fold_case)
+    ] = Field(
         "location",
         description=(
             "Controls how match results are prioritized when multiple possible matches are found. "
@@ -173,17 +194,27 @@ class MatchQueryFields(BaseModel):
         b_age = float("inf")
         t_age = -float("inf")
 
+        def resolve(value, field):
+            """Look up an interval, failing loudly if Macrostrat has no such name."""
+            intv = get_interval(value)
+            if intv is None:
+                raise UnknownIntervalError(
+                    f"{field}='{value}' does not exist in Macrostrat. See "
+                    "/api/v2/defs/intervals for the list of valid interval names and IDs."
+                )
+            return intv
+
         # Apply interval-based age constraints in order of specificity, complaining if conflicting
         if self.interval is not None:
-            intv = get_interval(self.interval)
+            intv = resolve(self.interval, "interval")
             b_age = intv.age_bottom
             t_age = intv.age_top
 
         if self.b_interval is not None:
-            intv = get_interval(self.b_interval)
+            intv = resolve(self.b_interval, "b_interval")
             b_age = min(b_age, intv.age_bottom)
         if self.t_interval is not None:
-            intv = get_interval(self.t_interval)
+            intv = resolve(self.t_interval, "t_interval")
             t_age = max(t_age, intv.age_top)
         if self.b_age is not None:
             b_age = min(b_age, self.b_age)
@@ -288,7 +319,12 @@ class MatchAPIResponse(BaseModel):
     messages: set[MatchMessage] | None = None
 
 
-NameBasis = Literal["exact", "concept", "rank-down", "rank-up", "synonym"]
+# Enumerated string parameters are matched case-insensitively: pydantic compares
+# Literal members exactly, so the value is folded before validation.
+NameBasis = Annotated[
+    Literal["exact", "concept", "rank-down", "rank-up", "synonym"],
+    BeforeValidator(_fold_case),
+]
 SpatialBasis = Literal["containing column", "adjacent column"]
 
 
@@ -315,8 +351,26 @@ class MatchDefaults(MatchQueryFields, MatchOptions):
     Any field omitted from a body item inherits the value provided here, and a
     field set on a body item overrides it. This keeps a single request shape (a
     list of MatchQuery objects) while letting callers factor out whatever is
-    common — a location, a strat_name, an age range — into the query string.
+    common — a location, a strat_name, an age range, a result depth — into the
+    query string.
     """
+
+
+class MatchBatchItem(MatchQueryFields):
+    """One item of a batch POST body.
+
+    Carries its own optional `all`, which follows the same inheritance rule as
+    every other field: omitted, it falls back to the `?all=` query parameter; set,
+    it overrides that for this item alone. Without this field a body-level
+    "all": 1 was silently dropped.
+    """
+
+    all: bool = Field(
+        False,
+        description="Return all matches for this item, ordered by priority. "
+        "Overrides the `?all=` query parameter for this item. If neither is set, "
+        "only the highest-priority match is returned. Accepts true/false or 1/0.",
+    )
 
 
 class MatchPriorityOrder(BaseModel):
@@ -409,15 +463,31 @@ def assign_priorities(
 
 
 def get_interval(interval: int | str) -> Optional[Interval]:
-    """Retrieve interval information by ID or name."""
+    """Retrieve interval information by ID or name.
+
+    Name matching is case-insensitive, but an exact match always wins. A few
+    interval names differ only by case — 'M10n' and 'M10N' are distinct
+    magnetochrons — so folding case unconditionally would make those ambiguous.
+    Trying the exact spelling first keeps them addressable while still accepting
+    'kasimovian' for 'Kasimovian'.
+    """
     interval_list = _intervals.get()
     if interval_list is None:
         raise ValueError("Interval list not initialized.")
 
+    if isinstance(interval, int):
+        for intv in interval_list:
+            if intv.id == interval:
+                return intv
+        return None
+
     for intv in interval_list:
-        if isinstance(interval, int) and intv.id == interval:
+        if intv.interval_name == interval:
             return intv
-        elif isinstance(interval, str) and intv.interval_name == interval:
+
+    lowered = interval.casefold()
+    for intv in interval_list:
+        if intv.interval_name.casefold() == lowered:
             return intv
     return None
 
@@ -461,7 +531,7 @@ def match_units(
 
 @router.post("/strat-names")
 def match_units_multi(
-    body: list[MatchQueryFields],
+    body: list[MatchBatchItem],
     defaults: Annotated[MatchDefaults, Query()],
     database: DatabaseDep,
 ) -> MatchAPIResponse:
@@ -477,8 +547,8 @@ def match_units_multi(
 
     :return: MatchAPIResponse
     """
-    # Response-shaping options are request-wide (query string only).
-    opts = MatchOptions(all=defaults.all, name_basis=defaults.name_basis)
+    # name_basis filters the whole response; `all` is per-item, defaulting to ?all=.
+    opts = MatchOptions(name_basis=defaults.name_basis)
     # Per-item defaults: only the query params the caller actually set.
     default_fields = defaults.model_dump(
         exclude_unset=True, exclude={"all", "name_basis"}
@@ -490,15 +560,24 @@ def match_units_multi(
         )
 
     # Merge defaults under each item (item wins) and validate the result.
-    queries: list[MatchQuery] = []
+    queries: list[tuple[MatchQuery, bool]] = []
     for index, item in enumerate(body):
-        merged = {**default_fields, **item.model_dump(exclude_unset=True)}
+        item_fields = item.model_dump(exclude_unset=True)
+        # `all` shapes the response rather than the query, so it travels alongside
+        # the MatchQuery. Unset on the item means inherit the query-string value.
+        return_all = bool(item_fields.pop("all", defaults.all))
+        merged = {**default_fields, **item_fields}
         try:
-            queries.append(MatchQuery(**merged))
+            queries.append((MatchQuery(**merged), return_all))
         except ValidationError as err:
+            # include_context=False drops pydantic's `ctx`, which holds the raw
+            # exception object. Without this the detail is not JSON serializable and
+            # FastAPI turns the 422 into a 500 while encoding the response.
             raise HTTPException(
                 status_code=422,
-                detail=[{**e, "index": index} for e in err.errors()],
+                detail=[
+                    {**e, "index": index} for e in err.errors(include_context=False)
+                ],
             )
 
     db = database.sync
@@ -506,19 +585,32 @@ def match_units_multi(
         setup_matcher(db)
 
         all_results: list[MatchData] = []
-        for params in queries:
+        # Built in lockstep with all_results so the two stay index-aligned.
+        all_flags: list[bool] = []
+        for params, return_all in queries:
             match_data = build_match_data(db, params)
-            if match_data is not None:
-                all_results.append(match_data)
+            if match_data is None:
+                continue
+            all_results.append(match_data)
+            all_flags.append(return_all)
 
-        return generate_response(all_results, opts)
+        return generate_response(all_results, opts, all_flags=all_flags)
     finally:
         db.session.remove()
 
 
 def generate_response(
-    results: list[MatchData], opts: MatchOptions, messages: list[MatchMessage] = None
+    results: list[MatchData],
+    opts: MatchOptions,
+    messages: list[MatchMessage] = None,
+    all_flags: list[bool] | None = None,
 ) -> MatchAPIResponse:
+    """Apply response-shaping options and wrap results in a MatchAPIResponse.
+
+    `opts.all` applies request-wide, which is what the GET endpoint wants. The batch
+    endpoint passes `all_flags` instead — one flag per result, same order — because
+    there `all` is set per body item.
+    """
     # Filter by name_basis after matching/prioritization, keeping only matches
     # whose name_basis equals the requested value.
     if opts.name_basis is not None:
@@ -533,20 +625,46 @@ def generate_response(
             for result in results
         ]
 
-    # When all=False, keep only the best (lowest-priority) match that remain.
+    # Unless all matches were asked for, keep only the best (lowest-priority) ones.
     # With no name_basis filter the best priority is 0.0, preserving prior behavior.
-    if not opts.all:
-        reduced: list[MatchData] = []
-        for result in results:
-            if result.unit_matches:
-                best = min(m.priority for m in result.unit_matches)
-                kept = [m for m in result.unit_matches if m.priority == best]
-            else:
-                kept = []
-            reduced.append(
-                MatchData(id=result.id, unit_matches=kept, messages=result.messages)
+    reduced: list[MatchData] = []
+    for index, result in enumerate(results):
+        return_all = all_flags[index] if all_flags is not None else opts.all
+        if return_all or not result.unit_matches:
+            reduced.append(result)
+            continue
+        best = min(m.priority for m in result.unit_matches)
+        reduced.append(
+            MatchData(
+                id=result.id,
+                unit_matches=[m for m in result.unit_matches if m.priority == best],
+                messages=result.messages,
             )
-        results = reduced
+        )
+    results = reduced
+
+    # Finally, collapse repeats of the same matched unit. A unit can be reached by
+    # several stratigraphic names (e.g. both 'Lawrence' and 'Lawrence Shale' resolve
+    # to unit 3891), which produced rows differing only in strat_name_id. Matches
+    # arrive sorted by ascending priority, so the first appearance of a
+    # (unit_id, col_id) pair is its best one and later repeats add nothing.
+    # Footprint-index matches carry no unit_id and are always kept.
+    deduped: list[MatchData] = []
+    for result in results:
+        seen: set[tuple[int, int]] = set()
+        kept: list[MatchResult] = []
+        for match in result.unit_matches:
+            if match.unit_id is not None:
+                key = (match.unit_id, match.col_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+            kept.append(match)
+        deduped.append(
+            MatchData(id=result.id, unit_matches=kept, messages=result.messages)
+        )
+    results = deduped
+
     _messages: set[MatchMessage] = set()
 
     for result in results:
@@ -620,7 +738,10 @@ def compute_name_basis(
 def build_match_data(db, params):
     """Build MatchData for a single MatchQuery."""
 
-    age_constraint = params.get_age_range()
+    try:
+        age_constraint = params.get_age_range()
+    except UnknownIntervalError as err:
+        raise HTTPException(status_code=422, detail=str(err))
     print("age_constraint", age_constraint)
     res = params.model_dump()
     # Add resolved numeric age constraints to context if provided

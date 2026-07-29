@@ -1,4 +1,5 @@
 from contextvars import ContextVar
+from math import isfinite
 
 from geopandas import GeoDataFrame
 from pandas import Series, isna, read_sql
@@ -87,7 +88,10 @@ MATCH_STRAT_NAMES_INFO = {
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
                 "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
-                "If false (default), return only the highest priority match (priority=0.0).",
+                "If false (default), return only the highest priority match (priority=0.0). "
+                "On GET this is a URL parameter. On POST it works either way: ?all= sets the "
+                "default for the whole batch, and any item can override it with its own 'all' "
+                "key ('all': 1 / 'all': 0 or true/false).",
                 "name_basis": "string, filter results to only those with this name_basis. "
                 "One of: exact | concept | rank-down | rank-up | synonym. "
                 "Applied as a final step after matching and prioritization. "
@@ -124,7 +128,10 @@ MATCH_STRAT_NAMES_INFO = {
             ],
             "response_fields": {
                 "results": "array, list of match result objects, one per query.",
-                "results[].unit_matches": "array, matched units ordered by ascending priority.",
+                "results[].unit_matches": "array, matched units ordered by ascending priority. "
+                "At most one entry per (unit_id, col_id): where several stratigraphic names "
+                "resolve to the same unit, only the best-priority match for that unit is "
+                "returned.",
                 "results[].messages": "array, any warnings or errors for this query.",
                 "name_bases": "set of strings, the name_basis values present across all results.",
                 "strat_name_id": "integer, Macrostrat stratigraphic name ID",
@@ -141,11 +148,13 @@ MATCH_STRAT_NAMES_INFO = {
                 "One of: exact | concept | rank-up | rank-down | synonym",
                 "spatial_basis": "string, spatial relationship of the match. "
                 "One of: containing column | adjacent column",
-                "temporal_basis": "string, temporal relationship of the match. "
+                "temporal_basis": "string or null, temporal relationship of the match. "
                 "One of: containing interval | adjacent interval. 'containing interval' means "
                 "the unit's age range overlaps the query age window; 'adjacent interval' means "
-                "it did not overlap but fell within age_tolerance of it. Without age_tolerance "
-                "every match is 'containing interval'.",
+                "it did not overlap but fell within age_tolerance of it. With an age window but "
+                "no age_tolerance every match is 'containing interval'. Null when the request "
+                "supplied no age constraint at all (no interval, b_interval/t_interval, or "
+                "b_age/t_age), signalling that matching applied no temporal filter.",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
                 "priority": "number, match priority assigned after applying the selected priority ordering scheme. "
@@ -391,19 +400,29 @@ def get_all_matched_units(
     if t_age is not None:
         units = units.loc[units.b_age >= t_age - age_tolerance]
 
-    # Copy so the frame cached in `column_unit_index` is never mutated. A unit
-    # overlapping the unwidened window is a 'containing interval' match; one that
-    # only fits once the tolerance is applied is an 'adjacent interval' match,
-    # mirroring how spatial_basis distinguishes containing from adjacent columns.
+    # Copy so the frame cached in `column_unit_index` is never mutated.
     units = units.copy()
-    strict = Series(True, index=units.index)
-    if b_age is not None:
-        strict &= units.t_age <= b_age
-    if t_age is not None:
-        strict &= units.b_age >= t_age
-    units["temporal_basis"] = strict.map(
-        {True: "containing interval", False: "adjacent interval"}
+
+    # A unit overlapping the unwidened window is a 'containing interval' match; one
+    # that only fits once the tolerance is applied is an 'adjacent interval' match,
+    # mirroring how spatial_basis distinguishes containing from adjacent columns.
+    # With no age window at all, no temporal filtering happened, so there is nothing
+    # to report and temporal_basis is left null. Callers pass +/-inf rather than None
+    # for an unconstrained window, hence the isfinite checks.
+    constrained = (b_age is not None and isfinite(b_age)) or (
+        t_age is not None and isfinite(t_age)
     )
+    if constrained:
+        strict = Series(True, index=units.index)
+        if b_age is not None:
+            strict &= units.t_age <= b_age
+        if t_age is not None:
+            strict &= units.b_age >= t_age
+        units["temporal_basis"] = strict.map(
+            {True: "containing interval", False: "adjacent interval"}
+        )
+    else:
+        units["temporal_basis"] = None
 
     u1 = units[units.strat_name_clean.notnull()]
     matched_rows = []

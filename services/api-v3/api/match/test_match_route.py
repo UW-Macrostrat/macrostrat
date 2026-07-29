@@ -16,7 +16,8 @@ from . import MatchQuery, router, setup_intervals
 # TODO: just import the enums from the parent module
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
 valid_spatial_bases = {"containing column", "adjacent column"}
-valid_temporal_bases = {"containing interval", "adjacent interval"}
+# None is valid: an unconstrained query applies no temporal filter at all.
+valid_temporal_bases = {"containing interval", "adjacent interval", None}
 
 
 def assert_valid_unit_matches(matches):
@@ -476,6 +477,7 @@ LAWRENCE = {
     "interval": "Kasimovian",
 }
 LAWRENCE_NO_INTERVAL = {k: v for k, v in LAWRENCE.items() if k != "interval"}
+LAWRENCE_POSITION = {"lat": LAWRENCE["lat"], "lng": LAWRENCE["lng"]}
 
 
 def test_strict_age_bounds_miss_the_containing_column(client):
@@ -536,13 +538,52 @@ def test_age_tolerance_smaller_than_the_gap_changes_nothing(client):
 
 @mark.parametrize(
     "age_params",
-    [{}, {"interval": "Kasimovian"}, {"b_age": 307.0, "t_age": 303.7}],
-    ids=["unconstrained", "interval", "absolute-ages"],
+    [
+        {"interval": "Kasimovian"},
+        {"b_age": 307.0, "t_age": 303.7},
+        {"b_interval": "Kasimovian", "t_interval": "Kasimovian"},
+    ],
+    ids=["interval", "absolute-ages", "b/t-intervals"],
 )
 def test_temporal_basis_is_containing_without_tolerance(client, age_params):
-    """With no age_tolerance every match overlapped the window outright."""
+    """Given an age window but no tolerance, every match overlapped it outright."""
     response = client.get(
         "/strat-names", params={**LAWRENCE_NO_INTERVAL, **age_params, "all": True}
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert len(matches) >= 1
+    assert {m["temporal_basis"] for m in matches} == {"containing interval"}
+
+
+@mark.parametrize(
+    "params",
+    [
+        {},
+        {"col_id": 490, "strat_name": "Mancos"},
+        {"spatial_tolerance": 50},
+    ],
+    ids=["no-age-params", "by-col-id", "spatial-only"],
+)
+def test_temporal_basis_is_null_without_any_age_constraint(client, params):
+    """No interval, no b_age/t_age, no age_tolerance means no temporal filter ran.
+
+    Reporting 'containing interval' there would claim the units had been checked
+    against a time window when none was applied, so the field is null instead.
+    """
+    query = {**LAWRENCE_NO_INTERVAL, "all": True, **params}
+    response = client.get("/strat-names", params=query)
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert len(matches) >= 1
+    assert {m["temporal_basis"] for m in matches} == {None}
+
+
+def test_temporal_basis_is_set_for_a_half_open_age_window(client):
+    """One bound is still a temporal constraint, so the basis is reported."""
+    response = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "b_age": 307.0, "all": True},
     )
     assert response.status_code == 200
     matches = response.json()["results"][0]["unit_matches"]
@@ -682,6 +723,196 @@ def test_negative_spatial_tolerance_is_rejected(client):
     """A negative distance is meaningless and must be a 422."""
     response = client.get("/strat-names", params={**LAWRENCE, "spatial_tolerance": -1})
     assert response.status_code == 422
+
+
+# -- `all` in the POST body, unknown intervals, unit dedup -------------------
+
+
+def test_batch_all_in_body_is_honored(client):
+    """A body-level "all": 1 widens that item's results; it used to be dropped."""
+    body = [{"identifier": 1, "strat_name": "Lawrence", "all": 1, **LAWRENCE_POSITION}]
+    response = client.post(
+        "/strat-names",
+        params={"interval": "Kasimovian", "age_tolerance": 2},
+        json=body,
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+    assert len({m["priority"] for m in matches}) > 1
+
+
+def test_batch_all_query_param_sets_the_batch_default(client):
+    """?all= applies to every item that does not set its own."""
+    body = [{"identifier": 1, "strat_name": "Lawrence", **LAWRENCE_POSITION}]
+    shared = {"interval": "Kasimovian", "age_tolerance": 2}
+    widened = client.post("/strat-names", params={**shared, "all": True}, json=body)
+    narrow = client.post("/strat-names", params=shared, json=body)
+    assert widened.status_code == 200 and narrow.status_code == 200
+    wide_matches = widened.json()["results"][0]["unit_matches"]
+    narrow_matches = narrow.json()["results"][0]["unit_matches"]
+    assert len(wide_matches) > len(narrow_matches)
+    assert {m["priority"] for m in narrow_matches} == {0.0}
+
+
+def test_batch_item_all_overrides_the_query_default(client):
+    """An item's own `all` wins over ?all=, in both directions."""
+    response = client.post(
+        "/strat-names",
+        params={"interval": "Kasimovian", "age_tolerance": 2, "all": True},
+        json=[
+            {"identifier": "inherits", "strat_name": "Lawrence", **LAWRENCE_POSITION},
+            {
+                "identifier": "opts-out",
+                "strat_name": "Lawrence",
+                "all": 0,
+                **LAWRENCE_POSITION,
+            },
+        ],
+    )
+    assert response.status_code == 200
+    inherits, opts_out = (r["unit_matches"] for r in response.json()["results"])
+    assert len({m["priority"] for m in inherits}) > 1
+    assert {m["priority"] for m in opts_out} == {0.0}
+
+
+@mark.parametrize(
+    "params",
+    [
+        {"interval": "NotARealInterval"},
+        {"b_interval": "NotARealInterval", "t_interval": "Kasimovian"},
+        {"t_interval": "NotARealInterval", "b_interval": "Kasimovian"},
+    ],
+    ids=["interval", "b_interval", "t_interval"],
+)
+def test_unknown_interval_returns_422(client, params):
+    """An interval Macrostrat does not have is a 422 naming the bad value, not a 500."""
+    response = client.get(
+        "/strat-names", params={**LAWRENCE_POSITION, "strat_name": "Lawrence", **params}
+    )
+    assert response.status_code == 422
+    assert "NotARealInterval" in response.text
+    assert "does not exist in Macrostrat" in response.text
+
+
+def test_matches_are_unique_per_unit_and_column(client):
+    """A unit reached by several names appears once, at its best priority.
+
+    Both 'Lawrence' (1105) and 'Lawrence Shale' (71361) resolve to unit 3891 in
+    col 100, which previously produced two identical rows at the same priority.
+    """
+    response = client.get(
+        "/strat-names", params={**LAWRENCE, "age_tolerance": 2, "all": True}
+    )
+    assert response.status_code == 200
+    matches = response.json()["results"][0]["unit_matches"]
+
+    pairs = [(m["unit_id"], m["col_id"]) for m in matches]
+    assert len(pairs) == len(set(pairs)), f"duplicate (unit_id, col_id) in {pairs}"
+    # The kept row is the best-priority one for that unit.
+    for match in matches:
+        same_unit = [m for m in matches if m["unit_id"] == match["unit_id"]]
+        assert match["priority"] == min(m["priority"] for m in same_unit)
+
+
+# -- string parameters are case-insensitive ----------------------------------
+
+
+@mark.parametrize("interval", ["Kasimovian", "kasimovian", "KASIMOVIAN", "kAsImOvIaN"])
+def test_interval_name_is_case_insensitive(client, interval):
+    """Any casing of an interval name resolves to the same age window."""
+    response = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "interval": interval, "all": True},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["results"][0]["unit_matches"]
+
+
+def test_interval_casings_give_identical_results(client):
+    """Casing changes nothing about the matches returned."""
+    canonical = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "interval": "Kasimovian", "all": True},
+    ).json()["results"][0]["unit_matches"]
+    lowered = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "interval": "kasimovian", "all": True},
+    ).json()["results"][0]["unit_matches"]
+    assert canonical == lowered
+
+
+@mark.parametrize("field", ["b_interval", "t_interval"])
+def test_bounding_interval_names_are_case_insensitive(client, field):
+    """b_interval and t_interval fold case the same way as interval."""
+    other = "t_interval" if field == "b_interval" else "b_interval"
+    response = client.get(
+        "/strat-names",
+        params={
+            **LAWRENCE_NO_INTERVAL,
+            field: "kasimovian",
+            other: "gzhelian",
+            "all": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_exact_interval_casing_still_wins(client):
+    """'M10n' and 'M10N' are distinct intervals; exact spelling must not be folded away."""
+    setup_intervals_response = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "interval": "M10n"},
+    )
+    # Either a match or no match is fine — what matters is that it resolves at all.
+    assert setup_intervals_response.status_code == 200, setup_intervals_response.text
+
+
+@mark.parametrize("value", ["rank-up", "RANK-UP", "Rank-Up"])
+def test_name_basis_is_case_insensitive(client, value):
+    """name_basis is a Literal, so it needs folding before validation."""
+    response = client.get(
+        "/strat-names",
+        params={
+            "col_id": 490,
+            "strat_name": "Navajo Sandstone",
+            "all": True,
+            "name_basis": value,
+        },
+    )
+    assert response.status_code == 200, response.text
+    matches = response.json()["results"][0]["unit_matches"]
+    assert all(m["name_basis"] == "rank-up" for m in matches)
+
+
+@mark.parametrize("value", ["strat_name", "STRAT_NAME", "Strat_Name"])
+def test_priority_is_case_insensitive(client, value):
+    """priority is also a Literal and must accept any casing."""
+    response = client.get(
+        "/strat-names",
+        params={"col_id": 490, "strat_name": "Mancos", "priority": value},
+    )
+    assert response.status_code == 200, response.text
+
+
+@mark.parametrize("value", ["Lawrence", "lawrence", "LAWRENCE"])
+def test_strat_name_is_case_insensitive(client, value):
+    """strat_name is folded by clean_strat_name on both the query and the db side."""
+    response = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "strat_name": value, "all": True},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["results"][0]["unit_matches"]
+
+
+def test_unknown_interval_is_still_rejected_whatever_the_casing(client):
+    """Folding case must not turn a genuinely unknown interval into a match."""
+    response = client.get(
+        "/strat-names",
+        params={**LAWRENCE_NO_INTERVAL, "interval": "notarealinterval"},
+    )
+    assert response.status_code == 422
+    assert "does not exist in Macrostrat" in response.text
 
 
 def test_match_types_all_true(client):
