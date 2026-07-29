@@ -19,11 +19,7 @@ from .utils import stored_procedure
 
 _column_unit_index = {}
 
-# The adjacent-column search previously used a 0.01-degree buffer. That is 1.11 km
-# north-south at any latitude, but only 0.86 km east-west at 39 degrees and 0.29 km
-# at 75 degrees. 1.11 km preserves the north-south reach exactly and makes the
-# east-west reach match it instead of narrowing toward the poles.
-DEFAULT_LOCATION_TOLERANCE_KM = 1.11
+DEFAULT_LOCATION_TOLERANCE_KM = 0.0
 
 MATCH_STRAT_NAMES_INFO = {
     "success": {
