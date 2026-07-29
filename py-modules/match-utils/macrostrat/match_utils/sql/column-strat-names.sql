@@ -4,6 +4,11 @@
 
   Parameters:
   - col_id: The identity of a column
+  - location_tolerance: How far, in kilometres, an adjacent column may be from the
+      selected one — exactly the value the caller supplied, converted to metres
+      here. ST_DWithin on geography is the same predicate as
+      ST_Intersects(col_area, ST_Buffer(selected, d)) but measures true distance,
+      so the reach no longer narrows east-west as latitude increases.
   - use_adjacent_cols: Allow units from adjacent columns
   - use_concepts: Allow concepts
   - use_column_units: Allow units directly linked to colums
@@ -27,7 +32,7 @@ WITH RECURSIVE cols AS (
            cols.col_id = sel.col_id selected
     FROM cols
     JOIN selected_col sel
-      ON ST_Intersects(cols.col_area, ST_Buffer(sel.col_area, 0.01))
+      ON ST_DWithin(cols.col_area::geography, sel.col_area::geography, :location_tolerance * 1000)
     WHERE :use_adjacent_cols
        OR cols.col_id = sel.col_id
 ), strat_units AS (
@@ -184,7 +189,11 @@ with_footprints_index AS (
     AND :use_footprint_index
   ORDER BY sort_order, is_selected_column DESC NULLS LAST
 ), res AS (
-  SELECT DISTINCT ON (sort_order, is_selected_column, strat_name_id)
+  /** col_id and unit_id are part of the key so that every distinct unit a name
+    resolves to is returned. Keying on strat_name_id alone let one arbitrary column
+    win per name, so widening location_tolerance could replace a near match with a
+    distant one, and a rank-up match could hide the direct match in its column. */
+  SELECT DISTINCT ON (sort_order, is_selected_column, strat_name_id, col_id, unit_id)
     sort_order priority,
     strat_name_id,
     strat_name,
@@ -200,11 +209,11 @@ with_footprints_index AS (
       WHEN is_selected_column != 0
         THEN 'containing column'
       ELSE 'adjacent column'
-      END AS   spatial_basis,
+      END AS   location_basis,
     t_age,
     b_age
   FROM with_footprints_index
-  ORDER BY sort_order, is_selected_column DESC, strat_name_id
+  ORDER BY sort_order, is_selected_column DESC, strat_name_id, col_id, unit_id
 )
 -- Start adding metadata to matches
 SELECT

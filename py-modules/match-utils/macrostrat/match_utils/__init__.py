@@ -1,7 +1,8 @@
 from contextvars import ContextVar
+from math import isfinite
 
 from geopandas import GeoDataFrame
-from pandas import isna, read_sql
+from pandas import Series, isna, read_sql
 from pydantic import BaseModel
 from sqlalchemy.sql import text
 
@@ -17,6 +18,12 @@ from .strat_names import (
 from .utils import stored_procedure
 
 _column_unit_index = {}
+
+# The adjacent-column search previously used a 0.01-degree buffer. That is 1.11 km
+# north-south at any latitude, but only 0.86 km east-west at 39 degrees and 0.29 km
+# at 75 degrees. 1.11 km preserves the north-south reach exactly and makes the
+# east-west reach match it instead of narrowing toward the poles.
+DEFAULT_LOCATION_TOLERANCE_KM = 1.11
 
 MATCH_STRAT_NAMES_INFO = {
     "success": {
@@ -64,10 +71,27 @@ MATCH_STRAT_NAMES_INFO = {
                 "Must be greater than t_age.",
                 "t_age": "number, late/upper age constraint in millions of years (Ma). "
                 "Must be less than b_age.",
+                "age_tolerance": "number, allowable gap in millions of years between the query "
+                "age window and a unit's age range. Default 0 (strict overlap). A unit falling "
+                "short of overlapping the window by no more than this amount is still matched, "
+                "and reported with age_basis='adjacent interval'. Requires an age window "
+                "to widen: supply interval, or both bounds via b_age/b_interval and "
+                "t_age/t_interval, otherwise the request is rejected with a 422. Does not "
+                "affect priority.",
+                "location_tolerance": "number, how far in kilometres an adjacent column may be "
+                "from the column containing the query location and still contribute matches. "
+                "Default 1.11, which preserves the reach of the 0.01-degree buffer it replaced. "
+                "Matches from outside the containing column are reported with "
+                "location_basis='adjacent column'. Columns tessellate, so neighbours share "
+                "edges and lie at distance 0 — a tolerance of 0 still admits every "
+                "edge-sharing column, and only larger values reach columns that do not touch.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
                 "collection ID). Passed through to the response for correlation.",
                 "all": "boolean, if true return all matches ordered by priority. "
-                "If false (default), return only the highest priority match (priority=0.0).",
+                "If false (default), return only the highest priority match (priority=0.0). "
+                "On GET this is a URL parameter. On POST it works either way: ?all= sets the "
+                "default for the whole batch, and any item can override it with its own 'all' "
+                "key ('all': 1 / 'all': 0 or true/false).",
                 "name_basis": "string, filter results to only those with this name_basis. "
                 "One of: exact | concept | rank-down | rank-up | synonym. "
                 "Applied as a final step after matching and prioritization. "
@@ -104,7 +128,10 @@ MATCH_STRAT_NAMES_INFO = {
             ],
             "response_fields": {
                 "results": "array, list of match result objects, one per query.",
-                "results[].unit_matches": "array, matched units ordered by ascending priority.",
+                "results[].unit_matches": "array, matched units ordered by ascending priority. "
+                "At most one entry per (unit_id, col_id): where several stratigraphic names "
+                "resolve to the same unit, only the best-priority match for that unit is "
+                "returned.",
                 "results[].messages": "array, any warnings or errors for this query.",
                 "name_bases": "set of strings, the name_basis values present across all results.",
                 "strat_name_id": "integer, Macrostrat stratigraphic name ID",
@@ -119,8 +146,15 @@ MATCH_STRAT_NAMES_INFO = {
                 "depth": "integer, hierarchy traversal depth (0=direct, negative=parent/rank-up, positive=child/rank-down)",
                 "name_basis": "string, matching strategy that produced this result. "
                 "One of: exact | concept | rank-up | rank-down | synonym",
-                "spatial_basis": "string, spatial relationship of the match. "
+                "location_basis": "string, spatial relationship of the match. "
                 "One of: containing column | adjacent column",
+                "age_basis": "string or null, temporal relationship of the match. "
+                "One of: containing interval | adjacent interval. 'containing interval' means "
+                "the unit's age range overlaps the query age window; 'adjacent interval' means "
+                "it did not overlap but fell within age_tolerance of it. With an age window but "
+                "no age_tolerance every match is 'containing interval'. Null when the request "
+                "supplied no age constraint at all (no interval, b_interval/t_interval, or "
+                "b_age/t_age), signalling that matching applied no temporal filter.",
                 "t_age": "number, continuous time age model estimated top age, in Ma",
                 "b_age": "number, continuous time age model estimated bottom age, in Ma",
                 "priority": "number, match priority assigned after applying the selected priority ordering scheme. "
@@ -250,18 +284,28 @@ def ensure_single(col_ids, entity="column"):
 column_unit_index = ContextVar("column_unit_index", default={})
 
 
-def get_column_units(conn, col_id, types: list[MatchType] = None):
+def get_column_units(
+    conn,
+    col_id,
+    types: list[MatchType] = None,
+    location_tolerance: float = DEFAULT_LOCATION_TOLERANCE_KM,
+):
     """
     Get a unit that matches a given stratigraphic name
+
+    `location_tolerance` is in kilometers and is part of the cache key, since
+    unlike the age filter it changes the SQL rather than being applied afterwards.
     """
+    cache_key = (col_id, location_tolerance)
     unit_index = column_unit_index.get()
-    if col_id in unit_index:
-        return unit_index[col_id]
+    if cache_key in unit_index:
+        return unit_index[cache_key]
     # TODO need to update the match types model to exact, concept, rank-up, rank-down
     types = get_match_types(types)
 
     params = dict(
         col_id=col_id,
+        location_tolerance=location_tolerance,
         use_concepts=MatchType.Concepts in types,
         use_synonyms=MatchType.Synonyms in types,
         use_adjacent_cols=MatchType.AdjacentCols in types,
@@ -286,7 +330,7 @@ def get_column_units(conn, col_id, types: list[MatchType] = None):
 
     # Set the index to a shared cache
     unit_index = column_unit_index.get()
-    unit_index[col_id] = units_df
+    unit_index[cache_key] = units_df
     column_unit_index.set(unit_index)
     return units_df
 
@@ -333,16 +377,52 @@ def get_all_matched_units(
     n_results: int | None = None,
     t_age: float | None = None,
     b_age: float | None = None,
+    age_tolerance: float = 0.0,
+    location_tolerance: float = DEFAULT_LOCATION_TOLERANCE_KM,
 ) -> list[tuple]:
     """
     Return all units and stratigraphic names that match the given col_id.
     Returns list of (row, is_exact_name_match) tuples.
+
+    `age_tolerance` widens the [t_age, b_age] window by that many millions of
+    years on both ends, so a unit falling just short of overlapping it is still
+    returned. Each row is stamped with a `age_basis` recording which case it
+    is.
+
+    `location_tolerance` is in kilometres and bounds how far an adjacent column may
+    be from the one containing the query location.
     """
-    units = get_column_units(conn, col_id, types=types)
+    units = get_column_units(
+        conn, col_id, types=types, location_tolerance=location_tolerance
+    )
     if b_age is not None:
-        units = units.loc[units.t_age <= b_age]
+        units = units.loc[units.t_age <= b_age + age_tolerance]
     if t_age is not None:
-        units = units.loc[units.b_age >= t_age]
+        units = units.loc[units.b_age >= t_age - age_tolerance]
+
+    # Copy so the frame cached in `column_unit_index` is never mutated.
+    units = units.copy()
+
+    # A unit overlapping the unwidened window is a 'containing interval' match; one
+    # that only fits once the tolerance is applied is an 'adjacent interval' match,
+    # mirroring how location_basis distinguishes containing from adjacent columns.
+    # With no age window at all, no temporal filtering happened, so there is nothing
+    # to report and age_basis is left null. Callers pass +/-inf rather than None
+    # for an unconstrained window, hence the isfinite checks.
+    constrained = (b_age is not None and isfinite(b_age)) or (
+        t_age is not None and isfinite(t_age)
+    )
+    if constrained:
+        strict = Series(True, index=units.index)
+        if b_age is not None:
+            strict &= units.t_age <= b_age
+        if t_age is not None:
+            strict &= units.b_age >= t_age
+        units["age_basis"] = strict.map(
+            {True: "containing interval", False: "adjacent interval"}
+        )
+    else:
+        units["age_basis"] = None
 
     u1 = units[units.strat_name_clean.notnull()]
     matched_rows = []

@@ -75,12 +75,12 @@ def test_get_column_units(db):
     assert len(project_ids) == 1
 
 
-def test_column_units_have_spatial_basis(db):
-    """All rows should have a spatial_basis of containing or adjacent column."""
+def test_column_units_have_location_basis(db):
+    """All rows should have a location_basis of containing or adjacent column."""
     with db.engine.connect() as conn:
         units = get_column_units(conn, col_id=490)
-    assert "spatial_basis" in units.columns
-    assert set(units["spatial_basis"].dropna().unique()).issubset(
+    assert "location_basis" in units.columns
+    assert set(units["location_basis"].dropna().unique()).issubset(
         {"containing column", "adjacent column"}
     )
 
@@ -210,12 +210,12 @@ def test_match_count(db):
     assert unit_ids == {1852}
 
 
-def test_spatial_basis_containing_column(db):
-    """Direct column match should have spatial_basis='containing column'."""
+def test_location_basis_containing_column(db):
+    """Direct column match should have location_basis='containing column'."""
     names = standardize_names("Navajo Sandstone")
     with db.engine.connect() as conn:
         rows = get_all_matched_units(conn, 490, names)
-    containing = [row for row in rows if row["spatial_basis"] == "containing column"]
+    containing = [row for row in rows if row["location_basis"] == "containing column"]
     assert len(containing) > 0
 
 
