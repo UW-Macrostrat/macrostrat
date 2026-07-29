@@ -4,13 +4,7 @@ from datetime import datetime
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import (
-    BaseModel,
-    BeforeValidator,
-    Field,
-    ValidationError,
-    model_validator,
-)
+from pydantic import BaseModel, BeforeValidator, Field, ValidationError, model_validator
 
 from macrostrat.match_utils import (
     DEFAULT_LOCATION_TOLERANCE_KM,
