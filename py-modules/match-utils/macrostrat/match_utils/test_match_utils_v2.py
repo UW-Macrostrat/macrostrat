@@ -80,13 +80,13 @@ expected_match_keys = {
     "project_id",
     "depth",
     "name_basis",
-    "spatial_basis",
+    "location_basis",
     "t_age",
     "b_age",
     "priority",
 }
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
-valid_spatial_bases = {"containing column", "adjacent column"}
+valid_location_bases = {"containing column", "adjacent column"}
 
 
 # -- Unit tests for response structure -------------------------------------
@@ -113,14 +113,14 @@ def test_match_result_name_basis_values():
         project_id=1,
         depth=0,
         name_basis="exact",
-        spatial_basis="containing column",
-        temporal_basis="containing interval",
+        location_basis="containing column",
+        age_basis="containing interval",
         t_age=100.0,
         b_age=200.0,
         priority=0.0,
     )
     assert result.name_basis in valid_name_bases
-    assert result.spatial_basis in valid_spatial_bases
+    assert result.location_basis in valid_location_bases
 
 
 def test_priority_ascending_order(db):

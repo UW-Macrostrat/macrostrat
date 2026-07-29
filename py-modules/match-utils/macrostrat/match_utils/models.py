@@ -17,10 +17,10 @@ class MatchResult(BaseModel):
     project_id: Optional[int]
     depth: Optional[int]
     name_basis: str
-    spatial_basis: str
+    location_basis: str
     # Null when the request applied no age constraint at all, to distinguish
     # "not filtered on time" from "filtered and it overlapped".
-    temporal_basis: Optional[str]
+    age_basis: Optional[str]
     t_age: float
     b_age: float
     priority: float

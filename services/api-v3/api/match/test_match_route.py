@@ -15,9 +15,9 @@ from . import MatchQuery, router, setup_intervals
 
 # TODO: just import the enums from the parent module
 valid_name_bases = {"exact", "concept", "rank-up", "rank-down", "synonym"}
-valid_spatial_bases = {"containing column", "adjacent column"}
+valid_location_bases = {"containing column", "adjacent column"}
 # None is valid: an unconstrained query applies no temporal filter at all.
-valid_temporal_bases = {"containing interval", "adjacent interval", None}
+valid_age_bases = {"containing interval", "adjacent interval", None}
 
 
 def assert_valid_unit_matches(matches):
@@ -30,8 +30,8 @@ def assert_valid_unit_matches(matches):
         assert match["unit_id"] is not None
         assert match["strat_name_id"] is not None
         assert match["name_basis"] in valid_name_bases
-        assert match["spatial_basis"] in valid_spatial_bases
-        assert match["temporal_basis"] in valid_temporal_bases
+        assert match["location_basis"] in valid_location_bases
+        assert match["age_basis"] in valid_age_bases
         assert "concept_name" in match
 
 
@@ -503,8 +503,8 @@ def test_age_tolerance_recovers_the_containing_column(client):
     match = recovered[0]
     assert match["unit_id"] == 3962
     assert match["name_basis"] == "exact"
-    assert match["spatial_basis"] == "containing column"
-    assert match["temporal_basis"] == "adjacent interval"
+    assert match["location_basis"] == "containing column"
+    assert match["age_basis"] == "adjacent interval"
     # Its age range falls outside the Kasimovian, but within the tolerance of it.
     assert match["b_age"] < 303.7
     assert match["b_age"] >= 303.7 - 0.5
@@ -514,7 +514,7 @@ def test_age_tolerance_ranks_the_containing_column_first(client):
     """Michael's real call: the default all=false now returns his own column.
 
     priority is unchanged by this feature — it still keys on name_basis and
-    spatial_basis — and an exact match in the containing column outranks the
+    location_basis — and an exact match in the containing column outranks the
     rank-up adjacent-column matches that a strict query returns.
     """
     response = client.get("/strat-names", params={**LAWRENCE, "age_tolerance": 0.5})
@@ -545,7 +545,7 @@ def test_age_tolerance_smaller_than_the_gap_changes_nothing(client):
     ],
     ids=["interval", "absolute-ages", "b/t-intervals"],
 )
-def test_temporal_basis_is_containing_without_tolerance(client, age_params):
+def test_age_basis_is_containing_without_tolerance(client, age_params):
     """Given an age window but no tolerance, every match overlapped it outright."""
     response = client.get(
         "/strat-names", params={**LAWRENCE_NO_INTERVAL, **age_params, "all": True}
@@ -553,7 +553,7 @@ def test_temporal_basis_is_containing_without_tolerance(client, age_params):
     assert response.status_code == 200
     matches = response.json()["results"][0]["unit_matches"]
     assert len(matches) >= 1
-    assert {m["temporal_basis"] for m in matches} == {"containing interval"}
+    assert {m["age_basis"] for m in matches} == {"containing interval"}
 
 
 @mark.parametrize(
@@ -561,11 +561,11 @@ def test_temporal_basis_is_containing_without_tolerance(client, age_params):
     [
         {},
         {"col_id": 490, "strat_name": "Mancos"},
-        {"spatial_tolerance": 50},
+        {"location_tolerance": 50},
     ],
     ids=["no-age-params", "by-col-id", "spatial-only"],
 )
-def test_temporal_basis_is_null_without_any_age_constraint(client, params):
+def test_age_basis_is_null_without_any_age_constraint(client, params):
     """No interval, no b_age/t_age, no age_tolerance means no temporal filter ran.
 
     Reporting 'containing interval' there would claim the units had been checked
@@ -576,10 +576,10 @@ def test_temporal_basis_is_null_without_any_age_constraint(client, params):
     assert response.status_code == 200
     matches = response.json()["results"][0]["unit_matches"]
     assert len(matches) >= 1
-    assert {m["temporal_basis"] for m in matches} == {None}
+    assert {m["age_basis"] for m in matches} == {None}
 
 
-def test_temporal_basis_is_set_for_a_half_open_age_window(client):
+def test_age_basis_is_set_for_a_half_open_age_window(client):
     """One bound is still a temporal constraint, so the basis is reported."""
     response = client.get(
         "/strat-names",
@@ -588,7 +588,7 @@ def test_temporal_basis_is_set_for_a_half_open_age_window(client):
     assert response.status_code == 200
     matches = response.json()["results"][0]["unit_matches"]
     assert len(matches) >= 1
-    assert {m["temporal_basis"] for m in matches} == {"containing interval"}
+    assert {m["age_basis"] for m in matches} == {"containing interval"}
 
 
 def test_age_tolerance_requires_an_age_window(client):
@@ -617,7 +617,7 @@ def test_age_tolerance_accepts_an_absolute_age_window(client):
     assert 101 in {m["col_id"] for m in matches}
 
 
-# -- spatial_tolerance -------------------------------------------------------
+# -- location_tolerance -------------------------------------------------------
 
 # Column 101 contains the Lawrence collection. Its edge-sharing neighbours are
 # 100, 102, 103, 108 and 109; column 90 lies further out and only comes within
@@ -635,20 +635,20 @@ def cols_returned(client, **params):
     return {m["col_id"] for m in matches if m["col_id"] is not None}
 
 
-def test_default_spatial_tolerance_matches_the_old_degree_buffer(client):
+def test_default_location_tolerance_matches_the_old_degree_buffer(client):
     """The 1.11 km default reproduces the column set the 0.01-degree buffer gave."""
     assert cols_returned(client, age_tolerance=0.5) <= LAWRENCE_NEIGHBOURS
 
 
-def test_spatial_tolerance_changes_the_search(client):
+def test_location_tolerance_changes_the_search(client):
     """A larger tolerance reaches further, and always keeps the containing column."""
-    near = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
-    far = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    near = cols_returned(client, age_tolerance=0.5, location_tolerance=1.11)
+    far = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
     assert near != far
     assert 101 in near and 101 in far
 
 
-def test_spatial_tolerance_is_monotonic(client):
+def test_location_tolerance_is_monotonic(client):
     """Widening the tolerance only adds columns, it never swaps them out.
 
     This holds because the DISTINCT ON in column-strat-names.sql keys on col_id and
@@ -656,34 +656,34 @@ def test_spatial_tolerance_is_monotonic(client):
     all adjacent columns, so a distant column could displace a nearer one as the
     candidate set grew.
     """
-    near = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
-    far = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    near = cols_returned(client, age_tolerance=0.5, location_tolerance=1.11)
+    far = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
     assert near < far, f"expected {near} to be a strict subset of {far}"
 
 
-def test_spatial_tolerance_zero_still_admits_touching_columns(client):
+def test_location_tolerance_zero_still_admits_touching_columns(client):
     """Columns tessellate, so neighbours are at distance 0 and survive a 0 km tolerance.
 
     ST_DWithin(a, b, 0) is 'touching or overlapping', not 'same column'. Use the
     adjacent-columns match type to restrict to the containing column.
     """
-    assert cols_returned(client, age_tolerance=0.5, spatial_tolerance=0) != {101}
+    assert cols_returned(client, age_tolerance=0.5, location_tolerance=0) != {101}
 
 
-def test_spatial_tolerance_is_not_cached_across_values(client):
+def test_location_tolerance_is_not_cached_across_values(client):
     """Tolerance changes the SQL, so it must be part of the column-units cache key.
 
     Requesting a wide tolerance after a narrow one (and vice versa) must not return
     the earlier result.
     """
-    wide_first = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
-    narrow = cols_returned(client, age_tolerance=0.5, spatial_tolerance=1.11)
-    wide_again = cols_returned(client, age_tolerance=0.5, spatial_tolerance=100)
+    wide_first = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
+    narrow = cols_returned(client, age_tolerance=0.5, location_tolerance=1.11)
+    wide_again = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
     assert wide_first == wide_again
     assert narrow != wide_first
 
 
-def test_spatial_tolerance_is_bound_in_kilometres_as_supplied(db):
+def test_location_tolerance_is_bound_in_kilometres_as_supplied(db):
     """The SQL receives the caller's value verbatim; the km->m conversion is in SQL.
 
     A tolerance of 1000 km must reach far more columns than 1000 m would, which is
@@ -695,15 +695,15 @@ def test_spatial_tolerance_is_bound_in_kilometres_as_supplied(db):
         db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
     )
     with db.engine.connect() as conn:
-        near = get_column_units(conn, 101, spatial_tolerance=1)
-        far = get_column_units(conn, 101, spatial_tolerance=1000)
+        near = get_column_units(conn, 101, location_tolerance=1)
+        far = get_column_units(conn, 101, location_tolerance=1000)
     assert far.col_id.nunique() > near.col_id.nunique()
 
 
-def test_spatial_tolerance_default_is_used_when_absent(db):
-    """Omitting the parameter falls back to DEFAULT_SPATIAL_TOLERANCE_KM."""
+def test_location_tolerance_default_is_used_when_absent(db):
+    """Omitting the parameter falls back to DEFAULT_LOCATION_TOLERANCE_KM."""
     from macrostrat.match_utils import (
-        DEFAULT_SPATIAL_TOLERANCE_KM,
+        DEFAULT_LOCATION_TOLERANCE_KM,
         create_ignore_list,
         get_column_units,
     )
@@ -714,14 +714,14 @@ def test_spatial_tolerance_default_is_used_when_absent(db):
     with db.engine.connect() as conn:
         implicit = get_column_units(conn, 101)
         explicit = get_column_units(
-            conn, 101, spatial_tolerance=DEFAULT_SPATIAL_TOLERANCE_KM
+            conn, 101, location_tolerance=DEFAULT_LOCATION_TOLERANCE_KM
         )
     assert set(implicit.col_id.dropna()) == set(explicit.col_id.dropna())
 
 
-def test_negative_spatial_tolerance_is_rejected(client):
+def test_negative_location_tolerance_is_rejected(client):
     """A negative distance is meaningless and must be a 422."""
-    response = client.get("/strat-names", params={**LAWRENCE, "spatial_tolerance": -1})
+    response = client.get("/strat-names", params={**LAWRENCE, "location_tolerance": -1})
     assert response.status_code == 422
 
 
@@ -1181,7 +1181,7 @@ def test_name_basis_values_are_valid(client):
     for result in data["results"]:
         for match in result["unit_matches"]:
             assert match["name_basis"] in valid_name_bases
-            assert match["spatial_basis"] in valid_spatial_bases
+            assert match["location_basis"] in valid_location_bases
 
 
 def test_match_result_has_concept_name(client):

@@ -13,7 +13,7 @@ from pydantic import (
 )
 
 from macrostrat.match_utils import (
-    DEFAULT_SPATIAL_TOLERANCE_KM,
+    DEFAULT_LOCATION_TOLERANCE_KM,
     MATCH_STRAT_NAMES_INFO,
     MatchResult,
     create_ignore_list,
@@ -155,18 +155,18 @@ class MatchQueryFields(BaseModel):
             "Allowable gap, in millions of years, between the query age window and a "
             "unit's age range. A unit falling short of overlapping the window by no "
             "more than this amount is still matched, and reported with "
-            "temporal_basis='adjacent interval'. Requires an age window to widen: "
+            "age_basis='adjacent interval'. Requires an age window to widen: "
             "supply `interval`, or both bounds via b_age/b_interval and t_age/t_interval. "
             "Does not affect `priority`."
         ),
     )
-    spatial_tolerance: float = Field(
-        DEFAULT_SPATIAL_TOLERANCE_KM,
+    location_tolerance: float = Field(
+        DEFAULT_LOCATION_TOLERANCE_KM,
         ge=0,
         description=(
             "How far, in kilometers, an adjacent column may be from the column "
             "containing the query location and still contribute matches. Matches from "
-            "outside that column are reported with spatial_basis='adjacent column', "
+            "outside that column are reported with location_basis='adjacent column', "
             "as before. Note that columns tessellate, so neighbours share edges and "
             "lie at distance 0: a tolerance of 0 still admits every edge-sharing "
             "column. Only a larger value reaches columns that do not touch."
@@ -325,7 +325,7 @@ NameBasis = Annotated[
     Literal["exact", "concept", "rank-down", "rank-up", "synonym"],
     BeforeValidator(_fold_case),
 ]
-SpatialBasis = Literal["containing column", "adjacent column"]
+LocationBasis = Literal["containing column", "adjacent column"]
 
 
 class MatchOptions(BaseModel):
@@ -379,7 +379,7 @@ class MatchPriorityOrder(BaseModel):
     Each rule combines two pieces of information:
     - name_basis: how the user's input stratigraphic name matched the database record
       such as exact, concept, rank-down, rank-up, or synonym.
-    - spatial_basis: how the matched unit relates to the input location or column,
+    - location_basis: how the matched unit relates to the input location or column,
       such as containing column or adjacent column.
     The API supports different priority schemes. With priority='location', spatial
     relationship is favored first, so containing-column matches are ranked before
@@ -394,7 +394,7 @@ class MatchPriorityOrder(BaseModel):
             "For example, 'exact' means the input name directly matched the database "
         ),
     )
-    spatial_basis: SpatialBasis = Field(
+    location_basis: LocationBasis = Field(
         ...,
         description=(
             "Spatial relationship between the matched unit and the column location. "
@@ -406,41 +406,41 @@ class MatchPriorityOrder(BaseModel):
     def priority_matches(self, result: MatchResult) -> bool:
         return (
             result.name_basis == self.name_basis
-            and result.spatial_basis == self.spatial_basis
+            and result.location_basis == self.location_basis
         )
 
 
 PRIORITY_ORDER = [
-    MatchPriorityOrder(name_basis="exact", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="exact", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="concept", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="rank-down", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="concept", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="rank-down", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="rank-up", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="rank-up", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="synonym", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="synonym", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="exact", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="exact", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="concept", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-down", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="concept", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-down", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-up", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-up", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="synonym", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="synonym", location_basis="adjacent column"),
 ]
 
 PRIORITY_ORDER_LOCATION = [
-    MatchPriorityOrder(name_basis="exact", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="concept", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="rank-down", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="rank-up", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="synonym", spatial_basis="containing column"),
-    MatchPriorityOrder(name_basis="exact", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="concept", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="rank-down", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="rank-up", spatial_basis="adjacent column"),
-    MatchPriorityOrder(name_basis="synonym", spatial_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="exact", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="concept", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-down", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="rank-up", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="synonym", location_basis="containing column"),
+    MatchPriorityOrder(name_basis="exact", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="concept", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-down", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="rank-up", location_basis="adjacent column"),
+    MatchPriorityOrder(name_basis="synonym", location_basis="adjacent column"),
 ]
 
 
 def assign_priorities(
     results: list[MatchResult], priority: str = "location"
 ) -> list[MatchResult]:
-    """Assign consecutive priorities based on name_basis/spatial_basis combinations present."""
+    """Assign consecutive priorities based on name_basis/location_basis combinations present."""
 
     order = PRIORITY_ORDER_LOCATION if priority == "location" else PRIORITY_ORDER
     present: list[MatchPriorityOrder] = []
@@ -812,7 +812,7 @@ def build_match_data(db, params):
                 t_age=age_constraint.t_age,
                 b_age=age_constraint.b_age,
                 age_tolerance=params.age_tolerance,
-                spatial_tolerance=params.spatial_tolerance,
+                location_tolerance=params.location_tolerance,
             )
         raw_name = (params.strat_name or params.concept_name or "").strip().lower()
         for row in rows:

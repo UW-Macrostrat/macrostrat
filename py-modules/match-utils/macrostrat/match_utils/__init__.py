@@ -23,7 +23,7 @@ _column_unit_index = {}
 # north-south at any latitude, but only 0.86 km east-west at 39 degrees and 0.29 km
 # at 75 degrees. 1.11 km preserves the north-south reach exactly and makes the
 # east-west reach match it instead of narrowing toward the poles.
-DEFAULT_SPATIAL_TOLERANCE_KM = 1.11
+DEFAULT_LOCATION_TOLERANCE_KM = 1.11
 
 MATCH_STRAT_NAMES_INFO = {
     "success": {
@@ -74,15 +74,15 @@ MATCH_STRAT_NAMES_INFO = {
                 "age_tolerance": "number, allowable gap in millions of years between the query "
                 "age window and a unit's age range. Default 0 (strict overlap). A unit falling "
                 "short of overlapping the window by no more than this amount is still matched, "
-                "and reported with temporal_basis='adjacent interval'. Requires an age window "
+                "and reported with age_basis='adjacent interval'. Requires an age window "
                 "to widen: supply interval, or both bounds via b_age/b_interval and "
                 "t_age/t_interval, otherwise the request is rejected with a 422. Does not "
                 "affect priority.",
-                "spatial_tolerance": "number, how far in kilometres an adjacent column may be "
+                "location_tolerance": "number, how far in kilometres an adjacent column may be "
                 "from the column containing the query location and still contribute matches. "
                 "Default 1.11, which preserves the reach of the 0.01-degree buffer it replaced. "
                 "Matches from outside the containing column are reported with "
-                "spatial_basis='adjacent column'. Columns tessellate, so neighbours share "
+                "location_basis='adjacent column'. Columns tessellate, so neighbours share "
                 "edges and lie at distance 0 — a tolerance of 0 still admits every "
                 "edge-sharing column, and only larger values reach columns that do not touch.",
                 "identifier": "string or integer, optional identifier to tag a query (e.g. a "
@@ -146,9 +146,9 @@ MATCH_STRAT_NAMES_INFO = {
                 "depth": "integer, hierarchy traversal depth (0=direct, negative=parent/rank-up, positive=child/rank-down)",
                 "name_basis": "string, matching strategy that produced this result. "
                 "One of: exact | concept | rank-up | rank-down | synonym",
-                "spatial_basis": "string, spatial relationship of the match. "
+                "location_basis": "string, spatial relationship of the match. "
                 "One of: containing column | adjacent column",
-                "temporal_basis": "string or null, temporal relationship of the match. "
+                "age_basis": "string or null, temporal relationship of the match. "
                 "One of: containing interval | adjacent interval. 'containing interval' means "
                 "the unit's age range overlaps the query age window; 'adjacent interval' means "
                 "it did not overlap but fell within age_tolerance of it. With an age window but "
@@ -288,15 +288,15 @@ def get_column_units(
     conn,
     col_id,
     types: list[MatchType] = None,
-    spatial_tolerance: float = DEFAULT_SPATIAL_TOLERANCE_KM,
+    location_tolerance: float = DEFAULT_LOCATION_TOLERANCE_KM,
 ):
     """
     Get a unit that matches a given stratigraphic name
 
-    `spatial_tolerance` is in kilometers and is part of the cache key, since
+    `location_tolerance` is in kilometers and is part of the cache key, since
     unlike the age filter it changes the SQL rather than being applied afterwards.
     """
-    cache_key = (col_id, spatial_tolerance)
+    cache_key = (col_id, location_tolerance)
     unit_index = column_unit_index.get()
     if cache_key in unit_index:
         return unit_index[cache_key]
@@ -305,7 +305,7 @@ def get_column_units(
 
     params = dict(
         col_id=col_id,
-        spatial_tolerance=spatial_tolerance,
+        location_tolerance=location_tolerance,
         use_concepts=MatchType.Concepts in types,
         use_synonyms=MatchType.Synonyms in types,
         use_adjacent_cols=MatchType.AdjacentCols in types,
@@ -378,7 +378,7 @@ def get_all_matched_units(
     t_age: float | None = None,
     b_age: float | None = None,
     age_tolerance: float = 0.0,
-    spatial_tolerance: float = DEFAULT_SPATIAL_TOLERANCE_KM,
+    location_tolerance: float = DEFAULT_LOCATION_TOLERANCE_KM,
 ) -> list[tuple]:
     """
     Return all units and stratigraphic names that match the given col_id.
@@ -386,14 +386,14 @@ def get_all_matched_units(
 
     `age_tolerance` widens the [t_age, b_age] window by that many millions of
     years on both ends, so a unit falling just short of overlapping it is still
-    returned. Each row is stamped with a `temporal_basis` recording which case it
+    returned. Each row is stamped with a `age_basis` recording which case it
     is.
 
-    `spatial_tolerance` is in kilometres and bounds how far an adjacent column may
+    `location_tolerance` is in kilometres and bounds how far an adjacent column may
     be from the one containing the query location.
     """
     units = get_column_units(
-        conn, col_id, types=types, spatial_tolerance=spatial_tolerance
+        conn, col_id, types=types, location_tolerance=location_tolerance
     )
     if b_age is not None:
         units = units.loc[units.t_age <= b_age + age_tolerance]
@@ -405,9 +405,9 @@ def get_all_matched_units(
 
     # A unit overlapping the unwidened window is a 'containing interval' match; one
     # that only fits once the tolerance is applied is an 'adjacent interval' match,
-    # mirroring how spatial_basis distinguishes containing from adjacent columns.
+    # mirroring how location_basis distinguishes containing from adjacent columns.
     # With no age window at all, no temporal filtering happened, so there is nothing
-    # to report and temporal_basis is left null. Callers pass +/-inf rather than None
+    # to report and age_basis is left null. Callers pass +/-inf rather than None
     # for an unconstrained window, hence the isfinite checks.
     constrained = (b_age is not None and isfinite(b_age)) or (
         t_age is not None and isfinite(t_age)
@@ -418,11 +418,11 @@ def get_all_matched_units(
             strict &= units.t_age <= b_age
         if t_age is not None:
             strict &= units.b_age >= t_age
-        units["temporal_basis"] = strict.map(
+        units["age_basis"] = strict.map(
             {True: "containing interval", False: "adjacent interval"}
         )
     else:
-        units["temporal_basis"] = None
+        units["age_basis"] = None
 
     u1 = units[units.strat_name_clean.notnull()]
     matched_rows = []
