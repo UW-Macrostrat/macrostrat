@@ -2047,7 +2047,6 @@ def calculate_age_intervals(
         f"{target.schema}.{target.table}"
     )
 
-
 def copy_point_type_from_column(
     target: TableTarget,
     src_col: str,
@@ -2072,7 +2071,7 @@ def copy_point_type_from_column(
         )
 
     row_count = db.run_query(
-        "SELECT count(*) FROM {table}",
+        "SELECT count(*) FROM {table} ",
         dict(table=target.fq_identifier),
     ).scalar()
 
@@ -4145,6 +4144,31 @@ def normalize_update_process_flag(
     """
     update_process_flag_for_current_context(dry_run=dry_run)
 
+@normalize_cli.command("get_japan_descrips")
+def get_japan_descrips_points_lines():
+    """Stores unique descriptions into temp table"""
+    print("function reached")
+    db = get_database()
+
+    slugs = db.run_query("select slug from maps_metadata.ingest_process where slug ilike 'japan%';").scalars()
+
+    for slug in slugs:
+        print(slug)
+        db.run_sql(
+            """INSERT INTO temp.japan_point_types (description) 
+            SELECT DISTINCT descrip FROM {table}
+            WHERE descrip IS NOT NULL AND coalesce(omit, false) = false
+            ON CONFLICT DO NOTHING;""",
+            dict(table=Identifier("sources", slug + "_points")),
+        )
+        db.run_sql(
+            """INSERT INTO temp.japan_line_types (description) 
+            SELECT DISTINCT descrip FROM {table}
+            WHERE descrip IS NOT NULL AND coalesce(omit, false) = false
+            ON CONFLICT DO NOTHING;""",
+            dict(table=Identifier("sources", slug + "_lines")),
+        )
+        db.session.commit()
 
 # ____________________________BASH SCRIPTS POLYGONS_______________________________________
 
