@@ -2047,6 +2047,7 @@ def calculate_age_intervals(
         f"{target.schema}.{target.table}"
     )
 
+
 def copy_point_type_from_column(
     target: TableTarget,
     src_col: str,
@@ -4144,13 +4145,16 @@ def normalize_update_process_flag(
     """
     update_process_flag_for_current_context(dry_run=dry_run)
 
+
 @normalize_cli.command("get_japan_descrips")
 def get_japan_descrips_points_lines():
     """Stores unique descriptions into temp table"""
     print("function reached")
     db = get_database()
 
-    slugs = db.run_query("select slug from maps_metadata.ingest_process where slug ilike 'japan%';").scalars()
+    slugs = db.run_query(
+        "select slug from maps_metadata.ingest_process where slug ilike 'japan%';"
+    ).scalars()
 
     for slug in slugs:
         print(slug)
@@ -4169,6 +4173,7 @@ def get_japan_descrips_points_lines():
             dict(table=Identifier("sources", slug + "_lines")),
         )
         db.session.commit()
+
 
 # ____________________________BASH SCRIPTS POLYGONS_______________________________________
 
