@@ -68,7 +68,7 @@ module.exports = function (req, res, next, cb) {
     area
     ${api.acceptedFormats.geo[req.query.format] ? ", web_geom AS geom" : ""}
   FROM maps.sources
-  JOIN (values
+  LEFT JOIN (values
     ('tiny', 0),
     ('small', 1),
     ('medium', 2),
