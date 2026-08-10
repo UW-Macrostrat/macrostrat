@@ -133,6 +133,10 @@ services:
       context: ../services/tileserver
       additional_contexts:
         py-modules: ../py-modules
+        # The raster index/serving libraries are not yet released; they are built
+        # from a sibling checkout of the Python-libraries monorepo. Override with
+        # MACROSTRAT_PYTHON_LIBRARIES if yours lives somewhere else.
+        python-libraries: ${MACROSTRAT_PYTHON_LIBRARIES:-../../python-libraries}
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy

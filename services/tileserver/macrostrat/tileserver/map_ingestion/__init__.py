@@ -4,10 +4,11 @@ from pathlib import Path
 from asyncpg import UndefinedTableError
 from buildpg import Renderer, render
 from fastapi import APIRouter, Request, Response
-from timvt.resources.enums import MimeTypes
 from titiler.core.models.mapbox import TileJSON
 
-from macrostrat.database.utils import format as format_sql
+from sqlparse import format as format_sql
+
+from macrostrat.tileserver_utils import MimeTypes
 from macrostrat.utils import get_logger
 
 from ..map_bounds import get_rgeom

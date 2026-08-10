@@ -21,9 +21,12 @@ from tileserver_stats import build_schema_config
 
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import TopologySchema
+from macrostrat.utils import get_logger
 
 from .composer import SchemaDefinition
 from .discovery import discover_chunks
+
+log = get_logger(__name__)
 
 # Environments (defs.py vocabulary) in which the dev-only layers apply.
 _DEV_ENVS = frozenset({"development", "local"})
@@ -106,10 +109,38 @@ def all_chunks() -> list[SchemaDefinition]:
             owner=_APP_OWNER,
         ),
         TopologySchema,
+        *_raster_layers_chunks(),
         *discover_chunks(
             schema_dir / "_dev_definitions", owner=_APP_OWNER, environments=_DEV_ENVS
         ),
         *build_schema_config(),
+    ]
+
+
+def _raster_layers_chunks() -> list[SchemaDefinition]:
+    """The `raster_layers` index, owned by `macrostrat.raster_index`.
+
+    The SQL lives in the library, so indexing and serving can be developed (and
+    eventually released) without this repository; here it is just another chunk.
+    Optional while the raster libraries are still referenced from local
+    checkouts rather than released.
+    """
+    try:
+        from macrostrat.raster_index import schema_files
+    except ImportError:
+        log.warning(
+            "macrostrat.raster_index is not installed; the raster_layers schema "
+            "will be left out of the build (and shows as a drop in schema diffs)."
+        )
+        return []
+
+    return [
+        SchemaDefinition(
+            name="raster-layers",
+            depends_on=["public"],
+            provides=schema_files(),
+            owner=_APP_OWNER,
+        )
     ]
 
 

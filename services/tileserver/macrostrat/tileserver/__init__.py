@@ -11,9 +11,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
-from timvt.db import close_db_connection, connect_to_db, register_table_catalog
-from timvt.layer import FunctionRegistry
-from timvt.settings import PostgresSettings
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 
@@ -21,10 +18,16 @@ from macrostrat.database import Database
 from macrostrat.tileserver_utils import DecimalJSONResponse
 from macrostrat.utils import get_logger, setup_stderr_logs
 
-from .cached_tiler import CachedStoredFunction, CachedVectorTilerFactory
-from .function_layer import StoredFunction
 from .map_ingestion import register_map_ingestion_routes
 from .paleogeography import PaleoGeographyLayer
+from .vector_tiles import (
+    FunctionRegistry,
+    PostgresSettings,
+    StoredFunction,
+    VectorTileFactory,
+    close_db_connection,
+    connect_to_db,
+)
 from .vendor.repeat_every import repeat_every
 
 # Wire up legacy postgres database
@@ -62,7 +65,8 @@ class TileServerSettings(PostgresSettings):
 
 db_settings = TileServerSettings()
 
-app.state.timvt_function_catalog = FunctionRegistry()
+# Every vector-tile layer this application serves, resolved by name at request
+# time (see `vector_tiles.layer_dependency`).
 app.state.function_catalog = FunctionRegistry()
 
 
@@ -71,16 +75,13 @@ app.state.function_catalog = FunctionRegistry()
 async def startup_event():
     """Application startup: register the database connection and create table list."""
     # Don't rely on poort TimVT handling of database connections
-    setup_stderr_logs("macrostrat_tileserver", "timvt")
+    setup_stderr_logs("macrostrat_tileserver")
     await connect_to_db(
         app,
         db_settings,
         server_settings={"application_name": "tileserver"},
     )
 
-    # Apply fixtures
-    # apply_fixtures(db_settings.database_url)
-    # await register_table_catalog(app, schemas=["sources"])
 
 
 @app.on_event("startup")
@@ -114,7 +115,12 @@ async def shutdown_event():
     await close_db_connection(app)
 
 
-app.add_middleware(CompressionMiddleware, minimum_size=0)
+# `minimum_size=1`, not 0: compressing a *zero-length* body produces a gzip
+# header with a real `content-length`, and attaching that to a 204 (which must
+# carry no body) makes caching proxies fail the fetch — an empty raster tile
+# came back to clients as a 503 from Varnish. Everything with actual content is
+# still compressed.
+app.add_middleware(CompressionMiddleware, minimum_size=1)
 
 # Map ingestion
 register_map_ingestion_routes(app)
@@ -126,11 +132,7 @@ add_exception_handlers(app, DEFAULT_STATUS_CODES)
 
 
 # Register endpoints.
-mvt_tiler = CachedVectorTilerFactory(
-    with_tables_metadata=False,
-    with_functions_metadata=False,  # add Functions metadata endpoints (/functions.json, /{function_name}.json)
-    with_viewer=False,
-)
+mvt_tiler = VectorTileFactory()
 
 # Tile layer definitions start here.
 # Note: these are defined somewhat redundantly.
@@ -147,11 +149,11 @@ functions = [
 # Register the layers, setting appropriate cache profiles
 layers = [StoredFunction(l) for l in functions]
 
-layer = CachedStoredFunction("tile_layers.carto")
+layer = StoredFunction("tile_layers.carto")
 layer.profile_id = "carto"
 layers.append(layer)
 
-layer = CachedStoredFunction("tile_layers.carto_slim")
+layer = StoredFunction("tile_layers.carto_slim")
 layer.profile_id = "carto-slim"
 layers.append(layer)
 
@@ -207,6 +209,12 @@ from .cache_management import router as cache_router
 
 app.include_router(cache_router, tags=["Cache"], prefix="/cache")
 
+from .rasters import register_raster_routes
+
+# Mosaicked COG layers from the `raster_layers` index. Optional: the raster
+# libraries are still developed against local checkouts.
+register_raster_routes(app)
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
@@ -224,8 +232,3 @@ async def index(request: Request):
     return JSONResponse({"message": "Macrostrat Tileserver"})
 
 
-@app.get("/refresh", include_in_schema=False)
-async def refresh(request: Request):
-    """Refresh the table catalog."""
-    await register_table_catalog(app, schemas=["sources"])
-    return JSONResponse({"message": "Table catalog refreshed."})

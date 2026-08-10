@@ -12,6 +12,7 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.utils import env_text, set_app_state
 from macrostrat.schema_management import schema_app
+from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
 from .database import db_app, db_subsystem
@@ -27,6 +28,8 @@ from .v1_entrypoint import v1_cli
 
 __here__ = Path(__file__).parent
 fixtures_dir = __here__ / "fixtures"
+
+log = get_logger(__name__)
 
 app.warnings = []
 app.info_messages = []
@@ -268,23 +271,18 @@ except ImportError as err:
     app.console.print("Could not import map integration subsystem", err)
 
 try:
-    raster_app = typer.Typer()
+    from .rasters import build_raster_cli
 
-    @main.command(
+    main.add_typer(
+        build_raster_cli(),
         name="raster",
         rich_help_panel="Subsystems",
         short_help="Raster data integration",
-        context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-        deprecated=True,
     )
-    def rast(ctx: typer.Context):
-        run(
-            ["poetry", "run", "macrostrat-raster", *ctx.args],
-            cwd="/data/macrostrat/tools/raster-cli",
-        )
-
 except ImportError as err:
-    pass
+    # The raster libraries live in the Python-libraries monorepo and are not yet
+    # released; the subsystem is optional until they are.
+    log.debug("Raster subsystem unavailable: %s", err)
 
 # Add weaver subsystem if available
 try:
