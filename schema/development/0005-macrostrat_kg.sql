@@ -32,16 +32,70 @@ CREATE TABLE macrostrat_kg.lookup_extraction_type (
     type_id integer NOT NULL
 );
 
-CREATE TABLE macrostrat_kg.global_entity (
-    global_entity_id BIGSERIAL PRIMARY KEY,
-    entity_table TEXT NOT NULL,
+CREATE TABLE macrostrat_kg.macrostrat_terms (
+    id BIGSERIAL PRIMARY KEY,
+    entity_type TEXT NOT NULL,
     entity_id INTEGER NOT NULL,
-
     name TEXT NOT NULL,
-    normalized_name TEXT NOT NULL,
 
-    CONSTRAINT unique_entity UNIQUE (entity_table, entity_id)
+    CONSTRAINT macrostrat_terms_entity_unique
+        UNIQUE (entity_type, entity_id)
 );
+
+CREATE OR REPLACE FUNCTION macrostrat_kg.refresh_macrostrat_terms()
+    RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+        BEGIN
+        INSERT INTO macrostrat_kg.macrostrat_terms (
+            entity_type,
+            entity_id,
+            name
+        )
+        SELECT 'minerals', id, mineral as name
+        FROM macrostrat.minerals
+
+
+        UNION ALL
+        SELECT 'intervals', id, interval_name as name
+        FROM macrostrat.intervals
+
+
+        UNION ALL
+        SELECT 'environs', id, environ as name
+        FROM macrostrat.environs
+
+
+        UNION ALL
+        SELECT 'tectonics', id, basin_type as name
+        FROM macrostrat.tectonics
+
+
+        UNION ALL
+        SELECT 'liths', id, lith as name
+        FROM macrostrat.liths
+
+
+        UNION ALL
+        SELECT 'lith_atts', id, lith_att as name
+        FROM macrostrat.lith_atts
+
+
+        UNION ALL
+        SELECT 'structures', id, structure as name
+        FROM macrostrat.structures
+
+
+        UNION ALL
+        SELECT 'structure_atts', id, structure_att as name
+        FROM macrostrat.structure_atts
+
+
+        ON CONFLICT (entity_type, entity_id)
+        DO UPDATE
+        SET name = EXCLUDED.name;
+        END;
+    $$;
 
 
 CREATE TABLE macrostrat_kg.all_runs (
@@ -61,23 +115,21 @@ CREATE TABLE macrostrat_kg.all_runs (
 CREATE TABLE macrostrat_kg.entity (
     name text NOT NULL,
     corrected_name text,
-    strat_name_id integer,
-    lith_id integer,
-    lith_att_id integer,
     start_index integer NOT NULL,
     end_index integer NOT NULL,
     run_id integer NOT NULL,
     id integer NOT NULL,
     entity_type_id integer NOT NULL,
     str_match_type text NOT NULL,
-    global_entity_id BIGINT
+    macrostrat_terms_id BIGINT
 );
 
 CREATE TABLE macrostrat_kg.entity_type (
     name text NOT NULL,
     description text,
     id integer NOT NULL,
-    color text
+    color text,
+    source text NOT NULL
 );
 
 CREATE VIEW macrostrat_kg.model_run AS
@@ -368,7 +420,7 @@ ALTER TABLE ONLY macrostrat_kg.entity
     ADD CONSTRAINT fk_model_run_id FOREIGN KEY (run_id) REFERENCES macrostrat_kg.all_runs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY macrostrat_kg.entity
-    ADD CONSTRAINT fk_global_entity_id FOREIGN KEY (global_entity_id) REFERENCES macrostrat_kg.global_entity(global_entity_id);
+    ADD CONSTRAINT fk_macrostrat_terms_id FOREIGN KEY (macrostrat_terms_id) REFERENCES macrostrat_kg.macrostrat_terms(id);
 
 ALTER TABLE ONLY macrostrat_kg.relationship
     ADD CONSTRAINT fk_src_entity_id FOREIGN KEY (src_entity_id) REFERENCES macrostrat_kg.entity(id) ON DELETE CASCADE;
@@ -392,7 +444,7 @@ ALTER TABLE ONLY macrostrat_kg.all_runs
     ADD CONSTRAINT user_id_check FOREIGN KEY (user_id) REFERENCES macrostrat_kg.users(internal_user_id);
 
 ALTER TABLE ONLY macrostrat_kg.all_runs
-    ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_kg.global_entity(global_entity_id) ON DELETE SET NULL;
+    ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_kg.macrostrat_terms(id) ON DELETE SET NULL;
 
 -- Allow PostgREST anonymous role to access objects in the schema
 GRANT USAGE ON SCHEMA macrostrat_kg TO web_anon;
