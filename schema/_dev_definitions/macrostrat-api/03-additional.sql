@@ -1118,6 +1118,16 @@ LEFT JOIN feedback_meta fm
 LEFT JOIN macrostrat_kg.global_entity ge
     ON ge.global_entity_id = sr.root_id;
 
+
+
+CREATE VIEW macrostrat_api.kg_macrostrat_terms AS
+    select
+    id AS macrostrat_terms_id,
+    entity_type,
+    entity_id,
+    name
+FROM macrostrat_kg.macrostrat_terms;
+
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
@@ -1337,6 +1347,8 @@ GRANT SELECT ON TABLE macrostrat_api.unit_strat_names TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.units TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.user_locations_view TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.kg_macrostrat_terms TO web_anon;
 
 GRANT SELECT,DELETE ON TABLE macrostrat_api.user_locations_view TO web_user;
 
