@@ -42,6 +42,13 @@ CREATE TABLE macrostrat_kg.macrostrat_terms (
         UNIQUE (entity_type, entity_id)
 );
 
+CREATE INDEX macrostrat_terms_name_idx
+    ON macrostrat_kg.macrostrat_terms (name);
+
+CREATE INDEX macrostrat_terms_entity_idx
+    ON macrostrat_kg.macrostrat_terms (entity_type, entity_id);
+
+
 CREATE OR REPLACE FUNCTION macrostrat_kg.refresh_macrostrat_terms()
     RETURNS void
     LANGUAGE plpgsql
