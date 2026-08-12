@@ -1,6 +1,5 @@
 from os import environ
 from pathlib import Path
-from time import time
 from typing import Optional
 
 from buildpg import asyncpg, render
@@ -14,7 +13,6 @@ from starlette_cramjam.middleware import CompressionMiddleware
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 
-from macrostrat.database import Database
 from macrostrat.tileserver_utils import DecimalJSONResponse
 from macrostrat.utils import get_logger, setup_stderr_logs
 
@@ -63,6 +61,9 @@ class TileServerSettings(PostgresSettings):
     )
 
 
+# Read once at import for callers that only need static configuration (e.g. the
+# xDD embedding service URL). The database connection re-reads at startup, so
+# the URL can be set after import — which is what the test fixtures do.
 db_settings = TileServerSettings()
 
 # Every vector-tile layer this application serves, resolved by name at request
@@ -78,10 +79,9 @@ async def startup_event():
     setup_stderr_logs("macrostrat_tileserver")
     await connect_to_db(
         app,
-        db_settings,
+        TileServerSettings(),
         server_settings={"application_name": "tileserver"},
     )
-
 
 
 @app.on_event("startup")
@@ -98,15 +98,6 @@ async def truncate_tile_cache_if_needed() -> None:
         )
 
         await conn.execute(q, *p)
-
-
-def apply_fixtures(url: str):
-    """Apply fixtures."""
-    start = time()
-    db = Database(url)
-    db.run_fixtures(__here__ / "fixtures")
-    end = time()
-    log.info(f"Fixtures applied in {end-start:.2f} seconds.")
 
 
 @app.on_event("shutdown")
@@ -230,5 +221,3 @@ async def rotation_models():
 async def index(request: Request):
     """DEMO."""
     return JSONResponse({"message": "Macrostrat Tileserver"})
-
-

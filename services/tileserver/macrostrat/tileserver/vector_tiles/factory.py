@@ -32,7 +32,12 @@ from .layers import StoredFunction
 
 log = get_logger(__name__)
 
-__all__ = ["VectorTileFactory", "TILE_RESPONSE_PARAMS", "queryparams_to_kwargs"]
+__all__ = [
+    "VectorTileFactory",
+    "TILE_RESPONSE_PARAMS",
+    "queryparams_to_kwargs",
+    "resolve_cache_mode",
+]
 
 TILE_RESPONSE_PARAMS: dict[str, Any] = {
     "responses": {200: {"content": {"application/x-protobuf": {}}}},
@@ -53,6 +58,20 @@ def queryparams_to_kwargs(q: QueryParams, ignore_keys: list = []) -> dict:
         items = q.getlist(key)
         values[key] = items if len(items) > 1 else items[0]
     return values
+
+
+def resolve_cache_mode(layer: StoredFunction, requested: CacheMode) -> CacheMode:
+    """Whether this request may use the database-side tile cache.
+
+    A layer only participates if it declares a cache profile — `carto`,
+    `carto-slim` and `carto-slim-rotated` do; the rest are computed per request
+    and served straight through. (This replaced an `isinstance` check against a
+    dedicated `CachedStoredFunction` subclass, whose only distinguishing feature
+    was carrying the profile.)
+    """
+    if layer.profile_id is None:
+        return CacheMode.bypass
+    return requested
 
 
 def layer_dependency(
@@ -104,9 +123,7 @@ class VectorTileFactory:
             except ValueError as err:
                 raise HTTPException(status_code=400, detail=str(err))
 
-            # A layer with no cache profile is always served straight through.
-            if layer.profile_id is None:
-                cache = CacheMode.bypass
+            cache = resolve_cache_mode(layer, cache)
 
             layer_id = -1
             if cache != CacheMode.bypass:

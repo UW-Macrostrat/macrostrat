@@ -21,29 +21,18 @@ RUN apt-get update -y && \
 COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
 # https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 
-# One level deeper than the other services: the raster libraries are referenced
-# from a sibling checkout (`../../../python-libraries/...`), and uv refuses a
-# relative path that climbs above the filesystem root. `/macrostrat` gives that
-# path somewhere to land.
-WORKDIR /macrostrat/services/main
+WORKDIR /services/main
 
 # Create a virtual environment for the app; add virtualenv and UV to PATH
 RUN python3.11 -m venv .venv
-ENV PATH="/macrostrat/services/main/.venv/bin:$PATH" \
+ENV PATH="/services/main/.venv/bin:$PATH" \
     VIRTUAL_ENV=/venv
 
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 
 # NEED TO specify another build context for the py-modules directory
-COPY --from=py-modules tileserver-utils /macrostrat/py-modules/tileserver-utils
-
-# The raster libraries are developed in the Python-libraries monorepo and are not
-# yet released, so they arrive through their own build context, landing where the
-# `../../../python-libraries/...` sources in pyproject.toml resolve to. Drop this
-# once the packages are published to PyPI.
-COPY --from=python-libraries raster-index /python-libraries/raster-index
-COPY --from=python-libraries raster-layers /python-libraries/raster-layers
+COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
 
 # Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -51,7 +40,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --no-install-project --no-editable
 
-ADD . /macrostrat/services/main
+ADD . /services/main
 
 # Sync the project
 RUN --mount=type=cache,target=/root/.cache/uv \

@@ -28,27 +28,28 @@ dependencies = [
     "pydantic-settings>=2.0,<3",
     "starlette-cramjam>=0.3,<0.5",
     "morecantile>=5.0,<8.0",
-    "macrostrat.raster_index",
-    "macrostrat.raster_layers",
+    "macrostrat.raster_index>=0.1.0,<1",
+    "macrostrat.raster_layers>=0.1.0,<1",
     "pydantic>=2.11.7",
 ]
 
 [dependency-groups]
 dev = [
     "isort>=5.12.0,<6",
-    "black>=24.8.0,<25"
+    "black>=24.8.0,<25",
+    # Test dependencies. The integration fixtures spin up a PostGIS container
+    # and restore a dump into it; the unit tests need none of that.
+    "pytest>=8.0,<9",
+    # A PostGIS container for the integration fixtures. Used directly rather
+    # than via macrostrat.dinosaur, whose local-path sources would propagate
+    # into this lock file and break the image build.
+    "testcontainers>=4.8,<5",
 ]
 
 [tool.uv]
 
 [tool.uv.sources]
 "macrostrat.tileserver_utils" = { path = "../../py-modules/tileserver-utils", editable = true }
-# The raster libraries live in the Python-libraries monorepo and are not yet
-# released. Like `py-modules`, they reach the image through a named build context
-# (see `local-root/docker-compose.yaml`); these paths resolve both from a sibling
-# checkout on the host and from the copy at `/python-libraries` in the image.
-"macrostrat.raster_index" = { path = "../../../python-libraries/raster-index", editable = true }
-"macrostrat.raster_layers" = { path = "../../../python-libraries/raster-layers", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]
@@ -61,9 +62,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
-norecursedirs = "deps/*"
 addopts = [
     "--import-mode=importlib",
+]
+markers = [
+    "integration: requires Docker and a restored test database",
 ]
 
 

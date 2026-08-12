@@ -1465,7 +1465,7 @@ requires-dist = [
 [[package]]
 name = "macrostrat-raster-index"
 version = "0.1.0"
-source = { editable = "../python-libraries/raster-index" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
     { name = "macrostrat-utils" },
@@ -1477,40 +1477,20 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "typer" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/41/a9/7fa59ed52866db938c8c89eb81ec56d4aba66fd29a9d9b1d90a6b91ae37e/macrostrat_raster_index-0.1.0.tar.gz", hash = "sha256:29c2130306294fae603b837663c780d82ddca7984be3b0b6f04313d07443fb9a", size = 18959, upload-time = "2026-08-12T22:46:35.168Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/f5/12760d43eb8860a3fd2d0189b1955ba3201b2900e5ee712234ea38b14bf2/macrostrat_raster_index-0.1.0-py3-none-any.whl", hash = "sha256:909907d59915a485ac73764f14b8007a93270acad00f985b0f53a927ea6a11f8", size = 23721, upload-time = "2026-08-12T22:46:33.97Z" },
+]
 
 [package.optional-dependencies]
 s3 = [
     { name = "boto3" },
 ]
 
-[package.metadata]
-requires-dist = [
-    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.28.50,<2" },
-    { name = "macrostrat-database", specifier = ">=4.5,<5" },
-    { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
-    { name = "numpy", specifier = ">=1.24" },
-    { name = "pydantic", specifier = ">=2.7,<3" },
-    { name = "rasterio", specifier = ">=1.4,<2" },
-    { name = "rich", specifier = ">=13,<16" },
-    { name = "rio-tiler", specifier = ">=8,<9" },
-    { name = "sqlalchemy", specifier = ">=2.0.18,<3" },
-    { name = "typer", specifier = ">=0.12,<0.27" },
-]
-provides-extras = ["s3"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "boto3", specifier = ">=1.28.50,<2" },
-    { name = "macrostrat-database" },
-    { name = "macrostrat-utils" },
-    { name = "pytest", specifier = ">=7.2,<10" },
-    { name = "shapely", specifier = ">=2.0,<3" },
-]
-
 [[package]]
 name = "macrostrat-raster-layers"
 version = "0.1.0"
-source = { editable = "../python-libraries/raster-layers" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "fastapi" },
@@ -1521,27 +1501,9 @@ dependencies = [
     { name = "titiler-core" },
     { name = "titiler-mosaic" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "attrs", specifier = ">=23.1" },
-    { name = "fastapi", specifier = ">=0.111,<0.140" },
-    { name = "macrostrat-raster-index", specifier = ">=0.1.0,<1" },
-    { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
-    { name = "pydantic", specifier = ">=2.7,<3" },
-    { name = "rio-tiler", specifier = ">=8,<9" },
-    { name = "titiler-core", specifier = ">=1,<2" },
-    { name = "titiler-mosaic", specifier = ">=1,<2" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "macrostrat-raster-index" },
-    { name = "macrostrat-utils" },
-    { name = "mapbox-vector-tile", specifier = ">=2.1.0,<3" },
-    { name = "pillow", specifier = ">=10.0" },
-    { name = "pytest", specifier = ">=7.2,<10" },
+sdist = { url = "https://files.pythonhosted.org/packages/e4/3d/e91165f570e5e6040ba51d723bca574edf6cf386cb8c79a4cc42042ba617/macrostrat_raster_layers-0.1.0.tar.gz", hash = "sha256:f46cf9b910172fc9b9f5092d3646ba318acde96652e3741cc6d60a55ec110e92", size = 8215, upload-time = "2026-08-12T22:46:36.973Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/fc/e4b075354fc94d1b802e9e07dcdcea966155d7c9f84dd3585d7805763fa1/macrostrat_raster_layers-0.1.0-py3-none-any.whl", hash = "sha256:a27e8106ea7544248c2f0adcb107514b44f1cab64db3d96b011ded4938914ca8", size = 10536, upload-time = "2026-08-12T22:46:36.041Z" },
 ]
 
 [[package]]
@@ -1619,8 +1581,8 @@ requires-dist = [
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
-    { name = "macrostrat-raster-index", extras = ["s3"], editable = "../python-libraries/raster-index" },
-    { name = "macrostrat-raster-layers", editable = "../python-libraries/raster-layers" },
+    { name = "macrostrat-raster-index", extras = ["s3"], specifier = ">=0.1.0,<1" },
+    { name = "macrostrat-raster-layers", specifier = ">=0.1.0,<1" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "macrostrat-worker", extras = ["maps"], editable = "services/worker" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.3" },
