@@ -4,9 +4,8 @@ from pathlib import Path
 from asyncpg import UndefinedTableError
 from buildpg import Renderer, render
 from fastapi import APIRouter, Request, Response
-from titiler.core.models.mapbox import TileJSON
-
 from sqlparse import format as format_sql
+from titiler.core.models.mapbox import TileJSON
 
 from macrostrat.tileserver_utils import MimeTypes
 from macrostrat.utils import get_logger
