@@ -1358,25 +1358,31 @@ def copy_column_values(
     target: TableTarget,
     src: str,
     dst: str,
-    dry_run: bool = False,
-) -> int:
+    skip_missing: bool = False,
+    overwrite: bool = False,
+) -> Optional[int]:
     """Copies values from column `src` into currently-null rows of column `dst`
     in the target table. Validates that both columns exist before executing.
-    Returns the count of remaining null destination rows.
+    When overwrite is True, existing `dst` values are first set to NULL wherever
+    `src` has a value, so `src` wins on every row it populates.
+    Returns the count of remaining null destination rows, or None when a column is
+    absent and skip_missing is True (instead of raising).
     """
     db = get_database()
     src = validate_identifier(src, "src column")
     dst = validate_identifier(dst, "dst column")
     existing_cols = get_existing_columns(target)
 
-    if src not in existing_cols:
-        raise ValueError(
-            f"Source column '{src}' does not exist in {target.schema}.{target.table}"
-        )
-    if dst not in existing_cols:
-        raise ValueError(
-            f"Destination column '{dst}' does not exist in {target.schema}.{target.table}"
-        )
+    for label, col in (("Source", src), ("Destination", dst)):
+        if col not in existing_cols:
+            message = (
+                f"{label} column '{col}' does not exist in "
+                f"{target.schema}.{target.table}"
+            )
+            if not skip_missing:
+                raise ValueError(message)
+            console.print(f"[yellow]Skipping copy {src} -> {dst}:[/yellow] {message}")
+            return None
 
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
@@ -1390,21 +1396,20 @@ def copy_column_values(
         f"across {row_count} rows"
     )
 
-    if dry_run:
-        remaining_nulls = db.run_query(
+    if overwrite:
+        db.run_sql(
             """
-            SELECT count(*)
-            FROM {table}
-            WHERE {dst} IS NULL
-              AND coalesce(omit, false) = false
+            UPDATE {table}
+            SET {dst} = NULL
+            WHERE {src} IS NOT NULL
+              AND {dst} IS NOT NULL
             """,
             dict(
                 table=target.fq_identifier,
+                src=Identifier(src),
                 dst=Identifier(dst),
             ),
-        ).scalar()
-        console.print("[green]Dry run only; no changes applied[/green]")
-        return remaining_nulls
+        )
 
     db.run_sql(
         """
@@ -2334,87 +2339,246 @@ def parse_age_range(value: Optional[str]) -> tuple[Optional[str], Optional[str]]
     return remap_age_term(text), remap_age_term(text)
 
 
-def copy_orig_id_from_column(
+# Preference order, not a filter: any qualifying column can be used, but when
+# several qualify the earliest name here wins.
+ORIG_ID_CANDIDATES = [
+    "mapunitpolys_id",
+    "fieldid",
+    "source_id",
+    "descriptionofmapunits_id",
+    "poly_id",
+    "line_id",
+    "point_id",
+]
+
+INTEGER_TEXT_PATTERN = "^-?[0-9]+$"
+
+# Columns macrostrat manages itself; never useful as an original-id source.
+ORIG_ID_MANAGED_COLUMNS = {"_pkid", "orig_id", "source_id", "omit", "description", "descrip"}
+
+# Only these types are worth testing. Keeps geometry (and other large or
+# uncastable columns) out of the scan entirely.
+ORIG_ID_SCANNABLE_TYPES = {
+    "int2",
+    "int4",
+    "int8",
+    "numeric",
+    "text",
+    "varchar",
+    "bpchar",
+}
+
+
+def orig_id_preference(col: str) -> int:
+    """Rank a column name against ORIG_ID_CANDIDATES; unlisted names sort last."""
+    if col in ORIG_ID_CANDIDATES:
+        return ORIG_ID_CANDIDATES.index(col)
+    return len(ORIG_ID_CANDIDATES)
+
+
+def get_column_types(target: TableTarget) -> dict[str, str]:
+    """Return {column_name: udt_name} for the target table, in ordinal order.
+    Raises a ValueError if the table does not exist."""
+    db = get_database()
+    rows = db.run_query(
+        """
+        SELECT column_name, udt_name
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+          AND table_name = :table
+        ORDER BY ordinal_position
+        """,
+        dict(schema=target.schema, table=target.table),
+    ).fetchall()
+
+    if not rows:
+        raise ValueError(f"Table {target.schema}.{target.table} does not exist")
+
+    return {row.column_name: row.udt_name for row in rows}
+
+
+def find_orig_id_candidates(
     target: TableTarget,
-    src_col: str,
-    dry_run: bool = False,
-):
-    """Copy src_col into orig_id only if every row is non-null/nonblank and all
-    values are unique across the table.
+    columns: Optional[list[str]] = None,
+) -> list[str]:
+    """Return every column usable as an orig_id source, preserving the order of
+    `columns` (or ordinal order when discovering them).
+
+    A column qualifies only if, across all non-omitted rows, its values are
+    non-null, nonblank, integer-castable, and unique. All columns are evaluated in
+    a single aggregate query regardless of how many there are.
     """
     db = get_database()
-    src_col = validate_identifier(src_col, "source column")
-    existing_cols = get_existing_columns(target)
+    column_types = get_column_types(target)
 
-    if src_col not in existing_cols:
-        raise ValueError(
-            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+    if columns is None:
+        cols = [
+            col
+            for col, udt in column_types.items()
+            if udt in ORIG_ID_SCANNABLE_TYPES and col not in ORIG_ID_MANAGED_COLUMNS
+        ]
+    else:
+        cols = [col for col in columns if col in column_types]
+
+    if not cols:
+        return []
+
+    params = {"table": target.fq_identifier}
+    checks = []
+    for i, col in enumerate(cols):
+        params[f"c{i}"] = Identifier(col)
+        # trim(NULL) is NULL and NULL ~ pattern is NULL, so the filter also
+        # excludes null and blank rows; the CASE keeps the cast from ever
+        # evaluating on a non-numeric row.
+        text = f"trim({{c{i}}}::text)"
+        checks.append(
+            f"count(*) FILTER (WHERE {text} ~ '{INTEGER_TEXT_PATTERN}') AS valid_{i}, "
+            f"count(DISTINCT CASE WHEN {text} ~ '{INTEGER_TEXT_PATTERN}' "
+            f"THEN ({text})::integer END) AS distinct_{i}"
         )
-    if "orig_id" not in existing_cols:
+
+    # Tables that have not been through add-preferred-columns yet have no omit.
+    row_filter = "WHERE coalesce(omit, false) = false" if "omit" in column_types else ""
+
+    stats = db.run_query(
+        f"""
+        SELECT count(*) AS total_rows, {", ".join(checks)}
+        FROM {{table}}
+        {row_filter}
+        """,
+        params,
+    ).fetchone()
+
+    if stats.total_rows == 0:
+        return []
+
+    return [
+        col
+        for i, col in enumerate(cols)
+        if getattr(stats, f"valid_{i}") == stats.total_rows
+        and getattr(stats, f"distinct_{i}") == stats.total_rows
+    ]
+
+
+def prompt_for_orig_id_column(
+    target: TableTarget,
+    valid: list[str],
+    has_omit: bool = True,
+) -> Optional[str]:
+    """Show a sample of each qualifying column and ask which to copy into orig_id.
+    Returns the chosen column, or None if the user skips this table.
+    """
+    db = get_database()
+
+    params = {"table": target.fq_identifier}
+    selects = []
+    for i, col in enumerate(valid):
+        params[f"c{i}"] = Identifier(col)
+        selects.append(f"{{c{i}}}::text AS v{i}")
+
+    row_filter = "WHERE coalesce(omit, false) = false" if has_omit else ""
+    rows = db.run_query(
+        f"""
+        SELECT {", ".join(selects)}
+        FROM {{table}}
+        {row_filter}
+        LIMIT 5
+        """,
+        params,
+    ).fetchall()
+
+    console.print(
+        f"[blue]{len(valid)} orig_id candidates in[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold]"
+    )
+    for i, col in enumerate(valid):
+        sample = ", ".join(str(getattr(row, f"v{i}")) for row in rows)
+        console.print(f"  [yellow]{col}[/yellow]: [dim]{sample}[/dim]")
+
+    choice = Prompt.ask(
+        "Column to copy into orig_id (press Enter to skip)",
+        choices=valid,
+        default="",
+        show_default=False,
+        show_choices=False,
+    )
+    if choice == "":
+        console.print(
+            f"[yellow]Skipping[/yellow] orig_id for "
+            f"[bold]{target.schema}.{target.table}[/bold]"
+        )
+        return None
+    return choice
+
+
+def copy_orig_id_from_candidates(
+    target: TableTarget,
+    candidates: Optional[list[str]] = None,
+    dry_run: bool = False,
+    interactive: bool = False,
+) -> Optional[str]:
+    """Copy a usable column into orig_id; return its name or None.
+
+    With no explicit candidates, every scannable column on the table is tested and
+    ORIG_ID_CANDIDATES breaks ties. Explicit candidates are tried in list order.
+    When interactive is True and more than one column qualifies, the user picks
+    which one to use; a single qualifier is copied without prompting.
+    """
+    db = get_database()
+    column_types = get_column_types(target)
+
+    if "orig_id" not in column_types:
         raise ValueError(
             f"Destination column 'orig_id' does not exist in {target.schema}.{target.table}"
         )
 
-    stats = db.run_query(
-        """
-        SELECT
-            count(*) AS total_rows,
-            count({src_col}) AS nonnull_rows,
-            count(DISTINCT {src_col}) AS distinct_rows,
-            count(*) FILTER (
-                WHERE {src_col} IS NOT NULL
-                  AND trim({src_col}::text) <> ''
-            ) AS nonblank_rows
-        FROM {table}
-        WHERE coalesce(omit, false) = false
-        """,
-        dict(
-            table=target.fq_identifier,
-            src_col=Identifier(src_col),
-        ),
-    ).fetchone()
-
-    total_rows = stats.total_rows
-    nonnull_rows = stats.nonnull_rows
-    distinct_rows = stats.distinct_rows
-    nonblank_rows = stats.nonblank_rows
-
-    if (
-        total_rows == 0
-        or nonnull_rows != total_rows
-        or nonblank_rows != total_rows
-        or distinct_rows != total_rows
-    ):
+    valid = find_orig_id_candidates(target, columns=candidates)
+    if not valid:
         console.print(
-            f"[yellow]invalid {src_col} column and not copied into orig_id[/yellow]"
+            f"[yellow]No valid orig_id source column found in[/yellow] "
+            f"[bold]{target.schema}.{target.table}[/bold]"
         )
-        return
+        return None
 
+    if interactive and len(valid) > 1:
+        col = prompt_for_orig_id_column(
+            target, valid, has_omit="omit" in column_types
+        )
+        if col is None:
+            return None
+    else:
+        # Explicit candidates already arrive in preference order; discovered
+        # columns are in ordinal order, so prefer the conventional id names.
+        col = valid[0] if candidates else min(valid, key=orig_id_preference)
+
+    others = [c for c in valid if c != col]
     console.print(
-        f"[blue]Copying[/blue] [yellow]{src_col}[/yellow] -> [yellow]orig_id[/yellow] "
-        f"across {total_rows} rows"
+        f"[blue]Copying[/blue] [yellow]{col}[/yellow] -> [yellow]orig_id[/yellow] "
+        f"in [bold]{target.schema}.{target.table}[/bold]"
+        + (f" [dim](also qualified: {', '.join(others)})[/dim]" if others else "")
     )
 
     if dry_run:
         console.print("[green]Dry run only; no changes applied[/green]")
-        return
+        return col
 
     db.run_sql(
         """
         UPDATE {table}
-        SET orig_id = {src_col}
+        SET orig_id = (trim({src_col}::text))::integer
         WHERE coalesce(omit, false) = false
         """,
         dict(
             table=target.fq_identifier,
-            src_col=Identifier(src_col),
+            src_col=Identifier(col),
         ),
     )
 
     console.print(
-        f"[green]Done:[/green] copied values from {src_col} to orig_id "
+        f"[green]Done:[/green] copied values from {col} to orig_id "
         f"in {target.schema}.{target.table}"
     )
+    return col
 
 
 def copy_age_columns(
@@ -3408,82 +3572,19 @@ def normalize_copy_orig_id(
     """
     Try one or more source columns for orig_id.
 
-    A source column is valid only if:
-    - all values are non-null
-    - all values are nonblank
-    - all values are unique
-    - distinct count equals row count
+    A source column is valid only if, across all non-omitted rows, its values are
+    non-null, nonblank, integer-castable, and unique.
 
     The first valid source column is copied into orig_id.
     """
-    target = get_current_target()
-
-    cleaned_srcs: list[str] = []
-    seen = set()
-    for src in src_cols:
-        src = validate_identifier(src, "source column")
-        if src not in seen:
-            seen.add(src)
-            cleaned_srcs.append(src)
-
-    for src in cleaned_srcs:
-        db = get_database()
-        existing_cols = get_existing_columns(target)
-
-        if src not in existing_cols:
-            console.print(
-                f"[yellow]invalid {src} column and not copied into orig_id[/yellow]"
-            )
-            continue
-
-        if "orig_id" not in existing_cols:
-            raise ValueError(
-                f"Destination column 'orig_id' does not exist in {target.schema}.{target.table}"
-            )
-
-        stats = db.run_query(
-            """
-            SELECT
-                count(*) AS total_rows,
-                count({src_col}) AS nonnull_rows,
-                count(DISTINCT {src_col}) AS distinct_rows,
-                count(*) FILTER (
-                    WHERE {src_col} IS NOT NULL
-                      AND trim({src_col}::text) <> ''
-                ) AS nonblank_rows
-            FROM {table}
-            WHERE coalesce(omit, false) = false
-            """,
-            dict(
-                table=target.fq_identifier,
-                src_col=Identifier(src),
-            ),
-        ).fetchone()
-
-        total_rows = stats.total_rows
-        nonnull_rows = stats.nonnull_rows
-        distinct_rows = stats.distinct_rows
-        nonblank_rows = stats.nonblank_rows
-
-        if (
-            total_rows == 0
-            or nonnull_rows != total_rows
-            or nonblank_rows != total_rows
-            or distinct_rows != total_rows
-        ):
-            console.print(
-                f"[yellow]invalid {src} column and not copied into orig_id[/yellow]"
-            )
-            continue
-
-        copy_orig_id_from_column(
-            target=target,
-            src_col=src,
-            dry_run=dry_run,
-        )
-        return
-
-    console.print("[yellow]No valid source columns found for orig_id[/yellow]")
+    candidates = list(
+        dict.fromkeys(validate_identifier(src, "source column") for src in src_cols)
+    )
+    copy_orig_id_from_candidates(
+        target=get_current_target(),
+        candidates=candidates,
+        dry_run=dry_run,
+    )
 
 
 @normalize_cli.command("copy-line-type")
@@ -4172,6 +4273,65 @@ def get_japan_descrips_points_lines():
             ON CONFLICT DO NOTHING;""",
             dict(table=Identifier("sources", slug + "_lines")),
         )
+        db.session.commit()
+
+
+@normalize_cli.command("normalize_az")
+def normalize_az(
+):
+    """Add any missing preferred standard columns to all Arizona staging layers."""
+    db = get_database()
+
+    slugs = db.run_query(
+        "select slug from maps_metadata.ingest_process where slug ilike 'arizona%' and slug not ilike 'arizona_adgm%';"
+    ).scalars()
+    layers = ["_polygons", "_lines", "_points"]
+
+    for slug in slugs:
+        for layer in layers:
+            #add preferred columns
+            target = TableTarget(schema="sources", table=slug + layer)
+            try:
+                add_preferred_columns(target=target)
+            except ValueError as e:
+                console.print(
+                    f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
+                )
+                continue
+
+            #find orig_id candidates and copy into orig_id col
+            copy_orig_id_from_candidates(
+                target=target,
+                candidates=ORIG_ID_CANDIDATES,
+                interactive=True,
+            )
+            
+            if layer == "_polygons":
+                #copy values into unit_label column. overwrite overrides existing values in dst col
+                copy_column_values(
+                    target=target,
+                    src="mapunit",
+                    dst="unit_label",
+                    skip_missing=True,
+                    overwrite=True,
+                )
+                #copy age_meta into ages column
+                 copy_column_values(
+                    target=target,
+                    src="age_meta",
+                    dst="age",
+                    skip_missing=True,
+                    overwrite=True,
+                )
+
+                calculate_lith_fuzzy_match_percentages(
+                target=target,
+                src_col="description",
+                threshold=threshold,
+                row_copy_threshold_percent=row_copy_threshold_percent,
+                limit=limit,
+            )
+
         db.session.commit()
 
 
