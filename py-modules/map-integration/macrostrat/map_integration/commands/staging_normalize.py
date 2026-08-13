@@ -2,6 +2,7 @@ import csv
 import json
 import math
 import re
+from collections import Counter
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -57,6 +58,12 @@ AGE_MODIFIER_REMAP = {
     "upper": "late",
     "lower": "early",
 }
+
+# How many distinct matched-lith strings the fuzzy-match digest lists.
+LITH_SUMMARY_LIMIT = 25
+
+# ingest_process_tag value recorded when b_interval/t_interval remain unresolved.
+AGES_NULL_TAG = "some ages null"
 
 NON_LITHS = {
     "and",
@@ -549,9 +556,13 @@ def calculate_lith_fuzzy_match_percentages(
     row_copy_threshold_percent: float = 10.0,
     limit: Optional[int] = None,
     dry_run: bool = False,
+    verbose: bool = False,
 ):
-    """Print per-row fuzzy match percentages for tokens in src_col against
-    macrostrat lith/lith_att vocabularies.
+    """Report fuzzy match percentages for tokens in src_col against the macrostrat
+    lith/lith_att vocabularies.
+
+    By default only a digest is printed: the distinct matched strings with row
+    counts. Pass verbose=True for the per-row detail.
 
     src_col may be one column or a list of them. Several columns are concatenated
     per row before tokenizing, so a single pass sees every token -- calling this
@@ -618,17 +629,17 @@ def calculate_lith_fuzzy_match_percentages(
     total_word_count = 0
     total_match_percent = 0.0
     updates: list[tuple[int, str]] = []
+    # Descriptions repeat heavily across polygons, so the distinct set of matched
+    # strings is a far shorter -- and more reviewable -- digest than one line per row.
+    matched_counts = Counter()
     for row in rows:
         tokens = tokenize_lith_text(row.src_value)
         word_count = len(tokens)
         total_rows += 1
         total_word_count += word_count
         if not tokens:
-            percent = 0.0
-            total_match_percent += percent
-            console.print(
-                f"_pkid={row._pkid} | words=0 | match=0.0% | matched= | value={row.src_value}"
-            )
+            total_match_percent += 0.0
+            matched_counts[""] += 1
             continue
         matched_count = 0
         matched_lith_atts: list[str] = []
@@ -669,10 +680,13 @@ def calculate_lith_fuzzy_match_percentages(
         total_match_percent += percent
         matched_terms = matched_lith_atts + matched_liths
         matched_string = " ".join(matched_terms)
-        console.print(
-            f"_pkid={row._pkid} | words={word_count} | match={percent:.1f}% | "
-            f"matched={matched_string} | value={row.src_value}"
-        )
+        matched_counts[matched_string] += 1
+        if verbose:
+            value = re.sub(r"\s+", " ", str(row.src_value))[:70]
+            console.print(
+                f"_pkid={row._pkid} | words={word_count} | match={percent:.1f}% | "
+                f"matched={matched_string} | value={value}"
+            )
 
         if percent > row_copy_threshold_percent and matched_string != "":
             updates.append((row._pkid, matched_string))
@@ -715,8 +729,15 @@ def calculate_lith_fuzzy_match_percentages(
     console.print(
         f"[green]Summary:[/green] "
         f"columns={', '.join(src_cols)} | rows={total_rows} | "
-        f"avg_words={avg_words:.2f} | avg_match={avg_match_percent:.1f}%"
+        f"avg_words={avg_words:.2f} | avg_match={avg_match_percent:.1f}% | "
+        f"distinct matches={len(matched_counts)}"
     )
+    for matched_string, count in matched_counts.most_common(LITH_SUMMARY_LIMIT):
+        label = matched_string if matched_string else "[dim](no match)[/dim]"
+        console.print(f"  {count:>6} rows  {label}")
+    hidden = len(matched_counts) - LITH_SUMMARY_LIMIT
+    if hidden > 0:
+        console.print(f"  [dim]... and {hidden} more distinct match string(s)[/dim]")
 
 
 def null_matching_value(
@@ -2016,6 +2037,89 @@ def process_metadata_csv(
         f"unknown_slug={skipped_unknown_slug}, "
         f"empty_updates={skipped_empty_updates}"
     )
+
+
+def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
+    """Add a maps_metadata.ingest_process_tag row for a slug, ignoring duplicates.
+
+    Takes the slug explicitly rather than reading CONTEXT_FILE, so it works inside
+    batch loops that never call set-map. The insert joins through ingest_process to
+    resolve the id, and pk_tag makes the ON CONFLICT a no-op on re-runs.
+    """
+    db = get_database()
+    slug = (slug or "").strip()
+    tag = (tag or "").strip()
+
+    if slug == "":
+        raise ValueError("slug cannot be empty")
+    if tag == "":
+        raise ValueError("tag cannot be empty")
+
+    if dry_run:
+        console.print(
+            f"[green]Dry run only:[/green] would tag slug [yellow]{slug}[/yellow] "
+            f"with [yellow]{tag}[/yellow]"
+        )
+        return
+
+    # RETURNING only yields rows actually inserted, so ON CONFLICT skips stay quiet.
+    inserted = db.run_query(
+        """
+        INSERT INTO maps_metadata.ingest_process_tag (ingest_process_id, tag)
+        SELECT i.id, :tag
+        FROM maps_metadata.ingest_process i
+        WHERE i.slug = :slug
+        ON CONFLICT DO NOTHING
+        RETURNING tag
+        """,
+        dict(slug=slug, tag=tag),
+    ).fetchall()
+
+    if inserted:
+        console.print(
+            f"[green]Tagged[/green] [yellow]{slug}[/yellow] with [yellow]{tag}[/yellow]"
+        )
+
+
+def remove_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
+    """Delete a maps_metadata.ingest_process_tag row for a slug, if it is present.
+
+    The inverse of add_ingest_process_tag: safe to call when the tag is absent, so
+    callers can keep a tag in sync with a condition without checking first.
+    """
+    db = get_database()
+    slug = (slug or "").strip()
+    tag = (tag or "").strip()
+
+    if slug == "":
+        raise ValueError("slug cannot be empty")
+    if tag == "":
+        raise ValueError("tag cannot be empty")
+
+    if dry_run:
+        console.print(
+            f"[green]Dry run only:[/green] would remove tag [yellow]{tag}[/yellow] "
+            f"from slug [yellow]{slug}[/yellow]"
+        )
+        return
+
+    removed = db.run_query(
+        """
+        DELETE FROM maps_metadata.ingest_process_tag t
+        USING maps_metadata.ingest_process i
+        WHERE t.ingest_process_id = i.id
+          AND i.slug = :slug
+          AND t.tag = :tag
+        RETURNING t.tag
+        """,
+        dict(slug=slug, tag=tag),
+    ).fetchall()
+
+    if removed:
+        console.print(
+            f"[green]Removed tag[/green] [yellow]{tag}[/yellow] "
+            f"from [yellow]{slug}[/yellow]"
+        )
 
 
 def get_process_tag_from_current_table() -> str:
@@ -3769,11 +3873,18 @@ def normalize_copy_ages(
             """,
             dict(table=target.fq_identifier),
         ).scalar()
-    # TODO set a maps_metadata.ingest_process_tag that indicates some ages null
+    context_slug = load_map_context().get("slug") or ""
     if remaining_nulls > 0:
         append_ingest_comment_for_current_slug(
             comment="some ages null;",
             dry_run=dry_run,
+        )
+        add_ingest_process_tag(
+            slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run
+        )
+    else:
+        remove_ingest_process_tag(
+            slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run
         )
 
     console.print("[green]Finished copy-age[/green]")
@@ -4617,11 +4728,16 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 overwrite=True,
             )
             #fill any remaining null b_interval/t_interval from the age text
-            copy_age_columns(
+            remaining_ages = copy_age_columns(
                 target=target,
                 older_col="age",
                 newer_col="age",
             )
+            if remaining_ages:
+                add_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
+            else:
+                remove_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
+
             #fuzzy match descrip tokens against the lith vocabularies
             calculate_lith_fuzzy_match_percentages(
                 target=target,
