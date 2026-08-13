@@ -544,7 +544,7 @@ def best_fuzzy_match(
 
 def calculate_lith_fuzzy_match_percentages(
     target: TableTarget,
-    src_col: str,
+    src_col: str | list[str],
     threshold: float = 0.9,
     row_copy_threshold_percent: float = 10.0,
     limit: Optional[int] = None,
@@ -553,17 +553,27 @@ def calculate_lith_fuzzy_match_percentages(
     """Print per-row fuzzy match percentages for tokens in src_col against
     macrostrat lith/lith_att vocabularies.
 
+    src_col may be one column or a list of them. Several columns are concatenated
+    per row before tokenizing, so a single pass sees every token -- calling this
+    once per column would not work, because each call overwrites lith rather than
+    adding to it.
+
     If a row's fuzzy match percentage is greater than row_copy_threshold_percent,
     write the matched canonical lith strings directly into the lith column for
     that same row/_pkid.
     """
     db = get_database()
-    src_col = validate_identifier(src_col, "source column")
+    src_cols = [src_col] if isinstance(src_col, str) else list(src_col)
+    src_cols = [validate_identifier(col, "source column") for col in src_cols]
+    if not src_cols:
+        raise ValueError("at least one source column is required")
     existing_cols = get_existing_columns(target)
 
-    if src_col not in existing_cols:
+    missing = [col for col in src_cols if col not in existing_cols]
+    if missing:
         raise ValueError(
-            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+            f"Column(s) {', '.join(missing)} do not exist in "
+            f"{target.schema}.{target.table}"
         )
     if "lith" not in existing_cols:
         raise ValueError(
@@ -573,20 +583,26 @@ def calculate_lith_fuzzy_match_percentages(
     lith_terms, lith_att_terms = get_lith_reference_terms()
 
     limit_sql = ""
-    params = {
-        "table": target.fq_identifier,
-        "src_col": Identifier(src_col),
-    }
+    params = {"table": target.fq_identifier}
+    refs = []
+    for i, col in enumerate(src_cols):
+        params[f"c{i}"] = Identifier(col)
+        refs.append(f"{{c{i}}}")
     if limit is not None:
         limit_sql = "LIMIT :limit"
         params["limit"] = limit
 
+    # concat_ws skips nulls, so a row contributes whichever columns have text.
+    # trim(NULL) is NULL and NULL <> '' is NULL, so the OR keeps only rows with
+    # text in at least one column.
+    value_expr = "concat_ws(' ', " + ", ".join(f"{ref}::text" for ref in refs) + ")"
+    nonblank = " OR ".join(f"trim({ref}::text) <> ''" for ref in refs)
+
     rows = db.run_query(
         f"""
-        SELECT _pkid, {{src_col}} AS src_value
+        SELECT _pkid, {value_expr} AS src_value
         FROM {{table}}
-        WHERE {{src_col}} IS NOT NULL
-          AND trim({{src_col}}::text) <> ''
+        WHERE ({nonblank})
           AND coalesce(omit, false) = false
         ORDER BY _pkid
         {limit_sql}
@@ -596,7 +612,7 @@ def calculate_lith_fuzzy_match_percentages(
     console.print(
         f"[blue]Evaluating lith fuzzy matches for[/blue] "
         f"[bold]{target.schema}.{target.table}[/bold] "
-        f"using [yellow]{src_col}[/yellow] across {len(rows)} row(s)"
+        f"using [yellow]{', '.join(src_cols)}[/yellow] across {len(rows)} row(s)"
     )
     total_rows = 0
     total_word_count = 0
@@ -698,7 +714,7 @@ def calculate_lith_fuzzy_match_percentages(
 
     console.print(
         f"[green]Summary:[/green] "
-        f"column={src_col} | rows={total_rows} | "
+        f"columns={', '.join(src_cols)} | rows={total_rows} | "
         f"avg_words={avg_words:.2f} | avg_match={avg_match_percent:.1f}%"
     )
 
@@ -1140,6 +1156,8 @@ def merge_column_values(
 
     Rules:
     - Skip col_two values that are null, blank, whitespace, 'unknown', or 'none'
+    - Skip rows where col_one already contains the col_two value, so re-running a
+      merge does not append the same text twice
     - If col_one is null/blank, set col_one = col_two
     - Otherwise set col_one = col_one || separator || col_two
     """
@@ -1166,9 +1184,12 @@ def merge_column_values(
           AND trim({col_two}::text) <> ''
           AND lower(trim({col_two}::text)) <> 'unknown'
           AND lower(trim({col_two}::text)) <> 'none'
+          AND ({col_one} IS NULL
+               OR strpos({col_one}::text, trim({col_two}::text)) = 0)
         """,
         dict(
             table=target.fq_identifier,
+            col_one=Identifier(col_one),
             col_two=Identifier(col_two),
         ),
     ).scalar()
@@ -1197,6 +1218,8 @@ def merge_column_values(
               AND trim({col_two}::text) <> ''
               AND lower(trim({col_two}::text)) <> 'unknown'
               AND lower(trim({col_two}::text)) <> 'none'
+              AND ({col_one} IS NULL
+                   OR strpos({col_one}::text, trim({col_two}::text)) = 0)
             """,
             dict(
                 table=target.fq_identifier,
@@ -1215,6 +1238,158 @@ def merge_column_values(
         f"[green]Done:[/green] merged values from {col_two} into {col_one} "
         f"in {target.schema}.{target.table}"
     )
+
+
+def unmerge_column_values(
+    target: TableTarget,
+    src: str,
+    dst: str,
+    separator: str,
+    skip_missing: bool = False,
+    overwrite: bool = False,
+    keep_prefix: bool = False,
+    allowed_values: Optional[list[str]] = None,
+) -> Optional[int]:
+    """Copy the part of `src` that follows `separator` into `dst`.
+
+    The inverse of merge_column_values: 'Contact, Approximate' with separator ', '
+    writes 'Approximate' into dst.
+
+    Rules:
+    - splits on the first occurrence of separator; rows without it are skipped
+    - skips null/blank src values and extracted values that are blank
+    - only fills null dst rows unless overwrite is True
+    - when keep_prefix is True, src is reduced to the part before the separator
+      ('Contact, Approximate' -> 'Contact'), otherwise src is left unchanged
+    - when allowed_values is given, every distinct parsed value is reported and
+      only case-insensitive matches are written; unmatched rows are left entirely
+      alone, so src keeps its full value
+    - returns the count of remaining null dst rows, or None when a column is
+      absent and skip_missing is True (instead of raising)
+    """
+    db = get_database()
+    src = validate_identifier(src, "src column")
+    dst = validate_identifier(dst, "dst column")
+    existing_cols = get_existing_columns(target)
+
+    if separator == "":
+        raise ValueError("separator cannot be empty")
+
+    for label, col in (("Source", src), ("Destination", dst)):
+        if col not in existing_cols:
+            message = (
+                f"{label} column '{col}' does not exist in "
+                f"{target.schema}.{target.table}"
+            )
+            if not skip_missing:
+                raise ValueError(message)
+            console.print(
+                f"[yellow]Skipping unmerge {src} -> {dst}:[/yellow] {message}"
+            )
+            return None
+
+    # strpos is 1-based, so skipping past the separator lands on the remainder;
+    # strpos = 0 means the separator is absent and the row is excluded below.
+    tail = (
+        "btrim(substr({src}::text, "
+        "strpos({src}::text, :separator) + length(:separator)))"
+    )
+    prefix = (
+        "nullif(btrim(substr({src}::text, 1, "
+        "strpos({src}::text, :separator) - 1)), '')"
+    )
+    params = dict(
+        table=target.fq_identifier,
+        src=Identifier(src),
+        dst=Identifier(dst),
+        separator=separator,
+    )
+
+    # Parseable rows, before the allowed-value and null-dst restrictions.
+    parsed_filter = f"""
+        WHERE {{src}} IS NOT NULL
+          AND strpos({{src}}::text, :separator) > 0
+          AND {tail} <> ''
+    """
+
+    allowed_filter = ""
+    if allowed_values is not None:
+        cleaned = [value.strip() for value in allowed_values if value.strip() != ""]
+        if not cleaned:
+            raise ValueError("allowed_values cannot be empty")
+
+        for i, value in enumerate(cleaned):
+            params[f"allowed_{i}"] = value.lower()
+        placeholders = ", ".join(f":allowed_{i}" for i in range(len(cleaned)))
+        allowed_filter = f"AND lower({tail}) IN ({placeholders})"
+
+        found = db.run_query(
+            f"SELECT DISTINCT {tail} AS value FROM {{table}} {parsed_filter} ORDER BY value",
+            params,
+        ).fetchall()
+        lowered = {value.lower() for value in cleaned}
+        matched = [row.value for row in found if row.value.lower() in lowered]
+        unmatched = [row.value for row in found if row.value.lower() not in lowered]
+
+        console.print(
+            f"[blue]Parsed from[/blue] [yellow]{src}[/yellow] in "
+            f"[bold]{target.schema}.{target.table}[/bold]: "
+            f"[green]{', '.join(matched) if matched else 'none'}[/green]"
+        )
+        if unmatched:
+            console.print(
+                f"  [yellow]not in allowed values, left unwritten:[/yellow] "
+                f"{', '.join(unmatched)}"
+            )
+
+    row_filter = f"""
+        {parsed_filter}
+          {allowed_filter}
+          {"" if overwrite else "AND {dst} IS NULL"}
+    """
+
+    candidate_rows = db.run_query(
+        f"SELECT count(*) FROM {{table}} {row_filter}",
+        params,
+    ).scalar()
+
+    console.print(
+        f"[blue]Preparing to unmerge[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold] "
+        f"[yellow]{src}[/yellow] after [yellow]{separator}[/yellow] "
+        f"-> [yellow]{dst}[/yellow] across {candidate_rows} candidate row(s)"
+    )
+
+    # Both SET expressions read the pre-update row, so trimming src in the same
+    # statement cannot clobber the value the dst expression is reading.
+    set_clauses = [f"{{dst}} = {tail}"]
+    if keep_prefix:
+        set_clauses.append(f"{{src}} = {prefix}")
+
+    db.run_sql(
+        f"UPDATE {{table}} SET {', '.join(set_clauses)} {row_filter}",
+        params,
+    )
+
+    remaining_nulls = db.run_query(
+        """
+        SELECT count(*)
+        FROM {table}
+        WHERE {dst} IS NULL
+          AND coalesce(omit, false) = false
+        """,
+        dict(
+            table=target.fq_identifier,
+            dst=Identifier(dst),
+        ),
+    ).scalar()
+
+    console.print(
+        f"[green]Done:[/green] unmerged {src} into {dst} "
+        f"in {target.schema}.{target.table}. "
+        f"Remaining null {dst} rows: {remaining_nulls}"
+    )
+    return remaining_nulls
 
 
 def get_distinct_preview_values_for_column(
@@ -1444,6 +1619,38 @@ def copy_column_values(
         f"Remaining null {dst} rows: {remaining_nulls}"
     )
     return remaining_nulls
+
+
+def copy_first_available_column(
+    target: TableTarget,
+    srcs: list[str],
+    dst: str,
+    overwrite: bool = False,
+) -> Optional[int]:
+    """Fill `dst` from each column in `srcs` in turn, stopping as soon as no null
+    `dst` rows remain. Source columns absent from the table are skipped, so a list
+    may name alternatives that only some tables use.
+
+    Returns the remaining null count, or None if no source column was present.
+    """
+    remaining = None
+    for src in srcs:
+        result = copy_column_values(
+            target=target,
+            src=src,
+            dst=dst,
+            skip_missing=True,
+            # Only the first column that actually copies may overwrite; later
+            # columns fill the nulls it left rather than clobbering its work.
+            overwrite=overwrite and remaining is None,
+        )
+        if result is None:
+            continue
+        remaining = result
+        if remaining == 0:
+            break
+
+    return remaining
 
 
 def update_ingest_status(
@@ -2249,7 +2456,9 @@ def copy_line_type_from_column(
 
 
 def normalize_age_text(value: Optional[str]) -> Optional[str]:
-    if value is None:
+    # is_blank_metadata_value also catches float NaN, which pandas substitutes for
+    # NULL, and the literal string 'nan' that str(NaN) would otherwise produce.
+    if is_blank_metadata_value(value):
         return None
     text = str(value).strip()
     if text == "":
@@ -2265,10 +2474,12 @@ def normalize_age_text(value: Optional[str]) -> Optional[str]:
 
 
 def remap_age_term(term: Optional[str]) -> Optional[str]:
-    if term is None:
+    # Guard against non-str input: pandas can hand a float NaN straight through an
+    # .apply() chain, and 'nan is None' is False.
+    if is_blank_metadata_value(term):
         return None
 
-    term = term.strip().lower()
+    term = str(term).strip().lower()
     term = AGE_TERM_REMAP.get(term, term)
 
     parts = term.split()
@@ -2343,12 +2554,23 @@ def parse_age_range(value: Optional[str]) -> tuple[Optional[str], Optional[str]]
 # several qualify the earliest name here wins.
 ORIG_ID_CANDIDATES = [
     "mapunitpolys_id",
-    "fieldid",
-    "source_id",
     "descriptionofmapunits_id",
-    "poly_id",
-    "line_id",
-    "point_id",
+    "descriptionsourceid",
+    "global_id",
+    "contactsandfaults_id",
+    "globalid",
+    "orientationpoints_id",
+
+]
+
+# Accepted certainty values, matched case-insensitively. Seeded from the Arizona
+# linework 'Type' column; extend as new values turn up rather than letting
+# unrecognized text through.
+LINE_CERTAINTY_VALUES = [
+    "Accurate",
+    "Approximate",
+    "Concealed",
+    "nature uncertain",
 ]
 
 INTEGER_TEXT_PATTERN = "^-?[0-9]+$"
@@ -4278,61 +4500,190 @@ def get_japan_descrips_points_lines():
 
 @normalize_cli.command("normalize_az")
 def normalize_az(
+    start_after: Optional[str] = Option(
+        None,
+        "--start-after",
+        help="Resume: skip every slug up to and including this one (alphabetical order).",
+    ),
+    only: Optional[str] = Option(
+        None,
+        "--only",
+        help="Process a single slug instead of the whole Arizona set.",
+    ),
 ):
     """Add any missing preferred standard columns to all Arizona staging layers."""
     db = get_database()
 
-    slugs = db.run_query(
-        "select slug from maps_metadata.ingest_process where slug ilike 'arizona%' and slug not ilike 'arizona_adgm%';"
-    ).scalars()
+    # ORDER BY makes the run resumable; without it Postgres may return the slugs
+    # in a different order each time and --start-after would be meaningless.
+    slugs = list(
+        db.run_query(
+            """
+            SELECT slug
+            FROM maps_metadata.ingest_process
+            WHERE slug ILIKE 'arizona%'
+              AND slug NOT ILIKE 'arizona_adgm%'
+            ORDER BY slug
+            """
+        ).scalars()
+    )
+    if only is not None:
+        slugs = [slug for slug in slugs if slug == only]
+        if not slugs:
+            raise ValueError(f"No Arizona slug matches '{only}'")
+    elif start_after is not None:
+        if start_after not in slugs:
+            raise ValueError(f"No Arizona slug matches '{start_after}'")
+        slugs = slugs[slugs.index(start_after) + 1 :]
+
     layers = ["_polygons", "_lines", "_points"]
+    failed: list[tuple[str, str]] = []
 
-    for slug in slugs:
-        for layer in layers:
-            #add preferred columns
-            target = TableTarget(schema="sources", table=slug + layer)
-            try:
-                add_preferred_columns(target=target)
-            except ValueError as e:
-                console.print(
-                    f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
-                )
-                continue
+    for position, slug in enumerate(slugs, start=1):
+        console.print(
+            f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]"
+        )
+        try:
+            _normalize_az_slug(db, slug, layers)
+        except Exception as e:
+            # run_sql commits per statement, so a failed slug is left partially
+            # applied; the rollback only clears the aborted session so the next
+            # slug can run. Rerun the failure with --only to finish it.
+            db.session.rollback()
+            failed.append((slug, f"{type(e).__name__}: {e}"))
+            console.print(f"[red]Failed[/red] [bold]{slug}[/bold]: {e}")
 
-            #find orig_id candidates and copy into orig_id col
-            copy_orig_id_from_candidates(
-                target=target,
-                candidates=ORIG_ID_CANDIDATES,
-                interactive=True,
+    console.print(
+        f"\n[green]Finished:[/green] {len(slugs) - len(failed)}/{len(slugs)} slug(s) "
+        f"processed"
+    )
+    for slug, message in failed:
+        console.print(f"  [red]{slug}[/red]: {message}")
+    if failed:
+        console.print(
+            "[yellow]Rerun the failures individually with --only <slug>[/yellow]"
+        )
+
+
+def _normalize_az_slug(db, slug: str, layers: list[str]):
+    """Normalize every layer of one Arizona map, committing on success."""
+    for layer in layers:
+        #add preferred columns
+        target = TableTarget(schema="sources", table=slug + layer)
+        try:
+            add_preferred_columns(target=target)
+        except ValueError as e:
+            console.print(
+                f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
             )
-            
-            if layer == "_polygons":
-                #copy values into unit_label column. overwrite overrides existing values in dst col
-                copy_column_values(
-                    target=target,
-                    src="mapunit",
-                    dst="unit_label",
-                    skip_missing=True,
-                    overwrite=True,
-                )
-                #copy age_meta into ages column
-                 copy_column_values(
-                    target=target,
-                    src="age_meta",
-                    dst="age",
-                    skip_missing=True,
-                    overwrite=True,
-                )
+            continue
 
-                calculate_lith_fuzzy_match_percentages(
+        #find orig_id candidates and copy into orig_id col
+        copy_orig_id_from_candidates(
+            target=target,
+            candidates=ORIG_ID_CANDIDATES,
+            interactive=True,
+        )
+        #copy into the comments column
+        copy_column_values(
+            target=target,
+            src="notes",
+            dst="comments",
+            skip_missing=True,
+            overwrite=True
+        )
+        #append the data source id onto comments
+        merge_column_values(
+            target=target,
+            col_one="comments",
+            col_two="datasourceid",
+            separator="; ",
+        )
+
+        if layer == "_polygons":
+
+            #copy the first available unit label column into unit_label
+            copy_first_available_column(
                 target=target,
-                src_col="description",
-                threshold=threshold,
-                row_copy_threshold_percent=row_copy_threshold_percent,
-                limit=limit,
+                srcs=["mapunit", "label"],
+                dst="unit_label",
+                overwrite=True,
+            )
+            #copy the first available age column into the age column
+            copy_first_available_column(
+                target=target,
+                srcs=["age_meta", "relativeage"],
+                dst="age",
+                overwrite=True,
+            )
+            #fill any remaining null b_interval/t_interval from the age text
+            copy_age_columns(
+                target=target,
+                older_col="age",
+                newer_col="age",
+            )
+            #fuzzy match descrip tokens against the lith vocabularies
+            calculate_lith_fuzzy_match_percentages(
+                target=target,
+                src_col=["descrip", "name"],
+                threshold=0.85,
+                row_copy_threshold_percent=10.0,
             )
 
-        db.session.commit()
+
+
+        if layer == "_lines":
+            '''null_column_values(
+                target=target,
+                column=type
+            )'''
+            #split 'Contact, Approximate' into type='Contact', certainty='Approximate'
+            unmerge_column_values(
+                target=target,
+                src="type",
+                dst="certainty",
+                separator=", ",
+                skip_missing=True,
+                overwrite=True,
+                keep_prefix=True,
+                allowed_values=LINE_CERTAINTY_VALUES,
+            )
+            #copy into certainty column
+            copy_first_available_column(
+                target=target,
+                srcs=["identityconfidence", "existenceconfidence"],
+                dst="certainty",
+                overwrite=True,
+            )
+            #copy into the descrip column
+            copy_first_available_column(
+                target=target,
+                srcs=["name", "ltype", "type"],
+                dst="descrip",
+                overwrite=True
+            )
+
+
+
+        if layer == "_points":
+            #copy into certainty column
+            copy_first_available_column(
+                target=target,
+                srcs=["identityconfidence", "existenceconfidence"],
+                dst="certainty",
+                overwrite=True,
+            )
+            #copy into the descrip column
+            copy_first_available_column(
+                target=target,
+                srcs=["point_type", "pttype"],
+                dst="descrip",
+                overwrite=True
+            )
+
+
+
+    db.session.commit()
 
 
 # ____________________________BASH SCRIPTS POLYGONS_______________________________________
