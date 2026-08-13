@@ -64,9 +64,7 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
     # Starlette's threadpool, where a sync engine is the right tool.
     index = RasterIndex(url)
     configs = raster_layer_configs()
-    register_raster_layers(
-        app, index, configs, prefix="/rasters", tags=["Rasters"]
-    )
+    register_raster_layers(app, index, configs, prefix="/rasters", tags=["Rasters"])
 
     # Register cache invalidation routes for the raster layers.
     # TODO: we might move this, either into the layer config
@@ -74,8 +72,10 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
     for cfg in configs:
         prefix = f"rasters/{cfg.slug}"
         url = f"/{prefix}/refresh"
+
         def _invalidate_cache():
             from ..cache_management import _flush_l1_cache
+
             _flush_l1_cache(prefix)
 
         app.add_api_route(url, _invalidate_cache, methods=["POST"], tags=["Rasters"])

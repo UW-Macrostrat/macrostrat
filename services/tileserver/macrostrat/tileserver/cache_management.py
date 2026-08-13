@@ -43,6 +43,7 @@ _SCALE_BANDS = {
 }
 _FULL_RANGE = (0, 14)
 
+
 class InvalidationRequest(BaseModel):
     # Region mode: an explicit bbox or a layer slug, expired across [min,max] zoom.
     bbox: Optional[list[float]] = None  # [minx, miny, maxx, maxy] in WGS84
@@ -59,6 +60,7 @@ _BBOX_ARRAY = (
     "ARRAY[ST_XMin(ext)::float, ST_YMin(ext)::float, "
     "ST_XMax(ext)::float, ST_YMax(ext)::float]"
 )
+
 
 @router.post("/refresh/carto")
 async def invalidate_cache(body: InvalidationRequest, request: Request):
@@ -91,8 +93,11 @@ async def invalidate_cache(body: InvalidationRequest, request: Request):
 
     return {"deleted_l2": deleted_l2, "flushed_l1": flushed_l1}
 
+
 @router.post("/refresh/{prefix}")
-async def invalidate_l1_cache(body: Optional[InvalidationRequest], request: Request, prefix: str):
+async def invalidate_l1_cache(
+    body: Optional[InvalidationRequest], request: Request, prefix: str
+):
     """Expire L1 (Varnish) cache for a given prefix.
 
     This is a more general endpoint than /refresh/carto, which only flushes the
@@ -246,6 +251,7 @@ async def _delete_l2_tiles(
     result = await conn.execute(q, *p)
     # asyncpg returns "DELETE N" as a status string
     return int(result.split()[-1]) if result else 0
+
 
 async def _flush_l1_cache(pattern: str) -> bool:
     """Flush the L1 (Varnish) cache with a prefix or a pattern"""
