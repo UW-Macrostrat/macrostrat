@@ -10,12 +10,12 @@ from os import environ
 
 from pytest import fixture, mark
 
-from macrostrat.tileserver_utils import CacheMode
 from macrostrat.tileserver.vector_tiles import StoredFunction
 from macrostrat.tileserver.vector_tiles.factory import (
     queryparams_to_kwargs,
     resolve_cache_mode,
 )
+from macrostrat.tileserver_utils import CacheMode
 
 # Layers that must keep their database-side tile cache. Losing a profile here
 # would silently turn every request into a full re-render, so the mapping is
