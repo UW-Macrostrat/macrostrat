@@ -14,6 +14,8 @@ dependencies = [
     "api",
     "macrostrat.map_utils",
     "macrostrat.worker[maps]",
+    "macrostrat.raster_index[s3]>=0.1.0,<1",
+    "macrostrat.raster_layers>=0.1.0,<1",
     "testcontainers>=4.14.2",
     "psycopg[binary]>=3.3.3",
 ]

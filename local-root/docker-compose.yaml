@@ -135,6 +135,7 @@ services:
         py-modules: ../py-modules
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      - VARNISH_URL=http://tileserver_cache:8000
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.

@@ -1,6 +1,8 @@
 FROM ghcr.io/osgeo/gdal:ubuntu-small-3.11.0
 
-# Install python from deadsnakes PPA
+# Install python from deadsnakes PPA.
+# `libpq-dev` is here because macrostrat.database 4.x depends on `psycopg2`
+# rather than `psycopg2-binary`, so it is built from source and needs libpq headers.
 RUN apt-get update -y && \
   apt-get install -y --no-install-recommends \
   software-properties-common && \
@@ -10,6 +12,7 @@ RUN apt-get update -y && \
     gdb \
     g++ \
     make \
+    libpq-dev \
     python3.11 \
     python3.11-venv \
     python3.11-dev && \
@@ -35,7 +38,6 @@ COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=deps,target=deps \
     uv sync --locked --no-install-project --no-editable
 
 ADD . /services/main

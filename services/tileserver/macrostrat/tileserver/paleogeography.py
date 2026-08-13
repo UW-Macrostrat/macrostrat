@@ -2,10 +2,10 @@ from typing import Any
 
 from buildpg import render
 
-from .cached_tiler import CachedStoredFunction
+from .vector_tiles import StoredFunction
 
 
-class PaleoGeographyLayer(CachedStoredFunction):
+class PaleoGeographyLayer(StoredFunction):
     _model_info: dict[int, dict[str, Any]] = {}
 
     def __init__(self):
@@ -13,7 +13,7 @@ class PaleoGeographyLayer(CachedStoredFunction):
             "corelle_macrostrat.carto_slim_rotated",
         )
 
-    async def validate_request(self, pool, tile, tms, **kwargs):
+    async def validate_request(self, pool, tile, **kwargs):
         model = kwargs.get("model_id")
         age = kwargs.get("t_step")
         if model is None:

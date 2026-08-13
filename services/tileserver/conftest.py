@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from macrostrat_tileserver.tests.fixtures import (  # noqa
+from macrostrat.tileserver.tests.fixtures import (  # noqa
     app,
     client,
     db,

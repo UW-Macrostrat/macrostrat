@@ -23,12 +23,14 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
+# TODO: this function must be protected by a secret key or other authentication
+# mechanism, lest we allow anyone to run a denial-of-service on our systems.
 router = APIRouter()
 
 # Profiles to expire on cache invalidation (rotated paleo layer excluded)
 _CARTO_PROFILES = ["carto", "carto-slim", "carto-image"]
 
-_VARNISH_URL = environ.get("VARNISH_URL", "http://tileserver_cache:8000")
+_VARNISH_URL = environ.get("VARNISH_URL", None)
 
 # Carto scale band → [min_zoom, max_zoom], mirroring tile_layers.carto_slim.
 # A source is expired only across its own scale band. Unknown scales fall back
@@ -60,7 +62,7 @@ _BBOX_ARRAY = (
 )
 
 
-@router.post("/invalidate")
+@router.post("/refresh/carto")
 async def invalidate_cache(body: InvalidationRequest, request: Request):
     """Expire tiles from L1 (Varnish) and L2 (database) caches.
 
@@ -86,8 +88,24 @@ async def invalidate_cache(body: InvalidationRequest, request: Request):
                 conn, bbox, body.min_zoom, body.max_zoom
             )
 
-    flushed_l1 = await _flush_l1_carto()
+    profile_prefix = "|".join(_CARTO_PROFILES)
+    flushed_l1 = await _flush_l1_cache(profile_prefix)
+
     return {"deleted_l2": deleted_l2, "flushed_l1": flushed_l1}
+
+
+@router.post("/refresh/{prefix}")
+async def invalidate_l1_cache(
+    body: Optional[InvalidationRequest], request: Request, prefix: str
+):
+    """Expire L1 (Varnish) cache for a given prefix.
+
+    This is a more general endpoint than /refresh/carto, which only flushes the
+    carto profiles. This endpoint can be used to flush any prefix, e.g. /cog or
+    /paleo.
+    """
+    flushed_l1 = await _flush_l1_cache(prefix)
+    return {"flushed_l1": flushed_l1}
 
 
 # ─── Footprints tile layer (for the cache UI) ─────────────────────────────────
@@ -235,17 +253,13 @@ async def _delete_l2_tiles(
     return int(result.split()[-1]) if result else 0
 
 
-async def _flush_l1_carto() -> bool:
-    """Flush the entire carto L1 (Varnish) cache via a single URL ban.
+async def _flush_l1_cache(pattern: str) -> bool:
+    """Flush the L1 (Varnish) cache with a prefix or a pattern"""
+    if _VARNISH_URL is None:
+        log.warning("Varnish is not connected")
+        return None
 
-    L1 is only a memory cache in front of L2; a cold L1 simply re-fetches from
-    L2 (cheap, except in the region we just expired from L2).  So rather than
-    computing a precise per-region ban, we drop all carto tiles wholesale —
-    far simpler, and the cost is just a transient re-population from L2.
-    """
-    profile_alt = "|".join(_CARTO_PROFILES)
-    ban_expr = f'req.url ~ "^/(?:{profile_alt})/"'
-
+    ban_expr = f'req.url ~ "^/(?:{pattern})/"'
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.request(
@@ -256,7 +270,7 @@ async def _flush_l1_carto() -> bool:
             )
             resp.raise_for_status()
     except httpx.HTTPError as exc:
-        log.warning("Varnish BAN failed (L2 deletion still applied): %s", exc)
+        log.warning("Varnish BAN failed: %s", exc)
         return False
 
     return True
