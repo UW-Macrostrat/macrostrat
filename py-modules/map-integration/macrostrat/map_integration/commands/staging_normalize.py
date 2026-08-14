@@ -4621,6 +4621,11 @@ def normalize_az(
         "--only",
         help="Process a single slug instead of the whole Arizona set.",
     ),
+    layer: Optional[str] = Option(
+        None,
+        "--layer",
+        help="Process a single layer: polygons, lines, or points. Default is all three.",
+    ),
 ):
     """Add any missing preferred standard columns to all Arizona staging layers."""
     db = get_database()
@@ -4648,6 +4653,12 @@ def normalize_az(
         slugs = slugs[slugs.index(start_after) + 1 :]
 
     layers = ["_polygons", "_lines", "_points"]
+    if layer is not None:
+        wanted = "_" + layer.strip().strip("_").lower()
+        if wanted not in layers:
+            raise ValueError("--layer must be one of: polygons, lines, points")
+        layers = [wanted]
+
     failed: list[tuple[str, str]] = []
 
     for position, slug in enumerate(slugs, start=1):
