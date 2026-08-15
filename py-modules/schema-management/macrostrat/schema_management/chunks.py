@@ -17,7 +17,7 @@ pulled out; the dependency chain preserves today's exact application order.
 
 from pathlib import Path
 
-from tileserver_stats import build_schema_config
+from usage_stats import build_schema_config
 
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import TopologySchema

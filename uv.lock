@@ -1166,11 +1166,11 @@ dependencies = [
     { name = "shapely" },
     { name = "spectra" },
     { name = "sqlalchemy" },
-    { name = "tileserver-stats" },
     { name = "tiletanic" },
     { name = "toml" },
     { name = "tqdm" },
     { name = "typer" },
+    { name = "usage-stats" },
 ]
 
 [package.optional-dependencies]
@@ -1217,11 +1217,11 @@ requires-dist = [
     { name = "shapely", specifier = ">=2.1.0,<3" },
     { name = "spectra", specifier = ">=0.0.11,<0.0.12" },
     { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
-    { name = "tileserver-stats", editable = "py-modules/tileserver-stats" },
     { name = "tiletanic", specifier = ">=1.1.0,<2" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
     { name = "tqdm", specifier = ">=4.65.0,<5" },
     { name = "typer", specifier = ">=0.12,<0.27" },
+    { name = "usage-stats", editable = "py-modules/usage-stats" },
 ]
 provides-extras = ["gis"]
 
@@ -3142,38 +3142,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tileserver-stats"
-version = "0.1.0"
-source = { editable = "py-modules/tileserver-stats" }
-dependencies = [
-    { name = "macrostrat-core" },
-    { name = "macrostrat-database" },
-    { name = "matplotlib" },
-    { name = "minio" },
-    { name = "polars" },
-    { name = "python-dotenv" },
-    { name = "rich" },
-    { name = "typer" },
-    { name = "zstandard" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "macrostrat-core", editable = "py-modules/core" },
-    { name = "macrostrat-database", specifier = ">=4.4.1,<5" },
-    { name = "matplotlib", specifier = ">=3.9.2,<4" },
-    { name = "minio", specifier = ">=7.2.20" },
-    { name = "polars", specifier = ">=1.42.0,<2" },
-    { name = "python-dotenv", specifier = ">=1.0.0,<2" },
-    { name = "rich", specifier = ">=13,<16" },
-    { name = "typer", specifier = ">=0.12,<0.27" },
-    { name = "zstandard", specifier = ">=0.25.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
-
-[[package]]
 name = "tiletanic"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3324,6 +3292,38 @@ sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]
+
+[[package]]
+name = "usage-stats"
+version = "0.1.0"
+source = { editable = "py-modules/usage-stats" }
+dependencies = [
+    { name = "macrostrat-core" },
+    { name = "macrostrat-database" },
+    { name = "matplotlib" },
+    { name = "minio" },
+    { name = "polars" },
+    { name = "python-dotenv" },
+    { name = "rich" },
+    { name = "typer" },
+    { name = "zstandard" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-core", editable = "py-modules/core" },
+    { name = "macrostrat-database", specifier = ">=4.4.1,<5" },
+    { name = "matplotlib", specifier = ">=3.9.2,<4" },
+    { name = "minio", specifier = ">=7.2.20" },
+    { name = "polars", specifier = ">=1.42.0,<2" },
+    { name = "python-dotenv", specifier = ">=1.0.0,<2" },
+    { name = "rich", specifier = ">=13,<16" },
+    { name = "typer", specifier = ">=0.12,<0.27" },
+    { name = "zstandard", specifier = ">=0.25.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
 
 [[package]]
 name = "uvicorn"

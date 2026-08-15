@@ -4,8 +4,8 @@ from pathlib import Path
 import typer
 from rich import print
 from rich.traceback import install
-from tileserver_stats import app as tileserver_stats_app
 from typer import Argument, Typer
+from usage_stats import app as usage_stats_app
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
@@ -138,9 +138,9 @@ main.add_typer(
 )
 
 main.add_typer(
-    tileserver_stats_app,
-    name="tileserver-stats",
-    short_help="Tileserver stats",
+    usage_stats_app,
+    name="usage-stats",
+    short_help="Usage stats",
     rich_help_panel="Subsystems",
 )
 

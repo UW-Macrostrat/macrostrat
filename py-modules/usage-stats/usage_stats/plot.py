@@ -1,7 +1,7 @@
 """Tileserver request-statistics figures for scientific reports.
 
 Spare, professional matplotlib output (PDF / SVG / PNG, or inline in iTerm),
-driven by tileserver_stats.day_index in the core Macrostrat database.
+driven by usage_stats.tileserver_day_index in the core Macrostrat database.
 
 matplotlib and polars are heavy imports, so this module is imported lazily by
 the `plot` CLI command rather than at package load.
@@ -45,7 +45,7 @@ def fetch_daily_requests(*, skip_bots: bool = False) -> pl.DataFrame:
     result = db.run_query(
         """
         SELECT date, new_system, sum(num_requests)::bigint AS count
-        FROM tileserver_stats.day_index
+        FROM usage_stats.tileserver_day_index
         WHERE (NOT :skip_bots OR NOT is_bot)
         GROUP BY date, new_system
         ORDER BY date
@@ -202,7 +202,9 @@ def tileserver_stats_figure(
 
     df = fetch_daily_requests(skip_bots=skip_bots)
     if df.is_empty():
-        raise ValueError("No rows in tileserver_stats.day_index — nothing to plot.")
+        raise ValueError(
+            "No rows in usage_stats.tileserver_day_index — nothing to plot."
+        )
     df = _filter_range(df, time_range)
     if df.is_empty():
         raise ValueError(f"No data in the selected range ({time_range}).")

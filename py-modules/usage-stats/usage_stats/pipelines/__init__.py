@@ -1,0 +1,66 @@
+"""Usage-stats pipelines.
+
+A pipeline picks its own records out of the shared access-log stream and owns
+its own tables. The interface is deliberately small:
+
+    name    — identifies the pipeline in `usage_stats.processed_logs`
+    parse   — one log record in, one row out (or None to ignore it)
+    write   — persist an object's worth of rows
+    reset   — drop everything this pipeline has ingested
+
+`parse` is called once per record per due pipeline, so it must be cheap: reject
+on the narrowest test first (usually method or host) before doing any parsing.
+
+Aggregation, where a pipeline does it, belongs inside `write` — it operates on
+exactly one log object's rows, which is the unit the ingestion ledger records
+and therefore the unit that must be written atomically.
+"""
+
+from typing import Protocol, runtime_checkable
+
+from .rockd_dashboard import RockdDashboardPipeline
+from .tileserver import TileserverPipeline
+
+
+@runtime_checkable
+class Pipeline(Protocol):
+    name: str
+
+    def parse(self, rec: dict) -> dict | None:
+        """Extract a row from a log record, or None if the record isn't ours."""
+        ...
+
+    def write(self, db, rows: list[dict]) -> None:
+        """Persist one log object's worth of rows. Called inside a transaction
+        that also records the object in `processed_logs`."""
+        ...
+
+    def reset(self, db) -> str:
+        """Delete everything this pipeline has ingested, so it can be rebuilt
+        from the logs. Returns a human-readable summary of what was removed.
+        Data that predates the log dumps and cannot be re-derived must be
+        left alone."""
+        ...
+
+
+PIPELINES: list[Pipeline] = [
+    TileserverPipeline(),
+    RockdDashboardPipeline(),
+]
+
+
+def get_pipelines(names: list[str] | None = None) -> list[Pipeline]:
+    """Resolve pipeline names, defaulting to all of them."""
+    if not names:
+        return list(PIPELINES)
+    by_name = {p.name: p for p in PIPELINES}
+    unknown = set(names) - set(by_name)
+    if unknown:
+        raise ValueError(
+            f"Unknown pipeline(s): {', '.join(sorted(unknown))}. "
+            f"Available: {', '.join(by_name)}"
+        )
+    return [by_name[n] for n in names]
+
+
+__all__ = ["Pipeline", "PIPELINES", "get_pipelines"]

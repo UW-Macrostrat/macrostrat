@@ -13,7 +13,7 @@ router = APIRouter()
 @router.get("/{z}/{x}/{y}")
 async def get_tile(request: Request, z: int, x: int, y: int):
     """Tile-request density heatmap (source-layer `requests`) built from
-    tileserver_stats.location_index — shows where tiles are requested most."""
+    usage_stats.tileserver_location_index — shows where tiles are requested most."""
     pool = request.app.state.pool
 
     sql = get_sql(__here__ / "heatmap.sql")
