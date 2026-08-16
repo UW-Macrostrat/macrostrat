@@ -128,16 +128,22 @@ CREATE INDEX IF NOT EXISTS rockd_dashboard_loads_geom
 -- above the ~110 m median GPS jitter between consecutive same-client requests;
 -- below that, dedup removes almost nothing (100 m / 15 min retains 4 in 5).
 --
---   distinct view: 250 m / 15 min  -> ~48 in 100 retained  ("a distinct view")
---   session view:  500 m / 1 h     -> ~35 in 100 retained  ("a session")
+--   distinct view: 250 m / 15 min  -> ~25 in 100 retained over the full corpus
+--   session view:  500 m / 1 h     -> ~20 in 100 retained
 --
 -- (Percent signs are spelled out throughout this file: it is executed through
 -- SQLAlchemy, whose driver reads a bare percent sign -- even inside a comment --
 -- as a bind parameter and fails with "incomplete placeholder".)
 --
--- Note these mark repeats relative to the immediately preceding request, not to
--- the last *kept* one, so a device drifting slowly stays collapsed only while
--- each step is under threshold. That is the intended reading of "nearby".
+-- IMPORTANT -- which request a row is compared against. These views compare each
+-- request to the *immediately preceding* one from the same client, because that
+-- is what a window function can express. The alternative is to compare against
+-- the last *kept* request, which retains noticeably more (on 2026-08-14: 30.6
+-- in 100 here, versus 47.7 in 100 for last-kept) and arguably describes usage
+-- better: a user walking a traverse in sub-threshold steps collapses to a single
+-- point under these views, but would yield a point every 250 m under last-kept.
+-- Last-kept needs an iterative/recursive evaluation, so it is not implemented;
+-- treat these counts as a conservative lower bound on distinct views.
 CREATE OR REPLACE VIEW usage_stats.rockd_dashboard_views AS
 WITH stepped AS (
   SELECT

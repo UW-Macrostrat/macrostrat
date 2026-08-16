@@ -124,8 +124,24 @@ LOCATION_UPSERT = """
 """
 
 
+DAILY_SERIES = """
+    SELECT date, new_system, sum(num_requests)::bigint AS count
+    FROM usage_stats.tileserver_day_index
+    WHERE (NOT :skip_bots OR NOT is_bot)
+    GROUP BY date, new_system
+    ORDER BY date
+"""
+
+
 class TileserverPipeline:
     name = "tileserver"
+
+    plot_label = "Tile requests per day"
+    plot_options = frozenset({"skip_bots"})
+    # The 2021+ systematic scrapes and the 2026 cache-warmer produce order-of-
+    # magnitude spikes that swamp the real signal, so cutting them is the right
+    # default here.
+    plot_omit_spikes = True
 
     def parse(self, rec: dict) -> dict | None:
         if rec.get("RequestMethod") != "GET":
@@ -156,6 +172,15 @@ class TileserverPipeline:
             db.run_query(DAY_UPSERT, day_rows)
         if loc_rows:
             db.run_query(LOCATION_UPSERT, loc_rows)
+
+    def daily_series(self, db, *, skip_bots: bool = False, **_) -> list[dict]:
+        """Daily tile-request totals, split by pipeline lineage.
+
+        skip_bots excludes known automated clients so the series reflects
+        organic traffic only.
+        """
+        result = db.run_query(DAILY_SERIES, {"skip_bots": skip_bots})
+        return [dict(r._mapping) for r in result]
 
     def reset(self, db) -> str:
         # Only the log-dump lineage. The legacy rows (new_system = false, back

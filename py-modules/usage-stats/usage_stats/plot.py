@@ -1,7 +1,8 @@
-"""Tileserver request-statistics figures for scientific reports.
+"""Usage-statistics figures for scientific reports.
 
 Spare, professional matplotlib output (PDF / SVG / PNG, or inline in iTerm),
-driven by usage_stats.tileserver_day_index in the core Macrostrat database.
+driven by whichever pipeline's daily series is being plotted — the figure code
+is generic, and each pipeline supplies its own `daily_series` and label.
 
 matplotlib and polars are heavy imports, so this module is imported lazily by
 the `plot` CLI command rather than at package load.
@@ -34,27 +35,17 @@ from .params import Smoothing, resolve_date_window
 SPIKE_QUANTILE = 0.80  # default: days above this quantile are treated as spikes
 
 
-def fetch_daily_requests(*, skip_bots: bool = False) -> pl.DataFrame:
-    """Daily tile-request totals from day_index, split by pipeline lineage.
+def fetch_daily_series(pipeline, **options) -> pl.DataFrame:
+    """A pipeline's daily counts as a DataFrame.
 
-    Columns: date (Datetime), new_system (Boolean), count (Int64).
-    skip_bots excludes known automated clients (is_bot) so the series reflects
-    organic traffic only.
+    Columns: date (Datetime), count (Int64), and — for pipelines that track
+    more than one data lineage — new_system (Boolean).
     """
-    db = get_database()
-    result = db.run_query(
-        """
-        SELECT date, new_system, sum(num_requests)::bigint AS count
-        FROM usage_stats.tileserver_day_index
-        WHERE (NOT :skip_bots OR NOT is_bot)
-        GROUP BY date, new_system
-        ORDER BY date
-        """,
-        {"skip_bots": skip_bots},
-    )
-    rows = [dict(r._mapping) for r in result]
+    rows = pipeline.daily_series(get_database(), **options)
 
-    schema = {"date": pl.Datetime, "new_system": pl.Boolean, "count": pl.Int64}
+    schema = {"date": pl.Datetime, "count": pl.Int64}
+    if rows and "new_system" in rows[0]:
+        schema["new_system"] = pl.Boolean
     if not rows:
         return pl.DataFrame(schema=schema)
     return pl.DataFrame(rows, schema=schema)
@@ -139,7 +130,12 @@ def _prepare(
 
 def _cutover_date(df: pl.DataFrame):
     """The legacy→new boundary: first new-system day, but only when both
-    lineages are present (otherwise a cutover marker is meaningless)."""
+    lineages are present (otherwise a cutover marker is meaningless).
+
+    Returns None for single-lineage pipelines, which have no `new_system`
+    column at all."""
+    if "new_system" not in df.columns:
+        return None
     has_legacy = df.filter(~pl.col("new_system")).height > 0
     new = df.filter(pl.col("new_system"))
     if not has_legacy or new.height == 0:
@@ -183,27 +179,35 @@ def _apply_report_style() -> None:
     )
 
 
-def tileserver_stats_figure(
+def usage_stats_figure(
+    pipeline,
     out: Optional[Path] = None,
     *,
     log: bool = False,
-    omit_spikes: bool = True,
+    omit_spikes: Optional[bool] = None,
     spike_quantile: float = SPIKE_QUANTILE,
     smoothing: Smoothing = Smoothing.weekly,
     time_range: str = "all",
-    skip_bots: bool = False,
+    **options,
 ) -> None:
-    """Render the tile-requests-per-day figure.
+    """Render a pipeline's counts-per-day figure.
 
     out=None prints inline to an iTerm console; otherwise the format follows the
-    file suffix (.pdf / .svg / .png).
+    file suffix (.pdf / .svg / .png). Extra keyword options are passed through to
+    the pipeline's `daily_series` (e.g. skip_bots, dedup).
+
+    omit_spikes=None takes the pipeline's own default — spike-cutting suits the
+    tileserver, whose spikes are scrapers, but would delete real usage from the
+    Rockd series.
     """
     smooth_window = smoothing.window
+    if omit_spikes is None:
+        omit_spikes = pipeline.plot_omit_spikes
 
-    df = fetch_daily_requests(skip_bots=skip_bots)
+    df = fetch_daily_series(pipeline, **options)
     if df.is_empty():
         raise ValueError(
-            "No rows in usage_stats.tileserver_day_index — nothing to plot."
+            f"No data for the {pipeline.name!r} pipeline — nothing to plot."
         )
     df = _filter_range(df, time_range)
     if df.is_empty():
@@ -285,13 +289,13 @@ def tileserver_stats_figure(
     ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
     ax.set_xlim(dates.min(), dates.max())
 
-    smoothing = f"{smooth_window}-day mean" if smooth_window > 1 else "daily"
-    ax.set_ylabel(f"Tile requests per day ({smoothing})")
+    window_label = f"{smooth_window}-day mean" if smooth_window > 1 else "daily"
+    ax.set_ylabel(f"{pipeline.plot_label} ({window_label})")
 
     fig.tight_layout()
 
     if out is None:
-        _print_inline(fig)
+        _print_inline(fig, fallback_name=f"{pipeline.name}-stats.png")
     else:
         out = Path(out)
         fig.savefig(out)  # format inferred from suffix
@@ -299,7 +303,7 @@ def tileserver_stats_figure(
     plt.close(fig)
 
 
-def _print_inline(fig) -> None:
+def _print_inline(fig, *, fallback_name: str = "usage-stats.png") -> None:
     """Print the figure into the terminal. Uses the iTerm2 inline-image protocol;
     falls back to writing a PNG when not in iTerm."""
     buf = io.BytesIO()
@@ -313,6 +317,6 @@ def _print_inline(fig) -> None:
         sys.stdout.write(f"\033]1337;File=inline=1;width=100%:{payload}\a\n")
         sys.stdout.flush()
     else:
-        fallback = Path("tileserver-stats.png")
+        fallback = Path(fallback_name)
         fallback.write_bytes(buf.getvalue())
         print(f"Not an iTerm console; wrote {fallback} instead.")

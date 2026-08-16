@@ -100,8 +100,35 @@ INSERT = """
 """
 
 
+# Which relation the daily series counts. `raw` is every logged dashboard load;
+# the other two are the deduplication views, which collapse the GPS-jitter
+# cloud a stationary device produces (see the schema comments for thresholds).
+DEDUP_RELATIONS = {
+    "raw": "usage_stats.rockd_dashboard_loads",
+    "views": "usage_stats.rockd_dashboard_views",
+    "sessions": "usage_stats.rockd_dashboard_sessions",
+}
+
+# Days are bucketed in UTC, matching the tileserver day_index (whose `date` is a
+# naive UTC timestamp), so the two series are directly comparable.
+DAILY_SERIES = """
+    SELECT date_trunc('day', time AT TIME ZONE 'UTC') AS date,
+           count(*)::bigint AS count
+    FROM {relation}
+    GROUP BY 1
+    ORDER BY 1
+"""
+
+
 class RockdDashboardPipeline:
     name = "rockd-dashboard"
+
+    plot_label = "Rockd dashboard loads per day"
+    plot_options = frozenset({"dedup"})
+    # Unlike the tileserver series, every spike here is real usage — there is no
+    # scraper analogue. Cutting the top quantile would delete the busiest days
+    # of genuine app traffic, so spike-omission defaults off.
+    plot_omit_spikes = False
 
     def parse(self, rec: dict) -> dict | None:
         if rec.get("RequestMethod") != KEEP_METHOD:
@@ -156,6 +183,24 @@ class RockdDashboardPipeline:
             seen.add(key)
             unique.append(row)
         db.run_query(INSERT, unique)
+
+    def daily_series(self, db, *, dedup: str = "raw", **_) -> list[dict]:
+        """Daily dashboard-load counts.
+
+        dedup selects the relation: `raw` (every request), `views`
+        (250 m / 15 min) or `sessions` (500 m / 1 h).
+        """
+        try:
+            relation = DEDUP_RELATIONS[dedup]
+        except KeyError:
+            raise ValueError(
+                f"Unknown dedup mode {dedup!r}. "
+                f"Choose from: {', '.join(DEDUP_RELATIONS)}"
+            )
+        # `relation` is looked up from the table above, never interpolated from
+        # user input.
+        result = db.run_query(DAILY_SERIES.format(relation=relation))
+        return [dict(r._mapping) for r in result]
 
     def reset(self, db) -> str:
         # Every row comes from the log dumps, so all of it is reproducible.

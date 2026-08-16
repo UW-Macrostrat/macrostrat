@@ -8,6 +8,13 @@ its own tables. The interface is deliberately small:
     write   — persist an object's worth of rows
     reset   — drop everything this pipeline has ingested
 
+Plus a small reporting face, so `plot` works the same way for every pipeline:
+
+    daily_series    — daily counts, as rows of {date, count, …}
+    plot_label      — y-axis label for the figure
+    plot_options    — extra CLI options this pipeline understands
+    plot_omit_spikes — whether spike-cutting is the right default here
+
 `parse` is called once per record per due pipeline, so it must be cheap: reject
 on the narrowest test first (usually method or host) before doing any parsing.
 
@@ -40,6 +47,17 @@ class Pipeline(Protocol):
         from the logs. Returns a human-readable summary of what was removed.
         Data that predates the log dumps and cannot be re-derived must be
         left alone."""
+        ...
+
+    # --- reporting ---------------------------------------------------------
+
+    plot_label: str
+    plot_options: frozenset  # extra `plot` options this pipeline accepts
+    plot_omit_spikes: bool  # sensible default for --omit-spikes/--keep-spikes
+
+    def daily_series(self, db, **options) -> list[dict]:
+        """Daily counts for the plot: rows of {date, count}, optionally with a
+        `new_system` lineage flag. Sorted by date."""
         ...
 
 

@@ -19,6 +19,7 @@ from .harvest import (
 )
 from .params import Smoothing, is_valid_range
 from .pipelines import PIPELINES, get_pipelines
+from .pipelines.rockd_dashboard import DEDUP_RELATIONS
 from .pipelines.tileserver import parse_tile_path
 
 here = Path(__file__).parent
@@ -103,6 +104,12 @@ def status_command():
 
 @app.command(name="plot")
 def plot_command(
+    pipeline: str = Option(
+        "tileserver",
+        "--pipeline",
+        "-p",
+        help="Which pipeline's daily series to plot.",
+    ),
     out: Optional[Path] = Option(
         None,
         "--out",
@@ -121,16 +128,24 @@ def plot_command(
         "4-digit calendar year (e.g. 2026).",
     ),
     log: bool = Option(False, "--log/--linear", help="Logarithmic vs. linear y-axis."),
-    omit_spikes: bool = Option(
-        True,
+    omit_spikes: Optional[bool] = Option(
+        None,
         "--omit-spikes/--keep-spikes",
-        help="Cut spike days before smoothing; drawn dashed.",
+        help="Cut spike days before smoothing; drawn dashed. Defaults per "
+        "pipeline — on for tileserver (scrapes), off for rockd-dashboard "
+        "(where spikes are real usage).",
     ),
     skip_bots: bool = Option(
         False,
         "--skip-bots/--keep-bots",
-        help="Exclude known automated clients (is_bot) so the plot reflects "
-        "organic traffic only.",
+        help="[tileserver] Exclude known automated clients (is_bot) so the plot "
+        "reflects organic traffic only.",
+    ),
+    dedup: str = Option(
+        "raw",
+        "--dedup",
+        help="[rockd-dashboard] Which series to count: raw (every request), "
+        "views (250 m / 15 min), sessions (500 m / 1 h).",
     ),
     spike_quantile: Optional[float] = Option(
         None,
@@ -139,7 +154,7 @@ def plot_command(
         "(default: module SPIKE_QUANTILE).",
     ),
 ):
-    """Plot tile requests per day for reports."""
+    """Plot a pipeline's daily counts for reports."""
     if not is_valid_range(range_):
         raise BadParameter(
             "Use last-month, last-year, last-5-years, all, or a 4-digit year "
@@ -147,16 +162,41 @@ def plot_command(
             param_hint="--range",
         )
 
-    from .plot import SPIKE_QUANTILE, tileserver_stats_figure
+    if dedup not in DEDUP_RELATIONS:
+        raise BadParameter(
+            f"Choose from: {', '.join(DEDUP_RELATIONS)}.", param_hint="--dedup"
+        )
 
-    tileserver_stats_figure(
+    target = _resolve([pipeline])[0]
+
+    # Pipeline-specific options are rejected rather than silently ignored, so a
+    # flag that can't do anything is an error instead of a misleading figure.
+    requested = {"skip_bots": skip_bots, "dedup": dedup != "raw"}
+    for name, was_set in requested.items():
+        if was_set and name not in target.plot_options:
+            raise BadParameter(
+                f"--{name.replace('_', '-')} does not apply to the "
+                f"{target.name!r} pipeline.",
+                param_hint=f"--{name.replace('_', '-')}",
+            )
+
+    options = {}
+    if "skip_bots" in target.plot_options:
+        options["skip_bots"] = skip_bots
+    if "dedup" in target.plot_options:
+        options["dedup"] = dedup
+
+    from .plot import SPIKE_QUANTILE, usage_stats_figure
+
+    usage_stats_figure(
+        target,
         out,
         log=log,
         omit_spikes=omit_spikes,
         spike_quantile=SPIKE_QUANTILE if spike_quantile is None else spike_quantile,
         smoothing=smooth,
         time_range=range_,
-        skip_bots=skip_bots,
+        **options,
     )
 
 
