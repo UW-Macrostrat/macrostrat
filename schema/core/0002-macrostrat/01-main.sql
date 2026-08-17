@@ -1988,15 +1988,17 @@ CREATE TABLE macrostrat.unit_boundaries_scratch (
     t1 integer NOT NULL,
     t1_prop numeric(6,5) NOT NULL,
     t1_age numeric(8,4) NOT NULL,
-    unit_id integer NOT NULL,
-    unit_id_2 integer NOT NULL,
+    unit_id integer,
+    unit_id_2 integer,
     section_id integer NOT NULL,
     boundary_position numeric(6,2) DEFAULT NULL::numeric,
     boundary_type macrostrat.boundary_type DEFAULT ''::macrostrat.boundary_type NOT NULL,
     boundary_status macrostrat.boundary_status DEFAULT 'modeled'::macrostrat.boundary_status NOT NULL,
     paleo_lat numeric(7,3) DEFAULT NULL::numeric,
     paleo_lng numeric(7,3) DEFAULT NULL::numeric,
-    ref_id integer DEFAULT 217 NOT NULL
+    ref_id integer DEFAULT 217 NOT NULL,
+  -- At least one of unit_id and unit_id_2 need to be a valid unit
+    CHECK ((unit_id IS NOT NULL) OR (unit_id_2 IS NOT NULL))
 );
 
 CREATE SEQUENCE macrostrat.unit_boundaries_scratch_id_seq

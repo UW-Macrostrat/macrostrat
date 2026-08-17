@@ -48,6 +48,12 @@ ALTER TABLE macrostrat.unit_strat_names
 
 ALTER TABLE macrostrat.unit_boundaries
   ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
+  ADD FOREIGN KEY(unit_id_2) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
+  ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+
+ALTER TABLE macrostrat.unit_boundaries_scratch
+  ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
+  ADD FOREIGN KEY(unit_id_2) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
   ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
 
 /**
