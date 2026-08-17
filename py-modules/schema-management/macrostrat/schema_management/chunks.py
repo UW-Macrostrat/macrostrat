@@ -1,6 +1,6 @@
 """Collection of Macrostrat's schema chunks.
 
-The single, readable answer to "what is the database schema made of?" — a mix of:
+The database schema is a mix of:
 
 - **discovered** subsystems, found on the filesystem by their frontmatter
   (`discover_chunks`); the first real migration to this convention is ``maps``
@@ -17,7 +17,7 @@ pulled out; the dependency chain preserves today's exact application order.
 
 from pathlib import Path
 
-from usage_stats import build_schema_config
+from macrostrat.usage_stats import build_schema_config
 
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import TopologySchema
