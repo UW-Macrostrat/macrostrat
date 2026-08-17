@@ -59,6 +59,9 @@ AGE_MODIFIER_REMAP = {
     "lower": "early",
 }
 
+# udt_names Postgres treats as text for assignment purposes.
+TEXTUAL_UDT_NAMES = {"text", "varchar", "bpchar", "name", "citext"}
+
 # How many distinct matched-lith strings the fuzzy-match digest lists.
 LITH_SUMMARY_LIMIT = 25
 
@@ -81,6 +84,8 @@ NON_LITHS = {
     "from",
     "as",
     "at",
+    "late",
+    "less",
 }
 
 
@@ -139,6 +144,49 @@ def get_current_target() -> TableTarget:
         )
 
     return TableTarget(schema=schema, table=table)
+
+
+def resolve_target(
+    slug: Optional[str] = None, layer: Optional[str] = None
+) -> TableTarget:
+    """Return the table to operate on.
+
+    Falls back to the persisted set-map/set-layer context, but either half can be
+    overridden per invocation so a command can target one table in a single line
+    without mutating the context file.
+    """
+    if slug is None and layer is None:
+        return get_current_target()
+
+    context = load_map_context()
+    slug = (slug or context.get("slug") or "").strip()
+    if slug == "":
+        raise ValueError("No slug given and none set. Pass --slug or run 'set-map'.")
+
+    if layer is None:
+        table = (context.get("table") or "").strip()
+        if table == "":
+            raise ValueError(
+                "No layer given and none set. Pass --layer or run 'set-layer'."
+            )
+        # Context table belongs to a different slug; re-derive its layer suffix.
+        for suffix in ("_polygons", "_lines", "_points"):
+            if table.endswith(suffix):
+                return TableTarget(schema="sources", table=slug + suffix)
+        raise ValueError(
+            f"Cannot infer a layer from context table '{table}'. Pass --layer."
+        )
+
+    layer = layer.strip().strip("_").lower()
+    if layer not in ("polygons", "lines", "points"):
+        raise ValueError("--layer must be one of: polygons, lines, points")
+
+    return TableTarget(schema="sources", table=f"{slug}_{layer}")
+
+
+# Options appended to every context-driven command by the --slug/--layer override.
+SLUG_OPTION = Option(None, "--slug", help="Target this slug instead of the set-map context.")
+LAYER_OPTION = Option(None, "--layer", help="Target this layer: polygons, lines, or points.")
 
 
 def strip_strat_name_suffixes(value: str) -> str:
@@ -1567,10 +1615,10 @@ def copy_column_values(
     db = get_database()
     src = validate_identifier(src, "src column")
     dst = validate_identifier(dst, "dst column")
-    existing_cols = get_existing_columns(target)
+    column_types = get_column_types(target)
 
     for label, col in (("Source", src), ("Destination", dst)):
-        if col not in existing_cols:
+        if col not in column_types:
             message = (
                 f"{label} column '{col}' does not exist in "
                 f"{target.schema}.{target.table}"
@@ -1579,6 +1627,15 @@ def copy_column_values(
                 raise ValueError(message)
             console.print(f"[yellow]Skipping copy {src} -> {dst}:[/yellow] {message}")
             return None
+
+    # Legacy tables sometimes carry a preferred column at the wrong type (e.g. a
+    # numeric `age` where the spec wants text). Postgres will not put text into a
+    # numeric column, so widen the destination to text -- which is what the column
+    # spec asks for anyway -- rather than skipping the copy.
+    if column_types[src] in TEXTUAL_UDT_NAMES and (
+        column_types[dst] not in TEXTUAL_UDT_NAMES
+    ):
+        cast_column_to_text(target, dst)
 
     row_count = db.run_query(
         "SELECT count(*) FROM {table}",
@@ -1592,27 +1649,16 @@ def copy_column_values(
         f"across {row_count} rows"
     )
 
-    if overwrite:
-        db.run_sql(
-            """
-            UPDATE {table}
-            SET {dst} = NULL
-            WHERE {src} IS NOT NULL
-              AND {dst} IS NOT NULL
-            """,
-            dict(
-                table=target.fq_identifier,
-                src=Identifier(src),
-                dst=Identifier(dst),
-            ),
-        )
-
+    # One statement, not a null-out followed by a copy: run_sql commits per
+    # statement, so a two-step overwrite that fails on the copy (e.g. a text ->
+    # numeric type mismatch) would leave dst permanently nulled.
+    dst_filter = "" if overwrite else "AND {dst} IS NULL"
     db.run_sql(
-        """
-        UPDATE {table}
-        SET {dst} = {src}
-        WHERE {dst} IS NULL
-          AND {src} IS NOT NULL
+        f"""
+        UPDATE {{table}}
+        SET {{dst}} = {{src}}
+        WHERE {{src}} IS NOT NULL
+          {dst_filter}
         """,
         dict(
             table=target.fq_identifier,
@@ -1640,6 +1686,33 @@ def copy_column_values(
         f"Remaining null {dst} rows: {remaining_nulls}"
     )
     return remaining_nulls
+
+
+def cast_column_to_text(target: TableTarget, column: str) -> bool:
+    """Convert a column to text in place, keeping existing values via ::text.
+
+    Legacy source data sometimes lands a preferred column at the wrong type (e.g. a
+    numeric `age` where the spec wants text). add_preferred_columns uses ADD COLUMN
+    IF NOT EXISTS, so it never repairs the type. Returns True if a change was made.
+    """
+    db = get_database()
+    column = validate_identifier(column, "column")
+    column_types = get_column_types(target)
+
+    if column not in column_types:
+        return False
+    if column_types[column] in TEXTUAL_UDT_NAMES:
+        return False
+
+    console.print(
+        f"[blue]Casting[/blue] [bold]{target.schema}.{target.table}.{column}[/bold] "
+        f"from [yellow]{column_types[column]}[/yellow] to [yellow]text[/yellow]"
+    )
+    db.run_sql(
+        "ALTER TABLE {table} ALTER COLUMN {column} TYPE text USING {column}::text",
+        dict(table=target.fq_identifier, column=Identifier(column)),
+    )
+    return True
 
 
 def copy_first_available_column(
@@ -2039,6 +2112,22 @@ def process_metadata_csv(
     )
 
 
+def _has_ingest_process_tag(db, slug: str, tag: str) -> bool:
+    """True if this slug's ingest_process row already carries the tag."""
+    return bool(
+        db.run_query(
+            """
+            SELECT 1
+            FROM maps_metadata.ingest_process_tag t
+            JOIN maps_metadata.ingest_process i ON i.id = t.ingest_process_id
+            WHERE i.slug = :slug
+              AND t.tag = :tag
+            """,
+            dict(slug=slug, tag=tag),
+        ).scalar()
+    )
+
+
 def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
     """Add a maps_metadata.ingest_process_tag row for a slug, ignoring duplicates.
 
@@ -2062,22 +2151,30 @@ def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         )
         return
 
-    # RETURNING only yields rows actually inserted, so ON CONFLICT skips stay quiet.
-    inserted = db.run_query(
+    if _has_ingest_process_tag(db, slug, tag):
+        console.print(
+            f"[dim]{slug} is already tagged {tag}; nothing to do[/dim]"
+        )
+        return
+
+    db.run_sql(
         """
         INSERT INTO maps_metadata.ingest_process_tag (ingest_process_id, tag)
         SELECT i.id, :tag
         FROM maps_metadata.ingest_process i
         WHERE i.slug = :slug
         ON CONFLICT DO NOTHING
-        RETURNING tag
         """,
         dict(slug=slug, tag=tag),
-    ).fetchall()
+    )
 
-    if inserted:
+    if _has_ingest_process_tag(db, slug, tag):
         console.print(
             f"[green]Tagged[/green] [yellow]{slug}[/yellow] with [yellow]{tag}[/yellow]"
+        )
+    else:
+        console.print(
+            f"[yellow]No ingest_process row for slug {slug}; tag not added[/yellow]"
         )
 
 
@@ -2103,23 +2200,24 @@ def remove_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         )
         return
 
-    removed = db.run_query(
+    if not _has_ingest_process_tag(db, slug, tag):
+        return
+
+    db.run_sql(
         """
         DELETE FROM maps_metadata.ingest_process_tag t
         USING maps_metadata.ingest_process i
         WHERE t.ingest_process_id = i.id
           AND i.slug = :slug
           AND t.tag = :tag
-        RETURNING t.tag
         """,
         dict(slug=slug, tag=tag),
-    ).fetchall()
+    )
 
-    if removed:
-        console.print(
-            f"[green]Removed tag[/green] [yellow]{tag}[/yellow] "
-            f"from [yellow]{slug}[/yellow]"
-        )
+    console.print(
+        f"[green]Removed tag[/green] [yellow]{tag}[/yellow] "
+        f"from [yellow]{slug}[/yellow]"
+    )
 
 
 def get_process_tag_from_current_table() -> str:
@@ -3536,7 +3634,8 @@ def normalize_copy_column(
         "--no-prompt",
         help="Do not prompt interactively for more source columns; use only the provided --src values.",
     ),
-    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Copy values from one or more source columns into a destination column,
@@ -3547,7 +3646,7 @@ def normalize_copy_column(
     - skips invalid source columns and continues
     - optionally falls back to interactive prompting unless --no-prompt is used
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     db = get_database()
     dst = dst.strip()
     cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
@@ -3567,7 +3666,6 @@ def normalize_copy_column(
                 target=target,
                 src=src,
                 dst=dst,
-                dry_run=dry_run,
             )
         except ValueError as e:
             console.print(
@@ -3597,7 +3695,6 @@ def normalize_copy_column(
                     target=target,
                     src=next_src,
                     dst=dst,
-                    dry_run=dry_run,
                 )
             except ValueError as e:
                 console.print(
@@ -3644,12 +3741,14 @@ def normalize_copy_column(
 @normalize_cli.command("copy-preferred-fields")
 def normalize_copy_preferred_columns(
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Interactively map source columns into the preferred destination columns for
     points, lines, or polygons tables. Press Enter to skip a destination field.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     copy_preferred_column_values_interactive(
         target=target,
         dry_run=dry_run,
@@ -3659,12 +3758,14 @@ def normalize_copy_preferred_columns(
 @normalize_cli.command("add-preferred-columns")
 def normalize_add_preferred_columns(
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Add any missing preferred standard columns for a points, lines, or polygons
     staging table. Existing columns are skipped.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     add_preferred_columns(target=target, dry_run=dry_run)
 
 
@@ -3700,12 +3801,14 @@ def normalize_calculate_age(
     col_one: str = Option(..., "--col-one", help="Primary age source column"),
     col_two: str = Option(..., "--col-two", help="Secondary age source column"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Populate b_interval and t_interval using two user-provided columns,
     falling back to era when present.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     calculate_age_intervals(
         target=target,
         col_one=col_one,
@@ -3732,6 +3835,8 @@ def normalize_copy_ages(
         help="Do not prompt interactively for more columns; use only the provided pairs.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Copy older/newer age columns into b_interval and t_interval.
@@ -3743,7 +3848,7 @@ def normalize_copy_ages(
     - appends 'some ages null;' to maps_metadata.ingest_process.comments if nulls remain
       after all provided/prompted pairs are exhausted
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     db = get_database()
     cleaned_older = [col.strip() for col in older_cols if col.strip() != ""]
     cleaned_newer = [col.strip() for col in newer_cols if col.strip() != ""]
@@ -3901,6 +4006,8 @@ def normalize_copy_orig_id(
         help="One or more source columns to try for orig_id. The first valid column is copied.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Try one or more source columns for orig_id.
@@ -3914,7 +4021,7 @@ def normalize_copy_orig_id(
         dict.fromkeys(validate_identifier(src, "source column") for src in src_cols)
     )
     copy_orig_id_from_candidates(
-        target=get_current_target(),
+        target=resolve_target(slug, layer),
         candidates=candidates,
         dry_run=dry_run,
     )
@@ -3924,13 +4031,15 @@ def normalize_copy_orig_id(
 def normalize_copy_line_type(
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Map a source column into the linework type column using values from maps.lines.
     If nulls remain in type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     table = target.table
     if not table.endswith("_lines"):
         raise ValueError("copy-line-type is intended for _lines tables")
@@ -3962,13 +4071,15 @@ def normalize_copy_line_type(
 def normalize_copy_point_type(
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Map a source column into the point_type column using values from maps.points.
     If nulls remain in point_type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     table = target.table
     if not table.endswith("_points"):
         raise ValueError("copy-point-type is intended for _points tables")
@@ -3999,11 +4110,13 @@ def normalize_copy_point_type(
 def normalize_null_column(
     column: str = Argument(..., help="Column to set to NULL"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Set all values in a specified column to NULL.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     null_column_values(target=target, column=column, dry_run=dry_run)
 
 
@@ -4012,11 +4125,13 @@ def normalize_null_value(
     column: str = Option(..., "--column", help="Column to check"),
     value: str = Option(..., "--value", help="String value to replace with NULL"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Set a cell to NULL when the specified column exactly matches a given string.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     null_matching_value(
         target=target,
         column=column,
@@ -4038,6 +4153,8 @@ def normalize_calculate_strat_name(
         help="Do not prompt interactively for more source columns; use only the provided --src values.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Populate strat_name from one or more source text columns by matching
@@ -4045,7 +4162,7 @@ def normalize_calculate_strat_name(
     Common suffixes like Formation/Fm/Group/Gp/Member/Mbr are stripped before matching.
     Unmatched rows are left as NULL.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     db = get_database()
     cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
     remaining_nulls: Optional[int] = None
@@ -4136,11 +4253,13 @@ def normalize_replace_value(
     old_value: str = Option(..., "--old", help="Value to replace"),
     new_value: str = Option(..., "--new", help="Replacement value"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Replace a specific value in a column with a new value.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     replace_column_value(
         target=target,
         column=column,
@@ -4160,11 +4279,13 @@ def normalize_replace_value_with_column(
         help="Value in dst to replace with the row-wise src value",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Replace a specific value in dst with the value from src in the same row.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     replace_value_with_column(
         target=target,
         src=src,
@@ -4179,11 +4300,13 @@ def normalize_remove_word_in_string(
     src: str = Option(..., "--src", help="Column to clean in place"),
     word: str = Option(..., "--word", help="String fragment to remove"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Remove all occurrences of a word/string fragment from a column.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     remove_word_in_string(
         target=target,
         src=src,
@@ -4198,11 +4321,13 @@ def normalize_merge_column(
     col_two: str = Option(..., "--src", help="Column to merge into dst column"),
     separator: str = Option(..., "--separator", help="Separator between values"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Merge values from col-two into col-one using a user-provided separator.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     merge_column_values(
         target=target,
         col_one=col_one,
@@ -4223,12 +4348,14 @@ def normalize_calculate_dip_dir(
         ..., "--dip-cardinal", help="Cardinal dip-direction column"
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Calculate dip_dir from strike and dip-direction information.
     Defaults to right-hand rule when dip-cardinal is missing.
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     calculate_dip_dir_from_columns(
         target=target,
         strike_col=strike_col,
@@ -4309,6 +4436,8 @@ def normalize_fuzzy_match_lith(
         help="Optional limit on number of rows to inspect.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Compute per-row fuzzy match percentages for a lithology text column against
@@ -4319,7 +4448,7 @@ def normalize_fuzzy_match_lith(
     - if a row's match percentage is > --row-copy-threshold, write the matched
       lith strings directly into lith for that same row/_pkid
     """
-    target = get_current_target()
+    target = resolve_target(slug, layer)
 
     if src is not None and src.strip() != "":
         src_col = validate_identifier(src, "source column")
@@ -4344,17 +4473,23 @@ def normalize_fuzzy_match_lith(
 
 
 @normalize_cli.command("find-last-e-column")
-def normalize_find_last_e_column():
+def normalize_find_last_e_column(
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
+):
     """Print the last non-empty column ending with 'e'."""
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     src_col = find_last_nonempty_column_ending_with_e(target)
     print(src_col)
 
 
 @normalize_cli.command("find-second-last-e-column")
-def normalize_find_second_last_e_column():
+def normalize_find_second_last_e_column(
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
+):
     """Print the second-last non-empty column ending with 'e'."""
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     src_col = find_second_last_nonempty_column_ending_with_e(target)
     print(src_col)
 
@@ -4371,6 +4506,8 @@ def match_remaining_cols(
         help="Number of distinct preview values to print for each candidate column.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    slug: Optional[str] = SLUG_OPTION,
+    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Interactively merge legend columns into name, starting from non_age_col and
@@ -4380,7 +4517,7 @@ def match_remaining_cols(
     into another user-specified destination column.
     """
     db = get_database()
-    target = get_current_target()
+    target = resolve_target(slug, layer)
     existing_cols = get_existing_columns(target)
 
     non_age_col, columns_between, second_last_col = (
@@ -4580,6 +4717,108 @@ def normalize_update_process_flag(
     update_process_flag_for_current_context(dry_run=dry_run)
 
 
+@normalize_cli.command("copy-az-ages")
+def normalize_copy_az_ages(
+    only: Optional[str] = Option(None, "--only", help="Process a single slug."),
+    start_after: Optional[str] = Option(
+        None, "--start-after", help="Skip slugs up to and including this one."
+    ),
+):
+    """
+    Populate age and b_interval/t_interval for every Arizona polygons table.
+
+    Per slug: cast age to text if a legacy numeric column is in the way, copy the
+    first available raw age column into it, then resolve b_interval/t_interval.
+    Nothing else from normalize_az runs, so this is safe to repeat.
+    """
+    db = get_database()
+
+    slugs = list(
+        db.run_query(
+            """
+            SELECT slug
+            FROM maps_metadata.ingest_process
+            WHERE slug ILIKE 'arizona%'
+              AND slug NOT ILIKE 'arizona_adgm%'
+            ORDER BY slug
+            """
+        ).scalars()
+    )
+    if only is not None:
+        slugs = [s for s in slugs if s == only]
+        if not slugs:
+            raise ValueError(f"No Arizona slug matches '{only}'")
+    elif start_after is not None:
+        if start_after not in slugs:
+            raise ValueError(f"No Arizona slug matches '{start_after}'")
+        slugs = slugs[slugs.index(start_after) + 1 :]
+
+    failed: list[tuple[str, str]] = []
+    for position, slug in enumerate(slugs, start=1):
+        target = TableTarget(schema="sources", table=slug + "_polygons")
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
+        try:
+            copy_first_available_column(
+                target=target,
+                srcs=["age_meta", "relativeage"],
+                dst="age",
+                overwrite=True,
+            )
+            remaining = copy_age_columns(
+                target=target, older_col="age", newer_col="age"
+            )
+            if remaining:
+                add_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
+            else:
+                remove_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            failed.append((slug, f"{type(e).__name__}: {e}"))
+            console.print(f"[red]Failed[/red] [bold]{slug}[/bold]: {e}")
+
+    console.print(
+        f"\n[green]Finished:[/green] {len(slugs) - len(failed)}/{len(slugs)} slug(s)"
+    )
+    for slug, message in failed:
+        console.print(f"  [red]{slug}[/red]: {message}")
+
+
+@normalize_cli.command("add-tag")
+def normalize_add_tag(
+    tag: str = Argument(..., help="Tag text, e.g. 'some ages null'"),
+    slug: Optional[str] = SLUG_OPTION,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Add a maps_metadata.ingest_process_tag row with an explicit tag.
+
+    Unlike update-process-tag, the text is given rather than inferred from the
+    layer. Adding a tag the map already has is a no-op.
+    """
+    add_ingest_process_tag(
+        slug=slug or (load_map_context().get("slug") or ""),
+        tag=tag,
+        dry_run=dry_run,
+    )
+
+
+@normalize_cli.command("remove-tag")
+def normalize_remove_tag(
+    tag: str = Argument(..., help="Tag text to remove"),
+    slug: Optional[str] = SLUG_OPTION,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Remove a maps_metadata.ingest_process_tag row. Silent if the tag is absent.
+    """
+    remove_ingest_process_tag(
+        slug=slug or (load_map_context().get("slug") or ""),
+        tag=tag,
+        dry_run=dry_run,
+    )
+
+
 @normalize_cli.command("get_japan_descrips")
 def get_japan_descrips_points_lines():
     """Stores unique descriptions into temp table"""
@@ -4630,8 +4869,6 @@ def normalize_az(
     """Add any missing preferred standard columns to all Arizona staging layers."""
     db = get_database()
 
-    # ORDER BY makes the run resumable; without it Postgres may return the slugs
-    # in a different order each time and --start-after would be meaningless.
     slugs = list(
         db.run_query(
             """
@@ -4668,9 +4905,6 @@ def normalize_az(
         try:
             _normalize_az_slug(db, slug, layers)
         except Exception as e:
-            # run_sql commits per statement, so a failed slug is left partially
-            # applied; the rollback only clears the aborted session so the next
-            # slug can run. Rerun the failure with --only to finish it.
             db.session.rollback()
             failed.append((slug, f"{type(e).__name__}: {e}"))
             console.print(f"[red]Failed[/red] [bold]{slug}[/bold]: {e}")
@@ -4699,7 +4933,7 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
             )
             continue
-
+        '''
         #find orig_id candidates and copy into orig_id col
         copy_orig_id_from_candidates(
             target=target,
@@ -4707,6 +4941,7 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
             interactive=True,
         )
         #copy into the comments column
+        #macrostrat maps staging normalize copy-column --slug arizona_adamsmesa --layer points --src inc --dst dip --no-prompt
         copy_column_values(
             target=target,
             src="notes",
@@ -4720,17 +4955,19 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
             col_one="comments",
             col_two="datasourceid",
             separator="; ",
-        )
+        )'''
 
         if layer == "_polygons":
 
-            #copy the first available unit label column into unit_label
+            '''#copy the first available unit label column into unit_label
             copy_first_available_column(
                 target=target,
                 srcs=["mapunit", "label"],
                 dst="unit_label",
                 overwrite=True,
-            )
+            )'''
+            #age holds interval names, so force it to text before copying text in
+            cast_column_to_text(target, "age")
             #copy the first available age column into the age column
             copy_first_available_column(
                 target=target,
@@ -4750,13 +4987,13 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 remove_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
 
             #fuzzy match descrip tokens against the lith vocabularies
-            calculate_lith_fuzzy_match_percentages(
+            '''calculate_lith_fuzzy_match_percentages(
                 target=target,
                 src_col=["descrip", "name"],
                 threshold=0.85,
                 row_copy_threshold_percent=10.0,
-            )
-
+            )'''
+        #macrostrat maps staging normalize add-tag "polygons processed" --slug arizona_adamsmesa
 
 
         if layer == "_lines":
@@ -4789,6 +5026,7 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 dst="descrip",
                 overwrite=True
             )
+        '''macrostrat maps staging normalize add-tag "lines processed" --slug arizona_adamsmesa'''
 
 
 
@@ -4807,6 +5045,8 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 dst="descrip",
                 overwrite=True
             )
+        '''macrostrat maps staging normalize add-tag "points processed" --slug arizona_adamsmesa'''
+
 
 
 
