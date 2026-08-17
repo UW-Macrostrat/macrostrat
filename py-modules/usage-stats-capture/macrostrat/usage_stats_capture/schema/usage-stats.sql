@@ -200,10 +200,17 @@ CREATE OR REPLACE VIEW tileserver_stats.location_index AS
 
 /** PRIVILEGES */
 
-/** Create a low-privilege role for the logs pipeline to write to usage_stats. */
-CREATE ROLE logs_writer;
--- Grant this access to the corresponding K8s-created user if it exists.
-GRANT logs_writer TO "logs-writer";
+-- Least-privilege access for the log harvester. Only grants on this schema's own
+-- objects live here: the `logs_writer` role itself, and its membership for the
+-- operator-created "logs-writer" login, are in schema/core/0000-roles.sql. That
+-- chunk runs as the connector (superuser); this one runs as `macrostrat`, which
+-- can neither CREATE ROLE nor grant membership in a role it has no admin option
+-- on. Attempting either here aborts this file, and the harvester then reports
+-- the confusing "permission denied for schema usage_stats".
+--
+-- No DELETE or TRUNCATE anywhere: `usage-stats reset` is an administrative act,
+-- not something the scheduled job should be able to do to months of history. No
+-- CREATE on the schema, and nothing on the deduplication views.
 GRANT USAGE ON SCHEMA usage_stats TO logs_writer;
 
 -- Read to find out which objects are already done, write to record new ones.
@@ -221,4 +228,5 @@ GRANT SELECT, INSERT, UPDATE
 -- test -- INSERT alone is denied.
 GRANT SELECT, INSERT ON usage_stats.rockd_dashboard_loads TO logs_writer;
 
+-- Covers rockd_dashboard_loads' bigserial id, and anything added later.
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA usage_stats TO logs_writer;

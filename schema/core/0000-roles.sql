@@ -56,3 +56,8 @@ GRANT web_user TO web_admin;
 
 GRANT REFERENCES ON spatial_ref_sys TO macrostrat;
 GRANT SELECT ON spatial_ref_sys TO macrostrat;
+
+/** Create a low-privilege role for the logs pipeline to write to usage_stats. */
+CREATE ROLE logs_writer;
+-- Grant this access to the corresponding K8s-created user if it exists.
+GRANT logs_writer TO "logs-writer";

@@ -373,8 +373,10 @@ def sync(
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
     # Dependencies first (functions before views/seed that use them); grants last.
+    failures = []
     if procedures:
         r = rebuild_procedures(db, chunks)
+        failures += r.failed
         _report("procedures", r.applied, len(r.failed))
     if views:
         r = rebuild_views(db, chunks)
@@ -382,12 +384,19 @@ def sync(
         print(f"[dim]{r.replaced} views replaced{extra}")
     if data:
         r = rebuild_seed_data(db, chunks)
+        failures += r.failed
         _report("data statements", r.applied, len(r.failed))
     if permissions:
         r = rebuild_grants(db, chunks)
+        failures += r.failed
         _report("grants", r.applied, len(r.failed))
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
+
+    if len(failures) > 0:
+        print("\n[red bold]Failures:")
+        for failure in failures:
+            print(f"[red]  - {failure}")
 
 
 def _describe_provider(provider) -> str:

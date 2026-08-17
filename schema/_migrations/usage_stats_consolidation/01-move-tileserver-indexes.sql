@@ -68,6 +68,23 @@ BEGIN
 END
 $$;
 
+/*
+Normalize ownership.
+
+ALTER TABLE ... SET SCHEMA preserves the original owner, and these tables came
+from the legacy standalone database owned by `postgres`. The declarative
+`usage-stats` chunk runs as `macrostrat` and grants privileges on them -- which
+fails outright on a table it does not own, aborting the rest of that file. The
+symptom is remote from the cause: the harvester reports "permission denied for
+schema usage_stats", because the schema-level GRANT was one of the statements
+that never ran.
+
+Owned to `macrostrat` so the moved tables match everything the chunk creates
+itself.
+*/
+ALTER TABLE IF EXISTS usage_stats.tileserver_day_index OWNER TO macrostrat;
+ALTER TABLE IF EXISTS usage_stats.tileserver_location_index OWNER TO macrostrat;
+
 -- Bring constraint and index names in line with the renamed tables, so the
 -- migrated schema matches what the declarative chunk would have built and
 -- schema diffs stay quiet. Guarded individually: RENAME CONSTRAINT has no
