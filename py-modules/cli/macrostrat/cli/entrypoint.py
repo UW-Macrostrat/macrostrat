@@ -5,13 +5,13 @@ import typer
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
-from macrostrat.usage_stats import app as usage_stats_app
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.utils import env_text, set_app_state
 from macrostrat.schema_management import schema_app
+from macrostrat.usage_stats import app as usage_stats_app
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 

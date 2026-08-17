@@ -16,6 +16,7 @@ from typing import Optional
 
 from rich import print
 from typer import BadParameter, Option, Typer, confirm
+
 from macrostrat.usage_stats_capture import (
     PIPELINE_NAMES,
     S3Params,

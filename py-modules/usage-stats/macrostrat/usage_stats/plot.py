@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 from matplotlib.ticker import FuncFormatter
+
 from macrostrat.core.database import get_database
 
 from .params import Smoothing, resolve_date_window
