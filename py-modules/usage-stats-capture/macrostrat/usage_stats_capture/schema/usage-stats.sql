@@ -197,3 +197,28 @@ CREATE OR REPLACE VIEW tileserver_stats.day_index AS
 
 CREATE OR REPLACE VIEW tileserver_stats.location_index AS
   SELECT * FROM usage_stats.tileserver_location_index;
+
+/** PRIVILEGES */
+
+/** Create a low-privilege role for the logs pipeline to write to usage_stats. */
+CREATE ROLE logs_writer;
+-- Grant this access to the corresponding K8s-created user if it exists.
+GRANT logs_writer TO "logs-writer";
+GRANT USAGE ON SCHEMA usage_stats TO logs_writer;
+
+-- Read to find out which objects are already done, write to record new ones.
+GRANT SELECT, INSERT, UPDATE ON usage_stats.processed_logs TO logs_writer;
+
+-- Aggregates are upserted with ON CONFLICT ... DO UPDATE, which needs UPDATE
+-- and also SELECT: the SET expression reads the existing row's count.
+GRANT SELECT, INSERT, UPDATE ON usage_stats.tileserver_day_index TO logs_writer;
+GRANT SELECT, INSERT, UPDATE
+  ON usage_stats.tileserver_location_index TO logs_writer;
+
+-- Dashboard loads are append-only, so no UPDATE. SELECT is required despite
+-- that: the insert's ON CONFLICT (time, client_id) names those columns, and
+-- referencing them needs read privilege even with DO NOTHING. Verified by
+-- test -- INSERT alone is denied.
+GRANT SELECT, INSERT ON usage_stats.rockd_dashboard_loads TO logs_writer;
+
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA usage_stats TO logs_writer;
