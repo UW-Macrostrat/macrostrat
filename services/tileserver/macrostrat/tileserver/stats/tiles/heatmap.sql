@@ -1,4 +1,4 @@
--- Spatial heatmap of tile-request density from tileserver_stats.location_index.
+-- Spatial heatmap of tile-request density from usage_stats.tileserver_location_index.
 --
 -- location_index aggregates each request into a z<=8 cell (requests above z8 are
 -- folded into the z8 cell that contains them). We use the z=8 layer — the finest,
@@ -15,7 +15,7 @@ cells AS (
     (li.x >> (8 - tile.lz)) AS bx,
     (li.y >> (8 - tile.lz)) AS by,
     sum(li.num_requests)::bigint AS num_requests
-  FROM tileserver_stats.location_index li, tile
+  FROM usage_stats.tileserver_location_index li, tile
   WHERE li.z = 8
     -- Organic traffic only: exclude known automated clients (cache-warmers /
     -- scrapers) so the heatmap reflects real usage, not machine traffic.

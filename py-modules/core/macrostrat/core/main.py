@@ -4,7 +4,6 @@ from sys import argv, exit
 
 from click.utils import get_app_dir
 from dynaconf import Dynaconf
-from numpy.random.mtrand import normal
 from rich.console import Console
 from typer import Context, Option
 

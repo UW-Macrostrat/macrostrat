@@ -18,6 +18,12 @@ CREATE EXTENSION IF NOT EXISTS postgis_topology;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS vector;
+-- H3 hexagonal geospatial index, used by the usage_stats grids. h3_postgis
+-- bridges it to PostGIS geometry and depends on postgis + postgis_raster, both
+-- created above. Requires the h3 build in base-images/database/Dockerfile --
+-- a database whose image predates that will fail here.
+CREATE EXTENSION IF NOT EXISTS h3;
+CREATE EXTENSION IF NOT EXISTS h3_postgis;
 
 SET search_path TO public, topology, pg_catalog;
 
