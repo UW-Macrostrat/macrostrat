@@ -17,10 +17,9 @@ pulled out; the dependency chain preserves today's exact application order.
 
 from pathlib import Path
 
-from macrostrat.usage_stats import build_schema_config
-
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import TopologySchema
+from macrostrat.usage_stats import build_schema_config
 from macrostrat.utils import get_logger
 
 from .composer import SchemaDefinition
