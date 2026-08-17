@@ -1,0 +1,14 @@
+# Repository-root build context (services/usage-stats). Without this the context
+# is gigabytes, almost all of it virtualenvs, caches and submodules.
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+**/dist
+**/build
+**/*.egg-info
+.git
+submodules

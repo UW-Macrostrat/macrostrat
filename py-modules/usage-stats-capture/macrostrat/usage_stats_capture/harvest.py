@@ -11,58 +11,9 @@ import json
 from typing import Iterable, Iterator, Optional
 
 import zstandard as zstd
-from minio import Minio
-from pydantic import BaseModel
-from rich import print
-
-from macrostrat.core import get_database
-from macrostrat.core.config import settings
 
 from .pipelines import Pipeline
-
-
-class S3Params(BaseModel):
-    bucket: str
-    endpoint: str
-    access_key: str
-    secret_key: str
-
-    def get_client(self):
-        secure = self.endpoint.startswith("https://")
-        if "/" not in self.endpoint:
-            secure = True
-        endpoint = self.endpoint.rstrip("/")
-        for prefix in ["http://", "https://"]:
-            endpoint = endpoint.replace(prefix, "")
-        return Minio(
-            endpoint=endpoint,
-            access_key=self.access_key,
-            secret_key=self.secret_key,
-            secure=secure,
-        )
-
-
-def get_config_attrs(config) -> S3Params:
-    return S3Params(
-        bucket=config.get("bucket"),
-        endpoint=config.get("endpoint"),
-        access_key=config.get("access_key"),
-        secret_key=config.get("secret_key"),
-    )
-
-
-def resolve_access_logs_config() -> S3Params:
-    """Resolve the access-logs S3 config, tolerating either key spelling
-    (`access-logs` in TOML vs. `access_logs`)."""
-    storage_cfg = settings.storage
-    for key in ("access-logs", "access_logs"):
-        try:
-            cfg = storage_cfg[key]
-        except (KeyError, TypeError):
-            cfg = None
-        if cfg:
-            return get_config_attrs(cfg)
-    raise KeyError("storage.access-logs is not configured")
+from .storage import S3Params
 
 
 def iter_log_records(s3, bucket: str, object_name: str) -> Iterator[dict]:
@@ -122,6 +73,7 @@ def _processed_by_pipeline(db) -> dict[str, set[str]]:
 
 
 def capture(
+    db,
     config: S3Params,
     pipelines: Iterable[Pipeline],
     *,
@@ -141,10 +93,12 @@ def capture(
     their `processed_logs` rows written **last** — an interrupted run leaves
     the object unrecorded and re-processes it cleanly next time.
 
+    `db` is a macrostrat.database Database; the caller constructs it, so this
+    library holds no configuration of its own.
+
     Returns the number of matched records per pipeline.
     """
     s3 = config.get_client()
-    db = get_database()
 
     pipelines = list(pipelines)  # iterated once per object
     processed = {} if reprocess else _processed_by_pipeline(db)
@@ -181,7 +135,7 @@ def capture(
                     },
                 )
 
-        print(f"{obj.object_name}  [dim]({n_records} records)[/]")
+        print(f"{obj.object_name}  ({n_records} records)")
         for pipeline in due:
             n = len(matched[pipeline.name])
             totals[pipeline.name] += n

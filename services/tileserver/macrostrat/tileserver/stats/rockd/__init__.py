@@ -24,15 +24,20 @@ router = APIRouter()
 # Above the band, each step is sized so cells land at a legible on-screen size.
 # H3 steps are ~2.65x linear (~1.4 zoom levels), so the mapping is not 1:1.
 #
-# Capped at 9 (~380 m across), the finest defensible bin for GPS-sourced points:
-# consecutive requests from a stationary client sit ~110 m apart on jitter alone,
-# so anything finer scatters one person across neighbouring cells and invents
-# spatial spread that is not real.
+# CAPPED AT RESOLUTION 8 (~1.06 km across) FOR PRIVACY. Resolution 9 is ~400 m
+# — a few city blocks, and against the ~110 m GPS jitter floor that is close to
+# property-scale in sparsely-used rural areas. One cell there can amount to a
+# single household's position. Resolution 8 is coarse enough that it cannot,
+# while still being far finer than the map needs at any usable zoom.
+#
+# (Resolution 9 would anyway be near the limit of what the data supports:
+# consecutive requests from a stationary client sit ~110 m apart on jitter
+# alone, so finer bins scatter one person across neighbouring cells.)
 #
 # Mirrored in the client's layer-styles.ts, which needs the same mapping to keep
 # the colour scale comparable across zooms. Change both together.
-ZOOM_RESOLUTION = [4, 4, 4, 4, 4, 4, 5, 6, 6, 7, 7, 8, 9, 9]
-MAX_RESOLUTION = 9
+ZOOM_RESOLUTION = [4, 4, 4, 4, 4, 4, 5, 6, 6, 7, 7, 8]
+MAX_RESOLUTION = 8
 
 # Minimum distinct clients for a cell to be rendered. 0 disables the filter.
 #

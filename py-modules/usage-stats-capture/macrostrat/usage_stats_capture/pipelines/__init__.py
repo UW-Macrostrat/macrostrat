@@ -61,24 +61,40 @@ class Pipeline(Protocol):
         ...
 
 
-PIPELINES: list[Pipeline] = [
-    TileserverPipeline(),
-    RockdDashboardPipeline(),
-]
+#: Every pipeline, by name. Values are factories rather than instances because
+#: some need configuration injected (the Rockd pipeline needs the hashing salt).
+PIPELINE_FACTORIES = {
+    TileserverPipeline.name: lambda **kw: TileserverPipeline(),
+    RockdDashboardPipeline.name: lambda *, client_salt, **kw: RockdDashboardPipeline(
+        client_salt
+    ),
+}
+
+PIPELINE_NAMES = tuple(PIPELINE_FACTORIES)
 
 
-def get_pipelines(names: list[str] | None = None) -> list[Pipeline]:
-    """Resolve pipeline names, defaulting to all of them."""
-    if not names:
-        return list(PIPELINES)
-    by_name = {p.name: p for p in PIPELINES}
-    unknown = set(names) - set(by_name)
+def get_pipelines(
+    names: list[str] | None = None, *, client_salt: bytes | None = None
+) -> list[Pipeline]:
+    """Construct pipelines by name, defaulting to all of them.
+
+    `client_salt` is required by the Rockd pipeline; omit it only when selecting
+    pipelines that do not need it.
+    """
+    selected = list(names) if names else list(PIPELINE_NAMES)
+    unknown = set(selected) - set(PIPELINE_FACTORIES)
     if unknown:
         raise ValueError(
             f"Unknown pipeline(s): {', '.join(sorted(unknown))}. "
-            f"Available: {', '.join(by_name)}"
+            f"Available: {', '.join(PIPELINE_NAMES)}"
         )
-    return [by_name[n] for n in names]
+
+    if client_salt is None and RockdDashboardPipeline.name in selected:
+        raise ValueError(
+            f"The {RockdDashboardPipeline.name!r} pipeline needs a client salt."
+        )
+
+    return [PIPELINE_FACTORIES[n](client_salt=client_salt) for n in selected]
 
 
-__all__ = ["Pipeline", "PIPELINES", "get_pipelines"]
+__all__ = ["Pipeline", "PIPELINE_FACTORIES", "PIPELINE_NAMES", "get_pipelines"]

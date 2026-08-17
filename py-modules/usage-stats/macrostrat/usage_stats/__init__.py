@@ -1,42 +1,123 @@
-import asyncio
+"""Interactive frontend for the usage-stats harvester.
+
+The harvesting itself lives in `usage_stats_capture`: a plain library with no
+CLI framework and no Macrostrat configuration, so it deploys as a small
+container. This package is the *other* frontend over the same functions — a
+Typer CLI, figures, and configuration read from `macrostrat.toml`.
+
+Configuration bridging runs at import: values from `macrostrat.toml` are pushed
+into the `USAGE_STATS_*` environment variables the library reads. The direction
+matters — the library never reaches into Macrostrat configuration.
+"""
+
 import random
 from pathlib import Path
 from typing import Optional
 
 from rich import print
 from typer import BadParameter, Option, Typer, confirm
-
-from macrostrat.core import get_database
-from macrostrat.core.config import settings
-from macrostrat.database import Database
-from macrostrat.database.transfer import move_tables
-
-from .harvest import (
+from macrostrat.usage_stats_capture import (
+    PIPELINE_NAMES,
+    S3Params,
     capture,
+    get_pipelines,
     iter_log_records,
     latest_log_object,
-    resolve_access_logs_config,
 )
+from macrostrat.usage_stats_capture.pipelines.rockd_dashboard import DEDUP_RELATIONS
+from macrostrat.usage_stats_capture.pipelines.tileserver import parse_tile_path
+
 from .params import Smoothing, is_valid_range
-from .pipelines import PIPELINES, get_pipelines
-from .pipelines.rockd_dashboard import DEDUP_RELATIONS
-from .pipelines.tileserver import parse_tile_path
 
 here = Path(__file__).parent
 
 app = Typer(no_args_is_help=True, short_help="Compile Macrostrat usage statistics")
 
 
+def _setting(*path):
+    """Look a value up in macrostrat.toml, tolerating the shapes its nested
+    config can take."""
+    from macrostrat.core.config import settings
+
+    value = settings
+    for key in path:
+        try:
+            value = value[key]
+        except (KeyError, TypeError, AttributeError):
+            try:
+                value = getattr(value, key)
+            except AttributeError:
+                return None
+        if value is None:
+            return None
+    return value
+
+
+def get_db():
+    """The Macrostrat database, as the CLI's other subsystems see it."""
+    from macrostrat.core import get_database
+
+    return get_database()
+
+
+def _storage() -> S3Params:
+    """Access-log storage credentials from macrostrat.toml."""
+    # The section is spelled either way in the wild.
+    for section in ("access-logs", "access_logs"):
+        fields = {
+            field: _setting("storage", section, field)
+            for field in ("bucket", "endpoint", "access_key", "secret_key")
+        }
+        if all(fields.values()):
+            return S3Params(**fields)
+    raise BadParameter(
+        "storage.access-logs is not configured in macrostrat.toml.",
+        param_hint="configuration",
+    )
+
+
+def _client_salt() -> bytes:
+    """Hashing salt from macrostrat.toml, or derived from the app secret.
+
+    Deriving it means local use needs no extra configuration; the derivation is
+    domain-separated so the result can't be used against anything else keyed on
+    that secret.
+    """
+    explicit = _setting("usage_stats_client_salt")
+    if explicit:
+        return str(explicit).encode()
+
+    secret = _setting("secret_key")
+    if secret:
+        from hashlib import blake2b
+
+        return blake2b(
+            str(secret).encode(), person=b"usage-stats", digest_size=32
+        ).digest()
+
+    raise BadParameter(
+        "Set `usage_stats_client_salt` (or `secret_key`) in macrostrat.toml. "
+        "Changing it later forks client_id and breaks deduplication.",
+        param_hint="configuration",
+    )
+
+
 def _resolve(pipeline: Optional[list[str]]):
     try:
-        return get_pipelines(pipeline)
+        return get_pipelines(pipeline, client_salt=_client_salt())
     except ValueError as err:
         raise BadParameter(str(err), param_hint="--pipeline")
 
 
 @app.command(name="capture")
 def capture_command(
-    prefix: str = Option("prod", "--prefix", help="Object-key prefix to scan."),
+    prefix: str = Option(
+        "prod",
+        "--prefix",
+        help="Object-key prefix to scan. Defaults to production logs in EVERY "
+        "environment: a map of requests to the development cluster is close to "
+        "useless, so development harvests production traffic too.",
+    ),
     pipeline: Optional[list[str]] = Option(
         None,
         "--pipeline",
@@ -63,16 +144,18 @@ def capture_command(
     that; note the tileserver aggregates accumulate on conflict, so reprocessing
     them double-counts unless `reset` is run first.
     """
-    config = resolve_access_logs_config()
+    config = _storage()
     pipelines = _resolve(pipeline)
     print(f"Pipelines: {', '.join(p.name for p in pipelines)}\n")
-    capture(config, pipelines, prefix=prefix, limit=limit, reprocess=reprocess)
+    capture(
+        get_db(), config, pipelines, prefix=prefix, limit=limit, reprocess=reprocess
+    )
 
 
 @app.command(name="status")
 def status_command():
     """Show ingestion progress per pipeline."""
-    db = get_database()
+    db = get_db()
     rows = db.run_query(
         """
         SELECT pipeline,
@@ -98,7 +181,7 @@ def status_command():
         print("No log objects have been processed yet.")
         return
 
-    known = {p.name for p in PIPELINES}
+    known = set(PIPELINE_NAMES)
     print(f"\n[dim]Registered pipelines: {', '.join(sorted(known))}[/]")
 
 
@@ -200,6 +283,31 @@ def plot_command(
     )
 
 
+@app.command(name="migrate-old", rich_help_panel="Development")
+def migrate_data(drop: bool = False):
+    """Merge the standalone tileserver_stats database into the core Macrostrat
+    database. Legacy one-off, kept for reference."""
+    import asyncio
+
+    from macrostrat.core import get_database
+    from macrostrat.core.config import settings
+    from macrostrat.database import Database
+    from macrostrat.database.transfer import move_tables
+
+    tileserver_db = settings.databases.get("tileserver_stats")
+    print(f"Connecting to {tileserver_db}")
+    if not tileserver_db:
+        print("No tileserver_stats database configured; nothing to do.")
+        return
+
+    tdb = Database(tileserver_db)
+    tdb.run_sql("ALTER SCHEMA stats RENAME TO tileserver_stats")
+    tdb.run_sql("ALTER TABLE requests SET SCHEMA tileserver_stats")
+
+    db = get_database()
+    asyncio.run(move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"]))
+
+
 @app.command(name="show-sample")
 def show_sample(
     path: Optional[str] = Option(
@@ -222,7 +330,7 @@ def show_sample(
     what is (and isn't) being captured. Defaults to the most recently uploaded
     log object; pass --path to target a specific one, or --all to include
     non-tile requests."""
-    config = resolve_access_logs_config()
+    config = _storage()
     s3 = config.get_client()
 
     object_name = path or latest_log_object(s3, config.bucket, prefix)
@@ -277,7 +385,7 @@ def reset_command(
     to parsing or filter logic.
     """
     pipelines = _resolve(pipeline)
-    db = get_database()
+    db = get_db()
 
     names = ", ".join(p.name for p in pipelines)
     if not yes:
@@ -296,38 +404,27 @@ def reset_command(
             print(f"{p.name}: cleared {summary}; {n_log} processed-log rows")
 
 
-@app.command(name="migrate-old", rich_help_panel="Development")
-def migrate_data(drop: bool = False):
-    """Merge the standalone tileserver_stats database into the core Macrostrat database."""
-    tileserver_db = settings.databases.get("tileserver_stats")
-    print(f"Connecting to {tileserver_db}")
-    if not tileserver_db:
-        print("No tileserver_stats database configured; nothing to do.")
-        return
+def _schema_dir() -> Path:
+    """Where the schema SQL lives — in the capture package, beside the pipelines
+    that write those tables."""
+    import macrostrat.usage_stats_capture as capture_pkg
 
-    tdb = Database(tileserver_db)
-    # Rename the schema stats to tileserver_stats
-    tdb.run_sql("ALTER SCHEMA stats RENAME TO tileserver_stats")
-
-    # Move the `requests` table into the `tileserver_stats` schema
-    tdb.run_sql("ALTER TABLE requests SET SCHEMA tileserver_stats")
-
-    # Switch to SQL in Macrostrat database
-    db = get_database()
-    # Merge the `tileserver_stats` schema into the core Macrostrat database
-
-    task = move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"])
-    asyncio.run(task)
+    return Path(capture_pkg.__file__).parent / "schema"
 
 
 def build_schema_config():
+    """Schema chunks for the usage_stats schema.
+
+    The SQL lives with the pipelines that write those tables, in
+    `usage_stats_capture`; this only registers it with the schema builder.
+    """
     from macrostrat.schema_management.composer import SchemaDefinition
 
     main_def = SchemaDefinition(
         name="usage-stats",
         depends_on=["public"],
         provides=[
-            here / "schema" / "usage-stats.sql",
+            _schema_dir() / "usage-stats.sql",
         ],
         environments=frozenset({"local", "development", "production"}),
         owner="macrostrat",
@@ -336,7 +433,7 @@ def build_schema_config():
     legacy = SchemaDefinition(
         name="tileserver-stats-legacy",
         depends_on=["usage-stats"],
-        provides=[here / "schema" / "tileserver-stats.legacy.sql"],
+        provides=[_schema_dir() / "tileserver-stats.legacy.sql"],
         environments=frozenset({"development", "production"}),
         owner="macrostrat",
     )

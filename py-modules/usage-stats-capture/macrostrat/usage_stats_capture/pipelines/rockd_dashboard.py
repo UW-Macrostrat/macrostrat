@@ -12,9 +12,7 @@ where it can be revised without re-pulling five months of logs.
 """
 
 from hashlib import blake2b
-from urllib.parse import parse_qs, urlsplit
-
-from macrostrat.core.config import settings
+from urllib.parse import parse_qs
 
 from .tileserver import parse_timestamp
 
@@ -31,39 +29,17 @@ DASHBOARD_PATH = "/api/v2/mobile/dashboard"
 KEEP_METHOD = "GET"
 
 
-def _client_salt() -> bytes:
-    """The secret key used to pseudonymize client addresses.
-
-    Must be secret: a bare digest of an IPv4 address is not a pseudonym at all,
-    since the whole space inverts by brute force in seconds. Must also be
-    stable across runs — deduplication compares consecutive requests from one
-    client, and those routinely straddle log-object boundaries.
-
-    Prefers an explicit `usage_stats_client_salt`; otherwise derives one from
-    the application `secret_key`, domain-separated so the derived value can't
-    be used to attack anything else keyed on it.
-    """
-    explicit = settings.get("usage_stats_client_salt", None)
-    if explicit:
-        return str(explicit).encode()
-
-    secret = settings.get("secret_key", None)
-    if not secret:
-        raise RuntimeError(
-            "Cannot pseudonymize client addresses: set `usage_stats_client_salt` "
-            "(or `secret_key`) in the Macrostrat configuration. Note that "
-            "changing this value forks client_id and breaks deduplication "
-            "against already-ingested rows."
-        )
-    return blake2b(str(secret).encode(), person=b"usage-stats", digest_size=32).digest()
-
-
-def client_id(address: str | None) -> str:
+def client_id(address: str | None, salt: bytes) -> str:
     """A stable pseudonym for a client address. The address itself is never
-    stored — see the schema comment on rockd_dashboard_loads."""
+    stored — see the schema comment on rockd_dashboard_loads.
+
+    The salt must be secret and stable: a bare digest of an IPv4 address inverts
+    by brute force in seconds, and a changed salt forks client_id, silently
+    breaking deduplication against everything already ingested.
+    """
     if not address:
         return ""
-    return blake2b(address.encode(), key=_client_salt(), digest_size=16).hexdigest()
+    return blake2b(address.encode(), key=salt, digest_size=16).hexdigest()
 
 
 def _coord(value: str | None) -> float | None:
@@ -123,6 +99,11 @@ DAILY_SERIES = """
 class RockdDashboardPipeline:
     name = "rockd-dashboard"
 
+    def __init__(self, client_salt: bytes):
+        # Injected rather than read from configuration: this library holds no
+        # configuration of its own, and the salt is a secret the frontends own.
+        self._salt = client_salt
+
     plot_label = "Rockd dashboard loads per day"
     plot_options = frozenset({"dedup"})
     # Unlike the tileserver series, every spike here is real usage — there is no
@@ -164,7 +145,7 @@ class RockdDashboardPipeline:
             "lng": lng,
             "app": (params.get("app", [""])[0] or "")[:64],
             "app_version": (params.get("version", [""])[0] or "")[:64],
-            "client_id": client_id(rec.get("ClientHost")),
+            "client_id": client_id(rec.get("ClientHost"), self._salt),
             "status": status,
         }
 

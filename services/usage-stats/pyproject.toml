@@ -1,21 +1,18 @@
 [project]
-name = "usage-stats"
+name = "usage-stats-service"
 version = "0.1.0"
-description = ""
-authors = [{ name = "davidsklar99", email = "davidsklar99@outlook.com" }]
-requires-python = ">=3.11,<4.0"
+description = "Deployed worker that harvests Macrostrat usage statistics from access logs"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 dependencies = [
-    "requests>=2.32.4,<3.0.0",
-    "asyncpg>=0.30.0,<0.31.0",
-    "sqlalchemy>=2.0.41,<3.0.0",
-    "psycopg2>=2.9.10,<3.0.0",
-    "asyncmy>=0.2.10,<0.3.0",
-    "dotenv>=0.9.9,<0.10.0",
+    "macrostrat.usage_stats_capture",
 ]
 
-[tool.uv]
-package = false
+[tool.uv.sources]
+"macrostrat.usage_stats_capture" = { path = "../../py-modules/usage-stats-capture", editable = true }
+
+[tool.hatch.build.targets.wheel]
+include = ["usage_stats_service"]
 
 [build-system]
 requires = ["hatchling"]

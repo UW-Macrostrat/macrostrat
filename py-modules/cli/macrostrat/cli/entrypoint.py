@@ -5,7 +5,7 @@ import typer
 from rich import print
 from rich.traceback import install
 from typer import Argument, Typer
-from usage_stats import app as usage_stats_app
+from macrostrat.usage_stats import app as usage_stats_app
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
