@@ -337,16 +337,29 @@ def create_unit_boundaries(surfaces: list[AgeModelSurface]):
 
 
 def get_units_for_column(db, column_id: int) -> list[Unit]:
-    db.automap(schemas=["macrostrat"])
-    U = db.model.macrostrat_units
-    units = db.session.query(U).filter(U.col_id == column_id).all()
-    for unit in units:
+    """Load a column's units.
+
+    Membership comes from **`units_sections`**, not `units.col_id`. The join table is
+    authoritative — the two diverge for 259 units across 7 columns — and `units.col_id`
+    is for creating units rather than retrieving them.
+    """
+    rows = db.run_query(
+        """
+        SELECT u.id, us.col_id, us.section_id, u.position_bottom, u.position_top
+        FROM macrostrat.units u
+        JOIN macrostrat.units_sections us ON us.unit_id = u.id
+        WHERE us.col_id = :col_id
+        ORDER BY us.section_id, u.position_bottom, u.id
+        """,
+        dict(col_id=column_id),
+    ).fetchall()
+    for row in rows:
         yield Unit(
-            id=unit.id,
-            col_id=unit.col_id,
-            section_id=unit.section_id,
-            b_pos=unit.position_bottom,
-            t_pos=unit.position_top,
+            id=row.id,
+            col_id=row.col_id,
+            section_id=row.section_id,
+            b_pos=row.position_bottom,
+            t_pos=row.position_top,
         )
 
 

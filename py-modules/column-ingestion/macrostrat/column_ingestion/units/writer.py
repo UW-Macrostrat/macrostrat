@@ -113,14 +113,23 @@ def _fetch(db, sql: str, params: dict) -> list[dict]:
 
 
 def _existing_units(db, col_id: int, section_id: int) -> list[dict]:
+    """A section's existing units, with membership taken from `units_sections`.
+
+    Neither `units.col_id` nor `units.section_id` is authoritative — see
+    `age_model.eodp.eodp_units`. Reading them here would scope the reconciliation to the
+    wrong set of units, and the natural key would then compare against a `col_id` the
+    section itself does not agree with.
+    """
     return _fetch(
         db,
         """
-        SELECT id, col_id, section_id, strat_name, position_bottom, position_top,
-               max_thick, min_thick, outcrop, color, fo, lo
-        FROM macrostrat.units
-        WHERE col_id = :col_id AND section_id = :section_id
-        ORDER BY id
+        SELECT u.id, us.col_id, us.section_id, u.strat_name,
+               u.position_bottom, u.position_top,
+               u.max_thick, u.min_thick, u.outcrop, u.color, u.fo, u.lo
+        FROM macrostrat.units u
+        JOIN macrostrat.units_sections us ON us.unit_id = u.id
+        WHERE us.col_id = :col_id AND us.section_id = :section_id
+        ORDER BY u.id
         """,
         dict(col_id=col_id, section_id=section_id),
     )

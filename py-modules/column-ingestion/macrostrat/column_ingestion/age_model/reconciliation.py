@@ -10,6 +10,12 @@ so a surface that has not moved keeps its `id`.
 matching rules are testable without a database. `reconcile_unit_boundaries` wraps it
 with the IO.
 
+`unit_boundaries_scratch` is **legacy and deliberately not maintained.** The legacy
+generator wrote every boundary to both it and the live table, and
+`rebuild/sql/unit-boundaries.sql` still keeps `t1_age`/`t1_prop` in step on both, so it can
+look load-bearing. It is not: nothing here writes it, and a rebuild leaves it stale by
+design. It is a candidate for dropping rather than something to keep synchronised.
+
 TODO — replace most of this with a database constraint
 ------------------------------------------------------
 The planner exists largely because the table cannot yet express its own key. Once it

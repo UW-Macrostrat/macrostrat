@@ -72,13 +72,27 @@ def cumulative_thickness(units: list[Unit]) -> list[float]:
     return coords
 
 
+def package_interval(unit: Unit) -> Interval:
+    """The interval a unit contributes to a package, and that its top boundary carries.
+
+    **`lo`, not `fo`.** The generator groups units by `u.lo` and gives each boundary
+    `t1 = <that lo interval>`; our original decode said `fo`, which agrees for the 89% of
+    units where `fo = lo` but not for the other 14,940. `lo` is what the code does.
+
+    `lo` arrives on the unit as `t_age` — see `eodp_units`.
+    """
+    return unit.t_age.interval
+
+
 def group_packages(units: list[Unit]) -> list[EODPPackage]:
-    """Split units into maximal runs sharing the same `fo` interval."""
+    """Split units into maximal runs sharing the same `lo` interval."""
     packages = []
     start = 0
     for i in range(1, len(units) + 1):
-        if i == len(units) or units[i].b_age.interval != units[start].b_age.interval:
-            packages.append(EODPPackage(units[start].b_age.interval, start + 1, i))
+        if i == len(units) or package_interval(units[i]) != package_interval(
+            units[start]
+        ):
+            packages.append(EODPPackage(package_interval(units[start]), start + 1, i))
             start = i
     return packages
 
@@ -227,16 +241,40 @@ def eodp_units(db, section_id: int) -> list[Unit]:
     set for consistency with how `units.get_units_from_df` populates them.
 
     Ordered by `position_bottom` — see `eodp_surfaces` on why that matters.
+
+    Membership comes from **`units_sections`**, which is authoritative. Neither
+    `units.col_id` nor `units.section_id` is: they diverge from the join table for 259 and
+    5,237 links respectively, and going through `units.section_id` leaves **306 eODP
+    sections invisible** (1,723 reachable versus 2,029). Those columns are for creating
+    units, not for retrieving them.
     """
     rows = db.run_query(
         """
-        SELECT id, section_id, col_id, position_top, position_bottom, fo, lo
-        FROM macrostrat.units
-        WHERE section_id = :section_id
-        ORDER BY position_bottom
+        SELECT u.id, us.col_id, us.section_id, u.position_top, u.position_bottom,
+               u.fo, u.lo, u.fo_h, u.lo_h
+        FROM macrostrat.units u
+        JOIN macrostrat.units_sections us ON us.unit_id = u.id
+        WHERE us.section_id = :section_id
+        ORDER BY u.position_bottom
         """,
         dict(section_id=section_id),
     ).fetchall()
+
+    graded = [r.id for r in rows if (r.fo_h or 0) != 0 or (r.lo_h or 0) != 0]
+    if graded:
+        # `fo_h`/`lo_h` are bin ordinals naming which slice of an interval a unit occupies,
+        # and they drive the *other* legacy generator — the interval model. All 92,451 eODP
+        # units carry zero, which is exactly why eODP needed a thickness model. A non-zero
+        # value means the column was not built this way and this decoder does not describe
+        # it.
+        log.warning(
+            "Section %s: %s unit(s) carry a non-zero fo_h/lo_h (e.g. %s). Those are "
+            "interval-model bin ordinals, so this thickness decoder probably does not "
+            "apply to this column.",
+            section_id,
+            len(graded),
+            graded[:5],
+        )
 
     units = []
     for row in rows:
