@@ -9,7 +9,7 @@ unused).
 Here, the work is split in two:
 
 1. **Here** — turn `fo`/`lo` into a small set of *relative* age constraints. This
-   is where every eODP-specific quirk lives, and it is only ~11% of the
+   is where the eODP-specific decisions are, and it is only ~11% of the
    boundaries in a section.
 2. **`age_model.AgeModel`** — fill in every remaining surface by the ordinary
    interpolation, marking them `modeled`.
@@ -36,10 +36,21 @@ from .reconciliation import BoundaryPlan, reconcile_unit_boundaries
 
 log = get_logger(__name__)
 
-#: The base of the hole is unconstrained — it is where drilling stopped, not a
-#: dated surface. The eODP importer hedges by placing it one third of the way
-#: into its interval's duration.
-BASAL_PROPORTION = 2 / 3
+#: How far each boundary in a section's **oldest** interval is moved toward the top of that
+#: interval. The legacy generator spells this `bottom_offset = 3/2` and applies
+#: `(1 - p)/1.5 + p`, which is the same thing: close two thirds of the gap to `prop = 1`.
+OLDEST_INTERVAL_COMPRESSION = 2 / 3
+
+
+def compress_toward_interval_top(proportion: float) -> float:
+    """Move a proportion ~two thirds of the way toward the top of its interval.
+
+    **Assumption:** reaching an interval at the bottom of a hole does not mean
+    sampling all of it.  the whole of the section's oldest interval is squeezed into the
+    top third of its duration. This is adjusted based on the depositional rate
+    above the bottom interval.
+    """
+    return proportion + OLDEST_INTERVAL_COMPRESSION * (1 - proportion)
 
 
 @dataclass
@@ -98,44 +109,33 @@ def group_packages(units: list[Unit]) -> list[EODPPackage]:
 
 
 def _package_anchors(
-    package: EODPPackage,
-    coords: list[float],
-    *,
-    is_first: bool,
-    is_last: bool,
+    package: EODPPackage, coords: list[float], *, is_first: bool
 ) -> tuple[float, float]:
     """Thickness coordinates at which the package's interval starts and ends.
 
-    The interval's age span is anchored on the two boundaries that *bracket* the
-    run of boundaries carrying it: `age_top` at boundary `first - 2`, `age_bottom`
-    at boundary `last`. In unit terms that reads as "the package plus one unit
-    above it", because the carrying boundaries sit at unit tops — but in boundary
-    terms it is symmetric, one anchor either side of the run.
+    The generator divides an interval's age span across a denominator of
 
-    The consequence is that an interval is stretched one boundary wider on each
-    side than the boundaries it actually dates, so no boundary lands exactly on
-    its own interval's limit. That is mechanical rather than geological, and it is
-    reproduced here on purpose.
+        (thickness of the units in the package) + (thickness of the unit above it)
+
+    which in cumulative-thickness terms is the range `C[first-2] .. C[last]` — the
+    boundaries bracketing the run that carries the interval. So an interval is stretched
+    one boundary wider on each side than the boundaries it actually dates, and none of them
+    lands exactly on its own interval's limit.
+
+    The first package looks like a special case but is not. Its "unit above" is the
+    section's top unit, which is *also* a member of the package, so that unit's thickness
+    is counted **twice** — once in the package sum and once as the unit above. Hence the
+    `+ (coords[1] - coords[0])` below. This was previously described here as an off-by-one
+    in the original code; it is not, it falls straight out of the same denominator.
     """
     k, m = package.first, package.last
 
     if is_first:
-        # No boundary above `b[0]` to anchor against. The importer pinned
-        # `t1_prop = 1` at `b[0]` itself and padded the lower anchor by the first
-        # unit's thickness. This reads as an off-by-one in the original code, but
-        # it is consistent across the corpus, so keep it.
-        top = coords[0]
-        bottom = coords[m] + (coords[1] - coords[0])
-    else:
-        top = coords[k - 2]
-        bottom = coords[m]
-
-    if is_last:
-        # No boundary below the base of the hole either. Place the virtual lower
-        # anchor so that the basal boundary lands on BASAL_PROPORTION.
-        bottom = top + (bottom - top) / (1 - BASAL_PROPORTION)
-
-    return top, bottom
+        # The unit above the first package is its own first unit, so its thickness lands in
+        # the denominator twice. See the docstring — this is the same rule, not an
+        # exception to it.
+        return coords[0], coords[m] + (coords[1] - coords[0])
+    return coords[k - 2], coords[m]
 
 
 def eodp_surfaces(units: list[Unit]) -> list[AgeModelSurface]:
@@ -144,9 +144,13 @@ def eodp_surfaces(units: list[Unit]) -> list[AgeModelSurface]:
     `units` are ordered by `position_bottom` ascending and carry their
     `fo` interval on `b_age`.
 
-    Only the surfaces this module can actually justify get a `relative_age`: the
-    first and last carrying boundary of each package, plus the base of the hole.
-    Everything between them is modeled by applying the interpolation age mdoels.
+    Only the surfaces this module can actually justify get a `relative_age`: the first and
+    last carrying boundary of each package, plus the base of the hole. Everything between
+    them is filled in by the age model's ordinary interpolation.
+
+    Boundaries carrying the section's **oldest** interval are additionally compressed toward
+    the top of that interval — see `compress_toward_interval_top` for the assumption that
+    encodes.
     """
     if not units:
         return []
@@ -155,13 +159,15 @@ def eodp_surfaces(units: list[Unit]) -> list[AgeModelSurface]:
     packages = group_packages(units)
     n = len(units)
 
+    # The section's oldest interval — the generator calls it `section_fo` — is the one whose
+    # boundaries get compressed toward its top. It is normally the last package, but take it
+    # by age rather than by position so an out-of-order section still picks the right one.
+    oldest = max(packages, key=lambda p: p.interval.age_bottom).interval
+
     constraints: dict[int, RelativeAge] = {}
     for index, package in enumerate(packages):
-        is_first = index == 0
         is_last = index == len(packages) - 1
-        top, bottom = _package_anchors(
-            package, coords, is_first=is_first, is_last=is_last
-        )
+        top, bottom = _package_anchors(package, coords, is_first=index == 0)
         span = bottom - top
         if span <= 0:
             log.warning(
@@ -171,15 +177,20 @@ def eodp_surfaces(units: list[Unit]) -> list[AgeModelSurface]:
             )
             continue
 
-        # Boundaries carrying this package's interval sit at the top of each of
-        # its units. The last package also carries the base of the hole.
+        # Boundaries carrying this package's interval sit at the top of each of its units.
+        # The last package also carries the base of the hole, where the accumulation runs
+        # out — proportion 0 before compression.
         carried = list(range(package.first - 1, package.last))
         if is_last:
             carried.append(package.last)
 
-        # Constrain only the endpoints — the rest are collinear with them.
+        # Constrain only the endpoints — the rest are collinear with them, and compression
+        # is affine so it preserves that.
         for i in {carried[0], carried[-1]}:
-            constraints[i] = RelativeAge(package.interval, (bottom - coords[i]) / span)
+            proportion = (bottom - coords[i]) / span
+            if package.interval == oldest:
+                proportion = compress_toward_interval_top(proportion)
+            constraints[i] = RelativeAge(package.interval, proportion)
 
     surfaces = []
     for i in range(n + 1):
