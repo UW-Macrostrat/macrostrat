@@ -26,10 +26,10 @@ updating this note**:
   silently drop the unit from the lookup rebuild rather than fail.
 
 - **`fo_h`, `lo_h` are ignored.** Not read, not written; existing values left alone.
-  In particular do **not** adopt the `prop * 10000` encoding that
-  `project_metadata/macrostrat_mapping_v3.json` writes into them: the maximum `fo_h` in
-  the table is 255, so that scale is a new invention rather than the legacy convention,
-  and it has not taken root.
+  In particular do **not** adopt a `prop * 10000` encoding for them: the maximum `fo_h`
+  in the table is 255, so that scale is a new invention rather than the legacy
+  convention. It appeared only in the since-removed project-metadata importer's mapping
+  file and never took root.
 
 `eodp` is the deliberate exception: it *reads* `fo`/`lo` because that is where the
 ocean-drilling columns' age control currently lives. It is a migration tool, not a

@@ -7,7 +7,6 @@ from typer import Argument, Option, Typer
 from macrostrat.core.database import get_database
 
 from .age_model import AgeModelApproach
-from .project_metadata import shanan_column_importer
 
 console = Console()
 
@@ -26,9 +25,6 @@ def ingest_columns(
 
     db = get_database()
     ingest_columns_from_file(db, data_file)
-
-
-app.command("ingest-shanan")(shanan_column_importer)
 
 
 age_model_app = Typer(

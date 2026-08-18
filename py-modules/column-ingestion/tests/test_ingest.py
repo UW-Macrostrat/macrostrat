@@ -1,13 +1,10 @@
-"""Tests for the two importers: Shanan's legacy project-metadata path, and ours.
+"""Tests for the column-ingestion path, end to end against the fixture workbook.
 
 Shared fixtures (`db`, `excel_file`, `test_project`, `default_age_model_ref`) come from
 `conftest.py`.
 """
 
-from pathlib import Path
-
 from macrostrat.column_ingestion.ingest import ingest_columns_from_file
-from macrostrat.column_ingestion.project_metadata import _column_metadata_importer
 from macrostrat.column_ingestion.query_helpers import get_liths_for_unit
 from macrostrat.utils import get_logger
 
@@ -36,36 +33,10 @@ def assert_mazko_formation_liths(db):
     assert {att.name for att in siltstone.attributes or {}} == {"flute casts"}
 
 
-class TestLegacyProjectMetadataImporter:
-    """The 2,794-line importer kept for reference. Requires the schema to be relaxed —
-    it cannot precalculate sections, so it has to insert units before they exist. See
-    `Investigations/Project metadata importer.md`."""
-
-    def test_insert_project_metadata(
-        self, db, test_project, excel_file, tmp_path: Path
-    ):
-        db.run_sql("ALTER TABLE macrostrat.units ALTER COLUMN section_id DROP NOT NULL")
-        db.run_sql(
-            "ALTER TABLE macrostrat.units DROP CONSTRAINT units_sections_fk",
-            raise_on_error=True,
-        )
-        db.session.commit()
-
-        _column_metadata_importer(
-            db.session.connection().connection,
-            excel_file,
-            audit_dir=tmp_path / "audit",
-            do_audit=True,
-        )
-
-        assert db.run_query("SELECT COUNT(*) FROM macrostrat.units").scalar() == 6
-        assert_mazko_formation_liths(db)
-
-
 class TestStandardImportProcess:
     """Our importer, which satisfies the schema as it stands."""
 
-    def test_insert_project_metadata(
+    def test_ingests_the_fixture_workbook(
         self, db, test_project, default_age_model_ref, excel_file
     ):
         ingest_columns_from_file(db, excel_file)

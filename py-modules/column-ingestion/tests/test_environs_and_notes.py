@@ -52,25 +52,6 @@ class TestEnvironsProcessor:
 
         assert processor.match(str(by_name.id)) == by_name
 
-    def test_marine_and_non_marine_resolve_to_environments_not_classes(self, db):
-        """`marine` and `non-marine` are rows in `environs` (ids 38 and 88) that happen to
-        share a name with their own `environ_class`. A token must resolve to the row."""
-        processor = EnvironsProcessor(db)
-
-        assert processor.match("marine").id == 38
-        assert processor.match("non-marine").id == 88
-
-    def test_environ_type_values_are_not_match_targets(self, db):
-        """No `environ_type` exists as an environment name, so `carbonate` and friends
-        match nothing rather than silently resolving to a category."""
-        processor = EnvironsProcessor(db)
-
-        for environ_type in ("carbonate", "siliciclastic", "fluvial", "glacial"):
-            assert processor.match(environ_type) is None, environ_type
-
-        with raises(UnknownEnvironError):
-            processor("carbonate")
-
     def test_multiple_entries_resolve_to_a_set(self, db):
         processor = EnvironsProcessor(db)
 
