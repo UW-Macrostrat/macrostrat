@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Optional
 
 from rich import print
-from typer import BadParameter, Option, Typer, confirm
+from rich.table import Table
+from typer import BadParameter, Exit, Option, Typer, confirm
 
 from macrostrat.usage_stats_capture import (
     PIPELINE_NAMES,
@@ -153,37 +154,106 @@ def capture_command(
     )
 
 
+STATUS_QUERY = """
+    SELECT pipeline,
+           count(*)::bigint AS n_objects,
+           sum(num_matched)::bigint AS n_matched,
+           max(processed_at) AS last_run,
+           extract(epoch FROM (now() - max(processed_at))) AS last_run_age,
+           max(last_modified) AS newest_log,
+           extract(epoch FROM (now() - max(last_modified))) AS newest_log_age
+    FROM usage_stats.processed_logs
+    GROUP BY pipeline
+    ORDER BY pipeline
+"""
+
+
+def _age(seconds: Optional[float]) -> str:
+    """Compact relative age: '3 min', '4 h', '2 d'."""
+    if seconds is None:
+        return "—"
+    seconds = float(seconds)
+    if seconds < 90:
+        return f"{seconds:.0f} s"
+    minutes = seconds / 60
+    if minutes < 90:
+        return f"{minutes:.0f} min"
+    hours = minutes / 60
+    if hours < 48:
+        return f"{hours:.1f} h"
+    return f"{hours / 24:.1f} d"
+
+
 @app.command(name="status")
-def status_command():
-    """Show ingestion progress per pipeline."""
+def status_command(
+    max_age: float = Option(
+        3.0,
+        "--max-age",
+        help="Hours since the last capture before the harvester is called stale. "
+        "Default allows a couple of missed hourly runs.",
+    ),
+):
+    """Show capture freshness and ingestion totals per pipeline.
+
+    Intended for checking that the scheduled harvester is still working. Exits
+    non-zero when nothing has been captured within --max-age, so it can be used
+    as a health check.
+
+    Two different failures are distinguished:
+
+    \b
+      last capture   how long since the job ran at all. Old means the CronJob
+                     is not running, or is failing before it writes anything.
+      newest log     how far behind the logs themselves are. Recent runs but an
+                     old newest-log means the job runs and finds nothing — log
+                     shipping stopped, or the prefix/filter is wrong.
+    """
     db = get_db()
-    rows = db.run_query(
-        """
-        SELECT pipeline,
-               count(*) AS n_objects,
-               sum(num_matched) AS n_matched,
-               min(object_name) AS first_object,
-               max(object_name) AS last_object
-        FROM usage_stats.processed_logs
-        GROUP BY pipeline
-        ORDER BY pipeline
-        """
-    ).mappings()
+    rows = list(db.run_query(STATUS_QUERY).mappings())
 
-    any_rows = False
+    if not rows:
+        print("[bold red]No log objects have ever been captured.[/]")
+        print(f"[dim]Registered pipelines: {', '.join(PIPELINE_NAMES)}[/]")
+        raise Exit(code=1)
+
+    table = Table(box=None, pad_edge=False)
+    table.add_column("pipeline")
+    table.add_column("objects", justify="right")
+    table.add_column("records", justify="right")
+    table.add_column("last capture", justify="right")
+    table.add_column("newest log", justify="right")
+
+    stalest = 0.0
     for row in rows:
-        any_rows = True
-        print(f"[bold]{row['pipeline']}[/]")
-        print(f"  objects processed: {row['n_objects']}")
-        print(f"  records matched:   {row['n_matched']}")
-        print(f"  range:             {row['first_object']} … {row['last_object']}")
+        age = row["last_run_age"]
+        stalest = max(stalest, float(age or 0))
+        table.add_row(
+            row["pipeline"],
+            f"{row['n_objects']:,}",
+            f"{row['n_matched']:,}" if row["n_matched"] is not None else "—",
+            _age(age),
+            _age(row["newest_log_age"]),
+        )
 
-    if not any_rows:
-        print("No log objects have been processed yet.")
-        return
+    print(table)
 
-    known = set(PIPELINE_NAMES)
-    print(f"\n[dim]Registered pipelines: {', '.join(sorted(known))}[/]")
+    newest = max((r["last_run"] for r in rows if r["last_run"]), default=None)
+    if newest is not None:
+        print(f"\n[dim]Last capture: {newest:%Y-%m-%d %H:%M %Z}[/]")
+
+    # A pipeline that exists in code but has never run is easy to miss otherwise.
+    missing = set(PIPELINE_NAMES) - {r["pipeline"] for r in rows}
+    if missing:
+        print(f"[yellow]Never captured: {', '.join(sorted(missing))}[/]")
+
+    if stalest > max_age * 3600:
+        print(
+            f"[bold red]STALE[/] — nothing captured in {_age(stalest)} "
+            f"(threshold {max_age:g} h)."
+        )
+        raise Exit(code=1)
+
+    print(f"[green]OK[/] — captured within the last {_age(stalest)}.")
 
 
 @app.command(name="plot")
