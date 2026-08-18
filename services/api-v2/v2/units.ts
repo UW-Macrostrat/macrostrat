@@ -84,6 +84,11 @@ export function getColumnFilters(
   }
   whereClauses.push("cols.status_code::text = ANY(:status_code::text[])");
 
+  if (req.query.unit_id != null && req.query.project_id == null) {
+    /** if we specify a unit ID, allow selection in all projects unless alredy filtering */
+    req.query.project_id = "all";
+  }
+
   //only include ANY(macrostrat.core_project_ids()) filter when both col_id and project_id parameters are provided
   const [projectFilters, projectParams] = buildProjectsFilter(
       req,
