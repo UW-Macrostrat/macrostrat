@@ -4,13 +4,12 @@ import polars as pl
 from pytest import fixture
 from xlsxwriter import Workbook
 
+from macrostrat.column_ingestion.ingest import ingest_columns_from_file
+from macrostrat.column_ingestion.project_metadata import _column_metadata_importer
+from macrostrat.column_ingestion.query_helpers import get_liths_for_unit
 from macrostrat.database import Database, reset_sequence
 from macrostrat.database.utils import template_database
 from macrostrat.utils import get_logger
-
-from ..ingest import ingest_columns_from_file
-from ..query_helpers import get_liths_for_unit
-from . import _column_metadata_importer
 
 log = get_logger(__name__)
 
@@ -58,7 +57,7 @@ class TestProjectMetadata:
 
         test_excel_file = tmp_path / "test_excel_file.xlsx"
         assemble_test_excel_file(
-            __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
+            __here__ / "fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
         )
 
         conn = db.session.connection().connection
@@ -116,7 +115,7 @@ class TestStandardImportProcess:
 
         test_excel_file = tmp_path / "test_excel_file.xlsx"
         assemble_test_excel_file(
-            __here__ / "test_fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
+            __here__ / "fixtures" / "macrostrat_import_v3_excerpt", test_excel_file
         )
 
         # We need to insert Macrostrat's default age model as a reference with ID=217

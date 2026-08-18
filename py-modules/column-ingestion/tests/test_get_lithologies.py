@@ -1,7 +1,7 @@
 from pytest import approx
 
-from .lithologies import Lithology
-from .query_helpers import get_liths_for_unit
+from macrostrat.column_ingestion.lithologies import Lithology
+from macrostrat.column_ingestion.query_helpers import get_liths_for_unit
 
 
 def test_get_liths_for_existing_unit(env_db):

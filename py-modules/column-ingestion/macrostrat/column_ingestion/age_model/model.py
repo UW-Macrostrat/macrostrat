@@ -5,8 +5,13 @@ from enum import Enum
 import numpy as N
 from rich import print
 
-from .intervals import Interval, RelativeAge, get_intervals
-from .units import Unit
+from macrostrat.utils import get_logger
+
+from ..intervals import Interval, RelativeAge, get_intervals
+from ..units import Unit
+from .reconciliation import reconcile_unit_boundaries, write_unit_boundaries
+
+log = get_logger(__name__)
 
 
 class BoundaryStatus(Enum):
@@ -53,21 +58,42 @@ class AgeModelSurface:
     units: list[Unit]
     boundary_status: BoundaryStatus
     relative_age: RelativeAge | None = None
+    # Explicit unit adjacency, for surfaces that cannot be recovered by matching
+    # positions (again: gaps and overlaps between successive units).
+    above: list[Unit] | None = None
+    below: list[Unit] | None = None
+    # Whether to fall back to the adjacent units' own `b_age`/`t_age` when no
+    # relative age is given. Callers that derive constraints themselves (e.g.
+    # `eodp_age_model`, where the constraint belongs to a run of units rather
+    # than to any single one) set this False so unconstrained surfaces stay
+    # unconstrained and get modeled instead.
+    infer_relative_age: bool = True
 
     def __post_init__(self):
         # Set relative age if not provided
-        if self.relative_age is None:
+        if self.relative_age is None and self.infer_relative_age:
             self.relative_age = self.build_relative_age()
         if self.relative_age is not None:
             self.boundary_status = BoundaryStatus.RELATIVE
 
     @property
     def units_above(self):
+        if self.above is not None:
+            return list(self.above)
         return [u for u in self.units if u.b_pos == self.position]
 
     @property
     def units_below(self):
+        if self.below is not None:
+            return list(self.below)
         return [u for u in self.units if u.t_pos == self.position]
+
+    @property
+    def section_id(self) -> int | None:
+        for u in [*self.units, *(self.above or []), *(self.below or [])]:
+            if u is not None:
+                return u.section_id
+        return None
 
     def age_estimates(self):
         for u in self.units_above:
@@ -101,7 +127,7 @@ class AgeModelSurface:
         return f"AgeModelSurface(position={self.position}, relative_age={self.relative_age}, above={units_above}, below={units_below})"
 
     def __hash__(self):
-        return hash(self.position, self.relative_age)
+        return hash((self.position, self.relative_age))
 
 
 def timescale_intervals(db, timescale_id: int):
@@ -116,11 +142,14 @@ class AgeModel:
     _match_intervals: list[Interval]
 
     def __init__(self, db, surfaces: list[AgeModelSurface], timescale=11):
-        self.surfaces = sorted(surfaces, key=lambda s: s.position)
+        # Sorted on the modeling axis, which the interpolator requires to be
+        # increasing.
+        self.surfaces = sorted(surfaces, key=self.axis_position)
 
         # Get all intervals defined in surfaces
         self._match_intervals = list()
         for surface in self.constrained_surfaces:
+            self._match_intervals.append(surface.relative_age.interval)
             for est in surface.age_estimates():
                 self._match_intervals.append(est.interval)
         # Sort intervals by age span (smallest first)
@@ -129,9 +158,25 @@ class AgeModel:
             timescale_intervals(db, timescale), key=lambda i: i.age_span
         )
 
+    def axis_position(self, surface: AgeModelSurface) -> float:
+        """The coordinate this model spreads time along.
+
+        The measured position, which is the principled default: time advances
+        through section in proportion to how much section there is. Subclasses
+        override this where a column's positions mean something else — an ordinal
+        column has no metric distance between its units, and a borehole with
+        unrecovered core has a choice to make about the gaps.
+
+        An override must be monotonic in the same direction as age, since the
+        interpolator needs an increasing axis.
+        """
+        return surface.position
+
     @property
     def has_valid_age_model(self):
-        return len(self.constrained_surfaces) >= 2
+        # Two constraints at the same axis position cannot define a model, so
+        # count distinct positions rather than surfaces.
+        return len({self.axis_position(s) for s in self.constrained_surfaces}) >= 2
 
     @property
     def constrained_surfaces(self):
@@ -148,8 +193,18 @@ class AgeModel:
     def _linear_interpolator(self):
         from scipy.interpolate import make_interp_spline
 
-        x = [s.position for s in self.constrained_surfaces]
-        y = [s.model_age for s in self.constrained_surfaces]
+        # Coincident axis positions are possible — a zero-thickness unit puts two
+        # surfaces at the same coordinate — and a spline cannot represent a step.
+        # Collapse them, keeping the last (oldest) age so the model stays
+        # monotonic below the collapsed point. Surfaces are already sorted.
+        x, y = [], []
+        for surface in self.constrained_surfaces:
+            position = self.axis_position(surface)
+            if x and position == x[-1]:
+                y[-1] = surface.model_age
+                continue
+            x.append(position)
+            y.append(surface.model_age)
         # A one-degree b-spline is a piecewise linear interpolator
         # Natural boundary conditions arbitrarily extend the domain
         # in either direction
@@ -166,9 +221,10 @@ class AgeModel:
         """Apply the model to unconstrained surfaces"""
 
         for surface in self.surfaces:
-            model_age = self._linear_interpolator(surface.position)
+            position = self.axis_position(surface)
+            model_age = self._linear_interpolator(position)
             if surface.relative_age is None:
-                interpolated_age = self._linear_interpolator(surface.position)
+                interpolated_age = self._linear_interpolator(position)
                 interval = self._containing_interval(interpolated_age)
                 proportion = interval.relative_position(interpolated_age)
 
@@ -221,9 +277,17 @@ def _build_section_age_model(db, units: list[Unit]):
     model = AgeModel(db, surfaces)
 
     if not model.has_valid_age_model:
-        print("[red bold]Invalid age model, skipping unit_boundaries")
+        # The message said "skipping" but execution continued, and `apply()` then
+        # failed inside the interpolator with an empty knot list.
+        log.warning(
+            "Section %s: fewer than two distinct age constraints; "
+            "skipping unit_boundaries",
+            units[0].section_id if units else None,
+        )
+        return []
 
     return list(create_unit_boundaries(model.apply()))
+
 
 def build_section_age_model(db, units: list[Unit]):
     """Build an age model for a section"""
@@ -246,24 +310,18 @@ def create_unit_boundaries(surfaces: list[AgeModelSurface]):
                     age=surface.relative_age,
                     model_age=surface.model_age,
                     boundary_status=surface.boundary_status,
-                    section_id=surface.units[0].section_id,
+                    section_id=surface.section_id,
                     position=surface.position,
                     unit_above=above.id if above is not None else None,
                     unit_below=below.id if below is not None else None,
                 )
 
 
-def write_unit_boundaries(db, unit_boundaries: list[UnitBoundary]):
-    cls = db.model.macrostrat_unit_boundaries
-    mappings = [u.to_dict() for u in unit_boundaries]
-    db.session.bulk_insert_mappings(cls, mappings)
-
 def get_units_for_column(db, column_id: int) -> list[Unit]:
     db.automap(schemas=["macrostrat"])
     U = db.model.macrostrat_units
     units = db.session.query(U).filter(U.col_id == column_id).all()
     for unit in units:
-        print(unit)
         yield Unit(
             id=unit.id,
             col_id=unit.col_id,
@@ -272,24 +330,49 @@ def get_units_for_column(db, column_id: int) -> list[Unit]:
             t_pos=unit.position_top,
         )
 
-def build_age_model_for_existing_column(db, column_id: int):
-    # Fetch all units for the given column
+
+def build_age_model_for_existing_column(db, column_id: int, *, dry_run: bool = False):
+    """Rebuild the age model for every section of a column.
+
+    Idempotent: reconciles against the existing boundaries rather than dropping
+    and recreating them, so re-running on an unchanged column is a no-op and
+    surfaces that did not move keep their `id` and curated columns.
+    """
     db.automap(schemas=["macrostrat"])
-    units = get_units_for_column(db, column_id)
-    section_ids = set(u.section_id for u in units)
+    units = list(get_units_for_column(db, column_id))
+    section_ids = sorted({u.section_id for u in units})
+
+    plans = {}
     with db.transaction():
-        # TODO: idempotence
-        new_units = []
-        for section in section_ids:
-            section_units = [u for u in units if u.section_id == section]
-            remove_existing_age_model(db, section)
-            new_units += _build_section_age_model(db, section_units)
-        print(new_units)
-        return new_units
+        for section_id in section_ids:
+            section_units = [u for u in units if u.section_id == section_id]
+            boundaries = _build_section_age_model(db, section_units)
+            if not boundaries:
+                # Reconciling an empty model would delete the section's existing
+                # boundaries, which is the opposite of what a failed rebuild should
+                # do. Leave them alone and say so.
+                log.warning(
+                    "Section %s: produced no boundaries; leaving existing ones intact",
+                    section_id,
+                )
+                continue
+            plans[section_id] = reconcile_unit_boundaries(
+                db, section_id, boundaries, dry_run=dry_run
+            )
+    return plans
+
 
 def remove_existing_age_model(db, section: int):
-    """Remove existing age model for a given column"""
-    db.run_query("""
+    """Delete a section's boundaries outright.
+
+    Prefer `reconcile_unit_boundaries`, which preserves row identity and curated
+    columns. This remains for the cases where the intent really is to clear a
+    section — note it drops `paleo_lat`/`paleo_lng` along with everything else.
+    """
+    db.run_query(
+        """
     DELETE FROM macrostrat.unit_boundaries
     WHERE section_id = :section
-    """, dict(section=section))
+    """,
+        dict(section=section),
+    )

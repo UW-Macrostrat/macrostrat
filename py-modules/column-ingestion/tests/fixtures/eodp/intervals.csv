@@ -1,0 +1,16 @@
+id,interval_name,age_bottom,age_top,rank,interval_type
+4,Pleistocene,2.5800,0.0117,5,epoch
+10,Pliocene,5.3330,2.5800,5,epoch
+34,Late Cretaceous,100.5000,66.0000,5,epoch
+41,Early Cretaceous,143.1000,100.5000,5,epoch
+421,Quaternary,2.5800,0.0000,4,period
+481,Early Eocene,56.0000,48.0700,6,age
+482,Middle Eocene,48.0700,37.7100,6,age
+486,Early Miocene,23.0400,15.9800,6,age
+487,Middle Miocene,15.9800,11.6300,6,age
+488,Late Miocene,11.6300,5.3330,6,age
+489,Early Pliocene,5.3330,3.6000,6,age
+490,Late Pliocene,3.6000,2.5800,6,age
+491,Early Pleistocene,2.5800,1.8000,6,age
+492,Late Pleistocene,0.1290,0.0117,6,age
+502,Middle Pleistocene,0.7740,0.1290,6,age

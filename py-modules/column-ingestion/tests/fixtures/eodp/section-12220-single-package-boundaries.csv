@@ -1,0 +1,5 @@
+section_id,boundary_position,unit_id,unit_id_2,t1,t1_prop,t1_age,boundary_status
+12220,0.000,43086,0,421,1.00000,0.0000,modeled
+12220,0.700,43087,43086,421,0.89630,0.2675,modeled
+12220,1.000,43088,43087,421,0.85185,0.3822,modeled
+12220,1.550,0,43088,421,0.77037,0.5924,modeled

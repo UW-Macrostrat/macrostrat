@@ -41,7 +41,7 @@ class IntervalID:
     name: str
 
     def __hash__(self):
-        return hash(self.id, self.name)
+        return hash((self.id, self.name))
 
 
 @dataclass
@@ -67,7 +67,7 @@ class Interval:
         return age_rel_to_bottom / self.age_span
 
     def __hash__(self):
-        return hash(self.id, self.name)
+        return hash((self.id, self.name))
 
     def __eq__(self, other):
         return self.id == other.id and self.name == other.name
@@ -86,7 +86,7 @@ class RelativeAge:
         )
 
     def __hash__(self):
-        return hash(self.interval, self.proportion)
+        return hash((self.interval, self.proportion))
 
 
 def split_text(text: str):

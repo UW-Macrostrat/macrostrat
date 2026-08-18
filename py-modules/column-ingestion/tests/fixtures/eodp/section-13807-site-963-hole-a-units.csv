@@ -1,0 +1,12 @@
+id,section_id,col_id,position_top,position_bottom,fo,lo,fo_h,lo_h,strat_name
+129259,13807,4133,0.000,6.800,492,492,0,0,"Core 1H-, 0-6.8 mbsf: clay"
+129260,13807,4133,6.800,16.580,492,492,0,0,"Core 2H-Core 1H, 6.8-16.58 mbsf: clay"
+129261,13807,4133,16.300,26.150,502,502,0,0,"Core 3H-Core 2H, 16.3-26.15 mbsf: clay"
+129262,13807,4133,25.800,35.770,502,502,0,0,"Core 4H-Core 3H, 25.8-35.77 mbsf: calcareous ooze"
+129263,13807,4133,35.300,45.190,491,491,0,0,"Core 5H-Core 4H, 35.3-45.19 mbsf: calcareous ooze"
+129264,13807,4133,44.800,54.750,491,491,0,0,"Core 6H-Core 5H, 44.8-54.75 mbsf: calcareous ooze"
+129265,13807,4133,54.300,64.280,10,10,0,0,"Core 7H-Core 6H, 54.3-64.28 mbsf: calcareous ooze"
+129266,13807,4133,63.800,73.710,10,10,0,0,"Core 8H-Core 7H, 63.8-73.71 mbsf: calcareous ooze"
+129267,13807,4133,73.300,83.200,10,10,0,0,"Core 9H-Core 8H, 73.3-83.2 mbsf: calcareous ooze"
+129268,13807,4133,82.800,92.860,10,10,0,0,"Core 10H-Core 9H, 82.8-92.86 mbsf: calcareous ooze"
+129269,13807,4133,92.300,102.330,10,10,0,0,"Core 11H-Core 10H, 92.3-102.33 mbsf: calcareous ooze"
