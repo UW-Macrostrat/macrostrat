@@ -1,34 +1,40 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
 import polars as pl
-from sqlalchemy import and_
-from sqlalchemy.dialects.postgresql import insert
 
-from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
-from .database import get_macrostrat_table
-from .intervals import (
+from ..environs import Environ, EnvironsProcessor
+from ..intervals import (
     Interval,
     RelativeAge,
     get_interval_by_id,
     get_interval_from_text,
     get_intervals,
 )
-from .lithologies import LithAbundance, Lithology, LithsProcessor
+from ..lithologies import LithAbundance, Lithology, LithsProcessor
 
 
 @dataclass
 class Unit:
     id: int = -1
     col_id: int = -1
+    #: Database `sections.id`, assigned once the section has been reconciled.
     section_id: int = -1
+    #: The workbook's own section identifier, which groups units into sections before any
+    #: database id exists. Kept apart from `section_id` so the mapping from workbook
+    #: section to database section stays explicit rather than being overwritten in place.
+    section_key: Any = None
     b_pos: float | None = None
     t_pos: float | None = None
     lithology: set[Lithology] = field(default_factory=set)
+    environment: set[Environ] = field(default_factory=set)
     description: str | None = None
+    #: Free-text remarks, kept apart from `description` because `unit_notes` composes the
+    #: two into one note rather than storing either verbatim.
+    comments: str | None = None
     name: str | None = None
     color: str | None = None
 
@@ -79,6 +85,9 @@ def get_units_from_df(
             "column": "col_id",
             "column_id": "col_id",
             "unit_name": "name",
+            # The workbook calls it `unit_description`; `unit_notes` composes it with
+            # `comments` rather than storing either verbatim.
+            "unit_description": "description",
         },
     )
 
@@ -208,6 +217,7 @@ def prepare_section_units(
 
     res = []
     liths_processor = LithsProcessor(db)
+    environs_processor = EnvironsProcessor(db)
     for row in df.iter_rows(named=True):
         lith = row.get("lithology")
         liths = liths_processor(lith, LithAbundance.DOMINANT)
@@ -215,7 +225,9 @@ def prepare_section_units(
         liths |= liths_processor(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
 
         unit = Unit(
-            section_id=row.get("section_id"),
+            section_key=row.get("section_id"),
+            environment=environs_processor(row.get("environment")),
+            comments=row.get("comments"),
             b_pos=row["b_pos"],
             t_pos=row["t_pos"],
             description=row.get("description"),
@@ -246,118 +258,6 @@ def coalesce(value, default):
     if value is None:
         return default
     return value
-
-
-def write_units(db, units: list[Unit]):
-    units_tbl = get_macrostrat_table(db, "units")
-    unit_liths = get_macrostrat_table(db, "unit_liths")
-    unit_liths_atts = get_macrostrat_table(db, "unit_liths_atts")
-    units_sections = get_macrostrat_table(db, "units_sections")
-
-    # Get the set of sections and columns for which units should be overwrittem
-    col_ids = set(unit.col_id for unit in units)
-    section_ids = set(unit.section_id for unit in units)
-    # TODO: multiple sections per column are not handled yet
-
-    # Delete existing units for the relevant sections and columns
-    db.session.execute(
-        units_tbl.delete()
-        .where(
-            and_(
-                units_tbl.c.col_id.in_(col_ids), units_tbl.c.section_id.in_(section_ids)
-            ),
-        )
-        .returning(units_tbl.c.id)
-    )
-
-    for unit in units:
-        thickness = (
-            abs(unit.t_pos - unit.b_pos)
-            if (unit.t_pos is not None and unit.b_pos is not None)
-            else None
-        )
-
-        # TODO: Unit fields that could be added
-        # - covered
-        # - schematic (?) to handle cases where unit is not fully described, or age model should not be trusted.
-        #   Could render ages or heights with a tilde, for instance
-        # - hypothetical (?) to cover cases where the presence of a unit is inferred (e.g., possibly eroded material of a certain age)
-        # - descrip: similar to map polygon description, more specific than notes
-
-        insert_stmt = (
-            units_tbl.insert()
-            .values(
-                col_id=unit.col_id,
-                section_id=unit.section_id,
-                position_bottom=unit.b_pos,
-                position_top=unit.t_pos,
-                max_thick=thickness or 0,
-                min_thick=thickness or 0,
-                outcrop="surface",
-                # description=unit.description,
-                strat_name=unit.name or "default",
-                color="blue",
-                fo=1,
-                lo=1,
-                # color=,
-            )
-            .returning(units_tbl.c.id)
-        )
-
-        unit.id = db.session.execute(insert_stmt).scalar()
-
-        # Insert into unit_sections table to link the unit to its section
-        log.info(
-            "unit: %s, col: %s, section: %s", unit.id, unit.col_id, unit.section_id
-        )
-
-        units_sections_insert = (
-            units_sections.insert()
-            .values(
-                unit_id=unit.id,
-                col_id=unit.col_id,
-                section_id=unit.section_id,
-            )
-            .returning(units_sections.c.id)
-        )
-
-        db.session.execute(units_sections_insert)
-
-        # Insert lithology associations for the unit
-        n_liths = len(unit.lithology)
-        for lith in unit.lithology:
-            dom = ""
-            if lith.dom is not None:
-                dom = lith.dom.value
-
-            insert_lith_stmt = (
-                unit_liths.insert()
-                .values(
-                    unit_id=unit.id,
-                    lith_id=lith.id,
-                    # TODO: dom and prop are equivalent for now
-                    dom=dom,
-                    prop=dom,
-                    comp_prop=1 / n_liths,
-                    mod_prop=1 / n_liths,
-                    toc=0.0,
-                    ref_id=0,
-                )
-                .returning(unit_liths.c.id)
-            )
-            ulid = db.session.execute(insert_lith_stmt).scalar()
-            if ulid is None:
-                raise ValueError(
-                    f"Failed to insert unit lithology {lith.name} for unit {unit.id}"
-                )
-            att_values = lith.attributes or set()
-            for att in att_values:
-                insert_att_stmt = unit_liths_atts.insert().values(
-                    unit_lith_id=ulid, lith_att_id=att.id, ref_id=0
-                )
-                db.session.execute(insert_att_stmt)
-    # Units with IDs set
-    return units
 
 
 def print_list(title, lst):

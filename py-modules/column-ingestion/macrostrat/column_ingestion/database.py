@@ -107,6 +107,15 @@ def get_all_lith_attributes(db):
     return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
 
 
+def get_all_environs(db):
+    """Get all depositional environments from the database."""
+    return db.run_query(
+        "SELECT id, environ AS name, environ_type AS type,"
+        " environ_class AS environ_class"
+        " FROM macrostrat.environs"
+    ).fetchall()
+
+
 def get_all_intervals(db):
     """Get all intervals from the database."""
     return db.run_query(

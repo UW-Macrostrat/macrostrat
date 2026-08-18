@@ -8,6 +8,7 @@ from rich import print
 from macrostrat.utils import get_logger
 
 from ..intervals import Interval, RelativeAge, get_intervals
+from ..reconciliation import ReconciliationPlan
 from ..units import Unit
 from .reconciliation import reconcile_unit_boundaries, write_unit_boundaries
 
@@ -247,16 +248,22 @@ def get_nearest_interval(age: float, interval: Interval):
     rank = interval.rank
 
 
-def build_age_model(db, units: list[Unit]):
-    """Build an age model for a column"""
-    # Group by section_id
+def build_age_model(db, units: list[Unit]) -> dict[int, ReconciliationPlan]:
+    """Build the age model for every section represented in `units`.
 
+    Idempotent: reconciles against the existing boundaries, so re-running over an
+    unchanged column is a no-op. Returns the plan per section.
+    """
     sections = defaultdict(list)
     for unit in units:
         sections[unit.section_id].append(unit)
 
-    for units in sections.values():
-        build_section_age_model(db, units)
+    plans = {}
+    for section_id, section_units in sections.items():
+        plan = build_section_age_model(db, section_units)
+        if plan is not None:
+            plans[section_id] = plan
+    return plans
 
 
 def _build_section_age_model(db, units: list[Unit]):
@@ -289,9 +296,21 @@ def _build_section_age_model(db, units: list[Unit]):
     return list(create_unit_boundaries(model.apply()))
 
 
-def build_section_age_model(db, units: list[Unit]):
-    """Build an age model for a section"""
-    write_unit_boundaries(db, _build_section_age_model(db, units))
+def build_section_age_model(db, units: list[Unit]) -> ReconciliationPlan | None:
+    """Build a section's age model and reconcile it into `unit_boundaries`.
+
+    Reconciles rather than inserting blindly. That used to be safe only because the
+    caller deleted the section's units first, which cascaded the old boundaries away;
+    now that units are preserved across a re-import, a plain insert would double the
+    boundary set on every run.
+    """
+    if not units:
+        return None
+    boundaries = _build_section_age_model(db, units)
+    if not boundaries:
+        # Don't reconcile an empty model — that reads as "delete everything".
+        return None
+    return reconcile_unit_boundaries(db, units[0].section_id, boundaries)
 
 
 def create_unit_boundaries(surfaces: list[AgeModelSurface]):

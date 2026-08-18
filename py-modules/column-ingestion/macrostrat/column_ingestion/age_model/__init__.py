@@ -10,6 +10,35 @@
   columns, the one place eODP-specific assumptions are allowed to live.
 - `approaches` — which of the above a given column needs, and the entry point the
   CLI calls.
+
+The `units.fo` / `lo` / `fo_h` / `lo_h` policy
+---------------------------------------------
+`unit_boundaries` is the source of truth for age control. The four legacy columns on
+`macrostrat.units` are handled as follows, and **nothing should deviate without
+updating this note**:
+
+- **`fo`, `lo` are computed outputs.** Derive them from the finished age model — the
+  narrowest interval containing the unit's modelled bottom and top age respectively
+  (`AgeModel._containing_interval` does that lookup). They are never read from a
+  workbook and never hand-authored. They stay NOT NULL because there is no interval `0`
+  to fall back on (the `DEFAULT 0` on those columns is a dead default), and because
+  `lookup-unit-intervals-01.sql` reaches them through *inner* joins — a NULL `fo` would
+  silently drop the unit from the lookup rebuild rather than fail.
+
+- **`fo_h`, `lo_h` are ignored.** Not read, not written; existing values left alone.
+  In particular do **not** adopt the `prop * 10000` encoding that
+  `project_metadata/macrostrat_mapping_v3.json` writes into them: the maximum `fo_h` in
+  the table is 255, so that scale is a new invention rather than the legacy convention,
+  and it has not taken root.
+
+`eodp` is the deliberate exception: it *reads* `fo`/`lo` because that is where the
+ocean-drilling columns' age control currently lives. It is a migration tool, not a
+permanent fixture. The long-term target is that every column expresses its age control
+as `unit_boundaries` rows, leaving `fo`/`lo` as purely derived shadows for the legacy
+consumers, at which point the special-case approaches retire one dataset at a time.
+
+See `Investigations/Column ingestion architecture.md` for the reasoning, and
+`Investigations/Age model creation from legacy fields.md` for the eODP decoding.
 """
 
 from .approaches import (

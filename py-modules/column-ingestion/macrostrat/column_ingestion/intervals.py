@@ -6,6 +6,20 @@ from rich import print
 
 from .database import get_all_intervals
 
+#: Placeholder written into `units.fo` / `units.lo` by an ingest that has not yet built
+#: an age model. `macrostrat.intervals` has no id `0`, and both columns are NOT NULL with
+#: a FK to `intervals`, so a unit must reference *some* interval before its ages are
+#: known. Interval 499 is "Precambrian-Phanerozoic" (4031–0 Ma) — the whole of geologic
+#: time, and therefore unmistakably a non-answer rather than a plausible-looking one.
+#:
+#: This is a deliberate, named convention, not a magic number: `fo = UNMODELED_INTERVAL`
+#: is the queryable predicate for "this column's age model has not been written yet".
+#: Columns in that state carry `status_code = 'in process'` and so are excluded from the
+#: published API and the lookup rebuild — **promoting one to 'active' should require a
+#: real age model first.**
+UNMODELED_INTERVAL = 499
+
+
 interval_cache = ContextVar("interval_cache", default=None)
 
 

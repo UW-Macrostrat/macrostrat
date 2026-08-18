@@ -51,11 +51,12 @@ Even once the constraint lands, the quantized change detection below is worth
 keeping — it is what makes a rebuild a genuine no-op rather than a silent rewrite.
 """
 
-from collections import defaultdict, deque
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from macrostrat.utils import get_logger
+
+from ..database import get_macrostrat_table
+from ..reconciliation import ReconciliationPlan, plan_reconciliation, reconcile
 
 if TYPE_CHECKING:
     from .model import UnitBoundary
@@ -91,13 +92,6 @@ AGE_MODEL_COLUMNS = (
 # the database at the precision the database actually stores. Without this every
 # row looks changed on every run and identity is preserved in name only.
 _COLUMN_SCALE = {"t1_prop": 5, "t1_age": 4, "boundary_position": 3}
-
-
-def _quantize(column: str, value):
-    scale = _COLUMN_SCALE.get(column)
-    if value is None or scale is None:
-        return value
-    return round(float(value), scale)
 
 
 def no_unit(value) -> bool:
@@ -140,29 +134,13 @@ def _identity(row: dict) -> tuple:
     return (unit(row.get("unit_id")), unit(row.get("unit_id_2")))
 
 
-@dataclass
-class BoundaryPlan:
-    """What reconciling a section's boundaries would do."""
-
-    updates: list[tuple[int, dict]] = field(default_factory=list)
-    inserts: list[dict] = field(default_factory=list)
-    deletes: list[int] = field(default_factory=list)
-    unchanged: list[int] = field(default_factory=list)
-
-    @property
-    def is_noop(self) -> bool:
-        return not (self.updates or self.inserts or self.deletes)
-
-    def __str__(self):
-        return (
-            f"{len(self.unchanged)} unchanged, {len(self.updates)} updated, "
-            f"{len(self.inserts)} inserted, {len(self.deletes)} deleted"
-        )
+#: Legacy alias — the plan shape is now shared across entities.
+BoundaryPlan = ReconciliationPlan
 
 
 def plan_boundary_reconciliation(
     existing: list[dict], desired: list[dict]
-) -> BoundaryPlan:
+) -> ReconciliationPlan:
     """Match rebuilt boundaries onto existing rows, preserving row identity.
 
     Pure: takes and returns plain dicts so it can be tested without a database.
@@ -172,45 +150,23 @@ def plan_boundary_reconciliation(
     A surface that still separates the same two units keeps its `id`, and is only
     updated if one of the age-model columns actually moved.
     """
-    by_key = defaultdict(deque)
-    for row in existing:
-        by_key[_identity(row)].append(row)
-
-    plan = BoundaryPlan()
-    unmatched_desired = []
-    for row in desired:
-        queue = by_key.get(_identity(row))
-        if queue:
-            unmatched_desired.append((queue.popleft(), row))
-        else:
-            unmatched_desired.append((None, row))
-
-    for current, row in unmatched_desired:
-        values = {c: _quantize(c, row.get(c)) for c in AGE_MODEL_COLUMNS}
-        if current is None:
-            plan.inserts.append(dict(row))
-            continue
-        changed = {c: v for c, v in values.items() if v != _quantize(c, current.get(c))}
-        if changed:
-            plan.updates.append((current["id"], values))
-        else:
-            plan.unchanged.append(current["id"])
-
-    # Anything left over no longer corresponds to a surface in the model.
-    for queue in by_key.values():
-        plan.deletes.extend(row["id"] for row in queue)
-
-    return plan
+    return plan_reconciliation(
+        existing,
+        desired,
+        key=_identity,
+        owned_columns=AGE_MODEL_COLUMNS,
+        scales=_COLUMN_SCALE,
+    )
 
 
 def reconcile_unit_boundaries(
     db, section_id: int, boundaries: list["UnitBoundary"], *, dry_run: bool = False
-) -> BoundaryPlan:
+) -> ReconciliationPlan:
     """Bring a section's `unit_boundaries` in line with a rebuilt age model.
 
-    Replaces the older delete-everything-then-insert flow: unchanged surfaces keep
-    their `id` (which API v2 exposes as `boundary_id`) and their curated columns.
-    Returns the plan, which is also what `dry_run=True` produces without writing.
+    Replaces the older delete-everything-then-insert flow: unchanged surfaces keep their
+    `id` (which API v2 exposes as `boundary_id`) and their curated columns. Returns the
+    plan, which is also what `dry_run=True` produces without writing.
     """
     existing = [
         dict(row._mapping)
@@ -225,32 +181,21 @@ def reconcile_unit_boundaries(
             dict(section_id=section_id),
         )
     ]
+    desired = [b.to_dict() for b in boundaries]
 
-    plan = plan_boundary_reconciliation(existing, [b.to_dict() for b in boundaries])
-    log.info("Section %s: %s", section_id, plan)
-
-    if dry_run or plan.is_noop:
+    if dry_run:
+        plan = plan_boundary_reconciliation(existing, desired)
+        log.info("Section %s (dry run): %s", section_id, plan)
         return plan
 
-    for boundary_id, values in plan.updates:
-        db.run_query(
-            """
-            UPDATE macrostrat.unit_boundaries
-            SET t1 = :t1, t1_prop = :t1_prop, t1_age = :t1_age,
-                boundary_status = :boundary_status,
-                boundary_position = :boundary_position
-            WHERE id = :id
-            """,
-            {**values, "id": boundary_id},
-        )
-
-    if plan.inserts:
-        write_unit_boundaries_from_mappings(db, plan.inserts)
-
-    if plan.deletes:
-        db.run_query(
-            "DELETE FROM macrostrat.unit_boundaries WHERE id = ANY(:ids)",
-            dict(ids=plan.deletes),
-        )
-
+    plan, _ = reconcile(
+        db,
+        get_macrostrat_table(db, "unit_boundaries"),
+        existing=existing,
+        desired=desired,
+        key=_identity,
+        owned_columns=AGE_MODEL_COLUMNS,
+        scales=_COLUMN_SCALE,
+    )
+    log.info("Section %s: %s", section_id, plan)
     return plan
