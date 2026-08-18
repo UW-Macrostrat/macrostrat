@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.9] - 2026-08-17
+
+- Allow selection of `unit_id` without `project_id` in `/units` route
+
 ## [2.3.8] - 2026-07-28
 
 - Fix unit ordering in `/mobile/map_query`
