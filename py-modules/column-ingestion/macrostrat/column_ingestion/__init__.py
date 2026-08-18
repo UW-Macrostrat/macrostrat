@@ -1,4 +1,5 @@
 from pathlib import Path
+from macrostrat.core.database import get_database
 
 from typer import Argument, Typer
 
@@ -22,3 +23,14 @@ def ingest_columns(
 
 
 app.command("ingest-shanan")(shanan_column_importer)
+
+
+@app.command(name="calculate-age-model")
+def calculate_age_model(
+    col_id: int = Argument(..., help="Column ID for which to calculate the age model")
+):
+    """Calculate age model for columns in the data file."""
+    from .age_model import build_age_model_for_existing_column
+
+    db = get_database()
+    build_age_model_for_existing_column(db, col_id)

@@ -194,6 +194,7 @@ def get_nearest_interval(age: float, interval: Interval):
 def build_age_model(db, units: list[Unit]):
     """Build an age model for a column"""
     # Group by section_id
+
     sections = defaultdict(list)
     for unit in units:
         sections[unit.section_id].append(unit)
@@ -202,7 +203,7 @@ def build_age_model(db, units: list[Unit]):
         build_section_age_model(db, units)
 
 
-def build_section_age_model(db, units: list[Unit]):
+def _build_section_age_model(db, units: list[Unit]):
     """Build an age model for a section"""
 
     # Build an index of surfaces by position
@@ -222,9 +223,11 @@ def build_section_age_model(db, units: list[Unit]):
     if not model.has_valid_age_model:
         print("[red bold]Invalid age model, skipping unit_boundaries")
 
-    boundaries = list(create_unit_boundaries(model.apply()))
+    return list(create_unit_boundaries(model.apply()))
 
-    write_unit_boundaries(db, boundaries)
+def build_section_age_model(db, units: list[Unit]):
+    """Build an age model for a section"""
+    write_unit_boundaries(db, _build_section_age_model(db, units))
 
 
 def create_unit_boundaries(surfaces: list[AgeModelSurface]):
@@ -254,3 +257,39 @@ def write_unit_boundaries(db, unit_boundaries: list[UnitBoundary]):
     cls = db.model.macrostrat_unit_boundaries
     mappings = [u.to_dict() for u in unit_boundaries]
     db.session.bulk_insert_mappings(cls, mappings)
+
+def get_units_for_column(db, column_id: int) -> list[Unit]:
+    db.automap(schemas=["macrostrat"])
+    U = db.model.macrostrat_units
+    units = db.session.query(U).filter(U.col_id == column_id).all()
+    for unit in units:
+        print(unit)
+        yield Unit(
+            id=unit.id,
+            col_id=unit.col_id,
+            section_id=unit.section_id,
+            b_pos=unit.position_bottom,
+            t_pos=unit.position_top,
+        )
+
+def build_age_model_for_existing_column(db, column_id: int):
+    # Fetch all units for the given column
+    db.automap(schemas=["macrostrat"])
+    units = get_units_for_column(db, column_id)
+    section_ids = set(u.section_id for u in units)
+    with db.transaction():
+        # TODO: idempotence
+        new_units = []
+        for section in section_ids:
+            section_units = [u for u in units if u.section_id == section]
+            remove_existing_age_model(db, section)
+            new_units += _build_section_age_model(db, section_units)
+        print(new_units)
+        return new_units
+
+def remove_existing_age_model(db, section: int):
+    """Remove existing age model for a given column"""
+    db.run_query("""
+    DELETE FROM macrostrat.unit_boundaries
+    WHERE section_id = :section
+    """, dict(section=section))
