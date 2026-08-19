@@ -4719,7 +4719,6 @@ def normalize_update_process_flag(
     update_process_flag_for_current_context(dry_run=dry_run)
 
 
-
 @normalize_cli.command("add-tag")
 def normalize_add_tag(
     tag: str = Argument(..., help="Tag text, e.g. 'some ages null'"),
