@@ -14,6 +14,7 @@ from typer import Argument, Option
 from macrostrat.core import app
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
+from macrostrat.map_integration.commands.prepare_fields.utils import PointsTableUpdater
 
 # from macrostrat.map_integration.pipeline import ingest_map
 from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
@@ -386,6 +387,132 @@ staging_cli.add_typer(normalize_cli, name="normalize")
 
 # ------------------------------------------
 # commands nested under 'macrostrat maps staging...'
+
+
+@staging_cli.command("reingest-points")
+def cmd_reingest_points(
+    data_path: str = ...,
+    prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
+    crs: str = Option(None, help="Force CRS for layers missing projection"),
+    filter: str = Option(None, help="Filter applied to GIS file selection"),
+):
+    """
+    Re-ingest ONLY the points layer for an already-staged map.
+
+    Replaces sources.<slug>_points and re-adds its preferred columns. Polygons and
+    lines are untouched, and nothing is written to ingest_process or S3, so the
+    existing ingest record and uploaded archive stay as they are.
+
+    Any manual or normalize-* work already done on the points table is lost --
+    re-run 'normalize normalize_az --layer points' afterward.
+    """
+    slug = _reingest_points_for_path(Path(data_path), prefix, crs=crs, filter=filter)
+    console.print(
+        f"[green]Done:[/green] re-ingested sources.{slug}_points. "
+        f"Now run: [bold]normalize normalize_az --only {slug} --layer points[/bold]"
+    )
+
+
+def _reingest_points_for_path(
+    data_path: Path, prefix: str, crs: str = None, filter: str = None
+) -> str:
+    """Re-ingest the points layer for one map directory. Returns the slug."""
+    db = get_database()
+
+    slug, name, ext = resolve_slug_from_path(prefix, data_path)
+    source_id = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug = :slug",
+        dict(slug=slug),
+    ).scalar()
+    if source_id is None:
+        raise RuntimeError(
+            f"No maps.sources row for slug {slug}. Run 'staging ingest' first."
+        )
+
+    gis_files, excluded_files = find_gis_files(data_path, filter=filter)
+    if not gis_files:
+        raise ValueError(f"No GIS files found in {data_path}")
+
+    console.print(
+        f"[bold]Re-ingesting points only[/bold] for [cyan]{slug}[/cyan] "
+        f"(source_id={source_id}) from {len(gis_files)} file(s)"
+    )
+
+    ingest_map(
+        slug,
+        gis_files,
+        pipeline="",
+        if_exists="replace",
+        meta_path=data_path,
+        merge_key="mapunit",
+        meta_table="points",
+        crs=crs,
+        feature_types=["Point"],
+    )
+
+    # Re-add _pkid, source_id, and the preferred point columns to the new table.
+    PointsTableUpdater(db, f"{slug}_points", "sources").run(source_id)
+    return slug
+
+
+@staging_cli.command("bulk-reingest-points")
+def cmd_bulk_reingest_points(
+    data_path: str = ...,
+    prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
+    only: str = Option(None, help="Process a single subdirectory name."),
+    start_after: str = Option(
+        None, help="Resume: skip subdirectories up to and including this name."
+    ),
+    crs: str = Option(None, help="Force CRS for layers missing projection"),
+    filter: str = Option(None, help="Filter applied to GIS file selection"),
+):
+    """
+    Re-ingest ONLY the points layer for every map subdirectory under DATA_PATH.
+
+    Same guarantees as 'reingest-points', applied per map: polygons, lines,
+    maps.sources metadata, ingest_process, and S3 are all left alone. A map that
+    fails is reported and the run continues.
+    """
+    parent = Path(data_path)
+    if not parent.exists() or not parent.is_dir():
+        raise ValueError(f"{data_path} is not a valid directory.")
+
+    region_dirs = sorted(p for p in parent.iterdir() if p.is_dir())
+    if only is not None:
+        region_dirs = [p for p in region_dirs if p.name == only]
+        if not region_dirs:
+            raise ValueError(f"No subdirectory named '{only}' in {data_path}")
+    elif start_after is not None:
+        names = [p.name for p in region_dirs]
+        if start_after not in names:
+            raise ValueError(f"No subdirectory named '{start_after}' in {data_path}")
+        region_dirs = region_dirs[names.index(start_after) + 1 :]
+
+    done: list[str] = []
+    failed: list[tuple[str, str]] = []
+
+    for position, region_path in enumerate(region_dirs, start=1):
+        console.print(
+            f"\n[bold cyan]({position}/{len(region_dirs)}) {region_path.name}[/bold cyan]"
+        )
+        try:
+            done.append(
+                _reingest_points_for_path(region_path, prefix, crs=crs, filter=filter)
+            )
+        except Exception as e:
+            failed.append((region_path.name, f"{type(e).__name__}: {e}"))
+            console.print(f"[red]Failed[/red] [bold]{region_path.name}[/bold]: {e}")
+
+    console.print(
+        f"\n[green]Finished:[/green] {len(done)}/{len(region_dirs)} map(s) re-ingested"
+    )
+    for name, message in failed:
+        console.print(f"  [red]{name}[/red]: {message}")
+    if done:
+        console.print(
+            "\nNow run: [bold]macrostrat maps staging normalize normalize_az "
+            "--layer points[/bold]"
+        )
 
 
 @staging_cli.command("s3-upload")

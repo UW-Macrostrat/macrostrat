@@ -182,6 +182,7 @@ def ingest_map(
     merge_key: str = None,
     meta_table: str = "polygons",
     chunksize: int = 100,
+    feature_types: List[str] = None,
 ) -> Tuple[str, str, str]:
     """Ingest general GIS data files into the database.
 
@@ -276,6 +277,11 @@ def ingest_map(
     }
     # concatenate all polygons into a single df, lines, and points as well
     for feature_type, df_list in frames.items():
+        # feature_types restricts which sources.<slug>_<suffix> tables get written,
+        # so a single layer can be re-ingested without replacing the others.
+        if feature_types is not None and feature_type not in feature_types:
+            console.print(f"[dim]Skipping {feature_type}s (not requested)[/dim]")
+            continue
         # Concatenate all dataframes
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
         df = df.loc[:, ~df.columns.duplicated()]
@@ -462,6 +468,15 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             df = apply_domains_to_fields(df, info)
 
             # TODO: find and follow foreign key relationships
+
+            # Non-spatial tables (e.g. DescriptionOfMapUnits) come back as plain
+            # DataFrames with no .crs, and can't contribute to the polygon/line/point
+            # frames. They are read separately via extract_gdb_layer when needed.
+            if "geometry" not in df.columns:
+                console.print(
+                    f"[yellow dim]Skipping {layer}: no geometry column[/yellow dim]"
+                )
+                continue
 
             _print_layer_info(df, console)
 
