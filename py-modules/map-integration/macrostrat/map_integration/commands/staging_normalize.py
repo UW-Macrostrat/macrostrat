@@ -185,8 +185,12 @@ def resolve_target(
 
 
 # Options appended to every context-driven command by the --slug/--layer override.
-SLUG_OPTION = Option(None, "--slug", help="Target this slug instead of the set-map context.")
-LAYER_OPTION = Option(None, "--layer", help="Target this layer: polygons, lines, or points.")
+SLUG_OPTION = Option(
+    None, "--slug", help="Target this slug instead of the set-map context."
+)
+LAYER_OPTION = Option(
+    None, "--layer", help="Target this layer: polygons, lines, or points."
+)
 
 
 def strip_strat_name_suffixes(value: str) -> str:
@@ -2152,9 +2156,7 @@ def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         return
 
     if _has_ingest_process_tag(db, slug, tag):
-        console.print(
-            f"[dim]{slug} is already tagged {tag}; nothing to do[/dim]"
-        )
+        console.print(f"[dim]{slug} is already tagged {tag}; nothing to do[/dim]")
         return
 
     db.run_sql(
@@ -2762,7 +2764,6 @@ ORIG_ID_CANDIDATES = [
     "contactsandfaults_id",
     "globalid",
     "orientationpoints_id",
-
 ]
 
 # Accepted certainty values, matched case-insensitively. Seeded from the Arizona
@@ -2778,7 +2779,14 @@ LINE_CERTAINTY_VALUES = [
 INTEGER_TEXT_PATTERN = "^-?[0-9]+$"
 
 # Columns macrostrat manages itself; never useful as an original-id source.
-ORIG_ID_MANAGED_COLUMNS = {"_pkid", "orig_id", "source_id", "omit", "description", "descrip"}
+ORIG_ID_MANAGED_COLUMNS = {
+    "_pkid",
+    "orig_id",
+    "source_id",
+    "omit",
+    "description",
+    "descrip",
+}
 
 # Only these types are worth testing. Keeps geometry (and other large or
 # uncastable columns) out of the scan entirely.
@@ -2965,9 +2973,7 @@ def copy_orig_id_from_candidates(
         return None
 
     if interactive and len(valid) > 1:
-        col = prompt_for_orig_id_column(
-            target, valid, has_omit="omit" in column_types
-        )
+        col = prompt_for_orig_id_column(target, valid, has_omit="omit" in column_types)
         if col is None:
             return None
     else:
@@ -3984,13 +3990,9 @@ def normalize_copy_ages(
             comment="some ages null;",
             dry_run=dry_run,
         )
-        add_ingest_process_tag(
-            slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run
-        )
+        add_ingest_process_tag(slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run)
     else:
-        remove_ingest_process_tag(
-            slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run
-        )
+        remove_ingest_process_tag(slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run)
 
     console.print("[green]Finished copy-age[/green]")
 
@@ -4899,9 +4901,7 @@ def normalize_az(
     failed: list[tuple[str, str]] = []
 
     for position, slug in enumerate(slugs, start=1):
-        console.print(
-            f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]"
-        )
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
         try:
             _normalize_az_slug(db, slug, layers)
         except Exception as e:
@@ -4924,7 +4924,7 @@ def normalize_az(
 def _normalize_az_slug(db, slug: str, layers: list[str]):
     """Normalize every layer of one Arizona map, committing on success."""
     for layer in layers:
-        #add preferred columns
+        # add preferred columns
         target = TableTarget(schema="sources", table=slug + layer)
         try:
             add_preferred_columns(target=target)
@@ -4933,7 +4933,7 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
             )
             continue
-        '''
+        """
         #find orig_id candidates and copy into orig_id col
         copy_orig_id_from_candidates(
             target=target,
@@ -4955,27 +4955,27 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
             col_one="comments",
             col_two="datasourceid",
             separator="; ",
-        )'''
+        )"""
 
         if layer == "_polygons":
 
-            '''#copy the first available unit label column into unit_label
+            """#copy the first available unit label column into unit_label
             copy_first_available_column(
                 target=target,
                 srcs=["mapunit", "label"],
                 dst="unit_label",
                 overwrite=True,
-            )'''
-            #age holds interval names, so force it to text before copying text in
+            )"""
+            # age holds interval names, so force it to text before copying text in
             cast_column_to_text(target, "age")
-            #copy the first available age column into the age column
+            # copy the first available age column into the age column
             copy_first_available_column(
                 target=target,
                 srcs=["age_meta", "relativeage"],
                 dst="age",
                 overwrite=True,
             )
-            #fill any remaining null b_interval/t_interval from the age text
+            # fill any remaining null b_interval/t_interval from the age text
             remaining_ages = copy_age_columns(
                 target=target,
                 older_col="age",
@@ -4986,22 +4986,21 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
             else:
                 remove_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG)
 
-            #fuzzy match descrip tokens against the lith vocabularies
-            '''calculate_lith_fuzzy_match_percentages(
+            # fuzzy match descrip tokens against the lith vocabularies
+            """calculate_lith_fuzzy_match_percentages(
                 target=target,
                 src_col=["descrip", "name"],
                 threshold=0.85,
                 row_copy_threshold_percent=10.0,
-            )'''
-        #macrostrat maps staging normalize add-tag "polygons processed" --slug arizona_adamsmesa
-
+            )"""
+        # macrostrat maps staging normalize add-tag "polygons processed" --slug arizona_adamsmesa
 
         if layer == "_lines":
-            '''null_column_values(
+            """null_column_values(
                 target=target,
                 column=type
-            )'''
-            #split 'Contact, Approximate' into type='Contact', certainty='Approximate'
+            )"""
+            # split 'Contact, Approximate' into type='Contact', certainty='Approximate'
             unmerge_column_values(
                 target=target,
                 src="type",
@@ -5012,43 +5011,38 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
                 keep_prefix=True,
                 allowed_values=LINE_CERTAINTY_VALUES,
             )
-            #copy into certainty column
+            # copy into certainty column
             copy_first_available_column(
                 target=target,
                 srcs=["identityconfidence", "existenceconfidence"],
                 dst="certainty",
                 overwrite=True,
             )
-            #copy into the descrip column
+            # copy into the descrip column
             copy_first_available_column(
                 target=target,
                 srcs=["name", "ltype", "type"],
                 dst="descrip",
-                overwrite=True
+                overwrite=True,
             )
-        '''macrostrat maps staging normalize add-tag "lines processed" --slug arizona_adamsmesa'''
-
-
+        """macrostrat maps staging normalize add-tag "lines processed" --slug arizona_adamsmesa"""
 
         if layer == "_points":
-            #copy into certainty column
+            # copy into certainty column
             copy_first_available_column(
                 target=target,
                 srcs=["identityconfidence", "existenceconfidence"],
                 dst="certainty",
                 overwrite=True,
             )
-            #copy into the descrip column
+            # copy into the descrip column
             copy_first_available_column(
                 target=target,
                 srcs=["point_type", "pttype"],
                 dst="descrip",
-                overwrite=True
+                overwrite=True,
             )
-        '''macrostrat maps staging normalize add-tag "points processed" --slug arizona_adamsmesa'''
-
-
-
+        """macrostrat maps staging normalize add-tag "points processed" --slug arizona_adamsmesa"""
 
     db.session.commit()
 
