@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from pytest import fixture, mark
 
-from .lithologies import LithAtt, Lithology, LithsProcessor
+from macrostrat.column_ingestion.lithologies import LithAtt, Lithology, LithsProcessor
 
 
 @dataclass

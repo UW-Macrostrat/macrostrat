@@ -1,0 +1,4 @@
+id,section_id,col_id,position_top,position_bottom,fo,lo,fo_h,lo_h,strat_name
+43086,12220,5065,0.000,0.700,421,421,0,0,"Core 1H, 0.0-0.7 mbsf: clay"
+43087,12220,5065,0.700,1.000,421,421,0,0,"Core 1H, 0.7-1.0 mbsf: clay"
+43088,12220,5065,1.000,1.550,421,421,0,0,"Core 1H, 13.4-22.28 mbsf: clay"

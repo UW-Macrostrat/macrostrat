@@ -4,7 +4,11 @@ from dataclasses import dataclass
 
 from pytest import mark
 
-from .intervals import IntervalID, get_interval_from_text, get_intervals
+from macrostrat.column_ingestion.intervals import (
+    IntervalID,
+    get_interval_from_text,
+    get_intervals,
+)
 
 
 def test_get_intervals(test_db):

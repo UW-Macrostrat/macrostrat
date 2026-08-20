@@ -6,7 +6,8 @@ from prompt_toolkit.styles.style import default_priority
 from pytest import fixture, mark
 from shapely.geometry import Point
 
-from macrostrat.map_topology import _set_dirty, _update_identity, create_topo_context
+from macrostrat.map_topology import _set_dirty, _update_identity
+from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 

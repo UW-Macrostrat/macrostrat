@@ -5,13 +5,14 @@ from macrostrat.database import on_conflict
 
 from .age_model import build_age_model
 from .columns import (
+    assign_section_ids,
     get_column_data,
-    get_or_create_column,
-    get_or_create_column_group,
-    get_or_create_section,
+    reconcile_column_group,
+    reconcile_columns,
 )
 from .database import get_or_create_project
 from .metadata import get_metadata
+from .refs import get_reference_data, reconcile_references, resolve_column_references
 from .units import PositionAxisType, get_units, write_units
 
 
@@ -39,6 +40,10 @@ def ingest_columns_from_file(
     if "columns" in sheet_names:
         columns = get_column_data(data_file, meta)
 
+    references = []
+    if "refs" in sheet_names:
+        references = get_reference_data(data_file)
+
     # Interpret positions as ordinal if the axis type is age
     position = PositionAxisType.HEIGHT
     if meta.axis_type == "age":
@@ -54,27 +59,30 @@ def ingest_columns_from_file(
     if project is None:
         raise ValueError("Project not found in the data file")
 
-    # Start ingesting the data into the database, using the project information if available
+    # One transaction for the whole (column, sections, units) set, so `units.section_id`
+    # can reference sections that are created in the same breath — the constraint the
+    # legacy importer had to drop because it could not precalculate sections.
     with db.transaction(), on_conflict("restrict"):
         print(f"Ingesting data into project: {project.name}")
         _project = get_or_create_project(db, project)
-        col_group_id = get_or_create_column_group(db, _project.id)
-        print("Project", _project.id, _project.slug)
+        col_group_id = reconcile_column_group(db, _project.id)
+
+        # References come first: columns cite them, and the citations are resolved from
+        # workbook-local ids once the reference rows exist.
+        ref_map = reconcile_references(db, references)
+
+        reconcile_columns(
+            db, columns, project_id=_project.id, col_group_id=col_group_id
+        )
+        if ref_map:
+            resolve_column_references(db, columns, ref_map)
+
         for col in columns:
-            col.project_id = _project.id
-            col.group_id = col_group_id
-            col_id = get_or_create_column(db, col)
-            print(f"Ingesting column: {col.name}, ID: {col_id}")
-            col.id = col_id
-            # Create a section for the column (if it doesn't already exist)
-            section_id = get_or_create_section(db, col_id)
-
-            # Sync the units with the column ID
-            for unit in col.units:
-                unit.col_id = col_id
-                unit.section_id = section_id
-            units = write_units(db, col.units)
-
-            build_age_model(db, units)
+            if not col.units:
+                continue
+            print(f"Ingesting column: {col.name}, ID: {col.id}")
+            assign_section_ids(db, col.id, col.units)
+            write_units(db, col.units)
+            build_age_model(db, col.units)
 
         db.session.commit()
