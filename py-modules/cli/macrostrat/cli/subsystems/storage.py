@@ -60,19 +60,6 @@ if admin := settings.get("storage.admin", None):
                 print("[red bold]Error:[/] [red]" + str(e))
 
 
-def _s3_users():
-    res = _kubectl(
-        settings,
-        ["get", "secrets", "-o", "jsonpath={.items[*].metadata.name}"],
-        capture_output=True,
-        text=True,
-    )
-    prefix = "s3-user-"
-    return [
-        r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
-    ]
-
-
 @app.command()
 def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
@@ -176,14 +163,6 @@ def s3_bucket_migration(
             subprocess.run(docker_cmd, check=True)
 
         print("[green]Backup complete[/green]")
-
-
-@app.command()
-def users():
-    """
-    List available S3 users.
-    """
-    print(_s3_users())
 
 
 @app.command(
