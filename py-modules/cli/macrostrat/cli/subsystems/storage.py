@@ -45,22 +45,7 @@ if admin := settings.get("storage.admin", None):
         app = storage_app
 
 
-def _s3_users():
-    res = _kubectl(
-        settings,
-        ["get", "secrets", "-o", "jsonpath={.items[*].metadata.name}"],
-        capture_output=True,
-        text=True,
-    )
-    prefix = "s3-user-"
-    return [
-        r.replace(prefix, "") for r in res.stdout.split(" ") if r.startswith(prefix)
-    ]
-
-
-@app.command(
-    short_help="Migrate S3 buckets using [cyan]rclone[/cyan]", rich_help_panel="Tools"
-)
+@app.command()
 def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
     show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
@@ -163,14 +148,6 @@ def s3_bucket_migration(
             subprocess.run(docker_cmd, check=True)
 
         print("[green]Backup complete[/green]")
-
-
-@app.command()
-def users():
-    """
-    List available S3 users.
-    """
-    print(_s3_users())
 
 
 @app.command(
