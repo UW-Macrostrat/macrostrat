@@ -15,10 +15,10 @@ from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
 from macrostrat.utils import get_logger
-from .rebuild import short_help
 
 from ...core.exc import MacrostratError
 from ..kubernetes import _kubectl, get_secret
+from .rebuild import short_help
 
 settings = app_.settings
 
@@ -26,7 +26,7 @@ log = get_logger(__name__)
 
 # The default app if we don't have a storage setup defined
 admonitions = "[bold red](none defined for the current environment)[/]"
-app = Typer(no_args_is_help=True, help="Storage system management\n"+admonitions)
+app = Typer(no_args_is_help=True, help="Storage system management\n" + admonitions)
 
 if admin := settings.get("storage.admin", None):
     host = settings.get("storage.endpoint", None)
@@ -37,14 +37,13 @@ if admin := settings.get("storage.admin", None):
 
         # Set up the radosgw-admin command
 
-
-
         environ["RADOSGW_ACCESS_KEY"] = access_key
         environ["RADOSGW_SECRET_KEY"] = secret_key
         environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
         from macrostrat.radosgw_admin.cli import app as storage_app
 
         app = storage_app
+
 
 def _s3_users():
     res = _kubectl(
@@ -59,8 +58,9 @@ def _s3_users():
     ]
 
 
-
-@app.command(short_help="Migrate S3 buckets using [cyan]rclone[/cyan]", rich_help_panel="Tools")
+@app.command(
+    short_help="Migrate S3 buckets using [cyan]rclone[/cyan]", rich_help_panel="Tools"
+)
 def s3_bucket_migration(
     dry_run: bool = Option(False, "--dry-run", "-n", help="Do everything except write"),
     show_cmd: bool = Option(False, help="Print the rclone command for debugging"),
@@ -177,7 +177,7 @@ def users():
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     add_help_option=False,
     short_help="Run the Minio client in a Docker container",
-    rich_help_panel="Tools"
+    rich_help_panel="Tools",
 )
 def mc(args: List[str] = Argument(None)):
     """
