@@ -355,15 +355,6 @@ wheels = [
 ]
 
 [[package]]
-name = "boto"
-version = "2.49.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c8/af/54a920ff4255664f5d238b5aebd8eedf7a07c7a5e71e27afcfe840b82f51/boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a", size = 1478498, upload-time = "2018-07-11T20:58:58.057Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/10/c0b78c27298029e4454a472a1919bde20cb182dab1662cec7f2ca1dcc523/boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8", size = 1359202, upload-time = "2018-07-11T20:58:55.711Z" },
-]
-
-[[package]]
 name = "boto3"
 version = "1.43.65"
 source = { registry = "https://pypi.org/simple" }
@@ -904,21 +895,6 @@ wheels = [
 ]
 
 [[package]]
-name = "htpheno-radosgw-admin-client"
-version = "0.8.2"
-source = { editable = "submodules/storage-admin" }
-dependencies = [
-    { name = "humanize" },
-    { name = "radosgw-admin" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "humanize", specifier = ">=4.11,<4.12" },
-    { name = "radosgw-admin", specifier = ">=1.7,<1.8" },
-]
-
-[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1136,7 +1112,6 @@ dependencies = [
     { name = "fiona" },
     { name = "geopandas" },
     { name = "greenlet" },
-    { name = "htpheno-radosgw-admin-client" },
     { name = "ipython" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-column-ingestion" },
@@ -1147,6 +1122,7 @@ dependencies = [
     { name = "macrostrat-map-integration" },
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-radosgw-admin" },
     { name = "macrostrat-schema-management" },
     { name = "macrostrat-usage-stats" },
     { name = "macrostrat-utils" },
@@ -1187,7 +1163,6 @@ requires-dist = [
     { name = "fiona", specifier = ">=1.8.22,<2" },
     { name = "geopandas", specifier = ">=1.1.3,<2" },
     { name = "greenlet", specifier = ">=3.0.3,<4" },
-    { name = "htpheno-radosgw-admin-client", editable = "submodules/storage-admin" },
     { name = "ipython", specifier = ">=8.5.0,<10" },
     { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-column-ingestion", editable = "py-modules/column-ingestion" },
@@ -1199,6 +1174,7 @@ requires-dist = [
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
+    { name = "macrostrat-radosgw-admin", editable = "submodules/storage-admin" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "macrostrat-usage-stats", editable = "py-modules/usage-stats" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
@@ -1462,6 +1438,36 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.0.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pydantic", specifier = ">=2.12.4" },
+]
+
+[[package]]
+name = "macrostrat-radosgw-admin"
+version = "0.9.0"
+source = { editable = "submodules/storage-admin" }
+dependencies = [
+    { name = "humanize" },
+    { name = "rgwadmin" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "humanize", specifier = ">=4.11,<4.12" },
+    { name = "rgwadmin", specifier = ">=2.4.5" },
+    { name = "rich", specifier = ">=13.9.2" },
+    { name = "typer", specifier = ">=0.12,<0.28" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.7,<1.8" },
+    { name = "black", specifier = ">=24.10,<24.11" },
+    { name = "isort", specifier = ">=5.13,<5.14" },
+    { name = "markdown", specifier = ">=3.7,<3.8" },
+    { name = "mypy", specifier = ">=1.12,<1.13" },
+    { name = "pre-commit", specifier = ">=4.0,<4.1" },
+    { name = "pylint", specifier = ">=3.3,<3.4" },
 ]
 
 [[package]]
@@ -1990,7 +1996,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -2867,18 +2873,6 @@ wheels = [
 ]
 
 [[package]]
-name = "radosgw-admin"
-version = "1.7.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "boto" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/42/a7/b147fb5faac7f3c832652a599110c6c6764577f2ac5429a18d73b4440491/radosgw-admin-1.7.2.tar.gz", hash = "sha256:ac05f78ec41caaef4209f90932b857704aa031017bf31faa7f30ec0d7fc80471", size = 23783, upload-time = "2020-10-07T08:32:53.732Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/9b/f6fdc067eccd61f1147e778327a8ffd0052c28d3a57dd79b8465bd28b364/radosgw_admin-1.7.2-py2.py3-none-any.whl", hash = "sha256:c22ade8e75397717a37ffa9277be2658d2e71c09942eac8eb9d5807a751abf30", size = 25549, upload-time = "2020-10-07T08:32:52.329Z" },
-]
-
-[[package]]
 name = "rasterio"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2926,6 +2920,18 @@ wheels = [
 ]
 
 [[package]]
+name = "requests-aws4auth"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/fd/796afb1c08e6332da9200bc530bcd869a17cecf93c4d9355d9af8c263eea/requests_aws4auth-1.3.2.tar.gz", hash = "sha256:7a697bf3c7a66d82980ad3348a2539403870d5c1f1e313f5676fb11e6793eef8", size = 26216, upload-time = "2026-05-01T17:14:59.765Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/d5/e8633053ff50ade180c8f35ac069539be344d3f025759af589b6bb96278f/requests_aws4auth-1.3.2-py3-none-any.whl", hash = "sha256:c6cbf45f17119af926e3cb77acfeed083d1cf9580d893ee6c0ecf01088fd34e5", size = 24767, upload-time = "2026-05-01T17:14:58.459Z" },
+]
+
+[[package]]
 name = "results"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2936,6 +2942,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ee/bf/6266da8c0fe779c8683fecdf51490909709cc33669bd074117b265412b5e/results-1.4.0.tar.gz", hash = "sha256:5e5492b38e22e701c6a6033ab8b950cdbfd501b1db11e3d0c71fc6da222bc6f8", size = 47569, upload-time = "2025-09-22T12:59:42.263Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/ac/7169a54cdc4b1f25fecc00387c001cfe988b63b5020fbb9d32b0519b3dfa/results-1.4.0-py3-none-any.whl", hash = "sha256:feeb5f0387254978415567adc5325bf155d3dc1921c4b5404e17c452e94223e8", size = 58594, upload-time = "2025-09-22T12:59:40.964Z" },
+]
+
+[[package]]
+name = "rgwadmin"
+version = "2.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "requests-aws4auth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/50/fd15c92cece2268256cc10fac8f1f6290b4bfd7fe2085c54ccf96e12b43c/rgwadmin-2.4.6.tar.gz", hash = "sha256:65a24d0b0c633374fc6595df390fb674f760a206880941bcc854a9c6eac38730", size = 30830, upload-time = "2026-07-15T21:53:34.948Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/e6/f74cb716f5babc8a8c2ee887586a18f134eb46430f46ef54a3325a33e830/rgwadmin-2.4.6-py3-none-any.whl", hash = "sha256:8ebe987df1edfe3e522a27452867370e29d46c1dff4bca5944d6fe3187e07cce", size = 21070, upload-time = "2026-07-15T21:53:34.088Z" },
 ]
 
 [[package]]

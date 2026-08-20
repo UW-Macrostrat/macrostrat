@@ -18,13 +18,15 @@ from macrostrat.utils import get_logger
 
 from ...core.exc import MacrostratError
 from ..kubernetes import _kubectl, get_secret
+from .rebuild import short_help
 
 settings = app_.settings
 
 log = get_logger(__name__)
 
-
-app = Typer(no_args_is_help=True)
+# The default app if we don't have a storage setup defined
+admonitions = "[bold red](none defined for the current environment)[/]"
+app = Typer(no_args_is_help=True, help="Storage system management\n" + admonitions)
 
 if admin := settings.get("storage.admin", None):
     host = settings.get("storage.endpoint", None)
@@ -35,29 +37,12 @@ if admin := settings.get("storage.admin", None):
 
         # Set up the radosgw-admin command
 
-        @app.command("admin", add_help_option=False)
-        def storage_admin(args: List[str] = Argument(None)):
-            """
-            Run the Ceph Object Storage admin command.
-            """
-            import sys
-            from os import environ
+        environ["RADOSGW_ACCESS_KEY"] = access_key
+        environ["RADOSGW_SECRET_KEY"] = secret_key
+        environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
+        from macrostrat.radosgw_admin.cli import app as storage_app
 
-            from htpheno.radosgw_admin_client.cli import UserError, main
-
-            environ["RADOSGW_ACCESS_KEY"] = access_key
-            environ["RADOSGW_SECRET_KEY"] = secret_key
-            environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
-
-            if args is None:
-                args = ["--help"]
-
-            sys.argv = ["radosgw-admin", *args]
-            try:
-                main()
-            except UserError as e:
-                # raise MacrostratError(e)
-                print("[red bold]Error:[/] [red]" + str(e))
+        app = storage_app
 
 
 @app.command()
@@ -168,6 +153,8 @@ def s3_bucket_migration(
 @app.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     add_help_option=False,
+    short_help="Run the Minio client in a Docker container",
+    rich_help_panel="Tools",
 )
 def mc(args: List[str] = Argument(None)):
     """
@@ -229,7 +216,7 @@ def _mc(command: str, **kwargs):
     )
 
 
-@app.command()
+@app.command(rich_help_panel="Tools")
 def mirror(
     src: Optional[str] = Argument(None),
     dst: Optional[str] = Argument(None),
