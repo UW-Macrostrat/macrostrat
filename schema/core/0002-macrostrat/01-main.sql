@@ -83,7 +83,8 @@ CREATE TYPE macrostrat.boundary_status AS ENUM (
     'modeled',
     'relative',
     'absolute',
-    'spike'
+    'spike',
+    'imposed'
 );
 
 CREATE TYPE macrostrat.intervals_interval_type AS ENUM (
