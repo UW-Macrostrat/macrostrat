@@ -30,7 +30,7 @@ ALTER TABLE macrostrat.unit_liths
 
 ALTER TABLE macrostrat.unit_environs
   ADD CONSTRAINT unit_environs_environs_fk FOREIGN KEY (environ_id) REFERENCES macrostrat.environs(id) ON DELETE CASCADE,
-  ADD CONSTRAINT unit_environs_refs_fk  FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
+  ADD CONSTRAINT unit_environs_refs_fk  FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id),
   ADD CONSTRAINT unit_environs_units_fk FOREIGN KEY (unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE;
 
 ALTER TABLE macrostrat.unit_econs
@@ -49,7 +49,7 @@ ALTER TABLE macrostrat.unit_strat_names
 ALTER TABLE macrostrat.unit_boundaries
   ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
   ADD FOREIGN KEY(unit_id_2) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
-  ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE;
+  ADD FOREIGN KEY(ref_id) REFERENCES macrostrat.refs(id);
 
 ALTER TABLE macrostrat.unit_boundaries_scratch
   ADD FOREIGN KEY(unit_id) REFERENCES macrostrat.units(id) ON DELETE CASCADE NOT VALID,
