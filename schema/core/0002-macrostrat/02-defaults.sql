@@ -38,8 +38,6 @@ ALTER TABLE ONLY macrostrat.places ALTER COLUMN place_id SET DEFAULT nextval('ma
 
 ALTER TABLE ONLY macrostrat.projects ALTER COLUMN id SET DEFAULT nextval('macrostrat.projects_id_seq'::regclass);
 
-ALTER TABLE ONLY macrostrat.refs ALTER COLUMN id SET DEFAULT nextval('macrostrat.refs_id_seq'::regclass);
-
 ALTER TABLE ONLY macrostrat.rockd_features ALTER COLUMN id SET DEFAULT nextval('macrostrat.rockd_features_id_seq'::regclass);
 
 ALTER TABLE ONLY macrostrat.sections ALTER COLUMN id SET DEFAULT nextval('macrostrat.sections_id_seq'::regclass);
