@@ -520,7 +520,6 @@ def cmd_upload_dir(
     slug: str = ...,
     data_path: Path = ...,
     ext: str = Option(".gdb", help="extension of the data path"),
-    ingest_process_id: int = Option(None),
 ):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
@@ -528,17 +527,17 @@ def cmd_upload_dir(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),
     ).scalar()
-    ingest_id = db.run_query(
+    # source_id is the ingest_process key, so there's nothing to look up beyond
+    # confirming the row exists (at most one per source).
+    ingest_source_id = db.run_query(
         """
-        SELECT id
+        SELECT source_id
         FROM maps_metadata.ingest_process
         WHERE source_id = :source_id
-        ORDER BY id DESC
-        LIMIT 1
         """,
         dict(source_id=source_id),
     ).scalar()
-    res = staging_upload_dir(slug, data_path, db, ingest_id)
+    res = staging_upload_dir(slug, data_path, db, ingest_source_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return

@@ -3,12 +3,13 @@ from enum import Enum
 from typing import Optional
 
 import api.models.source as Sources
-from api.schemas import IngestProcessTag, IngestState
+from api.schemas import IngestProcessTag
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Post(BaseModel):
-    state: Optional[IngestState] = None
+    # Free text — validated by the FK to maps_metadata.ingest_state, not here.
+    state: Optional[str] = None
     comments: Optional[str] = None
     source_id: Optional[int] = None
     # Commented out alongside the ORM column — `create_ingest_process` passes

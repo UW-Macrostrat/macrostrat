@@ -15,7 +15,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import (
     ARRAY,
     BOOLEAN,
-    ENUM,
     INTEGER,
     JSON,
     JSONB,
@@ -172,10 +171,10 @@ class IngestProcess(Base):
         ForeignKey("maps.sources.source_id"), primary_key=True
     )
 
-    state: Mapped[IngestState] = mapped_column(
-        ENUM(IngestState, name="ingest_state", schema="maps", native_enum=True),
-        nullable=True,
-    )
+    # Plain text with an FK to maps_metadata.ingest_state, so that lookup table
+    # owns the allowed values and they can change without a code change. The
+    # IngestState enum is kept for reference but is not bound to this column.
+    state: Mapped[str] = mapped_column(TEXT, nullable=True)
 
     # DIVERGENT — `type`, `map_id` and `access_group_id` are not columns on
     # maps_metadata.ingest_process, so any query selecting them fails with

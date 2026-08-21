@@ -146,17 +146,17 @@ def insert_storage_object(
 def link_object_to_ingest(
     db,
     *,
-    ingest_process_id: int,
+    source_id: int,
     object_id: int,
 ) -> None:
     db.run_sql(
         """
-        INSERT INTO maps_metadata.map_files (ingest_process_id, object_id)
-        VALUES (:ingest_process_id, :object_id)
+        INSERT INTO maps_metadata.map_files (source_id, object_id)
+        VALUES (:source_id, :object_id)
         ON CONFLICT DO NOTHING
         """,
         dict(
-            ingest_process_id=ingest_process_id,
+            source_id=source_id,
             object_id=object_id,
         ),
     )
@@ -184,14 +184,14 @@ def staging_upload_dir(
     slug: str,
     data_path: Path,
     db,
-    ingest_process_id: int,
+    source_id: int,
 ) -> dict:
     """
     Upload local files to S3 via MinIO and register them in storage.objects.
     Always uploads a single zip archive for the provided data_path.
     """
-    if ingest_process_id is None:
-        raise ValueError("ingest_process_id is required to link uploaded files")
+    if source_id is None:
+        raise ValueError("source_id is required to link uploaded files")
 
     bucket = settings.get("storage.bucket_name")
     host = settings.get("storage.endpoint")
@@ -242,7 +242,7 @@ def staging_upload_dir(
 
         link_object_to_ingest(
             db,
-            ingest_process_id=ingest_process_id,
+            source_id=source_id,
             object_id=object_id,
         )
 
