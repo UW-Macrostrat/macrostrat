@@ -19,8 +19,8 @@ WHERE type = 'strike-slilp fault';
 -- Create another view for api
 CREATE OR REPLACE VIEW map_ingestion_api.maps AS
 WITH tags AS (
-  SELECT ingest_process_id, array_agg(tag)::text[] names FROM maps_metadata.ingest_process_tag
-  GROUP BY ingest_process_id
+  SELECT source_id, array_agg(tag)::text[] names FROM maps_metadata.ingest_process_tag
+  GROUP BY source_id
 )
 SELECT
   s.source_id,
@@ -35,7 +35,7 @@ FROM maps.sources s
 LEFT JOIN maps_metadata.ingest_process i
   ON s.source_id = i.source_id
 LEFT JOIN tags
-  ON i.id = tags.ingest_process_id
+  ON s.source_id = tags.source_id
 ORDER BY s.source_id DESC;
 
 -- TODO: tighten this to "web_user" and possible only specific users.

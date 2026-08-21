@@ -113,12 +113,7 @@ def delete_map(
 
     # Delete all ingest-related rows for this source, then the source itself.
     db.run_sql(
-        """
-        DELETE FROM maps_metadata.ingest_process_tag
-        WHERE ingest_process_id IN (
-            SELECT id FROM maps_metadata.ingest_process WHERE source_id = :source_id
-        )
-        """,
+        "DELETE FROM maps_metadata.ingest_process_tag WHERE source_id = :source_id",
         dict(source_id=source_id),
     )
     db.run_sql(

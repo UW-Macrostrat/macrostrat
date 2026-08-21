@@ -2123,7 +2123,7 @@ def _has_ingest_process_tag(db, slug: str, tag: str) -> bool:
             """
             SELECT 1
             FROM maps_metadata.ingest_process_tag t
-            JOIN maps_metadata.ingest_process i ON i.id = t.ingest_process_id
+            JOIN maps_metadata.ingest_process i ON i.source_id = t.source_id
             WHERE i.slug = :slug
               AND t.tag = :tag
             """,
@@ -2161,8 +2161,8 @@ def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
 
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process_tag (ingest_process_id, tag)
-        SELECT i.id, :tag
+        INSERT INTO maps_metadata.ingest_process_tag (source_id, tag)
+        SELECT i.source_id, :tag
         FROM maps_metadata.ingest_process i
         WHERE i.slug = :slug
         ON CONFLICT DO NOTHING
@@ -2209,7 +2209,7 @@ def remove_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         """
         DELETE FROM maps_metadata.ingest_process_tag t
         USING maps_metadata.ingest_process i
-        WHERE t.ingest_process_id = i.id
+        WHERE t.source_id = i.source_id
           AND i.slug = :slug
           AND t.tag = :tag
         """,
@@ -2289,16 +2289,16 @@ def update_process_flag_for_current_context(dry_run: bool = False):
 
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process_tag (ingest_process_id, tag)
+        INSERT INTO maps_metadata.ingest_process_tag (source_id, tag)
         SELECT
-            i.id,
+            i.source_id,
             :tag
         FROM maps_metadata.ingest_process i
         WHERE i.slug = :slug
           AND NOT EXISTS (
               SELECT 1
               FROM maps_metadata.ingest_process_tag t
-              WHERE t.ingest_process_id = i.id
+              WHERE t.source_id = i.source_id
                 AND t.tag = :tag
           )
         """,

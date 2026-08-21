@@ -1,3 +1,8 @@
+-- SUPERSEDED — kept for history only, do not run.
+-- This script made maps_metadata.ingest_process.id mirror source_id as an
+-- interim step (including a trigger to keep future rows synced). source_id is
+-- now the primary key and `id` has been dropped, so the statements below either
+-- target a column that no longer exists or are one-off cleanups already applied.
 
 --delete ingest_process rows with NULL source_id.
 DELETE FROM maps_metadata.ingest_process

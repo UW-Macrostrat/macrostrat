@@ -70,14 +70,13 @@ cli.add_command(apply_srid, name="apply-srid")
 _pipeline = IngestionCLI(
     no_args_is_help=True, help="Ingest map data from archive files."
 )
-_pipeline.add_command(pipeline.upload_file, name="upload-file")
-_pipeline.add_command(pipeline.ingest_slug, name="ingest-map")
-_pipeline.add_command(pipeline.ingest_csv, name="ingest-csv")
+# upload-file, ingest-map, ingest-csv and init-map are intentionally NOT
+# registered: `macrostrat maps staging` covers the same ground (s3-upload,
+# ingest, bulk-ingest) and is the maintained path. The functions still exist in
+# pipeline.py and remain importable — only the CLI entry points are withdrawn.
+# See the module docstring in pipeline.py.
 _pipeline.add_command(
     pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons"
-)
-_pipeline.add_command(
-    pipeline.create_slug, name="init-map", rich_help_panel="Low-level"
 )
 cli.add_typer(_pipeline, name="pipeline")
 
@@ -520,7 +519,6 @@ def cmd_upload_dir(
     slug: str = ...,
     data_path: Path = ...,
     ext: str = Option(".gdb", help="extension of the data path"),
-    ingest_process_id: int = Option(None),
 ):
     """Upload a local directory to the staging bucket under SLUG/."""
     db = get_database()
@@ -528,17 +526,17 @@ def cmd_upload_dir(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),
     ).scalar()
-    ingest_id = db.run_query(
+    # source_id is the ingest_process key, so there's nothing to look up beyond
+    # confirming the row exists (at most one per source).
+    ingest_source_id = db.run_query(
         """
-        SELECT id
+        SELECT source_id
         FROM maps_metadata.ingest_process
         WHERE source_id = :source_id
-        ORDER BY id DESC
-        LIMIT 1
         """,
         dict(source_id=source_id),
     ).scalar()
-    res = staging_upload_dir(slug, data_path, db, ingest_id)
+    res = staging_upload_dir(slug, data_path, db, ingest_source_id)
     pretty_res = json.dumps(res, indent=2)
     console.print(f"[green] Processed files \n {pretty_res} [/green]")
     return

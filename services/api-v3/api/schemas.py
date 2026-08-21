@@ -15,7 +15,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import (
     ARRAY,
     BOOLEAN,
-    ENUM,
     INTEGER,
     JSON,
     JSONB,
@@ -166,25 +165,30 @@ class IngestProcess(Base):
     __tablename__ = "ingest_process"
     __table_args__ = {"schema": "maps_metadata"}
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    state: Mapped[IngestState] = mapped_column(
-        ENUM(IngestState, name="ingest_state", schema="maps", native_enum=True),
-        nullable=True,
+    # An ingest process is 1:1 with a map source, so source_id is the primary
+    # key — there is no separate surrogate `id`.
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("maps.sources.source_id"), primary_key=True
     )
 
-    type: Mapped[str] = mapped_column(
-        Enum(IngestType, name="ingest_type"), nullable=True
-    )
+    # Plain text with an FK to maps_metadata.ingest_state, so that lookup table
+    # owns the allowed values and they can change without a code change. The
+    # IngestState enum is kept for reference but is not bound to this column.
+    state: Mapped[str] = mapped_column(TEXT, nullable=True)
+
+    # DIVERGENT — `type`, `map_id` and `access_group_id` are not columns on
+    # maps_metadata.ingest_process, so any query selecting them fails with
+    # "column does not exist". Commented out until they are either added to the
+    # table or dropped from the model for good.
+    # type: Mapped[str] = mapped_column(
+    #     Enum(IngestType, name="ingest_type"), nullable=True
+    # )
 
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
-    map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
-    source_id: Mapped[int] = mapped_column(
-        ForeignKey("maps.sources.source_id"), nullable=True
-    )
-    access_group_id: Mapped[int] = mapped_column(
-        ForeignKey("macrostrat_auth.group.id"), nullable=True
-    )
+    # map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
+    # access_group_id: Mapped[int] = mapped_column(
+    #     ForeignKey("macrostrat_auth.group.id"), nullable=True
+    # )
 
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -205,8 +209,9 @@ class MapFiles(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    ingest_process_id: Mapped[int] = mapped_column(
-        ForeignKey("maps_metadata.ingest_process.id", ondelete="CASCADE"),
+    # A map can have many files, so source_id is a plain foreign key here.
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("maps_metadata.ingest_process.source_id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -219,12 +224,12 @@ class MapFiles(Base):
 class IngestProcessTag(Base):
     __tablename__ = "ingest_process_tag"
     __table_args__ = (
-        PrimaryKeyConstraint("ingest_process_id", "tag", name="pk_tag"),
+        PrimaryKeyConstraint("source_id", "tag", name="pk_tag"),
         {"schema": "maps_metadata"},
     )
 
-    ingest_process_id: Mapped[int] = mapped_column(
-        ForeignKey("maps_metadata.ingest_process.id")
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("maps_metadata.ingest_process.source_id")
     )
     tag: Mapped[str] = mapped_column(VARCHAR(255))
 
