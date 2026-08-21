@@ -70,14 +70,13 @@ cli.add_command(apply_srid, name="apply-srid")
 _pipeline = IngestionCLI(
     no_args_is_help=True, help="Ingest map data from archive files."
 )
-_pipeline.add_command(pipeline.upload_file, name="upload-file")
-_pipeline.add_command(pipeline.ingest_slug, name="ingest-map")
-_pipeline.add_command(pipeline.ingest_csv, name="ingest-csv")
+# upload-file, ingest-map, ingest-csv and init-map are intentionally NOT
+# registered: `macrostrat maps staging` covers the same ground (s3-upload,
+# ingest, bulk-ingest) and is the maintained path. The functions still exist in
+# pipeline.py and remain importable — only the CLI entry points are withdrawn.
+# See the module docstring in pipeline.py.
 _pipeline.add_command(
     pipeline.run_polling_loop, name="run-polling-loop", rich_help_panel="Daemons"
-)
-_pipeline.add_command(
-    pipeline.create_slug, name="init-map", rich_help_panel="Low-level"
 )
 cli.add_typer(_pipeline, name="pipeline")
 
