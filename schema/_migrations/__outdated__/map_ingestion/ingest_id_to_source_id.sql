@@ -88,3 +88,5 @@ GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_tags TO web_user, web_admin;
 GRANT SELECT ON macrostrat_api.map_ingest TO web_anon;
 GRANT SELECT ON macrostrat_api.map_ingest_tags TO web_anon;
 GRANT SELECT ON map_ingestion_api.maps TO web_anon;
+GRANT SELECT, UPDATE, INSERT, DELETE ON macrostrat_api.map_ingest_tags TO web_admin;
+NOTIFY pgrst, 'reload schema';
