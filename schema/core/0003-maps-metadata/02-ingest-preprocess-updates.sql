@@ -49,6 +49,6 @@ GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 GRANT SELECT ON macrostrat_api.map_ingest TO web_anon;
 GRANT SELECT ON macrostrat_api.map_ingest_tags TO web_anon;
 GRANT SELECT ON macrostrat_api.maps_sources TO web_anon;
-
+GRANT INSERT, DELETE ON macrostrat_api.map_ingest_tags TO web_admin;
 
 
