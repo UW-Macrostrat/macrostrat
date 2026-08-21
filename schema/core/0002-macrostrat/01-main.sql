@@ -203,12 +203,16 @@ CREATE TYPE macrostrat.pbdb_intervals_interval_type AS ENUM (
     'subzone'
 );
 
+/** TODO: make this a lookup table instead of an enum */
 CREATE TYPE macrostrat.refs_compilation_code AS ENUM (
     '',
     'COSUNA',
     'COSUNA II',
     'Canada',
-    'GNS Folio Series 1'
+    'GNS Folio Series 1',
+    'IODP',
+    'ODP',
+    'DSDP'
 );
 
 CREATE TYPE macrostrat.rockd_features_feature_class AS ENUM (
