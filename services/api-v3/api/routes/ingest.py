@@ -168,14 +168,14 @@ async def get_all_tags(database: DatabaseDep):
         return [result[0] for result in results.all()]
 
 
-@router.get("/{id}", response_model=IngestProcessModel.Get)
-async def get_ingest_process(id: int, database: DatabaseDep):
+@router.get("/{source_id}", response_model=IngestProcessModel.Get)
+async def get_ingest_process(source_id: int, database: DatabaseDep):
     """Get a single object"""
 
     async with database.async_session() as session:
         select_stmt = (
             select(IngestProcessSchema)
-            .where(and_(IngestProcessSchema.id == id))
+            .where(and_(IngestProcessSchema.source_id == source_id))
             .options(
                 joinedload(IngestProcessSchema.source)
                 .defer(Sources.rgeom)
@@ -188,7 +188,8 @@ async def get_ingest_process(id: int, database: DatabaseDep):
 
         if result is None:
             raise HTTPException(
-                status_code=404, detail=f"IngestProcess with id ({id}) not found"
+                status_code=404,
+                detail=f"IngestProcess with source_id ({source_id}) not found",
             )
 
         return result
@@ -224,9 +225,9 @@ async def create_ingest_process(
     return ingest_process
 
 
-@router.patch("/{id}", response_model=IngestProcessModel.Get)
+@router.patch("/{source_id}", response_model=IngestProcessModel.Get)
 async def patch_ingest_process(
-    id: int,
+    source_id: int,
     object: IngestProcessModel.Patch,
     database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
@@ -241,7 +242,7 @@ async def patch_ingest_process(
     async with database.async_session() as session:
         update_stmt = (
             update(IngestProcessSchema)
-            .where(IngestProcessSchema.id == id)
+            .where(IngestProcessSchema.source_id == source_id)
             .values(**object.model_dump(exclude_unset=True))
             .returning(IngestProcessSchema)
         )
@@ -253,9 +254,9 @@ async def patch_ingest_process(
         return response
 
 
-@router.post("/{id}/tags", response_model=list[str])
+@router.post("/{source_id}/tags", response_model=list[str])
 async def add_ingest_process_tag(
-    id: int,
+    source_id: int,
     tag: IngestProcessModel.Tag,
     database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
@@ -269,25 +270,27 @@ async def add_ingest_process_tag(
 
     async with database.async_session() as session:
 
-        ingest_process = await session.get(IngestProcessSchema, id)
+        # source_id is the primary key, so `session.get` looks up by it directly.
+        ingest_process = await session.get(IngestProcessSchema, source_id)
 
         if ingest_process is None:
             raise HTTPException(
-                status_code=404, detail=f"IngestProcess with id ({id}) not found"
+                status_code=404,
+                detail=f"IngestProcess with source_id ({source_id}) not found",
             )
 
         ingest_process.tags.append(IngestProcessTag(tag=tag.tag.strip()))
         await session.commit()
 
-        ingest_process = await session.get(IngestProcessSchema, id)
+        ingest_process = await session.get(IngestProcessSchema, source_id)
         return [tag.tag for tag in ingest_process.tags]
 
     return None
 
 
-@router.delete("/{id}/tags/{tag}", response_model=list[str])
+@router.delete("/{source_id}/tags/{tag}", response_model=list[str])
 async def delete_ingest_process_tag(
-    id: int,
+    source_id: int,
     tag: str,
     database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
@@ -301,38 +304,42 @@ async def delete_ingest_process_tag(
 
     async with database.async_session() as session:
 
-        ingest_process = await session.get(IngestProcessSchema, id)
+        ingest_process = await session.get(IngestProcessSchema, source_id)
 
         if ingest_process is None:
             raise HTTPException(
-                status_code=404, detail=f"IngestProcess with id ({id}) not found"
+                status_code=404,
+                detail=f"IngestProcess with source_id ({source_id}) not found",
             )
 
         tag_stmt = delete(IngestProcessTag).where(
-            and_(IngestProcessTag.ingest_process_id == id, IngestProcessTag.tag == tag)
+            and_(
+                IngestProcessTag.source_id == source_id,
+                IngestProcessTag.tag == tag,
+            )
         )
         await session.execute(tag_stmt)
         await session.commit()
 
-        ingest_process = await session.get(IngestProcessSchema, id)
+        ingest_process = await session.get(IngestProcessSchema, source_id)
 
         return [tag.tag for tag in ingest_process.tags]
 
     return ingest_process
 
 
-@router.get("/{id}/objects", response_model=list[Object.GetSecureURL])
-async def get_ingest_process_objects(id: int, database: DatabaseDep):
+@router.get("/{source_id}/objects", response_model=list[Object.GetSecureURL])
+async def get_ingest_process_objects(source_id: int, database: DatabaseDep):
     """Get all objects for an ingestion process"""
 
     async with database.async_session() as session:
 
         select_stmt = select(IngestProcessSchema).where(
-            and_(IngestProcessSchema.id == id)
+            and_(IngestProcessSchema.source_id == source_id)
         )
         ingest_process = await session.scalar(select_stmt)
         object_ids_stmt = select(MapFiles.object_id).where(
-            MapFiles.ingest_process_id == id
+            MapFiles.source_id == source_id
         )
         object_ids = (await session.execute(object_ids_stmt)).scalars().all()
 
@@ -368,10 +375,10 @@ async def get_ingest_process_objects(id: int, database: DatabaseDep):
         )
 
 
-@router.post("/{id}/objects", response_model=list[Object.Get])
+@router.post("/{source_id}/objects", response_model=list[Object.Get])
 async def create_object(
     request: starlette.requests.Request,
-    id: int,
+    source_id: int,
     object: list[UploadFile],
     database: DatabaseDep,
     user_has_access: bool = Depends(has_access),
@@ -387,7 +394,9 @@ async def create_object(
 
     async with database.async_session() as session:
 
-        ingest_stmt = select(IngestProcessSchema).where(IngestProcessSchema.id == id)
+        ingest_stmt = select(IngestProcessSchema).where(
+            IngestProcessSchema.source_id == source_id
+        )
         ingest_process = await session.scalar(ingest_stmt)
 
         if "multipart/form-data" in request.headers["content-type"]:
@@ -402,7 +411,7 @@ async def create_object(
                     secure=True,
                 )
 
-                object_file_name = f"{ingest_process.id}/{upload_file.filename}"
+                object_file_name = f"{ingest_process.source_id}/{upload_file.filename}"
 
                 m.put_object(
                     bucket_name=os.environ["S3_BUCKET"],
@@ -428,7 +437,7 @@ async def create_object(
                 server_object = await session.scalar(insert_stmt)
                 await session.execute(
                     insert(MapFiles).values(
-                        ingest_process_id=id, object_id=server_object.id
+                        source_id=source_id, object_id=server_object.id
                     )
                 )
 

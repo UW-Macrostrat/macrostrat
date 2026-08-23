@@ -1240,10 +1240,6 @@ GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.map_ingest TO web_anon;
 
-GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_metadata TO web_user;
-
-GRANT SELECT ON TABLE macrostrat_api.map_ingest_metadata TO web_anon;
-
 GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_user;
 
 GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_admin;

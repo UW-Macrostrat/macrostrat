@@ -3,6 +3,29 @@
 Ingest map data from archive files.
 
 A.k.a., a pipeline for ingesting maps into Macrostrat.
+
+DEPRECATED — use `macrostrat maps staging` instead.
+
+Most of this module duplicates the staging pipeline, which is the maintained
+path and a superset of what lives here:
+
+    init-map / ingest-map  ->  macrostrat maps staging ingest
+    upload-file            ->  macrostrat maps staging s3-upload
+    ingest-csv             ->  macrostrat maps staging bulk-ingest
+
+They are genuinely independent implementations, not wrappers: `staging ingest`
+writes its own `maps_metadata.ingest_process` row directly rather than going
+through the helpers in this module.
+
+Those four commands are no longer registered on the CLI (see `_pipeline` in
+`__init__.py`), so they can't be invoked directly. The functions themselves are
+kept here and stay importable. `run-polling-loop` has no staging equivalent and
+is still exposed as `macrostrat maps pipeline run-polling-loop`.
+
+The helpers here have been updated for the `source_id` primary key (the old
+surrogate `ingest_process.id` and the `ingest_process_id` tag key are both
+gone), so they are consistent with the current schema — but they are untested
+against it, since this path is no longer exercised.
 """
 
 import csv
@@ -127,7 +150,7 @@ def record_ingest_error(ingest_process: IngestProcess, comments: str) -> None:
     Set an ingest process to "failed".
     """
     update_ingest_process(
-        ingest_process.id, state=IngestState.failed, comments=comments
+        ingest_process.source_id, state=IngestState.failed, comments=comments
     )
 
 
@@ -305,23 +328,23 @@ def create_ingest_process(**data) -> IngestProcess:
     return new_ingest_process
 
 
-def update_ingest_process(id_: int, **data) -> IngestProcess:
+def update_ingest_process(source_id: int, **data) -> IngestProcess:
     with get_db_session() as session:
         new_ingest_process = session.scalar(
             update(IngestProcess)
             .values(**data)
-            .where(IngestProcess.id == id_)
+            .where(IngestProcess.source_id == source_id)
             .returning(IngestProcess)
         )
         session.commit()
     return new_ingest_process
 
 
-def create_ingest_process_tag(ingest_process_id: int, tag: str) -> IngestProcessTag:
+def create_ingest_process_tag(source_id: int, tag: str) -> IngestProcessTag:
     with get_db_session() as session:
         new_ingest_process_tag = session.scalar(
             insert(IngestProcessTag)
-            .values(ingest_process_id=ingest_process_id, tag=tag)
+            .values(source_id=source_id, tag=tag)
             .returning(IngestProcessTag)
         )
         session.commit()
@@ -462,8 +485,10 @@ def create_slug(
     if not (ingest_process := get_ingest_process_by_source_id(source.source_id)):
         ingest_process = create_ingest_process(source_id=source.source_id)
     for t in tag or []:
-        create_ingest_process_tag(ingest_process.id, t)
-    console.print(f"Created or updated ingest process ID {ingest_process.id}")
+        create_ingest_process_tag(ingest_process.source_id, t)
+    console.print(
+        f"Created or updated ingest process for source ID {ingest_process.source_id}"
+    )
 
     return (source, ingest_process)
 
@@ -511,12 +536,12 @@ def ingest_slug(
     try:
         prepare_fields(map_info)
         ingest_process = update_ingest_process(
-            ingest_process.id, state=IngestState.prepared
+            ingest_process.source_id, state=IngestState.prepared
         )
         create_rgeom(map_info)
         create_webgeom(map_info)
         ingest_process = update_ingest_process(
-            ingest_process.id, state=IngestState.ingested
+            ingest_process.source_id, state=IngestState.ingested
         )
     except Exception as exn:
         raise_ingest_error(ingest_process, str(exn), exn)
@@ -668,7 +693,7 @@ def upload_file(
         console.print(f"Uploading {out_name} to S3 as {bucket}/{key}")
         s3.fput_object(bucket, key, str(local_file))
         ingest_process = update_ingest_process(
-            ingest_process.id, state=IngestState.pending
+            ingest_process.source_id, state=IngestState.pending
         )
         console.print("Finished upload")
     else:
@@ -738,7 +763,7 @@ def load_object(
     if not (source := get_source_by_id(ingest_process.source_id)):
         raise_ingest_error(
             ingest_process,
-            "No source ID in the database for ingest process ID {ingest_process.id}",
+            f"No source in the database for source ID {ingest_process.source_id}",
         )
 
     ## Normalize the filter.

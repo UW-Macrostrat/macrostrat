@@ -27,7 +27,7 @@ VALUES ('pending'),
 ON CONFLICT (id) DO NOTHING;
 
 
-/** Ingestion results for pipeline steps */
+/** Ingestion results for pipeline steps
 CREATE TABLE maps_metadata.ingest_result (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY ,
   source_id integer NOT NULL REFERENCES maps.sources(source_id),
@@ -37,17 +37,16 @@ CREATE TABLE maps_metadata.ingest_result (
   date timestamp with time zone DEFAULT now() NOT NULL,
   details jsonb -- random information for debugging (e.g., which strat names didn't match)
 );
+ */
 
 
 CREATE TABLE maps_metadata.ingest_process (
-    -- This id is deprecated in favor of just using the source_id as the primary key,
-    -- which we will converge on eventually.
-    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    -- An ingest process is 1:1 with a map source, so the source_id is the
+    -- primary key (PRIMARY KEY already implies NOT NULL + UNIQUE). The foreign
+    -- key to maps.sources is added by name at the bottom of this file.
+    source_id integer PRIMARY KEY,
     state text references maps_metadata.ingest_state (id),
     comments text,
-    source_id integer not null
-        constraint ingest_process_source_id_unique unique
-        references maps.sources(source_id),
     created_on timestamp with time zone DEFAULT now() NOT NULL,
     completed_on timestamp with time zone,
     -- These are for UI / table state (omitted columns, column order, etc.)
@@ -61,16 +60,18 @@ CREATE TABLE maps_metadata.ingest_process (
     slug text references maps.sources (slug)
 );
 
-
+--M:M relationship so no PK defined
 CREATE TABLE maps_metadata.ingest_process_tag (
-    ingest_process_id integer NOT NULL,
+    source_id integer NOT NULL,
     tag character varying(255) NOT NULL
 );
 
 
+-- A map can have many files, so `id` remains the primary key and source_id is
+-- a plain foreign key; uniqueness is per (source_id, object_id).
 CREATE TABLE maps_metadata.map_files (
     id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ingest_process_id integer NOT NULL,
+    source_id integer NOT NULL,
     object_id integer NOT NULL
 );
 
@@ -132,23 +133,19 @@ CREATE TRIGGER maps_metadata_update_trigger
   FOR EACH ROW EXECUTE FUNCTION maps_metadata.maps_metadata_update_trigger();
 
 ALTER TABLE ONLY maps_metadata.map_files
-    ADD CONSTRAINT map_files_ingest_process_id_object_id_key UNIQUE (ingest_process_id, object_id);
-
-ALTER TABLE ONLY maps_metadata.map_files
-    ADD CONSTRAINT map_files_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT map_files_source_id_object_id_key UNIQUE (source_id, object_id);
 
 ALTER TABLE ONLY maps_metadata.ingest_process_tag
-    ADD CONSTRAINT pk_tag PRIMARY KEY (ingest_process_id, tag);
-
+    ADD CONSTRAINT pk_tag PRIMARY KEY (source_id, tag);
 
 ALTER TABLE ONLY maps_metadata.ingest_process
     ADD CONSTRAINT ingest_process_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);
 
 ALTER TABLE ONLY maps_metadata.ingest_process_tag
-    ADD CONSTRAINT ingest_process_tag_ingest_process_id_fkey FOREIGN KEY (ingest_process_id) REFERENCES maps_metadata.ingest_process(id);
+    ADD CONSTRAINT ingest_process_tag_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps_metadata.ingest_process(source_id);
 
 ALTER TABLE ONLY maps_metadata.map_files
-    ADD CONSTRAINT map_files_ingest_process_id_fkey FOREIGN KEY (ingest_process_id) REFERENCES maps_metadata.ingest_process(id) ON DELETE CASCADE;
+    ADD CONSTRAINT map_files_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps_metadata.ingest_process(source_id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY maps_metadata.map_files
     ADD CONSTRAINT map_files_object_id_fkey FOREIGN KEY (object_id) REFERENCES storage.objects(id);

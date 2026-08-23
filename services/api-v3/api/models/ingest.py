@@ -3,15 +3,19 @@ from enum import Enum
 from typing import Optional
 
 import api.models.source as Sources
-from api.schemas import IngestProcessTag, IngestState
+from api.schemas import IngestProcessTag
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Post(BaseModel):
-    state: Optional[IngestState] = None
+    # Free text — validated by the FK to maps_metadata.ingest_state, not here.
+    state: Optional[str] = None
     comments: Optional[str] = None
     source_id: Optional[int] = None
-    map_id: Optional[str] = None
+    # Commented out alongside the ORM column — `create_ingest_process` passes
+    # `model_dump()` straight to IngestProcess(...), so a field with no matching
+    # mapped column raises a TypeError.
+    # map_id: Optional[str] = None
     tags: Optional[list[str]] = None
 
     class Config:
@@ -20,7 +24,8 @@ class Post(BaseModel):
 
 
 class Get(Post):
-    id: int
+    # `source_id` (inherited from Post) is the identity — the surrogate `id`
+    # column was dropped when ingest_process was re-keyed on source_id.
     created_on: datetime.datetime
     completed_on: Optional[datetime.datetime] = None
     source: Optional[Sources.Get] = None
