@@ -7,12 +7,13 @@ from macrostrat.database import on_conflict
 
 from .age_model import build_age_model
 from .columns import (
+    Column,
     assign_section_ids,
     get_column_data,
     reconcile_column_group,
     reconcile_columns,
 )
-from .database import get_or_create_project
+from .database import ProjectIdentifier, get_or_create_project
 from .metadata import get_metadata
 from .refs import get_reference_data, reconcile_references, resolve_column_references
 from .units import PositionAxisType, get_units, write_units
@@ -61,6 +62,25 @@ def ingest_columns_from_file(
     if project is None:
         raise ValueError("Project not found in the data file")
 
+    ingest_columns(db, columns, project=project, references=references)
+
+
+def ingest_columns(
+    db,
+    columns: list[Column],
+    *,
+    project: ProjectIdentifier,
+    references: list | None = None,
+):
+    """Write columns, their sections, their units and their age models.
+
+    Takes `Column` objects with `units` already populated, which is the seam a
+    caller needs when its data did not come from a workbook. The spreadsheet is one
+    source of columns, not the only one: GBDB yields ~29,000 columns from a
+    relational staging schema, and routing those through an .xlsx to reach this
+    sequence would be absurd. `ingest_columns_from_file` is now the spreadsheet
+    front-end to this function.
+    """
     # One transaction for the whole (column, sections, units) set, so `units.section_id`
     # can reference sections that are created in the same breath — the constraint the
     # legacy importer had to drop because it could not precalculate sections.
@@ -84,7 +104,7 @@ def ingest_columns_from_file(
 
         # References come first: columns cite them, and the citations are resolved from
         # workbook-local ids once the reference rows exist.
-        ref_map = reconcile_references(db, references)
+        ref_map = reconcile_references(db, references or [])
 
         reconcile_columns(
             db, columns, project_id=_project.id, col_group_id=col_group_id

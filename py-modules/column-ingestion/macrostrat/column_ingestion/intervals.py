@@ -49,6 +49,25 @@ def get_interval_by_id(db, id: int | None):
     return next((i for i in get_intervals(db) if i.id == id), None)
 
 
+def timescale_intervals(db, timescale_id: int = 11):
+    """Intervals belonging to a timescale, narrowest first.
+
+    The sort order is what makes `containing_interval` return the *most specific*
+    interval containing an age, which is the behaviour every caller wants.
+    """
+    intervals = [i for i in get_intervals(db) if timescale_id in i.timescales]
+    return sorted(intervals, key=lambda i: i.age_span)
+
+
+def containing_interval(intervals: list["Interval"], age: float) -> "Interval | None":
+    """The first interval in `intervals` that contains `age`.
+
+    Order is the caller's to decide, and it is the whole of the policy: pass a
+    narrowest-first list to get the most specific interval.
+    """
+    return next((i for i in intervals if i.contains(float(age))), None)
+
+
 @dataclass
 class IntervalID:
     id: int
@@ -98,6 +117,34 @@ class RelativeAge:
         return float(self.interval.age_bottom) - float(self.proportion) * float(
             self.interval.age_span
         )
+
+    @classmethod
+    def from_absolute(
+        cls, db, age: float | None, *, timescale: int = 11
+    ) -> "RelativeAge | None":
+        """Express a known numeric age as an interval plus a proportion through it.
+
+        Macrostrat stores age control as `(t1, t1_prop, t1_age)` and has no way to
+        record a boundary that is not relative to an interval — so an age that is
+        simply a number still has to name the interval it falls in. That is the
+        inverse of the usual direction, and it is the convention the 177 existing
+        `boundary_status = 'absolute'` rows already follow.
+
+        Datasets needing this are not the exception they look like. ChinaLex has 33
+        boundaries with no calibration expression, and GBDB has no dated surfaces at
+        all — every age it yields is a number produced by thickness interpolation.
+        Before this existed the arithmetic was reachable only from inside a
+        constructed `AgeModel`, so callers that already knew the age reimplemented it.
+
+        Returns `None` for an age outside the timescale, which is the honest answer:
+        there is no interval to be relative to.
+        """
+        if age is None:
+            return None
+        interval = containing_interval(timescale_intervals(db, timescale), float(age))
+        if interval is None:
+            return None
+        return cls(interval, interval.relative_position(float(age)))
 
     def __hash__(self):
         return hash((self.interval, self.proportion))

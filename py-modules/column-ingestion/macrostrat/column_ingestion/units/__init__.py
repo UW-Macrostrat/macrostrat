@@ -6,6 +6,7 @@
   reconciling against what is already there rather than replacing it.
 """
 
+from ..boundary_status import BoundaryStatus
 from .parse import (
     PositionAxisType,
     Unit,
@@ -28,6 +29,7 @@ from .writer import (
 )
 
 __all__ = [
+    "BoundaryStatus",
     "UNIT_COLUMNS",
     "UNIT_KEY_COLUMNS",
     "PositionAxisType",

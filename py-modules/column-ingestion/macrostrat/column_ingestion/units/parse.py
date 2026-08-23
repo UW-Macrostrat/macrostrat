@@ -6,6 +6,7 @@ import polars as pl
 
 from macrostrat.utils import get_logger
 
+from ..boundary_status import BoundaryStatus
 from ..environs import Environ, EnvironsProcessor
 from ..intervals import (
     Interval,
@@ -41,6 +42,12 @@ class Unit:
     # Relative age positioning
     b_age: RelativeAge | None = None
     t_age: RelativeAge | None = None
+    #: Where `b_age` / `t_age` came from, carried through to the `boundary_status`
+    #: of the surfaces they constrain. `RELATIVE` — the source named an interval
+    #: and a position within it — is the workbook case and so the default. A
+    #: dataset with no chronostratigraphic anchors, whose ages are interpolated
+    #: through thickness, sets `IMPOSED` on every unit instead.
+    age_status: BoundaryStatus = BoundaryStatus.RELATIVE
 
 
 log = get_logger(__name__)

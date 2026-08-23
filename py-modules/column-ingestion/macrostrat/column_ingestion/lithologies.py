@@ -50,12 +50,22 @@ class LithsProcessor:
     liths = []
     atts = []
 
-    # TODO: make this more explicit and comprehensive. Consider adding to database.
-    lith_synonyms = {}
+    # Synonyms are held in code for now and are planned to move into the
+    # database.
+    lith_synonyms = {
+        "volcanic": ["volcanics", "lava"],
+        "metavolcanic": ["metavolcanics"],
+        "igneous": ["granitic"],
+        "evaporite": ["gypsum-anhydrite"],
+    }
 
     lith_attribute_synonyms = {
         "cross-bedded": ["cross-stratified", "cross bedded", "cross laminated"],
         "regularly bedded": ["bedded"],
+        # `fine` and `coarse` are `grains`-type attributes; the hyphenated
+        # compounds are how most sources actually write them.
+        "fine": ["fine-grained", "fine grained"],
+        "coarse": ["coarse-grained", "coarse grained"],
     }
 
     def __init__(self, db):

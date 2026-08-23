@@ -171,6 +171,24 @@ test_cases = [
         "tabular, thickly bedded, cross-bedded, sandstone; flute casts, siltstone",
         output1,
     ),
+    # --- lith synonyms -----------------------------------------------------
+    LithologyTestCase("Volcanics", {LithologyDescription(name="volcanic")}),
+    LithologyTestCase("Lava", {LithologyDescription(name="volcanic")}),
+    LithologyTestCase("Metavolcanics", {LithologyDescription(name="metavolcanic")}),
+    LithologyTestCase("Granitic", {LithologyDescription(name="igneous")}),
+    LithologyTestCase("Gypsum-Anhydrite", {LithologyDescription(name="evaporite")}),
+    # --- hyphenated grainsize attributes -----------------------------------
+    LithologyTestCase(
+        "Fine-grained sandstone",
+        {LithologyDescription(name="sandstone", attributes={"fine"})},
+    ),
+    LithologyTestCase(
+        "Coarse-grained sandstone",
+        {LithologyDescription(name="sandstone", attributes={"coarse"})},
+    ),
+    # A synonym must not shadow a longer real term that contains it. Adding
+    # `aus conglomerat` as a synonym once broke `Aus conglomerate` outright.
+    LithologyTestCase("Aus conglomerate", {LithologyDescription(name="conglomerate")}),
 ]
 
 

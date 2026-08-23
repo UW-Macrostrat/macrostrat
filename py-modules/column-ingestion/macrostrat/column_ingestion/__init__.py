@@ -17,7 +17,7 @@ app = Typer(
 
 
 @app.command(name="ingest")
-def ingest_columns(
+def ingest_command(
     data_file: Path = Argument(..., help="Path to the data file to ingest"),
 ):
     """Ingest columns from tabular data."""
