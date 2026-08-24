@@ -4796,7 +4796,6 @@ def store_az_line_point_types_to_temp():
     for slug in slugs:
         print(slug)
 
-
         db.run_sql(
             """INSERT INTO temp.arizona_point_types (orig_point_type) 
             SELECT DISTINCT point_type FROM {table}
@@ -4812,8 +4811,6 @@ def store_az_line_point_types_to_temp():
             dict(table=Identifier("sources", slug + "_lines")),
         )
         db.session.commit()
-
-
 
 
 @normalize_cli.command("normalize_az")
