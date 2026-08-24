@@ -22,12 +22,20 @@ class LineStringModel(CommonModel):
 
 
 class PointModel(CommonModel):
-    strike: Optional[Union[int | str]] = None
-    dip: Optional[Union[int | str]] = None
-    dip_dir: Optional[Union[int | str]] = None
+    strike: Optional[Union[float | int | str]] = None
+    dip: Optional[Union[float | int | str]] = None
+    dip_dir: Optional[Union[float | int | str]] = None
     point_type: Optional[str] = None
     certainty: Optional[str] = None
     comments: Optional[str] = None
+
+    # Ingested numeric columns can hold NaN, which is a float but not a valid
+    # value here. Mirrors `PolygonResponseModel.change_nan_to_none`.
+    @field_validator("strike", "dip", "dip_dir")
+    def change_nan_to_none(cls, v):
+        if type(v) == float and isnan(v):
+            return None
+        return v
 
 
 class PolygonModel(CommonModel):
