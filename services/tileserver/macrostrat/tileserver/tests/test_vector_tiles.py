@@ -113,3 +113,78 @@ class TestRenderedQuery:
         # x, y, z, then the JSON parameter blob.
         assert params[:3] == [15, 23, 6]
         assert params[3] == '{"source_id": "1409"}'
+
+
+class TestCatchAllScope:
+    """The tile route is mounted at the app root, so its reach matters.
+
+    With plain `{z}/{x}/{y}` it matched *any* four-segment path and answered
+    "Layer '<first segment>' not found" — which is how it swallowed
+    `/rasters/<layer>/point/<lon>,<lat>` and made the raster point query
+    unreachable. Typed converters keep it to real tile addresses.
+    """
+
+    @fixture(scope="class")
+    def routes(self, app):
+        from starlette.routing import Match
+
+        def matches(path: str) -> bool:
+            scope = {"type": "http", "method": "GET", "path": path, "headers": []}
+            for route in app.routes:
+                if route.matches(scope)[0] == Match.FULL:
+                    return getattr(route, "name", None) == "tile"
+            return False
+
+        return matches
+
+    def test_a_tile_address_still_matches(self, routes):
+        assert routes("/carto-slim/4/3/5")
+
+    def test_non_numeric_segments_do_not_match(self, routes):
+        """Where the bug lived: a raster point query is not a tile address."""
+        assert not routes("/rasters/emit-minerals/point/-118.0,36.0")
+
+    def test_a_nested_raster_path_does_not_match(self, routes):
+        assert not routes("/rasters/emit-minerals/tiles/WebMercatorQuad")
+
+    def test_tilejson_is_not_claimed_by_the_tile_route(self, routes):
+        assert not routes("/carto-slim/tilejson.json")
+
+
+class TestTileURLTemplate:
+    """TileJSON has to hand out `{z}/{x}/{y}`, which typed converters can't build.
+
+    `url_path_for` validates its arguments against the converters, so the
+    placeholders have to come from the route's own path instead — and if that
+    ever silently produced a concrete address, every TileJSON consumer would
+    request the same tile forever.
+    """
+
+    @fixture(scope="class")
+    def template(self):
+        from starlette.requests import Request
+
+        from macrostrat.tileserver.vector_tiles.factory import VectorTileFactory
+
+        factory = VectorTileFactory()
+        request = Request(
+            {
+                "type": "http",
+                "headers": [],
+                "server": ("testserver", 80),
+                "scheme": "http",
+                "path": "/",
+                "query_string": b"",
+            }
+        )
+        return factory.tile_url_template(request, "tile_layers.carto")
+
+    def test_placeholders_are_literal(self, template):
+        assert template.endswith("/{z}/{x}/{y}")
+
+    def test_no_converter_syntax_leaks(self, template):
+        """`{z:int}` in a tile URL would break every client that reads it."""
+        assert ":int" not in template
+
+    def test_layer_is_substituted(self, template):
+        assert "/tile_layers.carto/" in template

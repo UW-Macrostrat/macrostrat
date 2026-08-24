@@ -8,9 +8,10 @@ Routes are `/{layer}/{z}/{x}/{y}` and `/{layer}/tilejson.json`, the shapes
 Macrostrat's clients already use.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, Query
 from morecantile import Tile
@@ -31,6 +32,9 @@ from macrostrat.utils import get_logger
 from .layers import StoredFunction
 
 log = get_logger(__name__)
+
+# A typed path converter in a route path, e.g. the `:int` in `{z:int}`.
+_PATH_CONVERTER = re.compile(r"{(\w+):[^}]+}")
 
 __all__ = [
     "VectorTileFactory",
@@ -100,13 +104,37 @@ class VectorTileFactory:
     def url_for(self, request: Request, name: str, **path_params: Any) -> str:
         """Absolute URL for one of this factory's endpoints."""
         url_path = self.router.url_path_for(name, **path_params)
-        base_url = str(request.base_url)
+        return self._absolute(str(url_path), request)
+
+    def tile_url_template(self, request: Request, layer_id: str) -> str:
+        """Absolute tile URL with `{z}/{x}/{y}` left as literal placeholders.
+
+        `url_for` can't build this one: the tile route's path converters are
+        typed (`{z:int}`), so `url_path_for` rejects `"{z}"` as a value. The
+        route's own path is formatted instead — read off the router rather than
+        written out again, so the path stays defined in exactly one place.
+        """
+        path = next(
+            r.path for r in self.router.routes if getattr(r, "name", None) == "tile"
+        )
+        # `{z:int}` -> `{z}`: a TileJSON consumer wants the bare placeholder.
+        path = _PATH_CONVERTER.sub(r"{\1}", path)
+        path = path.replace("{layer}", quote(layer_id, safe=""))
+        return self._absolute(path, request)
+
+    def _absolute(self, path: str, request: Request) -> str:
+        base_url = str(request.base_url).rstrip("/")
         if self.router_prefix:
-            base_url += self.router_prefix.lstrip("/")
-        return str(url_path.make_absolute_url(base_url=base_url))
+            base_url += "/" + self.router_prefix.strip("/")
+        return base_url + path
 
     def register_tiles(self):
-        @self.router.get("/{layer}/{z}/{x}/{y}", **TILE_RESPONSE_PARAMS)
+        # `{z:int}` etc. rather than the default string converters, so this
+        # catch-all only claims paths whose tail is genuinely a tile address.
+        # Mounted at the app root, it otherwise swallows any four-segment path —
+        # `/rasters/<layer>/point/<lon>,<lat>` was answering "Layer 'rasters' not
+        # found" instead of reaching the raster routes.
+        @self.router.get("/{layer}/{z:int}/{x:int}/{y:int}", **TILE_RESPONSE_PARAMS)
         async def tile(
             request: Request,
             background_tasks: BackgroundTasks,
@@ -161,9 +189,7 @@ class VectorTileFactory:
             ),
         ):
             """Return a TileJSON document for a layer."""
-            tile_endpoint = self.url_for(
-                request, "tile", layer=layer.id, z="{z}", x="{x}", y="{y}"
-            )
+            tile_endpoint = self.tile_url_template(request, layer.id)
 
             # Carry the caller's query string onto the tile URLs, so a layer
             # parameterized in the tilejson request stays parameterized.

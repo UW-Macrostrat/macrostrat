@@ -28,8 +28,8 @@ dependencies = [
     "pydantic-settings>=2.0,<3",
     "starlette-cramjam>=0.3,<0.5",
     "morecantile>=5.0,<8.0",
-    "macrostrat.raster_index>=0.2.0,<1",
-    "macrostrat.raster_layers>=0.2.1,<1",
+    "macrostrat.raster_index>=0.3.0,<1",
+    "macrostrat.raster_layers>=0.3.0,<1",
     "pydantic>=2.11.7",
 ]
 

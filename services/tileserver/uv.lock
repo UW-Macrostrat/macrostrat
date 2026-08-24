@@ -619,7 +619,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-raster-index"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
@@ -632,14 +632,14 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/0d/ebd420e22eca6ef5ac6e607dd719e2d5116d5ac25dfb68caea9b65067177/macrostrat_raster_index-0.2.0.tar.gz", hash = "sha256:786207d31c21100980e3c2f6295b29a66d245cdd8189b270e5cbae1119ae3c36", size = 25518, upload-time = "2026-08-23T06:42:01.036Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/69/69ef0fc0f67dd9203d3adf8ba794db60b440961b75b283734d57a5d4dc99/macrostrat_raster_index-0.3.0.tar.gz", hash = "sha256:0920677f219f58023c31698b67f8c0b4a7d94625c654b25a4f672e2028ae887f", size = 30848, upload-time = "2026-08-24T02:51:14.749Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/3e/5d4cc3fdfafcd6d605ac396320386de58fe55a5f45000a93d5d5e65cf980/macrostrat_raster_index-0.2.0-py3-none-any.whl", hash = "sha256:e213ba1e83c43ac82fbd8e935d03956d25e2d4957125634a8e2a913c8c63e7c9", size = 31644, upload-time = "2026-08-23T06:41:59.893Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/69/31056e8d3a4f43528d16841dd151ce9300f24df835c2c031a9382ea49130/macrostrat_raster_index-0.3.0-py3-none-any.whl", hash = "sha256:c86177bb96c3e7809e1ac226a2b723510f8e0b61e9dbc8c44cdf82aeeb4483b9", size = 37677, upload-time = "2026-08-24T02:51:13.693Z" },
 ]
 
 [[package]]
 name = "macrostrat-raster-layers"
-version = "0.2.1"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -651,9 +651,9 @@ dependencies = [
     { name = "titiler-core" },
     { name = "titiler-mosaic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/cd/ae44702bef0cb868acf269fd78681b9de9590b9eb60c99f80283f78af9be/macrostrat_raster_layers-0.2.1.tar.gz", hash = "sha256:6042d861a206ec4956191231466cff97afb3dbc4885e92623112375906fecd63", size = 12831, upload-time = "2026-08-23T08:21:59.901Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/13/5e831cfee1a0568876463c5026276e80ab53e4e15f6bb662f796596250a8/macrostrat_raster_layers-0.3.0.tar.gz", hash = "sha256:7a9331f786c4609ee29c671e915e1ae9de0e7d6f3e3f5bbab34e0f1d54f1b88e", size = 13401, upload-time = "2026-08-24T02:51:16.542Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/74/03467091ed3024d408cc329c148c051587c2026267f6aa696b5c3653e74d/macrostrat_raster_layers-0.2.1-py3-none-any.whl", hash = "sha256:6ae8c6119ff627fa0d7130189175b8653c41e962fa608355bb7cf2db28c28396", size = 15797, upload-time = "2026-08-23T08:21:58.966Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/82/d0639e1d90c10f544b4b8f2c53cae37792cee1cc7917d6235f6b34d07611/macrostrat_raster_layers-0.3.0-py3-none-any.whl", hash = "sha256:1be076ab85ecee38ef506331972b77ba2f70a42b73b8ac1fdae3d4c211ace133", size = 16490, upload-time = "2026-08-24T02:51:15.67Z" },
 ]
 
 [[package]]
@@ -699,8 +699,8 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.111.0,<0.140" },
     { name = "httpx", specifier = ">=0.27.2,<0.28" },
     { name = "macrostrat-database", specifier = ">=4.5,<5" },
-    { name = "macrostrat-raster-index", specifier = ">=0.2.0,<1" },
-    { name = "macrostrat-raster-layers", specifier = ">=0.2.1,<1" },
+    { name = "macrostrat-raster-index", specifier = ">=0.3.0,<1" },
+    { name = "macrostrat-raster-layers", specifier = ">=0.3.0,<1" },
     { name = "macrostrat-tileserver-utils", editable = "../../py-modules/tileserver-utils" },
     { name = "macrostrat-utils", specifier = ">=1.2.0,<2" },
     { name = "mapbox-vector-tile", specifier = ">=2.1.0,<3" },

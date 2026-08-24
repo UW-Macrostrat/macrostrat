@@ -155,8 +155,13 @@ layers.append(paleo_layer)
 for layer in layers:
     app.state.function_catalog.register(layer)
 
-# fix the api route format and order
-# Legacy routes postfixed with ".mvt"
+# Mounted at the app root, so its `/{layer}/{z}/{x}/{y}` route is the widest
+# thing in the table — see `VectorTileFactory.register_tiles` for why its path
+# converters are typed.
+#
+# NOTE: the comment that used to sit here claimed `.mvt`-suffixed legacy routes
+# were registered. None are, and none work (`/layer/1/2/3.mvt` is a 404) — the
+# claim was stale rather than a regression.
 app.include_router(mvt_tiler.router, tags=["Tiles"])
 
 from .filterable import router as filterable_router
