@@ -9,8 +9,10 @@ rest of the tile server so raster work can be tested on its own.
 Registration is optional: where the raster libraries aren't installed, the tile
 server starts without these routes.
 
-One thing *is* Macrostrat-specific and lives here rather than in the libraries:
-the `?classes=` shorthand on categorical layers (see `_class_filter_dependency`).
+Two things are Macrostrat-specific and live here rather than in the libraries:
+the `?classes=` shorthand on categorical layers (see `_class_filter_dependency`),
+and a WMTS service advertising one layer per class, so GIS clients can pick a
+mineral from a list instead of hand-editing a URL (see `_class_renders`).
 """
 
 from dataclasses import dataclass
@@ -100,18 +102,61 @@ def _class_filter_dependency():
     return class_filter_params
 
 
-def _layer_router(config, index):
-    """One layer's routes, with the `?classes=` shorthand where it applies.
+def _supported_tms():
+    """The tile grids these layers serve: WebMercatorQuad, and only that.
 
-    `RasterLayerConfig.router` would build this, but the shorthand replaces the
-    factory's post-processing dependency, so the factory is constructed here.
-    Categorical layers only — on a continuous layer the parameter could never
-    match anything.
+    Not a cosmetic restriction. Asset selection computes a tile's extent with
+    `ST_TileEnvelope`, which is Web Mercator by definition, so a request in any
+    other grid would select assets for the wrong patch of ground. titiler
+    advertises every grid morecantile knows by default, so this closes a latent
+    bug as well as keeping the WMTS document to a sane size — the default list
+    produced 746 KB of Capabilities for *four* layers.
     """
+    import morecantile
+    from morecantile.defaults import TileMatrixSets
+
+    return TileMatrixSets({"WebMercatorQuad": morecantile.tms.get("WebMercatorQuad")})
+
+
+def _class_renders(index, layer_slugs):
+    """One WMTS layer per class, so GIS clients can pick a mineral from a list.
+
+    WMTS has no way to filter a layer by pixel value — no OGC standard does — and
+    the standardized equivalent is to advertise each class as its own layer.
+    That turns "show me only Alunite" from a URL a user has to hand-edit into an
+    entry in QGIS's Add WMTS dialog, which is the whole point of serving WMTS at
+    all.
+
+    Resolved per Capabilities request rather than at startup, so classes added to
+    the layer later show up without a restart.
+    """
+
+    def get_renders(src_dst):
+        for slug in layer_slugs:
+            categories = index.get_categories(slug)
+            if categories:
+                return {c.label: {"classes": c.label} for c in categories}
+        return {}
+
+    return get_renders
+
+
+def _layer_router(config, index):
+    """One layer's routes: the mosaic, the `?classes=` shorthand, and WMTS.
+
+    `RasterLayerConfig.router` would build most of this, but both the shorthand
+    and the WMTS extension need to reach the factory, so it is constructed here.
+    """
+    from titiler.mosaic.extensions.wmts import wmtsExtension
+
     from macrostrat.raster_layers import RasterMosaicFactory, fixed_layers
 
-    if not config.class_filtering:
-        return config.router(index)
+    overrides = {}
+    if config.class_filtering:
+        # Our dependency covers both `?classes=` and the generic `?algorithm=`,
+        # so the library's own registration must not overwrite it.
+        overrides["class_filtering"] = False
+        overrides["process_dependency"] = _class_filter_dependency()
 
     factory = RasterMosaicFactory(
         index=index,
@@ -121,10 +166,11 @@ def _layer_router(config, index):
         use_index_colormap=config.use_index_colormap,
         backend_options=config.backend_options,
         optional_headers=config.optional_headers,
-        # Our dependency covers both forms, so the library's own registration of
-        # `?algorithm=` must not overwrite it.
-        class_filtering=False,
-        process_dependency=_class_filter_dependency(),
+        supported_tms=_supported_tms(),
+        extensions=[
+            wmtsExtension(get_renders=_class_renders(index, config.layer_slugs))
+        ],
+        **overrides,
     )
     return factory.router
 

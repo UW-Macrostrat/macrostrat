@@ -1,6 +1,10 @@
 
 ## [Unreleased]
 
+- WMTS service on raster layers (`/WMTSCapabilities.xml`), advertising one layer per
+  class so GIS clients can pick a mineral from a list
+- Restrict raster layers to `WebMercatorQuad`: asset selection is Web Mercator by
+  construction, so other grids selected assets for the wrong ground
 - Scope the root `/{layer}/{z}/{x}/{y}` tile route to numeric tile addresses, so
   it stops shadowing four-segment raster routes (`/rasters/<layer>/point/...`)
 - `?classes=Alunite,Muscovite` shorthand on categorical raster layers

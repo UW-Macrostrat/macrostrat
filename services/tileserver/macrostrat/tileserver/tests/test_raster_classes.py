@@ -97,3 +97,78 @@ class TestRoutes:
     def test_layer_resampling_default_is_preserved(self, tile_params):
         """Categorical rasters must stay `nearest`, and stay overridable."""
         assert "resampling" in tile_params
+
+
+class TestTileMatrixSets:
+    """These layers serve one grid, and it isn't a style choice.
+
+    Asset selection computes tile extents with `ST_TileEnvelope`, which is Web
+    Mercator by definition — a request in another grid would select assets for
+    the wrong ground. titiler advertises every grid morecantile knows by
+    default, so restricting this closes a real hole.
+    """
+
+    def test_only_web_mercator(self):
+        from macrostrat.tileserver.rasters import _supported_tms
+
+        assert _supported_tms().list() == ["WebMercatorQuad"]
+
+    def test_other_grids_are_rejected(self, app):
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        path = "/rasters/emit-minerals/tiles/{tms}/8/44/100@2x.png"
+        response = client.get(path.format(tms="EuropeanETRS89_LAEAQuad"))
+        assert response.status_code == 422
+
+
+class TestWMTS:
+    """A WMTS layer per class, so a GIS client gets a picklist of minerals.
+
+    No OGC standard filters a raster by pixel value; advertising each class as
+    its own layer is the standardized equivalent, and it is the difference
+    between picking "Alunite" in QGIS's dialog and hand-editing a query string.
+    """
+
+    class FakeCategory:
+        def __init__(self, label):
+            self.label = label
+
+    class FakeIndex:
+        def __init__(self, categories):
+            self._categories = categories
+            self.asked = []
+
+        def get_categories(self, layer):
+            self.asked.append(layer)
+            return self._categories
+
+    def test_one_render_per_class(self):
+        from macrostrat.tileserver.rasters import _class_renders
+
+        index = self.FakeIndex([self.FakeCategory("Alunite"), self.FakeCategory("Kaolin")])
+        renders = _class_renders(index, ["emit-minerals"])(None)
+        assert renders == {
+            "Alunite": {"classes": "Alunite"},
+            "Kaolin": {"classes": "Kaolin"},
+        }
+
+    def test_no_vocabulary_means_no_extra_layers(self):
+        """A layer without class names still gets WMTS, just the one layer."""
+        from macrostrat.tileserver.rasters import _class_renders
+
+        assert _class_renders(self.FakeIndex([]), ["emit-minerals"])(None) == {}
+
+    def test_vocabulary_is_read_per_request(self):
+        """So classes added later appear without restarting the tile server."""
+        from macrostrat.tileserver.rasters import _class_renders
+
+        index = self.FakeIndex([self.FakeCategory("Alunite")])
+        get_renders = _class_renders(index, ["emit-minerals"])
+        get_renders(None)
+        get_renders(None)
+        assert index.asked == ["emit-minerals", "emit-minerals"]
+
+    def test_capabilities_route_is_registered(self, app):
+        paths = {getattr(r, "path", "") for r in app.routes}
+        assert "/rasters/emit-minerals/WMTSCapabilities.xml" in paths
