@@ -147,7 +147,9 @@ class TestWMTS:
     def test_one_render_per_class(self):
         from macrostrat.tileserver.rasters import _class_renders
 
-        index = self.FakeIndex([self.FakeCategory("Alunite"), self.FakeCategory("Kaolin")])
+        index = self.FakeIndex(
+            [self.FakeCategory("Alunite"), self.FakeCategory("Kaolin")]
+        )
         renders = _class_renders(index, ["emit-minerals"])(None)
         assert renders == {
             "Alunite": {"classes": "Alunite"},
