@@ -1,6 +1,8 @@
 
 ## [Unreleased]
 
+- Fix: raster layers advertised tile URLs missing their mount prefix, so TileJSON
+  and WMTS templates 404'd for anything that followed them (QGIS included)
 - WMTS service on raster layers (`/WMTSCapabilities.xml`), advertising one layer per
   class so GIS clients can pick a mineral from a list
 - Restrict raster layers to `WebMercatorQuad`: asset selection is Web Mercator by

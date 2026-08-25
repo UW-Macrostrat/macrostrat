@@ -26,7 +26,12 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
-__all__ = ["register_raster_routes", "RASTER_LAYERS"]
+__all__ = ["register_raster_routes", "RASTER_LAYERS", "RASTER_PREFIX"]
+
+# Where raster layers are mounted. Each layer lands at `<RASTER_PREFIX>/<slug>`,
+# and the factory has to be *told* that prefix as well as mounted at it — see
+# `_layer_router`.
+RASTER_PREFIX = "/rasters"
 
 
 def raster_layer_configs():
@@ -141,11 +146,19 @@ def _class_renders(index, layer_slugs):
     return get_renders
 
 
-def _layer_router(config, index):
+def _layer_router(config, index, prefix: str):
     """One layer's routes: the mosaic, the `?classes=` shorthand, and WMTS.
 
     `RasterLayerConfig.router` would build most of this, but both the shorthand
     and the WMTS extension need to reach the factory, so it is constructed here.
+
+    `prefix` is passed rather than derived so that the value the factory is told
+    and the value it is mounted at come from one place. Mounting a router does
+    not tell it where it lives, and titiler builds absolute URLs from
+    `router_prefix`: leaving it empty makes every URL the layer advertises —
+    TileJSON `tiles`, and the WMTS `ResourceURL` templates — point at
+    `/tiles/...` instead of `/rasters/<slug>/tiles/...`, which 404s. Nothing in
+    Macrostrat's own web client noticed, because it builds tile URLs itself.
     """
     from titiler.mosaic.extensions.wmts import wmtsExtension
 
@@ -166,6 +179,7 @@ def _layer_router(config, index):
         use_index_colormap=config.use_index_colormap,
         backend_options=config.backend_options,
         optional_headers=config.optional_headers,
+        router_prefix=prefix,
         supported_tms=_supported_tms(),
         extensions=[
             wmtsExtension(get_renders=_class_renders(index, config.layer_slugs))
@@ -223,9 +237,10 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
     # them a tile past the edge of coverage is a 5xx.
     install_exception_handlers(app)
     for config in configs:
+        prefix = f"{RASTER_PREFIX}/{config.slug}"
         app.include_router(
-            _layer_router(config, index),
-            prefix=f"/rasters/{config.slug}",
+            _layer_router(config, index, prefix),
+            prefix=prefix,
             tags=["Rasters"],
         )
 

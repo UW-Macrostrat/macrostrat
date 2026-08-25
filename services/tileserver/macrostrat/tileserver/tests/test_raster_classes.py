@@ -82,7 +82,8 @@ class TestRoutes:
         config = raster_layer_configs()[0]
 
         app = FastAPI()
-        app.include_router(_layer_router(config, index), prefix="/rasters/test")
+        prefix = "/rasters/test"
+        app.include_router(_layer_router(config, index, prefix), prefix=prefix)
         paths = app.openapi()["paths"]
         path = "/rasters/test/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x.{format}"
         return {p["name"] for p in paths[path]["get"]["parameters"]}
@@ -172,3 +173,50 @@ class TestWMTS:
     def test_capabilities_route_is_registered(self, app):
         paths = {getattr(r, "path", "") for r in app.routes}
         assert "/rasters/emit-minerals/WMTSCapabilities.xml" in paths
+
+
+class TestAdvertisedURLsResolve:
+    """Every URL a layer hands out must actually be fetchable.
+
+    Mounting a router does not tell it where it lives, and titiler builds
+    absolute URLs from `router_prefix`. Leaving that empty made TileJSON and the
+    WMTS `ResourceURL` templates advertise `/tiles/...` rather than
+    `/rasters/<slug>/tiles/...` — so every one of them 404'd, and QGIS found
+    nothing. Macrostrat's own web client never noticed because it builds tile
+    URLs itself, which is precisely why this needs a test.
+    """
+
+    @staticmethod
+    def _concrete(url: str) -> str:
+        """A fetchable path from a tile template."""
+        path = url.split("testserver", 1)[-1]
+        for placeholder, value in [
+            ("{z}", "8"), ("{x}", "44"), ("{y}", "100"),
+            ("{TileMatrix}", "8"), ("{TileCol}", "44"), ("{TileRow}", "100"),
+        ]:
+            path = path.replace(placeholder, value)
+        return path
+
+    def test_tilejson_tiles_resolve(self, app):
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        tilejson = client.get(
+            "/rasters/emit-minerals/WebMercatorQuad/tilejson.json"
+        ).json()
+        url = tilejson["tiles"][0]
+        assert "/rasters/emit-minerals/" in url
+        assert client.get(self._concrete(url)).status_code == 200
+
+    def test_wmts_templates_resolve(self, app):
+        import re
+
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
+        xml = client.get("/rasters/emit-minerals/WMTSCapabilities.xml").text
+        templates = re.findall(r'template="([^"]+)"', xml)
+        assert templates, "capabilities advertised no tile templates"
+        for url in templates[:3]:
+            assert "/rasters/emit-minerals/" in url
+            assert client.get(self._concrete(url)).status_code == 200
