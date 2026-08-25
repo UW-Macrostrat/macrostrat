@@ -193,8 +193,12 @@ class TestAdvertisedURLsResolve:
         """A fetchable path from a tile template."""
         path = url.split("testserver", 1)[-1]
         for placeholder, value in [
-            ("{z}", "8"), ("{x}", "44"), ("{y}", "100"),
-            ("{TileMatrix}", "8"), ("{TileCol}", "44"), ("{TileRow}", "100"),
+            ("{z}", "8"),
+            ("{x}", "44"),
+            ("{y}", "100"),
+            ("{TileMatrix}", "8"),
+            ("{TileCol}", "44"),
+            ("{TileRow}", "100"),
         ]:
             path = path.replace(placeholder, value)
         return path
