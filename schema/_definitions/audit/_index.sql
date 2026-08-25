@@ -1,6 +1,19 @@
+-- @subsystem: audit
+-- @depends-on: core
 -- =============================================================================
 -- Generic JSONB change-tracking for Macrostrat
 -- =============================================================================
+-- This lead file is the machinery (sink table, capture trigger, attach/detach
+-- helpers, read API). The *roster* of audited tables is its own file --
+-- 20-enable.sql -- applied after this one in filename order.
+--
+-- `@depends-on: core` rather than `macrostrat`: the curated tables audited today
+-- all live in the `macrostrat` chunk, but nothing depends on audit, so ordering
+-- it after the last application chunk costs nothing and leaves the roster free
+-- to name tables from the `core` remainder later.
+--
+-- Unlike schema/development/, this subsystem is applied in EVERY environment --
+-- provenance for curated data is a production concern, not a dev convenience.
 -- Design goals (from our discussion):
 --   * One mechanism for both tiers: "who touched this" everywhere,
 --     "what changed" for free on the columns-path + link tables.
@@ -10,14 +23,19 @@
 --     automatically, so adding a column never touches the audit machinery.
 --   * Append-only, tamper-evident against the application role.
 --
--- THINGS YOU MUST ADAPT (marked "ADAPT" below):
---   1. Role names (app role vs. the owner that runs migrations).
---   2. The columns-path FK convention: audit.column_history() assumes child/
---      link tables reference the column as `col_id`. Change that key name if
---      your convention differs. (Primary keys are handled automatically now --
---      see note below -- so only the FK sweep needs adapting.)
---   3. Your app MUST propagate the human actor into each transaction
---      (see audit.set_context). Without it you only ever capture "the app".
+-- Macrostrat specifics (resolved against schema/core/0000-roles.sql and the
+-- live schema, 2026-08-25):
+--   * Owner is `macrostrat` (this chunk is applied as that role). The API-facing
+--     roles are `web_anon` / `web_user` / `web_admin`, reached through the
+--     `postgrest` authenticator -- distinct from the owner, so the append-only
+--     property below actually holds for every write that arrives via the API.
+--   * The columns-path FK convention is `col_id`, confirmed on 15 tables in the
+--     `macrostrat` schema (cols, sections, units, col_refs, col_notes, ...).
+--     Primary keys are handled automatically -- only the FK sweep is convention-
+--     bound.
+--   * Actor propagation is belt-and-braces: audit.set_context() for batch/CLI
+--     work, with an automatic fallback to the PostgREST JWT `sub` already in the
+--     session, so API writes are attributed without the app doing anything.
 -- =============================================================================
 
 create schema if not exists audit;
@@ -33,7 +51,8 @@ create table if not exists audit.record_history (
   id           bigint generated always as identity primary key,
   txid         bigint      not null default txid_current(),
   changed_at   timestamptz not null default now(),
-  action       text        not null,              -- INSERT|UPDATE|DELETE|TRUNCATE
+  action       text        not null
+                 check (action in ('INSERT','UPDATE','DELETE','TRUNCATE')),
   schema_name  text        not null,
   table_name   text        not null,
   actor_id     text,                              -- from app.actor_id GUC
@@ -68,18 +87,27 @@ create index if not exists record_history_txid_idx
 -- Row-lifecycle lookups ("this row's whole story"): one btree covers every
 -- table, because the pk is normalized into record_pk. jsonb has btree equality
 -- ops, so `record_pk = jsonb_build_object('id', 991)` uses this directly.
+-- schema_name leads table_name because table names are NOT unique across
+-- schemas in this database -- `cols` alone exists in macrostrat, macrostrat_api,
+-- macrostrat_backup and macrostratbak2. Any lookup keyed on table_name only
+-- silently merges four different tables' histories.
 create index if not exists record_history_pk_idx
-  on audit.record_history (table_name, record_pk);
+  on audit.record_history (schema_name, table_name, record_pk);
 
 -- FK-sweep lookups for the columns tree (find every link/child row pointing at
 -- a column). record_pk does NOT help here -- it's a foreign-key traversal, not
 -- a pk lookup -- so we keep targeted expression indexes on col_id. They beat a
 -- blanket GIN because the query is key equality (->>'col_id' = ...), not
 -- containment.
+-- Partial: only a minority of audited tables carry col_id at all, and a plain
+-- expression index would still hold an entry per row of the whole log. The
+-- predicate matches what the sweep in audit.column_history() actually asks for.
 create index if not exists record_history_new_colid_idx
-  on audit.record_history ((new_record->>'col_id'));
+  on audit.record_history ((new_record->>'col_id'))
+  where new_record ? 'col_id';
 create index if not exists record_history_old_colid_idx
-  on audit.record_history ((old_record->>'col_id'));
+  on audit.record_history ((old_record->>'col_id'))
+  where old_record ? 'col_id';
 -- Add a GIN index only if you also want ad-hoc containment queries:
 --   create index on audit.record_history using gin (new_record jsonb_path_ops);
 
@@ -96,10 +124,11 @@ create index if not exists record_history_old_colid_idx
 -- (True tamper-proofing against a superuser/owner isn't a DB-level guarantee;
 --  the realistic goal is that the *application* can't alter the trail.)
 revoke all on audit.record_history from public;
--- ADAPT role names:
--- grant usage  on schema audit          to macrostrat_app;
--- grant select on audit.record_history  to macrostrat_app;
---   (deliberately NO insert/update/delete to the app role)
+grant usage on schema audit to web_anon, web_user, web_admin;
+-- Read-only to the API roles: deliberately NO insert/update/delete, so the
+-- trail can be surfaced in the UI but never rewritten through the API.
+grant select on audit.record_history to web_anon, web_user, web_admin;
+grant select on audit.record_history to rockd_reader;
 
 -- -----------------------------------------------------------------------------
 -- 3. Actor / batch propagation
@@ -129,7 +158,7 @@ create or replace function audit.capture()
   returns trigger
   language plpgsql
   security definer
-  set search_path = pg_catalog, public
+  set search_path = pg_catalog   -- no `public`: that IS the definer hijack vector
 as $$
 declare
   v_old jsonb;
@@ -167,7 +196,16 @@ begin
     tg_table_schema,
     tg_table_name,
     v_pk,
-    nullif(current_setting('app.actor_id', true), ''),  -- '' / unset -> null
+    -- Prefer an explicitly-set actor (CLI / ingest / anything that calls
+    -- set_context), then fall back to the PostgREST JWT that is already in the
+    -- session. The fallback is a GUC read and a json subscript -- no catalog or
+    -- table lookup -- so it costs nothing per row. `'orcid:' || null` is null,
+    -- so an absent claim still yields an unattributed row rather than 'orcid:'.
+    coalesce(
+      nullif(current_setting('app.actor_id', true), ''),
+      'orcid:' || (nullif(current_setting('request.jwt.claims', true), '')::json
+                     ->> 'sub')
+    ),
     nullif(current_setting('app.batch_id', true), ''),
     v_old,
     v_new
@@ -182,7 +220,15 @@ $$;
 -- -----------------------------------------------------------------------------
 -- AFTER triggers so we capture the final row (post any BEFORE-trigger mutation).
 -- The zzz_ name prefix makes these fire last among AFTER triggers.
--- %s on a regclass expands to the schema-qualified, properly-quoted name.
+--
+-- The DDL is assembled by concatenation, and this file contains no percent signs
+-- anywhere -- not in SQL, not in comments. These files are applied through
+-- psycopg, which uses a percent-s pair as its OWN bind placeholder: a format()
+-- template written that way is rewritten to `$4` before Postgres ever sees it,
+-- and the trigger DDL fails at runtime. Casting a regclass to text is equivalent
+-- to what the template did anyway -- it yields the properly-quoted name,
+-- schema-qualified exactly when qualification is needed to resolve back to the
+-- same relation.
 --
 -- We introspect the pk columns ONCE here and pass them as trigger arguments
 -- (a comma-separated list of quoted literals). No pk -> no args -> capture()
@@ -194,7 +240,22 @@ create or replace function audit.enable(target_table regclass)
 as $outer$
 declare
   v_pk_args text;
+  v_schema  text;
 begin
+  -- Auditing audit.record_history would make every captured row capture itself.
+  -- Cheap to do by accident: the bulk-enable recipe at the bottom of this file
+  -- is one `where schemaname = 'audit'` away from an infinite recursion.
+  select n.nspname into v_schema
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where c.oid = target_table;
+  if v_schema = 'audit' then
+    -- Message built by concatenation rather than plpgsql's RAISE substitution,
+    -- for the no-percent-signs reason documented in section 5 below.
+    raise exception using message =
+      'refusing to audit ' || target_table::text ||
+      ' -- tables in the audit schema would capture their own writes recursively';
+  end if;
+
   select string_agg(quote_literal(a.attname), ', '
                     order by array_position(i.indkey::smallint[], a.attnum))
   into v_pk_args
@@ -205,17 +266,17 @@ begin
   where i.indrelid = target_table
     and i.indisprimary;
 
-  execute format('drop trigger if exists zzz_audit_row on %s', target_table);
-  execute format(
-    'create trigger zzz_audit_row after insert or update or delete on %s '
-      'for each row execute function audit.capture(%s)',
-    target_table, coalesce(v_pk_args, ''));
+  execute 'drop trigger if exists zzz_audit_row on ' || target_table::text;
+  execute 'create trigger zzz_audit_row'
+       || ' after insert or update or delete on ' || target_table::text
+       || ' for each row execute function audit.capture('
+       || coalesce(v_pk_args, '') || ')';
 
-  execute format('drop trigger if exists zzz_audit_truncate on %s', target_table);
-  execute format(
-    'create trigger zzz_audit_truncate after truncate on %s '
-      'for each statement execute function audit.capture(%s)',
-    target_table, coalesce(v_pk_args, ''));
+  execute 'drop trigger if exists zzz_audit_truncate on ' || target_table::text;
+  execute 'create trigger zzz_audit_truncate'
+       || ' after truncate on ' || target_table::text
+       || ' for each statement execute function audit.capture('
+       || coalesce(v_pk_args, '') || ')';
 end;
 $outer$;
 
@@ -224,8 +285,8 @@ create or replace function audit.disable(target_table regclass)
   language plpgsql
 as $outer$
 begin
-  execute format('drop trigger if exists zzz_audit_row on %s', target_table);
-  execute format('drop trigger if exists zzz_audit_truncate on %s', target_table);
+  execute 'drop trigger if exists zzz_audit_row on ' || target_table::text;
+  execute 'drop trigger if exists zzz_audit_truncate on ' || target_table::text;
 end;
 $outer$;
 
@@ -242,7 +303,10 @@ as $$
 select case
          when p_old is null then p_new       -- INSERT
          when p_new is null then p_old        -- DELETE
-         else (
+         -- coalesce so an UPDATE that changed nothing reads as {} ("we looked,
+         -- nothing moved") rather than null ("not applicable"), which is what
+         -- INSERT/DELETE-of-an-empty-row and TRUNCATE mean.
+         else coalesce((
            select jsonb_object_agg(
              key,
              jsonb_build_object('old', p_old -> key, 'new', p_new -> key))
@@ -252,7 +316,7 @@ select case
              select jsonb_object_keys(p_new) as key
            ) k
            where (p_old -> key) is distinct from (p_new -> key)
-         )
+         ), '{}'::jsonb)
   end;
 $$;
 
@@ -271,10 +335,14 @@ from audit.record_history h;
 -- col_id is swept in automatically -- no per-table union to maintain, and new
 -- link tables are covered the moment you audit.enable() them.
 --
--- ADAPT: assumes cols pk = 'id' and children reference it as 'col_id'.
+-- Assumes cols pk = 'id' and children reference it as 'col_id'.
 -- The OR over both old_record and new_record catches re-links (a col_id that
 -- changed in an UPDATE shows up under both its old and new parent).
-create or replace function audit.column_history(p_col_id bigint)
+--
+-- p_schema is a real parameter, not decoration: `cols` exists in four schemas
+-- here, and an unqualified table_name filter would blend their histories.
+create or replace function audit.column_history(
+    p_col_id bigint, p_schema text default 'macrostrat')
   returns table (
     changed_at timestamptz,
     txid       bigint,
@@ -291,36 +359,33 @@ select
   h.changed_at, h.txid, h.actor_id, h.batch_id, h.action, h.table_name,
   audit.diff(h.old_record, h.new_record)
 from audit.record_history h
-where
-   -- the cols row itself (pk = id)
-  (h.table_name = 'cols'
-    and (h.new_record->>'id' = p_col_id::text
-      or h.old_record->>'id' = p_col_id::text))
-   -- anything that references this column via col_id
-   or h.new_record->>'col_id' = p_col_id::text
-   or h.old_record->>'col_id' = p_col_id::text
+where h.schema_name = p_schema
+  and (
+     -- The cols row itself, matched through the normalized pk so this branch
+     -- rides record_history_pk_idx. Matching on new_record->>'id' instead would
+     -- have no index behind it and seq-scan the entire log on every call.
+     (h.table_name = 'cols' and h.record_pk = jsonb_build_object('id', p_col_id))
+     -- anything that references this column via col_id
+     or h.new_record->>'col_id' = p_col_id::text
+     or h.old_record->>'col_id' = p_col_id::text
+  )
 order by h.changed_at, h.id;
 $$;
 
 -- =============================================================================
 -- USAGE
 -- =============================================================================
--- Turn on auditing per table:
---     select audit.enable('macrostrat.cols');
---     select audit.enable('macrostrat.units');
---     select audit.enable('macrostrat.unit_liths');   -- a link table
+-- Which tables are audited is declared in 20-enable.sql -- add a line there
+-- rather than calling audit.enable() by hand. An out-of-band `enable()` does not
+-- survive: the schema diff builds its ideal side by *executing* these files
+-- (planning_database -> apply_schema_for_environment), so a trigger that is not
+-- in the roster is absent from the ideal schema, and `macrostrat db apply` will
+-- emit `drop trigger` for it -- classified safe by is_unsafe_statement, so it
+-- detaches silently. The roster file is the only durable place to say this.
 --
--- Bulk-enable a whole schema:
---     do $$
---     declare r record;
---     begin
---       for r in
---         select format('%I.%I', schemaname, tablename) as t
---         from pg_tables where schemaname = 'macrostrat'
---       loop
---         perform audit.enable(r.t::regclass);
---       end loop;
---     end $$;
+-- Deliberately no bulk "audit the whole schema" recipe here. It would sweep in
+-- the legacy copies (macrostrat_backup / macrostratbak2 / macrostrat_api) and
+-- the bulk-rewritten lookup tables, whose churn would swamp the log.
 --
 -- App-side, once per writing transaction:
 --     begin;
