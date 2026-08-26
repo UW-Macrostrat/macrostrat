@@ -123,6 +123,9 @@ Documentation is a work in progress. We have starting points for:
 
 * [The `macrostrat` command line app](cli/docs/cli-usage.md)
 
+* [Loading working data](docs/Loading%20working%20data.md) with the
+  `db load-csv` and `db load-geo` commands
+
 * [Map staging scripts](map-staging/README.md): ad-hoc scripts for scraping
   vector maps from the web and uploading to Macrostrat
 
