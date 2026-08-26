@@ -85,7 +85,8 @@ BEGIN
   -- Get map size. A source's features all live in a single scale partition,
   -- and maps.sources records which one -- so read it there rather than probing
   -- the partitions. maps.sources.scale is free-text varchar, so only trust it
-  -- when it names an actual partition; otherwise fall back to the probe.
+  -- when it names an actual partition; otherwise fall back to the probe. Retyping
+  -- that column to maps.map_scale would let both the guard and the fallback go.
   SELECT s.scale
   FROM maps.sources s
   WHERE s.source_id = _source_id

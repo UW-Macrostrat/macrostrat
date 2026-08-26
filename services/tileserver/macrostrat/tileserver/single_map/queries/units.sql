@@ -3,7 +3,8 @@
 -- partition, and `maps.sources.scale` records which — resolving it in a
 -- subquery gives the planner an InitPlan value and lets it prune the other
 -- three at execution start. `maps.sources.scale` is free-text varchar, so the
--- enum cast is guarded to values that are actually partition keys.
+-- enum cast is guarded to values that are actually partition keys; retyping
+-- that column to `maps.map_scale` would let the guard go away.
 SELECT
   p.map_id,
   p.source_id,
