@@ -44,6 +44,12 @@ def is_default_cli_help(result):
     except AssertionError:
         return False
 
+def test_cli_cfg_file(test_cfg):
+    """Test that the proper config file is loaded."""
+    assert (
+        test_cfg.config_file == test_cfg_file.resolve()
+    )
+
 
 def test_cli_help(test_cfg):
     from macrostrat.cli.entrypoint import main
@@ -53,6 +59,7 @@ def test_cli_help(test_cfg):
 
 
 def test_cli_database(test_cfg):
+    """Test that a database string configuration is passed through successfully."""
     assert (
         test_cfg.pg_database == "postgresql://user:password@localhost:5432/macrostrat"
     )
