@@ -369,8 +369,6 @@ GRANT ALL ON FUNCTION public.current_app_role() TO macrostrat;
 
 GRANT ALL ON FUNCTION public.current_app_user_id() TO macrostrat;
 
-GRANT ALL ON FUNCTION public.group_items_by_type(name_filter text) TO macrostrat;
-
 GRANT ALL ON FUNCTION public.update_updated_on() TO macrostrat;
 
 GRANT ALL ON FUNCTION public.array_agg_mult(anycompatiblearray) TO macrostrat;
