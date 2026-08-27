@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_COLOR: "1"
+      MACROSTRAT_ENV: development
     steps:
 
     - name: Install system dependencies (GDAL)
