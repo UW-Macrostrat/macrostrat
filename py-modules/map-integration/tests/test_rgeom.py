@@ -13,6 +13,7 @@ from macrostrat.database import Database
 from macrostrat.database.utils import template_database
 from macrostrat.map_integration.process.geometry import create_rgeom
 from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_topology.config import create_topo_fixtures
 
 # A high source_id unlikely to collide with anything in the test database.
 TEST_SOURCE_ID = 999001
@@ -30,6 +31,7 @@ TEST_POLYGONS = [
 
 @pytest.fixture(scope="session")
 def db(test_db_base):
+    create_topo_fixtures(test_db_base)
     with template_database(test_db_base, close_source_connections=True) as engine:
         _db = Database(engine)
         add_test_data(_db)

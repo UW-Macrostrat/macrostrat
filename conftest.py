@@ -182,7 +182,7 @@ def empty_db(request):
             yield Database(engine)
         return
 
-    with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
+    with test_database_cluster(username="postgres", optimize=optimize) as db:
         yield db
 
 

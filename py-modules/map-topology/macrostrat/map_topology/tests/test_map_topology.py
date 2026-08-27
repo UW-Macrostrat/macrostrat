@@ -7,7 +7,7 @@ from pytest import fixture, mark
 from shapely.geometry import Point
 
 from macrostrat.map_topology import _set_dirty, _update_identity
-from macrostrat.map_topology.config import create_topo_context
+from macrostrat.map_topology.config import create_topo_context, create_topo_fixtures
 from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
 
 
@@ -17,6 +17,7 @@ def geom(_shape, srid=4326):
 
 @fixture(scope="class")
 def ctx(test_db_base):
+    create_topo_fixtures(test_db_base)
     yield create_topo_context(test_db_base)
 
 
