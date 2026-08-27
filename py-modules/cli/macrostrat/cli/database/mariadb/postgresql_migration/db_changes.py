@@ -280,7 +280,7 @@ def compare_data_counts(db1_rows, db2_rows, db1_columns, db2_columns, db1, db2):
         print_col_counts(col_count_difference)
     elif list(col_count_difference.keys()).sort() == array.sort():
         success(
-            f"Columns for {len(col_count_difference)-1} are greater in {db1} rather than {db2}. This indicates data retention!"
+            f"Columns for {len(col_count_difference) - 1} are greater in {db1} rather than {db2}. This indicates data retention!"
         )
         print_counts(col_count_difference)
 

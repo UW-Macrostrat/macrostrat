@@ -70,7 +70,7 @@ def _view_name(statement: str) -> str:
 def _as_create_or_replace(statement: str) -> str:
     """Rewrite ``CREATE VIEW`` → ``CREATE OR REPLACE VIEW`` (leaving the rest)."""
     return _VIEW_STMT_RE.sub(
-        lambda m: ("CREATE OR REPLACE VIEW" if not m.group(1) else m.group(0)),
+        lambda m: "CREATE OR REPLACE VIEW" if not m.group(1) else m.group(0),
         statement,
         count=1,
     )

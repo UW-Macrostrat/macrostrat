@@ -130,7 +130,7 @@ def get_interval_from_text(db, text: str | None):
         return None
 
     # Order by age width descending
-    ints.sort(key=lambda i: (i.age_bottom - i.age_top), reverse=True)
+    ints.sort(key=lambda i: i.age_bottom - i.age_top, reverse=True)
     # Ensure that intervals all overlap
     last_int = ints[-1]
     for _int in ints[:-1]:

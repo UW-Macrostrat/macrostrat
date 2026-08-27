@@ -1,11 +1,12 @@
 import urllib.parse
 
 import pytest
-from api.query_parser import QueryParser
 from sqlalchemy import Column, Integer, MetaData, String, Table
 from sqlalchemy.sql.expression import SQLColumnExpression
 from starlette.datastructures import Headers
 from starlette.requests import QueryParams
+
+from api.query_parser import QueryParser
 
 
 def compile_statement(stmt: SQLColumnExpression):
@@ -21,7 +22,6 @@ TEST_TABLE = Table(
 
 
 class TestParser:
-
     def test_eq(self):
         params = {"string_column": "eq.test value"}
 

@@ -262,7 +262,6 @@ def _run_migrations_in_database(
     n_total = 0
     n_migrations = len(_migrations)
     while n_migrations > 0:
-
         if _migrations == _next_migrations:
             print("No changes in applyable migrations, exiting")
             if raise_errors:

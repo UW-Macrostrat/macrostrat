@@ -55,13 +55,11 @@ async def session(engine: AsyncEngine):
 
 
 class TestModels:
-
     def test_polygon_model(self):
         x = PolygonModel.model_validate({"descrip": "TEst"})
 
 
 class TestUtils:
-
     @pytest.mark.asyncio
     async def test_source_id_to_slug(self, engine: AsyncEngine):
         async with engine.begin() as conn:
@@ -70,7 +68,6 @@ class TestUtils:
 
 
 class TestSessionDB:
-
     @pytest.mark.asyncio
     async def test_get_sources_table(self, session: async_sessionmaker[AsyncSession]):
         sources = await db.get_sources(session)
@@ -78,7 +75,6 @@ class TestSessionDB:
 
 
 class TestEngineDB:
-
     @pytest.mark.asyncio
     async def test_token_insert(self, engine: AsyncEngine):
         test_value = f"test-{random.randint(0, 10000000)}"

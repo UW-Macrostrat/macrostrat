@@ -360,7 +360,7 @@ def merge_rows_by_slug(existing_rows: list[dict], new_rows: list[dict]) -> list[
         existing_by_slug[slug] = row
 
     merged = list(existing_by_slug.values())
-    merged.sort(key=lambda r: (r.get("slug") or ""))
+    merged.sort(key=lambda r: r.get("slug") or "")
     return merged
 
 

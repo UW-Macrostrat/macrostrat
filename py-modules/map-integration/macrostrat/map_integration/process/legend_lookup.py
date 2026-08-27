@@ -16,7 +16,6 @@ def legend_lookup(source: MapInfo):
 
 
 class LegendLookup(LegacyCommandBase):
-
     scaleIsIn = {
         "tiny": ["tiny", "small"],
         "small": ["small", "medium"],

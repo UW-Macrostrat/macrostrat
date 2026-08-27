@@ -210,7 +210,7 @@ def _run_pgloader(source: Engine, dest: Engine):
 def _build_pgloader():
     header("Building pgloader-runner Docker image")
 
-    dockerfile = "FROM dimitri/pgloader:latest\n" 'ENTRYPOINT ["pgloader"]\n'
+    dockerfile = 'FROM dimitri/pgloader:latest\nENTRYPOINT ["pgloader"]\n'
 
     run(
         "docker",

@@ -1,13 +1,14 @@
 from typing import Annotated
 
 import morecantile
-from api.database import DatabaseDep
 from fastapi import APIRouter, Depends, HTTPException
 from morecantile import Tile
 from shapely import GEOSException
 from shapely.geometry import Polygon
 from shapely.wkb import loads as load_wkb
 from shapely.wkt import loads as load_wkt
+
+from api.database import DatabaseDep
 
 router = APIRouter(tags=["map"])
 

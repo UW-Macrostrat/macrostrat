@@ -6,7 +6,6 @@ from .test_database import TEST_SOURCE_TABLE, api_client
 
 
 class TestAPI:
-
     def test_get_sources(self, api_client: TestClient):
         response = api_client.get("/sources")
         assert response.status_code == 200

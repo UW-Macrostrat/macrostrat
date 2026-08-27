@@ -48,7 +48,6 @@ async def provision_strabospot_resources(strabo_token: str) -> dict:
 
     # Reuse a single HTTP client for all requests in this function
     async with httpx.AsyncClient(timeout=30.0) as client:
-
         # Step 1: find or create the Rockd Checkins dataset
         datasets_body = await _strabo_get(
             client, STRABOSPOT_MY_DATASETS_ENDPOINT, strabo_token

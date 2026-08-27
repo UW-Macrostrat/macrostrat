@@ -56,7 +56,6 @@ def create_rgeom(
     elif not table_exists(db, name, schema="sources"):
         raise ValueError(f"No table found for {name}")
     else:
-
         # This is a hack to make sure the geometry is a multipolygon
         # We need to make this more standardized and robust.
         db.run_sql(

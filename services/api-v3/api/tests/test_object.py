@@ -91,9 +91,9 @@ def object_registry(api_client):
     yield created
     for obj in reversed(created):
         resp = api_client.delete(f"/object/{obj.id}?hard=true")
-        assert (
-            resp.status_code == 200
-        ), f"Cleanup hard delete failed for id={obj.id} key={obj.key}: {resp.text}"
+        assert resp.status_code == 200, (
+            f"Cleanup hard delete failed for id={obj.id} key={obj.key}: {resp.text}"
+        )
 
 
 def _register_created(

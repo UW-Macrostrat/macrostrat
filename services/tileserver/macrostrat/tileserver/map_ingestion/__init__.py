@@ -96,7 +96,6 @@ async def tile(
     x: int,
     y: int,
 ):
-
     # if feature_type != FeatureType.polygons:
     #    return Response(status_code=404, content="Only polygons are supported for now")
 
@@ -107,7 +106,6 @@ async def tile(
     success = False
 
     for layer in FeatureType:
-
         try:
             data += await get_layer(pool, slug, layer, z=z, x=x, y=y)
             success = True
@@ -123,7 +121,6 @@ async def tile(
 
 async def get_layer(pool, slug, layer: FeatureType, **params):
     async with pool.acquire() as con:
-
         table_name = f"{slug}_{layer.value}"
         alias = "s"
         column_dict = await get_table_columns(con, table_name, schema="sources")

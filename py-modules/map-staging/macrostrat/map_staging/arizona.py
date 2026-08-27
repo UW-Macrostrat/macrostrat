@@ -77,7 +77,7 @@ def main() -> None:
 
         for author in map["metadata"]["authors"]:
             if ref_authors:
-                ref_authors += f'; {author["person"]}'
+                ref_authors += f"; {author['person']}"
             else:
                 ref_authors = author["person"]
 
@@ -89,7 +89,6 @@ def main() -> None:
             archive_url = f"{base_url}/{filename}"
 
             if file["type"].startswith("gisdata:"):
-
                 if filename.endswith(".kmz") or filename == "KMZ.zip":
                     continue
 

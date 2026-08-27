@@ -11,11 +11,11 @@ gis:
 
 install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
+	uvx pre-commit install
 
 format:
-	# For some 
-	uvx black .
-	uvx isort .
+	uv run ruff format .
+	uv run ruff check --fix .
 
 test:
 	# These tests may fail due to an older GDAL version in use.

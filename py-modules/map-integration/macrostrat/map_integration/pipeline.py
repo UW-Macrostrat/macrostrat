@@ -788,7 +788,6 @@ def load_object(
 
     try:
         with ingestion_context(local_file, ignore_cleanup_errors=True) as tmp_dir:
-
             ## Locate files of interest.
 
             gis_files = (

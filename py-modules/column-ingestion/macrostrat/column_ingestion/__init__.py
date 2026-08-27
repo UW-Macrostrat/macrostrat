@@ -18,7 +18,7 @@ app = Typer(
 
 @app.command(name="ingest")
 def ingest_columns(
-    data_file: Path = Argument(..., help="Path to the data file to ingest")
+    data_file: Path = Argument(..., help="Path to the data file to ingest"),
 ):
     """Ingest columns from tabular data."""
     from .ingest import ingest_columns_from_file
@@ -63,8 +63,7 @@ def recalculate_age_model(
 
     verb = "Would rebuild" if dry_run else "Rebuilt"
     console.print(
-        f"{verb} column [bold cyan]{col_id}[/] using the "
-        f"[bold]{used.value}[/] approach"
+        f"{verb} column [bold cyan]{col_id}[/] using the [bold]{used.value}[/] approach"
     )
     if not plans:
         console.print("  [yellow]no sections were modeled[/]")

@@ -31,7 +31,6 @@ async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
     # https://github.com/mapnik/mapnik/wiki/PostGIS
 
     async with pool.map_context(scale) as _map:
-
         _map.zoom_to_box(box)
 
         # Render map to image
