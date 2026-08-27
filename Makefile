@@ -13,8 +13,9 @@ install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
 
 format:
-	uv run black .
-	uv run isort .
+	# For some 
+	uvx black .
+	uvx isort .
 
 test:
 	# These tests may fail due to an older GDAL version in use.

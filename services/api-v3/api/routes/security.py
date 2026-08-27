@@ -200,7 +200,7 @@ async def create_user(
 
 
 async def get_user_token_from_cookie(
-    token: Annotated[str | None, Depends(oauth2_scheme)]
+    token: Annotated[str | None, Depends(oauth2_scheme)],
 ):
     """Get the current user from the JWT token in the cookies"""
 
