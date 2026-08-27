@@ -214,7 +214,6 @@ def ingest_map(
 
     for name, df in get_dataframes(files):
         try:
-
             if crs is not None:
                 if df.crs is None:
                     console.print("Forcing input CRS to [bold yellow]" + crs)

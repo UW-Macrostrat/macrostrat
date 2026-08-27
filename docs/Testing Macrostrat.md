@@ -65,6 +65,7 @@ import pytest
 # and should be present in all "live" Macrostrat instances.
 col_ids = {500: "Piceance Basin", 1050: "Woodstock"}
 
+
 # Todo: disable this for custom macrostrat instances.
 @pytest.mark.parametrize("col_id,col_name", col_ids.items())
 def test_specific_column_identity(db, col_id, col_name):
@@ -74,7 +75,6 @@ def test_specific_column_identity(db, col_id, col_name):
         dict(id=col_id),
     ).scalar()
     assert res == col_name
-
 ```
 
 

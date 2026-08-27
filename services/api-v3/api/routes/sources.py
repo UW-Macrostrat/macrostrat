@@ -150,9 +150,7 @@ async def get_sub_sources_geometries(table_id: int, database: DatabaseDep):
     result = {}
 
     async with database.async_connection() as conn:
-
         for geometry in ["polygons", "lines", "points"]:
-
             try:
                 table = await get_table(conn, table_id, geometry)
                 result[geometry] = True

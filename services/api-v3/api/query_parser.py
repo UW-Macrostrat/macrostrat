@@ -173,7 +173,6 @@ class QueryParser:
         where_expressions = []
 
         for query_param in self.decomposed_query_params.values():
-
             # If the column is not mapped to a column, then skip
             if not query_param.is_mapped_to_column():
                 continue
@@ -193,7 +192,6 @@ class QueryParser:
 
         group_by_columns = []
         for query_param in self.decomposed_query_params.values():
-
             # If the column is not mapped to a column, then skip
             if not query_param.is_mapped_to_column():
                 continue
@@ -237,7 +235,6 @@ class QueryParser:
         order_by_columns = []
 
         for query_param in self.decomposed_query_params.values():
-
             # If the column is not mapped to a column, then skip
             if not query_param.is_mapped_to_column():
                 continue

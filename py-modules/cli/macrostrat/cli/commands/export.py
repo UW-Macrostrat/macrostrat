@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Annotated
 
 import fiona
-from psycopg2.extras import RealDictCursor
 from psycopg.types import none
+from psycopg2.extras import RealDictCursor
 from shapely import from_wkt, make_valid
 from shapely.geometry import mapping
 from shapely.wkb import loads
@@ -405,9 +405,7 @@ def run_exporter(
             ) ll
             WHERE ST_Intersects(ll.geom, %s)
         )
-    """ % (
-        geom
-    )
+    """ % (geom)
     pg["cursor"].execute(select)
     for row in pg["cursor"]:
         cursor.execute(

@@ -9,8 +9,6 @@ import datetime
 from os import environ
 from typing import Annotated, Iterator, Literal, Type
 
-import api.schemas as schemas
-from api.query_parser import QueryParser
 from dotenv import load_dotenv
 from fastapi import Depends, Request
 from pydantic import BaseModel
@@ -24,6 +22,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+import api.schemas as schemas
+from api.query_parser import QueryParser
 from macrostrat.database import Database
 
 load_dotenv()
@@ -268,7 +268,6 @@ async def get_sources_sub_table_count(
     query_params: list = None,
 ) -> int:
     async with engine.begin() as conn:
-
         table = await get_table(conn, table_id, geometry_type)
 
         # Extract filters from the query parameters
@@ -276,7 +275,6 @@ async def get_sources_sub_table_count(
 
         stmt = None
         if query_parser.get_group_by_column() is not None:
-
             sub_stmt = (
                 select(query_parser.get_group_by_column())
                 .where(query_parser.where_expressions())
@@ -307,7 +305,6 @@ async def select_sources_sub_table(
     query_params: list = None,
 ) -> SQLResponse:
     async with engine.begin() as conn:
-
         table = await get_table(conn, table_id, geometry_type)
 
         # Strip out the unwanted columns

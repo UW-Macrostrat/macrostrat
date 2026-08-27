@@ -5,14 +5,15 @@ from functools import lru_cache
 from typing import Any
 
 import starlette.requests
-from api.database import DatabaseDep
-from api.routes.security import has_access
 from fastapi import APIRouter, Depends, HTTPException
 from minio import Minio
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import text
 from starlette.datastructures import UploadFile as StarletteUploadFile
+
+from api.database import DatabaseDep
+from api.routes.security import has_access
 
 
 class FileSettings(BaseSettings):
@@ -205,7 +206,7 @@ async def list_objects(
     sql = f"""
     SELECT id, scheme, host, bucket, key, sha256_hash, mime_type, source, created_on, updated_on
     FROM storage.objects
-    WHERE {' AND '.join(where)}
+    WHERE {" AND ".join(where)}
     ORDER BY id DESC
     LIMIT :limit
     """

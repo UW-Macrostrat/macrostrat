@@ -126,7 +126,7 @@ async def _dump_mariadb(engine: Engine, *args, **kwargs):
         "--compress",
         "--single-transaction",
         "--quick",
-        f"--max-allowed-packet={1024*1024*1024}",
+        f"--max-allowed-packet={1024 * 1024 * 1024}",
         *args,
     )
 

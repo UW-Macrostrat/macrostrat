@@ -14,8 +14,6 @@ install:
 	uvx pre-commit install
 
 format:
-	# For some reason, we aren't finding the ruff executable
-	# in the virtual environment, so we run it through uvx.
 	uv run ruff format .
 	uv run ruff check --fix .
 

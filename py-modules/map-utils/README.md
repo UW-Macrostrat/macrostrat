@@ -16,6 +16,6 @@ global settings. This keeps the module decoupled and easy to reuse.
 ```python
 from macrostrat.map_utils import delete_map, StorageConfig
 
-delete_map(db, "my-map-slug")                       # DB-only
+delete_map(db, "my-map-slug")  # DB-only
 delete_map(db, "my-map-slug", storage=storage_cfg)  # also clears staged S3 objects
 ```

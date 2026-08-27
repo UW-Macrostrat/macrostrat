@@ -52,7 +52,6 @@ def get_column_data(data_file, meta) -> list[Column]:
 
     columns = []
     for row in df.iter_rows(named=True):
-
         geom = row.get("rgeom", getattr(meta, "rgeom", None))
 
         col = Column(

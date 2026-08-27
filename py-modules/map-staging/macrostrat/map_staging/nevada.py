@@ -51,7 +51,6 @@ def main() -> None:
                 if url.startswith("https://data.nbmg.unr.edu/Public/") and url.endswith(
                     ".zip"
                 ):
-
                     ## Make an educated guess for the DOI.
 
                     report_id = cols[0].text.strip()

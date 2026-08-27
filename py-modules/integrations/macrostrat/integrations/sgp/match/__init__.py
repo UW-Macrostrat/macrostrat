@@ -378,7 +378,7 @@ def generate_table(status: MatchStatus):
     table.add_row(
         f"[green]{status.success}[/green]",
         f"[red]{status.failed}[/red]",
-        f"{status.success/status.done*100:.1f}%",
+        f"{status.success / status.done * 100:.1f}%",
     )
     return table
 

@@ -283,7 +283,9 @@ def lookup_and_validate_age(
             next_qual = (
                 "early"
                 if tokens[i + 2] == "lower"
-                else "late" if tokens[i + 2] == "upper" else tokens[i + 2]
+                else "late"
+                if tokens[i + 2] == "upper"
+                else tokens[i + 2]
             )
             phrase_one = f"{qual} {tokens[i + 3]}"
             phrase_two = f"{next_qual} {tokens[i + 3]}"

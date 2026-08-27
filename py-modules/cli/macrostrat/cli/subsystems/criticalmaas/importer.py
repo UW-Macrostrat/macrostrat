@@ -93,7 +93,6 @@ async def import_criticalmaas(file: Path):
     # Add the source row
     async_engine = create_async_engine(db_url)
     async with async_engine.connect() as conn:
-
         # TODO: Remove the string prefix that prevents id duplication
         source_insert_stmt = text(
             f"INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug) VALUES ('{map['title']}', '{map['id']}{hash}_polygons', '{map['source_url']}', '{map['title']}', '{map['authors']}', '{map['year']}', '{map['year']}', '{map['id']}{hash}')"

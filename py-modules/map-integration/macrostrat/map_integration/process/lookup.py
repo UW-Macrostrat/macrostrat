@@ -16,7 +16,6 @@ def make_lookup(source: MapInfo):
 
 
 class Lookup(LegacyCommandBase):
-
     UNDER = {"small": "tiny", "medium": "small", "large": "medium"}
     scaleIsIn = {
         "tiny": ["tiny"],

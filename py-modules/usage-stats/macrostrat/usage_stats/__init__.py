@@ -432,8 +432,7 @@ def show_sample(
 
     kind = "requests" if all_requests else "tile requests"
     print(
-        f"\n[dim]{min(count, len(urls))} of {len(urls)} {kind} "
-        f"({n_lines} log lines)[/]"
+        f"\n[dim]{min(count, len(urls))} of {len(urls)} {kind} ({n_lines} log lines)[/]"
     )
 
 

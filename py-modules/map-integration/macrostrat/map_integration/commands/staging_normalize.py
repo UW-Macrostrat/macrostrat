@@ -922,7 +922,7 @@ def add_preferred_columns(
             )
             continue
         console.print(
-            f"[blue]Adding[/blue] [bold]{col_name}[/bold] " f"[dim]({col_type})[/dim]"
+            f"[blue]Adding[/blue] [bold]{col_name}[/bold] [dim]({col_type})[/dim]"
         )
         if dry_run:
             continue
@@ -1303,8 +1303,7 @@ def merge_column_values(
         )
     except Exception as e:
         raise ValueError(
-            f"Could not merge column '{col_two}' into '{col_one}'. "
-            f"Original error: {e}"
+            f"Could not merge column '{col_two}' into '{col_one}'. Original error: {e}"
         ) from e
 
     console.print(
@@ -1368,8 +1367,7 @@ def unmerge_column_values(
         "strpos({src}::text, :separator) + length(:separator)))"
     )
     prefix = (
-        "nullif(btrim(substr({src}::text, 1, "
-        "strpos({src}::text, :separator) - 1)), '')"
+        "nullif(btrim(substr({src}::text, 1, strpos({src}::text, :separator) - 1)), '')"
     )
     params = dict(
         table=target.fq_identifier,
@@ -3620,7 +3618,7 @@ def calculate_dip_dir_from_columns(
     )
 
     console.print(
-        f"[green]Done:[/green] populated dip_dir in " f"{target.schema}.{target.table}"
+        f"[green]Done:[/green] populated dip_dir in {target.schema}.{target.table}"
     )
 
 
@@ -4178,7 +4176,7 @@ def normalize_calculate_strat_name(
             )
         except ValueError as e:
             console.print(
-                f"[yellow]Skipping source column[/yellow] " f"[bold]{src}[/bold]: {e}"
+                f"[yellow]Skipping source column[/yellow] [bold]{src}[/bold]: {e}"
             )
             continue
 
@@ -4921,7 +4919,6 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
         )"""
 
         if layer == "_polygons":
-
             """#copy the first available unit label column into unit_label
             copy_first_available_column(
                 target=target,

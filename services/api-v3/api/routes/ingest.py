@@ -1,19 +1,8 @@
 import os
 from typing import Union
 
-import api.models.ingest as IngestProcessModel
-import api.models.object as Object
-import api.schemas as schemas
 import minio
 import starlette.requests
-from api.celery_app import celery_app
-from api.database import DatabaseDep
-from api.query_parser import QueryParser, get_filter_query_params
-from api.routes.security import has_access
-from api.schemas import IngestProcess as IngestProcessSchema
-from api.schemas import IngestProcessTag, MapFiles
-from api.schemas import Object as ObjectORM
-from api.schemas import Sources
 from celery.exceptions import TimeoutError as CeleryTimeoutError
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -21,6 +10,17 @@ from pydantic import BaseModel
 from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.orm import defer, joinedload, selectinload
 from starlette.responses import Response
+
+import api.models.ingest as IngestProcessModel
+import api.models.object as Object
+import api.schemas as schemas
+from api.celery_app import celery_app
+from api.database import DatabaseDep
+from api.query_parser import QueryParser, get_filter_query_params
+from api.routes.security import has_access
+from api.schemas import IngestProcess as IngestProcessSchema
+from api.schemas import IngestProcessTag, MapFiles, Sources
+from api.schemas import Object as ObjectORM
 
 router = APIRouter(
     prefix="/ingest-process",
@@ -122,7 +122,6 @@ async def get_multiple_ingest_process(
     )
 
     async with database.async_session() as session:
-
         select_stmt = (
             select(IngestProcessSchema)
             .limit(page_size)
@@ -209,7 +208,6 @@ async def create_ingest_process(
         )
 
     async with database.async_session() as session:
-
         if object.tags is None:
             object.tags = []
 
@@ -269,7 +267,6 @@ async def add_ingest_process_tag(
         )
 
     async with database.async_session() as session:
-
         # source_id is the primary key, so `session.get` looks up by it directly.
         ingest_process = await session.get(IngestProcessSchema, source_id)
 
@@ -303,7 +300,6 @@ async def delete_ingest_process_tag(
         )
 
     async with database.async_session() as session:
-
         ingest_process = await session.get(IngestProcessSchema, source_id)
 
         if ingest_process is None:
@@ -333,7 +329,6 @@ async def get_ingest_process_objects(source_id: int, database: DatabaseDep):
     """Get all objects for an ingestion process"""
 
     async with database.async_session() as session:
-
         select_stmt = select(IngestProcessSchema).where(
             and_(IngestProcessSchema.source_id == source_id)
         )
@@ -393,17 +388,14 @@ async def create_object(
     response_objects = []
 
     async with database.async_session() as session:
-
         ingest_stmt = select(IngestProcessSchema).where(
             IngestProcessSchema.source_id == source_id
         )
         ingest_process = await session.scalar(ingest_stmt)
 
         if "multipart/form-data" in request.headers["content-type"]:
-
             files = (await request.form()).getlist("object")
             for upload_file in files:
-
                 m = minio.Minio(
                     endpoint=os.environ["S3_HOST"],
                     access_key=os.environ["access_key"],

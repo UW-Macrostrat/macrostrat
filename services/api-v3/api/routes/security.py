@@ -308,7 +308,6 @@ async def redirect_callback(
         async with session.post(
             os.environ["OAUTH_TOKEN_URL"], data=data
         ) as token_response:
-
             if token_response.status != 200:
                 raise HTTPException(
                     status_code=400,
@@ -322,7 +321,6 @@ async def redirect_callback(
         async with session.post(
             os.environ["OAUTH_USERINFO_URL"], data=response_data
         ) as user_response:
-
             log.info("Obtained user response: %s", await user_response.text())
 
             if user_response.status != 200:
@@ -336,7 +334,6 @@ async def redirect_callback(
             user = await get_user(user_data["sub"], database.async_sessionmaker)
 
             if user is None:
-
                 given_name = (
                     user_data.get("given_name") if user_data.get("given_name") else ""
                 )

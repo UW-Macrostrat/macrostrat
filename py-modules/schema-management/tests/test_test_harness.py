@@ -49,7 +49,6 @@ def test_harness_replicates_macrostrat_schema_only():
         test_database_cluster(username="macrostrat_admin") as db_legacy,
         test_database_cluster(username="macrostrat_admin") as db_harness,
     ):
-
         # Legacy minimal build via the public API, with the optimize transform.
         apply_schema_for_environment(
             db_legacy,
