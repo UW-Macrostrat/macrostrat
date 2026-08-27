@@ -14,10 +14,10 @@ install:
 	uvx pre-commit install
 
 format:
-	# For some reason, we aren't finding the black and isort executables
-	# in the virtual environment, so we run them through uvx.
-	uvx black .
-	uvx isort .
+	# For some reason, we aren't finding the ruff executable
+	# in the virtual environment, so we run it through uvx.
+	uv run ruff format .
+	uv run ruff check --fix .
 
 test:
 	# These tests may fail due to an older GDAL version in use.
