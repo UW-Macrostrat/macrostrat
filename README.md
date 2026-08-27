@@ -32,15 +32,15 @@ Other Macrostrat services (e.g., read-only APIs) are housed in other repositorie
 
 ## Installation
 
-The project is built using `uv`. It is required to have `uv` installed on your system.
+The project is built using `uv`.
 UV can be installed directly [instructions here](https://uv.readthedocs.io/en/latest/installation.html).
 Alternatively, we recommend `mise` to manage UV and Python versions.
 
-Some services (notably the legacy tileserver) use older versions of Python or other languages entirely.
+Some services (notably the legacy tileserver) use older versions of Python.
 
 - Running `make` will install the Python dependencies and build the application.
 - `make test` will run the test suite.
-- `make install` will install the application into the local root.
+- `make install` will install the application into the local root. **Note: this also installs the `ruff` formatter and a pre-commit hook.
 
 Setting the `MACROSTRAT_PYROOT` environment variable allows a different root
 Python version to be installed. This can be used to add new plugins
@@ -58,6 +58,12 @@ presents a broad list of management functionality for Macrostrat's system. **Sub
 
 This CLI is rapidly evolving so expect breakage! When in doubt run `make`, or ~equivalently
 `uv sync` to update your installation.
+
+## Contributing
+
+You should format your code before each commit. Formatting uses `ruff` and
+can be run using `make format`. A pre-commit hook is also created on `make install` that
+runs the formatting command.
 
 ## Testing
 
@@ -91,7 +97,7 @@ defined in `conftest.py`.
   not change the database so this is purely a precautionary measure.
 - `test_db` applies schema for the current environment. with transactional rollback as well.
 
-### Common commands
+## Common commands
 
 ```bash
 # Full suite (environment + clean-room + unit tests)
