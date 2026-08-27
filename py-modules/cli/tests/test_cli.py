@@ -1,6 +1,7 @@
 """Basic tests that the CLI runs without crashing."""
 
 import importlib
+import re
 from os import getenv
 from pathlib import Path
 
@@ -9,6 +10,12 @@ from pytest import fixture
 from typer.testing import CliRunner
 
 from macrostrat.utils import override_environment
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
+
 
 runner = CliRunner()
 
@@ -88,9 +95,10 @@ def test_cli_no_config():
         result = runner.invoke(cli_entry.main, [])
 
         assert is_default_cli_help(result)
-        assert "Macrostrat control interface" in result.output
+        plain_output = strip_ansi(result.output)
+        assert "Macrostrat control interface" in plain_output
 
-        for line in result.output.splitlines():
+        for line in plain_output.splitlines():
             if "Active environment: None" in line:
                 assert True
                 return
