@@ -182,7 +182,7 @@ def empty_db(request):
             yield Database(engine)
         return
 
-    with test_database_cluster(username="macrostrat_admin", optimize=optimize) as db:
+    with test_database_cluster(username="postgres", optimize=optimize) as db:
         yield db
 
 
@@ -193,11 +193,16 @@ def schema_harness(request, empty_db: Database):
     The ``optimize`` transform (skipping indexes/grants/ownership) is applied by
     default for a faster build; disable with ``--no-optimize-database``.
     """
-    from macrostrat.core.config import settings
     from macrostrat.schema_management.test_harness import DatabaseTestHarness
 
     optimize = request.config.getoption("--optimize-database")
-    return DatabaseTestHarness(empty_db, env=settings.env, optimize=optimize)
+    # Use "development" as the default test environment so that
+    # development-only schema chunks (e.g. TopologySchema) are included
+    # when no live macrostrat.toml config file is present (e.g. in CI).
+    from macrostrat.core.config import settings
+
+    env = settings.env or "development"
+    return DatabaseTestHarness(empty_db, env=env, optimize=optimize)
 
 
 from macrostrat.core.defs_provider import (
