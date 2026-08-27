@@ -4,6 +4,8 @@ import importlib
 from pathlib import Path
 from typing import Optional
 
+## Helper to inject system CA Certificates to avoid HTTP certificate errors
+import truststore
 from pytest import fixture, mark, skip
 from sqlalchemy import make_url
 from typer.testing import CliRunner
@@ -14,8 +16,6 @@ from macrostrat.database.utils import temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
-## Helper to inject system CA Certificates to avoid HTTP certificate errors
-import truststore
 truststore.inject_into_ssl()
 
 
