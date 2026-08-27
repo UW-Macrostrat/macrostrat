@@ -97,9 +97,4 @@ def test_cli_no_config():
         assert is_default_cli_help(result)
         plain_output = strip_ansi(result.output)
         assert "Macrostrat control interface" in plain_output
-
-        for line in plain_output.splitlines():
-            if "Active environment: None" in line:
-                assert True
-                return
-        assert False
+        assert "Active environment: None" in plain_output
