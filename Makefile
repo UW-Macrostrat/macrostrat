@@ -11,9 +11,11 @@ gis:
 
 install:
 	ln -sf $(shell pwd)/bin/macrostrat /usr/local/bin/macrostrat
+	uvx pre-commit install
 
 format:
-	# For some 
+	# For some reason, we aren't finding the black and isort executables
+	# in the virtual environment, so we run them through uvx.
 	uvx black .
 	uvx isort .
 
