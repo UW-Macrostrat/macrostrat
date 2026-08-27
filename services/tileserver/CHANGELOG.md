@@ -1,6 +1,8 @@
 
 ## [Unreleased]
 
+- Prune `maps.polygons` / `maps.lines` scale partitions in single-map tile queries
+  and in `tile_layers.map()`, which scanned all four for every tile
 - Fix: raster layers advertised tile URLs missing their mount prefix, so TileJSON
   and WMTS templates 404'd for anything that followed them (QGIS included)
 - WMTS service on raster layers (`/WMTSCapabilities.xml`), advertising one layer per

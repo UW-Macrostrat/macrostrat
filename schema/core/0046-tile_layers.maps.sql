@@ -82,12 +82,24 @@ BEGIN
     4326
                     );
 
-  -- Get map size
-  SELECT scale
-  FROM tile_layers.map_units
-  WHERE source_id = _source_id
-  LIMIT 1
+  -- Get map size. A source's features all live in a single scale partition,
+  -- and maps.sources records which one -- so read it there rather than probing
+  -- the partitions. maps.sources.scale is free-text varchar, so only trust it
+  -- when it names an actual partition; otherwise fall back to the probe. Retyping
+  -- that column to maps.map_scale would let both the guard and the fallback go.
+  SELECT s.scale
+  FROM maps.sources s
+  WHERE s.source_id = _source_id
+    AND s.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
   INTO mapsize;
+
+  IF mapsize IS NULL THEN
+    SELECT scale
+    FROM tile_layers.map_units
+    WHERE source_id = _source_id
+    LIMIT 1
+    INTO mapsize;
+  END IF;
 
   IF mapsize = 'tiny' THEN
     linesize := ARRAY['tiny'];
@@ -108,6 +120,7 @@ BEGIN
     FROM
       tile_layers.map_units
     WHERE source_id = _source_id
+      AND scale = mapsize
       AND ST_Intersects(geom, projected_bbox)
   ), expanded AS (
     SELECT
@@ -134,6 +147,7 @@ BEGIN
     FROM
       tile_layers.map_lines
     WHERE source_id = _source_id
+      AND scale = mapsize
       AND ST_Intersects(geom, projected_bbox)
   ),
        expanded AS (
