@@ -5,6 +5,7 @@ applied, so chunk ordering and target-closure selection can be verified quickly
 without Docker. This complements the docker-backed parity/harness tests.
 """
 
+from dataclasses import replace
 from pathlib import Path
 
 from pytest import raises
@@ -13,9 +14,22 @@ from macrostrat.core import SchemaDefinition
 from macrostrat.schema_management.chunks import chunks_for_environment
 from macrostrat.schema_management.composer import build_schema, dependency_closure
 
-# Topology is local-only, so "development" is a full-but-topology-free build with
-# only Path providers (no callables to execute against the fake DB).
 _ENV = "development"
+
+
+def _sql_only_chunks(env: str = _ENV) -> list[SchemaDefinition]:
+    """The chunks for ``env`` with callable providers dropped.
+
+    Callable providers (e.g. ``map-topology``) delegate to libraries that open
+    their own connection and issue real DDL, so they can't run against a fake
+    database. These tests are about *which SQL files* get applied and in what
+    order, so the chunks keep their place in the graph with only their Path
+    providers.
+    """
+    return [
+        replace(c, provides=[p for p in c.provides if isinstance(p, Path)])
+        for c in chunks_for_environment(env)
+    ]
 
 
 class FakeDB:
@@ -40,7 +54,7 @@ def _names(db: FakeDB) -> list[str]:
 
 def test_target_closure_builds_only_subsystem_and_deps():
     db = FakeDB()
-    build_schema(db, _ENV, target="macrostrat")
+    build_schema(db, _ENV, _sql_only_chunks(), target="macrostrat")
     names = _names(db)
 
     # public + macrostrat are built...
@@ -54,7 +68,7 @@ def test_target_closure_builds_only_subsystem_and_deps():
 
 def test_full_build_applies_all_core_and_dev():
     db = FakeDB()
-    build_schema(db, _ENV)
+    build_schema(db, _ENV, _sql_only_chunks())
     names = _names(db)
 
     assert "0002-storage.sql" in names
@@ -63,7 +77,7 @@ def test_full_build_applies_all_core_and_dev():
 
 def test_application_order_follows_dependency_chain():
     db = FakeDB()
-    build_schema(db, _ENV)
+    build_schema(db, _ENV, _sql_only_chunks())
     names = _names(db)
 
     # public -> macrostrat -> core remainder

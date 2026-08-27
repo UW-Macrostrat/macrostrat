@@ -139,7 +139,7 @@ BEGIN
   IF (TG_OP = 'DELETE' AND OLD.topo IS NOT NULL) THEN
     -- No change to topology if the topo column is null, so we can ignore this change
     map_id := OLD.map_id;
-  ELSEIF (TG_OP = 'UPDATE' AND OLD.topo IS DISTINCT FROM NEW.topo) THEN
+  ELSEIF (TG_OP = 'UPDATE' AND NOT topology.equals(OLD.topo, NEW.topo)) THEN
     map_id := NEW.map_id;
   ELSEIF (TG_OP = 'INSERT' AND NEW.topo IS NOT NULL) THEN
     map_id := NEW.map_id;

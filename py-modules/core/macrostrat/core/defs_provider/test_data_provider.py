@@ -1,8 +1,6 @@
 import pytest
 
-from macrostrat.column_ingestion.project_metadata.test_project_metadata import (
-    template_database,
-)
+from macrostrat.database.utils import template_database
 from macrostrat.core.defs_provider import (
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,

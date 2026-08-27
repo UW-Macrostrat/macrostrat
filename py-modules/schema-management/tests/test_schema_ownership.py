@@ -18,6 +18,7 @@ import importlib.util
 from pytest import mark
 
 from macrostrat.core.config import settings
+from macrostrat.map_topology.config import config as _topo_config
 from macrostrat.schema_management.composer import build_schema
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.schema_management.migrations import ApplicationStatus
@@ -43,6 +44,15 @@ _ENV = "development"
 # Schemas whose ownership is *not* create-as-owner and is excluded from the check:
 # system catalogs, the foundational/shared ``public`` and PostGIS ``topology``, and
 # external data schemas the diff never manages.
+#
+# The map-topology schemas are excluded for a different reason: that chunk is
+# function-backed and the topology manager opens its *own* connection
+# (``create_context`` builds a fresh ``Database`` from the engine URL), so the
+# composer's session-level ``SET ROLE`` doesn't reach it and its objects are born
+# owned by the connector. Making them macrostrat-owned would additionally require
+# granting ``macrostrat`` write access to the PostGIS ``topology`` metadata tables.
+_TOPOLOGY_SCHEMAS = (_topo_config["data_schema"], _topo_config["topo_schema"])
+
 _EXCLUDED_SCHEMAS = (
     "pg_catalog",
     "information_schema",
@@ -51,6 +61,7 @@ _EXCLUDED_SCHEMAS = (
     "sources",
     "tiger",
     "tiger_data",
+    *_TOPOLOGY_SCHEMAS,
 )
 
 _OWNERSHIP_QUERY = """
