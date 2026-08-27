@@ -14,6 +14,11 @@ from macrostrat.database.utils import temporary_database
 from macrostrat.schema_management.defs import test_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
+## Helper to inject system CA Certificates to avoid HTTP certificate errors
+import truststore
+truststore.inject_into_ssl()
+
+
 runner = CliRunner()
 
 log = get_logger(__name__)
