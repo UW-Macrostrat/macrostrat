@@ -1,6 +1,5 @@
 import pytest
 
-from macrostrat.database.utils import template_database
 from macrostrat.core.defs_provider import (
     MacrostratAPIDataProvider,
     MacrostratDatabaseDataProvider,
@@ -14,6 +13,7 @@ from macrostrat.core.defs_provider.defs_provider_models import (
     LithologyAttribute,
     Timescale,
 )
+from macrostrat.database.utils import template_database
 
 
 class StaticMacrostratDataProvider(MacrostratDataProvider):
