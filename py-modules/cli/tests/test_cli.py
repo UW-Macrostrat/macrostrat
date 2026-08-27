@@ -70,7 +70,9 @@ def test_cli_no_config():
     import macrostrat.core.config as cfg
     import macrostrat.core.main as main
 
-    with override_environment(MACROSTRAT_CONFIG="", NO_COLOR="1", MACROSTRAT_ENV="", FORCE_COLOR=""):
+    with override_environment(
+        MACROSTRAT_CONFIG="", NO_COLOR="1", MACROSTRAT_ENV="", FORCE_COLOR=""
+    ):
         # We need to specifically unset the environment variable, not set it to ""
 
         assert getenv("MACROSTRAT_CONFIG") == ""
