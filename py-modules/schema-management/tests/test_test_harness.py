@@ -14,7 +14,7 @@ from macrostrat.schema_management import (
     get_all_schemas,
     get_inspector,
 )
-from macrostrat.schema_management.defs import test_database_cluster
+from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.test_harness import (
     DatabaseTestHarness,
     optimize_transform,
@@ -46,8 +46,8 @@ def _diff_statements(from_db, target_db) -> list[str]:
 @mark.slow
 def test_harness_replicates_macrostrat_schema_only():
     with (
-        test_database_cluster(username="macrostrat_admin") as db_legacy,
-        test_database_cluster(username="macrostrat_admin") as db_harness,
+        temporary_database_cluster(username="macrostrat_admin") as db_legacy,
+        temporary_database_cluster(username="macrostrat_admin") as db_harness,
     ):
         # Legacy minimal build via the public API, with the optimize transform.
         apply_schema_for_environment(

@@ -1,10 +1,10 @@
 """Tests for enforced read-only environment access (PostgreSQL)."""
 
-from pytest import mark, raises
+from pytest import fixture, mark, raises
 from sqlalchemy.exc import DBAPIError
 
 from macrostrat.database import Database
-from macrostrat.schema_management.defs import test_database_cluster
+from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.readonly import (
     as_role,
     assert_read_only,
@@ -12,40 +12,51 @@ from macrostrat.schema_management.readonly import (
 )
 
 
+@fixture(scope="module")
+def admin_cluster():
+    """A bare cluster shared by this module — these tests need no schema at all.
+
+    Deliberately not conftest's ``empty_db``: the first test creates
+    ``public.thing``, and ``empty_db`` is the database ``test_test_harness``
+    compares builds in, where a stray table would read as drift.
+    """
+    with temporary_database_cluster(username="macrostrat_admin") as db:
+        yield db
+
+
 @mark.docker
 @mark.slow
-def test_readonly_login_reads_but_cannot_write():
-    with test_database_cluster(username="macrostrat_admin") as admin:
-        admin.run_sql("CREATE TABLE public.thing (id int)", raise_errors=True)
-        admin.run_sql("INSERT INTO public.thing (id) VALUES (1)", raise_errors=True)
+def test_readonly_login_reads_but_cannot_write(admin_cluster):
+    admin = admin_cluster
+    admin.run_sql("CREATE TABLE public.thing (id int)", raise_errors=True)
+    admin.run_sql("INSERT INTO public.thing (id) VALUES (1)", raise_errors=True)
 
-        # No `web_anon` in a bare cluster; borrow only pg_read_all_data.
-        with readonly_login(admin.engine.url, impersonate=()) as ro_url:
-            ro = Database(ro_url)
+    # No `web_anon` in a bare cluster; borrow only pg_read_all_data.
+    with readonly_login(admin.engine.url, impersonate=()) as ro_url:
+        ro = Database(ro_url)
 
-            # Reads work.
+        # Reads work.
+        assert ro.run_query("SELECT count(*) FROM public.thing").scalar() == 1
+
+        # Writes are refused by role privilege.
+        with raises(DBAPIError):
+            ro.run_sql(
+                "INSERT INTO public.thing (id) VALUES (2)", raise_errors=True
+            )
+
+        # And the fail-closed probe agrees (write blocked even after RESET ROLE).
+        assert_read_only(ro)
+
+        # SET ROLE within the membership closure works (for grant/RLS testing).
+        with as_role(ro, "pg_read_all_data"):
             assert ro.run_query("SELECT count(*) FROM public.thing").scalar() == 1
 
-            # Writes are refused by role privilege.
-            with raises(DBAPIError):
-                ro.run_sql(
-                    "INSERT INTO public.thing (id) VALUES (2)", raise_errors=True
-                )
-
-            # And the fail-closed probe agrees (write blocked even after RESET ROLE).
-            assert_read_only(ro)
-
-            # SET ROLE within the membership closure works (for grant/RLS testing).
-            with as_role(ro, "pg_read_all_data"):
-                assert ro.run_query("SELECT count(*) FROM public.thing").scalar() == 1
-
-            ro.engine.dispose()
+        ro.engine.dispose()
 
 
 @mark.docker
 @mark.slow
-def test_assert_read_only_fails_closed_on_writable_connection():
+def test_assert_read_only_fails_closed_on_writable_connection(admin_cluster):
     """A writable (superuser) connection must be rejected, not silently trusted."""
-    with test_database_cluster(username="macrostrat_admin") as admin:
-        with raises(RuntimeError):
-            assert_read_only(admin)  # RESET ROLE → superuser → probe write succeeds
+    with raises(RuntimeError):
+        assert_read_only(admin_cluster)  # RESET ROLE → superuser → probe write succeeds

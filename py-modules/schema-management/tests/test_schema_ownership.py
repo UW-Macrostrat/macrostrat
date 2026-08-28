@@ -15,12 +15,12 @@ through the same ``build_schema`` — so this is the dedicated check.
 
 import importlib.util
 
-from pytest import mark
+from pytest import fixture, mark
 
 from macrostrat.core.config import settings
 from macrostrat.map_topology.config import config as _topo_config
 from macrostrat.schema_management.composer import build_schema
-from macrostrat.schema_management.defs import test_database_cluster
+from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.migrations import ApplicationStatus
 
 
@@ -64,6 +64,29 @@ _EXCLUDED_SCHEMAS = (
     *_TOPOLOGY_SCHEMAS,
 )
 
+@fixture(scope="module")
+def built_schema():
+    """One unoptimized build, shared by this module.
+
+    Can't use ``schema_harness``: its ``optimize`` transform skips GRANT and
+    ALTER … OWNER TO, which is exactly what these tests inspect.
+    """
+    with temporary_database_cluster(username="macrostrat_admin") as db:
+        build_schema(db, _ENV)
+        yield db
+
+
+@fixture
+def rollback_schema(built_schema):
+    """``built_schema`` in a transaction rolled back after the test.
+
+    Ownership DDL is transactional, so a test that reassigns owners can share the
+    build without leaking into the read-only checks.
+    """
+    with built_schema.transaction(rollback=True):
+        yield built_schema
+
+
 _OWNERSHIP_QUERY = """
 SELECT n.nspname AS schema, c.relname AS name,
        pg_catalog.pg_get_userbyid(c.relowner) AS owner
@@ -86,52 +109,48 @@ ORDER BY 1
 
 @mark.docker
 @mark.slow
-def test_application_objects_are_macrostrat_owned():
-    with test_database_cluster(username="macrostrat_admin") as db:
-        build_schema(db, _ENV)
+def test_application_objects_are_macrostrat_owned(built_schema):
+    db = built_schema
+    params = {"excluded": list(_EXCLUDED_SCHEMAS)}
 
-        params = {"excluded": list(_EXCLUDED_SCHEMAS)}
+    bad_objects = [
+        (row.schema, row.name, row.owner)
+        for row in db.run_query(_OWNERSHIP_QUERY, params)
+        if row.owner != "macrostrat"
+    ]
+    assert not bad_objects, (
+        f"non-macrostrat-owned application objects: {bad_objects}"
+    )
 
-        bad_objects = [
-            (row.schema, row.name, row.owner)
-            for row in db.run_query(_OWNERSHIP_QUERY, params)
-            if row.owner != "macrostrat"
-        ]
-        assert not bad_objects, (
-            f"non-macrostrat-owned application objects: {bad_objects}"
-        )
-
-        bad_schemas = [
-            (row.schema, row.owner)
-            for row in db.run_query(_SCHEMA_OWNER_QUERY, params)
-            if row.owner != "macrostrat"
-        ]
-        assert not bad_schemas, (
-            f"non-macrostrat-owned application schemas: {bad_schemas}"
-        )
+    bad_schemas = [
+        (row.schema, row.owner)
+        for row in db.run_query(_SCHEMA_OWNER_QUERY, params)
+        if row.owner != "macrostrat"
+    ]
+    assert not bad_schemas, (
+        f"non-macrostrat-owned application schemas: {bad_schemas}"
+    )
 
 
 @mark.docker
 @mark.slow
-def test_xdd_writer_retains_write_access():
+def test_xdd_writer_retains_write_access(built_schema):
     """Ownership collapsed to macrostrat, but xdd_writer keeps write access via grants."""
-    with test_database_cluster(username="macrostrat_admin") as db:
-        build_schema(db, _ENV)
-
-        # A representative macrostrat_kg table the writer must still be able to write.
-        privs = db.run_query(
-            """
-            SELECT
-              pg_catalog.has_schema_privilege('xdd_writer', 'macrostrat_kg', 'USAGE') AS schema_usage,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS ins,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'UPDATE') AS upd,
-              pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'DELETE') AS dlt
-            """
-        ).one()
-        assert privs.schema_usage, "xdd_writer lost USAGE on macrostrat_kg"
-        assert privs.ins and privs.upd and privs.dlt, (
-            f"xdd_writer lost write access on macrostrat_kg.entity: {privs}"
-        )
+    db = built_schema
+    # A representative macrostrat_kg table the writer must still be able to write.
+    privs = db.run_query(
+        """
+        SELECT
+          pg_catalog.has_schema_privilege('xdd_writer', 'macrostrat_kg', 'USAGE') AS schema_usage,
+          pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS ins,
+          pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'UPDATE') AS upd,
+          pg_catalog.has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'DELETE') AS dlt
+        """
+    ).one()
+    assert privs.schema_usage, "xdd_writer lost USAGE on macrostrat_kg"
+    assert privs.ins and privs.upd and privs.dlt, (
+        f"xdd_writer lost write access on macrostrat_kg.entity: {privs}"
+    )
 
 
 def _owner_of(db, schema, name):
@@ -148,33 +167,31 @@ def _owner_of(db, schema, name):
 
 @mark.docker
 @mark.slow
-def test_ownership_migration_reconciles_legacy_owners():
+def test_ownership_migration_reconciles_legacy_owners(rollback_schema):
     """On an existing DB with legacy ownership, the migration converges it to macrostrat.
 
     Simulates the pre-unification state (objects owned by macrostrat_admin / xdd_writer),
     then checks the migration gates on it, reconciles ownership, and restores xdd_writer's
     write access — the existing-database counterpart to create-as-owner on fresh builds.
     """
-    with test_database_cluster(username="macrostrat_admin") as db:
-        build_schema(db, _ENV)
+    db = rollback_schema
+    # Simulate a legacy database: hand objects back to the pre-unification owners.
+    db.run_sql("ALTER TABLE maps.sources OWNER TO macrostrat_admin;")
+    db.run_sql("ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;")
+    assert _owner_of(db, "maps", "sources") == "macrostrat_admin"
+    assert _owner_of(db, "macrostrat_kg", "entity") == "xdd_writer"
 
-        # Simulate a legacy database: hand objects back to the pre-unification owners.
-        db.run_sql("ALTER TABLE maps.sources OWNER TO macrostrat_admin;")
-        db.run_sql("ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;")
-        assert _owner_of(db, "maps", "sources") == "macrostrat_admin"
-        assert _owner_of(db, "macrostrat_kg", "entity") == "xdd_writer"
+    migration = _load_ownership_migration()
+    assert migration.should_apply(db) == ApplicationStatus.CAN_APPLY
 
-        migration = _load_ownership_migration()
-        assert migration.should_apply(db) == ApplicationStatus.CAN_APPLY
+    migration.apply(db)
 
-        migration.apply(db)
+    # Ownership converged, migration now a no-op, and xdd_writer still writable.
+    assert migration.should_apply(db) == ApplicationStatus.APPLIED
+    assert _owner_of(db, "maps", "sources") == "macrostrat"
+    assert _owner_of(db, "macrostrat_kg", "entity") == "macrostrat"
 
-        # Ownership converged, migration now a no-op, and xdd_writer still writable.
-        assert migration.should_apply(db) == ApplicationStatus.APPLIED
-        assert _owner_of(db, "maps", "sources") == "macrostrat"
-        assert _owner_of(db, "macrostrat_kg", "entity") == "macrostrat"
-
-        can_write = db.run_query(
-            "SELECT has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS w"
-        ).scalar()
-        assert can_write, "xdd_writer lost write access after ownership reconciliation"
+    can_write = db.run_query(
+        "SELECT has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS w"
+    ).scalar()
+    assert can_write, "xdd_writer lost write access after ownership reconciliation"

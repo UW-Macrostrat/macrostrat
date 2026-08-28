@@ -3,7 +3,7 @@
 from pytest import mark
 
 from macrostrat.schema_management.composer import build_schema, selected_chunks
-from macrostrat.schema_management.defs import test_database_cluster
+from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.seed_data import (
     _is_non_idempotent_insert,
     data_statements_in,
@@ -53,7 +53,7 @@ def test_non_idempotent_insert_detection():
 @mark.slow
 def test_sync_reapplies_seed_data():
     """After provisioning, `sync`'s data category restores wiped seed rows."""
-    with test_database_cluster(username="macrostrat_admin") as db:
+    with temporary_database_cluster(username="macrostrat_admin") as db:
         # `core` includes maps_metadata and its ingest_state seed insert.
         chunks = selected_chunks(_ENV, target="core")
         build_schema(db, _ENV, chunks=chunks)

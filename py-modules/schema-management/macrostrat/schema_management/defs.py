@@ -90,7 +90,7 @@ def apply_schema_for_environment(
 
 
 @contextmanager
-def test_database_cluster(**kwargs):
+def temporary_database_cluster(**kwargs):
     """Context manager to create a temporary database cluster"""
     image_tag = kwargs.pop("image", "macrostrat.local/database:latest")
     build_context = kwargs.pop("context", settings.srcroot / "base-images" / "database")
@@ -113,7 +113,7 @@ def test_database_cluster(**kwargs):
 def planning_database(environment, **kwargs):
     """Context manager to create a temporary database for planning schema changes"""
     # Spin up an image with this container
-    with test_database_cluster(**kwargs) as plan_db:
+    with temporary_database_cluster(**kwargs) as plan_db:
         apply_schema_for_environment(plan_db, environment)
         yield plan_db
 
