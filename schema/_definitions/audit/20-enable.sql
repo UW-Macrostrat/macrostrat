@@ -13,17 +13,13 @@
 -- an audited table, and after any change to a table's primary key -- the pk
 -- columns are introspected once and baked into the trigger arguments.
 --
--- SCOPE: the hand-curated column tree, where a human edit is the unit of change
--- and provenance is the point. Deliberately excluded for now:
+-- SCOPE: the hand-curated column tree plus the unit tables. What is deliberately
+-- left out:
 --
---   * units, unit_liths, unit_boundaries -- correctness-wise these are the most
---     interesting targets, but they are rewritten in bulk by ingest and by the
---     lookup-table rebuilds. Every UPDATE writes a full-row JSONB snapshot, so
---     enabling them multiplies the write volume of those pipelines by a large and
---     currently unmeasured factor. Measure against production row counts, and
---     give the bulk writers an audit.set_context() batch_id, before adding them.
---   * lookup_* / carto / tile caches -- derived data. The provenance that matters
---     is that of their inputs, and they have no primary key to key history on.
+--   * lookup_* / autocomplete / stats and other derived tables. The provenance
+--     that matters is their inputs', they have no primary key to key history on,
+--     and the rebuild drops and recreates them -- which would silently strip any
+--     trigger attached here.
 --   * macrostrat_backup, macrostratbak2, macrostrat_api -- legacy copies.
 
 select audit.enable('macrostrat.cols');
@@ -32,3 +28,21 @@ select audit.enable('macrostrat.col_areas');
 select audit.enable('macrostrat.col_notes');
 select audit.enable('macrostrat.col_refs');
 select audit.enable('macrostrat.sections');
+
+-- The unit tables. These hold user- and model-initialized rows side by side, so
+-- they have to be tracked rather than excluded -- an age model boundary that a
+-- curator later corrects is exactly the history worth having.
+--
+-- Auditing them is only affordable because they carry
+-- suppress_redundant_updates_trigger (schema/core/0002-macrostrat/05-triggers.sql):
+-- the rebuild scripts recompute derived values across whole tables, and without
+-- suppression one `unit-boundaries.sql` run wrote 144,959 history rows to record
+-- 29 real changes. With it, that run writes 29. If those triggers are ever
+-- removed, remove these three lines with them.
+--
+-- Machine writes are tagged (`system:rebuild` / `system:column-ingest`) via
+-- macrostrat.core.database.set_audit_context, so recomputation stays
+-- distinguishable from curation -- and prunable by batch_id if it ever needs to be.
+select audit.enable('macrostrat.units');
+select audit.enable('macrostrat.unit_liths');
+select audit.enable('macrostrat.unit_boundaries');

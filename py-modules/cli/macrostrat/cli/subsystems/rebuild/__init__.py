@@ -1,7 +1,9 @@
+from datetime import date
+
 from rich.console import Console
 from typer import Option, Typer
 
-from macrostrat.core.database import get_database
+from macrostrat.core.database import get_database, set_audit_context
 
 from .utils import grant_permissions
 
@@ -43,10 +45,26 @@ def is_column_script(name):
     return "unit" in name
 
 
+def _tag_audit_context(db, script_name: str):
+    """Tag everything this rebuild writes, for change tracking.
+
+    Session-scoped, not transaction-local: these scripts run statement-by-statement
+    through ``Database.run_sql`` in autocommit, so a transaction-local setting is
+    cleared before the next statement and every row lands unattributed.
+    """
+    set_audit_context(
+        db,
+        "system:rebuild",
+        f"rebuild:{script_name}:{date.today().isoformat()}",
+        local=False,
+    )
+
+
 def wrap_command(command_func):
     """Decorator to wrap command functions with logging and permission granting"""
 
     def wrapper():
+        _tag_audit_context(get_database(), command_func.__name__)
         result = command_func()
 
         # Handles callable class-based rebuild scripts like lookup_strat_names

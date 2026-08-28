@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
+from weakref import WeakKeyDictionary
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 
 from macrostrat.database import Database
 
@@ -43,3 +44,75 @@ def database_context(db: Database):
     db_ctx.set(db)
     yield db
     db_ctx.set(prev)
+
+
+# Session-scoped audit context, per engine. Kept so a re-set replaces the previous
+# listener rather than stacking another one on every call.
+_audit_listeners: WeakKeyDictionary = WeakKeyDictionary()
+
+
+def _pin_audit_context(engine, actor: str, batch: str | None):
+    """Apply the audit context to every connection this engine hands out.
+
+    Setting it on whichever connection we happen to hold is not enough: a job that
+    runs long enough for the pool to hand it a different connection would silently
+    start writing unattributed rows. Applying it on checkout makes the context a
+    property of the job rather than of one connection.
+    """
+    previous = _audit_listeners.pop(engine, None)
+    if previous is not None:
+        event.remove(engine, "checkout", previous)
+
+    def apply_context(dbapi_connection, connection_record, connection_proxy):
+        with dbapi_connection.cursor() as cursor:
+            cursor.execute("SELECT set_config('app.actor_id', %s, false)", (actor,))
+            cursor.execute("SELECT set_config('app.batch_id', %s, false)", (batch or "",))
+
+    event.listen(engine, "checkout", apply_context)
+    _audit_listeners[engine] = apply_context
+
+
+def set_audit_context(
+    db: Database, actor: str, batch: str | None = None, *, local: bool = True
+) -> bool:
+    """Attribute this job's writes in the change-tracking trail.
+
+    Writes captured by the audit triggers (``schema/_definitions/audit/``) carry
+    whatever actor and batch the session declares. Machine writes should say so: it
+    is what lets a reader tell curation from recomputation, and what makes a batch
+    prunable afterwards (``record_history_batch_idx`` indexes ``batch_id``).
+
+    ``local`` picks the scope, and getting it wrong loses attribution silently —
+    rows land with a null actor rather than raising:
+
+    - ``True`` (default): scoped to the current transaction. Correct when the writes
+      share one, e.g. column ingestion inside ``db.transaction()``.
+    - ``False``: scoped to the session, and re-applied on every connection checkout
+      so it survives pooling. Needed for jobs that issue many statements without
+      wrapping them, e.g. the rebuild scripts running through ``run_sql`` in
+      autocommit. Pass an empty actor to clear it.
+
+    Returns False (and does nothing) when the audit subsystem is not installed. The
+    check happens here rather than inside the statement because the function is
+    resolved at parse time, so a guard in SQL would still fail.
+    """
+    installed = db.run_query(
+        "SELECT to_regprocedure('audit.set_context(text,text,boolean)') IS NOT NULL AS ok"
+    ).scalar()
+    if not installed:
+        return False
+    if not local:
+        # An empty actor means "clear": drop the listener rather than pinning blanks
+        # onto every future checkout.
+        if actor:
+            _pin_audit_context(db.engine, actor, batch)
+        else:
+            previous = _audit_listeners.pop(db.engine, None)
+            if previous is not None:
+                event.remove(db.engine, "checkout", previous)
+    db.run_sql(
+        "SELECT audit.set_context(:actor, :batch, :local)",
+        dict(actor=actor, batch=batch, local=local),
+        raise_errors=True,
+    )
+    return True

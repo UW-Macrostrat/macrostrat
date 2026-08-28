@@ -135,16 +135,26 @@ grant select on audit.record_history to rockd_reader;
 -- -----------------------------------------------------------------------------
 -- The app calls this ONCE at the start of each writing transaction:
 --     select audit.set_context('contributor:4417', 'ingest:2025-07-batch-12');
--- is_local = true  -> the setting is scoped to the current transaction and is
--- cleared on commit/rollback, so it is safe under connection pooling (never
--- leaks into the next session that checks out the connection).
-create or replace function audit.set_context(p_actor text, p_batch text default null)
+--
+-- p_local = true (the default) scopes the setting to the current transaction, so
+-- it is cleared on commit/rollback and never leaks into the next session that
+-- checks out a pooled connection. That is the right default for request-shaped
+-- work, where the writes share one transaction.
+--
+-- p_local = false scopes it to the session instead, for batch jobs that run many
+-- statements over one connection without wrapping them in a transaction. The
+-- rebuild scripts are exactly this shape -- they go through Database.run_sql,
+-- which executes statement-by-statement in autocommit -- so a transaction-local
+-- setting is already gone by the next statement and every row lands unattributed.
+-- Verified both ways against a live connection.
+create or replace function audit.set_context(
+    p_actor text, p_batch text default null, p_local boolean default true)
   returns void
   language plpgsql
 as $$
 begin
-  perform set_config('app.actor_id', coalesce(p_actor, ''), true);
-  perform set_config('app.batch_id', coalesce(p_batch, ''), true);
+  perform set_config('app.actor_id', coalesce(p_actor, ''), p_local);
+  perform set_config('app.batch_id', coalesce(p_batch, ''), p_local);
 end;
 $$;
 
