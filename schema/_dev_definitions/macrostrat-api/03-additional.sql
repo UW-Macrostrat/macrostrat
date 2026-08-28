@@ -170,7 +170,7 @@ CREATE VIEW macrostrat_api.kg_entities AS
                     json_build_object(
                         'macrostrat_terms_id', mt.id,
                         'entity_id', mt.entity_id,
-                        'entity_type', split_part(mt.entity_type, '.', 2),
+                        'entity_type', mt.entity_type,
                         'name', mt.name
                     ) AS match
                     FROM macrostrat_kg.macrostrat_terms mt)
