@@ -166,25 +166,25 @@ CREATE VIEW macrostrat_api.fossils AS
    FROM macrostrat.pbdb_collections;
 
 CREATE VIEW macrostrat_api.kg_entities AS
-WITH matches AS (SELECT mt.id,
-                   json_build_object(
-                     'macrostrat_terms_id', mt.id,
-                     'entity_id', mt.entity_id,
-                     'entity_type', split_part(mt.entity_type, '.', 2),
-                     'name', mt.normalized_name
-                   ) AS match
-                 FROM macrostrat_kg.macrostrat_terms mt)
-SELECT e.id,
-  et.id                                                AS type,
-  e.name,
-  ARRAY [e.start_index, e.end_index]                   AS indices,
-  mr.id                                                AS model_run,
-  mr.source_text_id                                    AS source,
-  m.match
-FROM macrostrat_kg.entity e
-JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
-JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
-LEFT JOIN matches m ON m.macrostrat_terms_id = e.macrostrat_terms_id;
+    WITH matches AS (SELECT mt.id,
+                    json_build_object(
+                        'macrostrat_terms_id', mt.id,
+                        'entity_id', mt.entity_id,
+                        'entity_type', split_part(mt.entity_type, '.', 2),
+                        'name', mt.name
+                    ) AS match
+                    FROM macrostrat_kg.macrostrat_terms mt)
+    SELECT e.id,
+    et.id                                                AS type,
+    e.name,
+    ARRAY [e.start_index, e.end_index]                   AS indices,
+    mr.id                                                AS model_run,
+    mr.source_text_id                                    AS source,
+    m.match
+    FROM macrostrat_kg.entity e
+    JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
+    JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
+    LEFT JOIN matches m ON m.id = e.macrostrat_terms_id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
