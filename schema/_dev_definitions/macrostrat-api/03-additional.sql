@@ -166,14 +166,14 @@ CREATE VIEW macrostrat_api.fossils AS
    FROM macrostrat.pbdb_collections;
 
 CREATE VIEW macrostrat_api.kg_entities AS
-WITH matches AS (SELECT ge.global_entity_id,
+WITH matches AS (SELECT mt.id,
                    json_build_object(
-                     'global_entity_id', ge.global_entity_id,
-                     'entity_id', ge.entity_id,
-                     'entity_table', split_part(ge.entity_table, '.', 2),
-                     'name', ge.normalized_name
+                     'macrostrat_terms_id', mt.id,
+                     'entity_id', mt.entity_id,
+                     'entity_type', split_part(mt.entity_type, '.', 2),
+                     'name', mt.normalized_name
                    ) AS match
-                 FROM macrostrat_kg.global_entity ge)
+                 FROM macrostrat_kg.macrostrat_terms mt)
 SELECT e.id,
   et.id                                                AS type,
   e.name,
@@ -184,7 +184,7 @@ SELECT e.id,
 FROM macrostrat_kg.entity e
 JOIN macrostrat_kg.entity_type et ON et.id = e.entity_type_id
 JOIN macrostrat_kg.model_run mr ON mr.id = e.run_id
-LEFT JOIN matches m ON m.global_entity_id = e.global_entity_id;
+LEFT JOIN matches m ON m.macrostrat_terms_id = e.macrostrat_terms_id;
 
 
 CREATE OR REPLACE VIEW macrostrat_api.kg_entity_tree AS
@@ -1227,8 +1227,8 @@ feedback_meta AS (
 
 SELECT
     sr.*,
-    ge.name AS root_entity_name,
-    ge.entity_table AS root_entity_table,
+    mt.name AS root_entity_name,
+    mt.entity_type AS root_entity_type,
     fm.extraction_note,
     fm.extraction_feedback_type,
     COALESCE(ent.entities, '[]'::jsonb) AS entities,
@@ -1241,8 +1241,8 @@ LEFT JOIN relations rel
     ON rel.run_id = sr.id
 LEFT JOIN feedback_meta fm
     ON fm.run_id = sr.id
-LEFT JOIN macrostrat_kg.global_entity ge
-    ON ge.global_entity_id = sr.root_id;
+LEFT JOIN macrostrat_kg.macrostrat_terms mt
+    ON mt.id = sr.root_id;
 
 
 
