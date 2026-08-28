@@ -335,6 +335,9 @@ ALTER TABLE ONLY macrostrat_kg.source_text ALTER COLUMN id SET DEFAULT nextval('
 ALTER TABLE ONLY macrostrat_kg.entity
     ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY macrostrat_kg.relationship
+    ADD CONSTRAINT relationship_one_parent_per_run UNIQUE (run_id, dst_entity_id);
+
 ALTER TABLE ONLY macrostrat_kg.entity_type
     ADD CONSTRAINT entity_type_name_key UNIQUE (name);
 
