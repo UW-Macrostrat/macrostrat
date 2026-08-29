@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.database.utils import temporary_database
-from macrostrat.schema_management.defs import test_database_cluster
+from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
 truststore.inject_into_ssl()
@@ -182,7 +182,7 @@ def empty_db(request):
             yield Database(engine)
         return
 
-    with test_database_cluster(username="postgres", optimize=optimize) as db:
+    with temporary_database_cluster(username="postgres", optimize=optimize) as db:
         yield db
 
 

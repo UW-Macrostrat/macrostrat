@@ -1,6 +1,8 @@
+from datetime import date
+
 from openpyxl import load_workbook
 
-from macrostrat.core.database import get_database
+from macrostrat.core.database import get_database, set_audit_context
 from macrostrat.database import on_conflict
 
 from .age_model import build_age_model
@@ -65,6 +67,19 @@ def ingest_columns_from_file(
     with db.transaction(), on_conflict("restrict"):
         print(f"Ingesting data into project: {project.name}")
         _project = get_or_create_project(db, project)
+
+        # Attribute everything below in the change-tracking trail. Transaction-local
+        # is right here (unlike the rebuild scripts): every audited write in this
+        # function — col_groups, cols, sections, units, and the unit_boundaries the
+        # age model writes — happens inside this one transaction. Set after the
+        # project is resolved so the batch can name it; `projects` is not audited,
+        # so nothing captured is missed by setting it here rather than earlier.
+        set_audit_context(
+            db,
+            "system:column-ingest",
+            f"ingest:{_project.slug}:{date.today().isoformat()}",
+        )
+
         col_group_id = reconcile_column_group(db, _project.id)
 
         # References come first: columns cite them, and the citations are resolved from

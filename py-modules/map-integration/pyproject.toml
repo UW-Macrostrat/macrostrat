@@ -8,7 +8,9 @@ readme = "README.md"
 dependencies = [
     "geopandas>=1.1.3,<2",
     "ipython>=8.5.0,<10",
-    "macrostrat.database>=4.0.0,<5",
+    # 4.6.1: template_database no longer leaves the source database unusable
+    # after cloning it — this package clones a Database it keeps using.
+    "macrostrat.database>=4.6.1,<5",
     "numpy>=2.0.0,<3",
     "pyproj>=3.4.0,<4",
     "rich>=13,<16.0",
