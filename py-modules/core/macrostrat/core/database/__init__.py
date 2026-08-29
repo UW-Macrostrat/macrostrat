@@ -66,7 +66,9 @@ def _pin_audit_context(engine, actor: str, batch: str | None):
     def apply_context(dbapi_connection, connection_record, connection_proxy):
         with dbapi_connection.cursor() as cursor:
             cursor.execute("SELECT set_config('app.actor_id', %s, false)", (actor,))
-            cursor.execute("SELECT set_config('app.batch_id', %s, false)", (batch or "",))
+            cursor.execute(
+                "SELECT set_config('app.batch_id', %s, false)", (batch or "",)
+            )
 
     event.listen(engine, "checkout", apply_context)
     _audit_listeners[engine] = apply_context

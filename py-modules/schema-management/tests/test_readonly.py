@@ -40,9 +40,7 @@ def test_readonly_login_reads_but_cannot_write(admin_cluster):
 
         # Writes are refused by role privilege.
         with raises(DBAPIError):
-            ro.run_sql(
-                "INSERT INTO public.thing (id) VALUES (2)", raise_errors=True
-            )
+            ro.run_sql("INSERT INTO public.thing (id) VALUES (2)", raise_errors=True)
 
         # And the fail-closed probe agrees (write blocked even after RESET ROLE).
         assert_read_only(ro)

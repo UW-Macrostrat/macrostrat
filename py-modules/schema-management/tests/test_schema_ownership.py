@@ -64,6 +64,7 @@ _EXCLUDED_SCHEMAS = (
     *_TOPOLOGY_SCHEMAS,
 )
 
+
 @fixture(scope="module")
 def built_schema():
     """One unoptimized build, shared by this module.
@@ -118,18 +119,14 @@ def test_application_objects_are_macrostrat_owned(built_schema):
         for row in db.run_query(_OWNERSHIP_QUERY, params)
         if row.owner != "macrostrat"
     ]
-    assert not bad_objects, (
-        f"non-macrostrat-owned application objects: {bad_objects}"
-    )
+    assert not bad_objects, f"non-macrostrat-owned application objects: {bad_objects}"
 
     bad_schemas = [
         (row.schema, row.owner)
         for row in db.run_query(_SCHEMA_OWNER_QUERY, params)
         if row.owner != "macrostrat"
     ]
-    assert not bad_schemas, (
-        f"non-macrostrat-owned application schemas: {bad_schemas}"
-    )
+    assert not bad_schemas, f"non-macrostrat-owned application schemas: {bad_schemas}"
 
 
 @mark.docker
