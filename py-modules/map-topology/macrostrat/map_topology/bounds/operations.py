@@ -278,4 +278,9 @@ def load(operation: str, parameters: dict[str, Any] | None) -> BoundaryOp:
     cls = OPERATIONS.get(operation)
     if cls is None:
         raise ValueError(f"Unknown boundary operation {operation!r}")
-    return cls.model_validate(parameters or {})
+    # `parameters` is jsonb, so it can come back as any JSON value -- QGIS writes
+    # an empty *string* rather than an empty object. Only a mapping carries
+    # parameters; anything else means "none given".
+    if not isinstance(parameters, dict):
+        parameters = {}
+    return cls.model_validate(parameters)

@@ -2,7 +2,7 @@ WITH elements AS (
   SELECT
     (topo).*
   FROM map_bounds.map_topo
-  WHERE map_id = :map_id
+  WHERE source_id = :map_id
 ),
 face_ids AS (
   SELECT r.element_id face_id

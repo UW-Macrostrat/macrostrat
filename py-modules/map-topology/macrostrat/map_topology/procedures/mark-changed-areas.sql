@@ -6,7 +6,7 @@ WITH elements AS (
   GROUP BY t.source_id
 ), counts AS (
   SELECT
-    source_id,
+    ma.source_id,
     topo_count,
     array_length(topology.GetTopoGeomElementArray(ma.topo), 1) AS area_count
   FROM elements

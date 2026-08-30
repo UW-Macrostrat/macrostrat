@@ -36,6 +36,20 @@ wrapping it in an external transaction does not roll it back.
   `py-modules/usage-stats` — collected in
   `py-modules/schema-management/.../chunks.py`.
 
+**Seed data needs a file-backed provider.** `macrostrat schema sync` re-applies
+the content a schema diff cannot manage — views, procedures, `INSERT`/`UPDATE`
+seed rows, grants — by scanning each chunk's `Path` providers.
+**Function-backed providers are skipped by design** (they manage their own
+objects), so seed rows reachable *only* through a callable are invisible to
+`sync`, and a diff-based deploy lands the table empty. `map-topology` is the one
+chunk with a callable provider — topology setup is not plain SQL — so it lists
+its fixture file as an additional `Path` provider too.
+
+Seed statements **belong beside the tables they populate**, not in a separate
+file: `sync` pre-filters each file to data statements (`INSERT`/`UPDATE`/
+`DELETE`/`MERGE`), so surrounding DDL is ignored. Keep them idempotent
+(`ON CONFLICT DO NOTHING`); `sync` warns about an `INSERT` without one.
+
 Design migrations to be **order-independent and re-runnable**, and key
 postconditions on something that only becomes true once the migration has
 actually run (not on a state the declarative chunk could also produce).

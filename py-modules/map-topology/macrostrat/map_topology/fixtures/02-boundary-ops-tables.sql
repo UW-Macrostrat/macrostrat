@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS map_bounds.boundary_operation (
   id text PRIMARY KEY,
   description text
 );
-
 INSERT INTO map_bounds.boundary_operation (id, description)
 VALUES
   ('union',            'Open the boundary with a union computed from the map''s own features. Parameters carry a working srid and a union approach. This is the implicit default when a map has no operations at all.'),
@@ -34,7 +33,6 @@ VALUES
   ('clip_to_world',    'Intersect with the -180/-90..180/90 envelope'),
   ('simplify',         'Douglas-Peucker simplification to a given tolerance')
 ON CONFLICT (id) DO NOTHING;
-
 
 /** Ordered operations composing a map's boundary.
 

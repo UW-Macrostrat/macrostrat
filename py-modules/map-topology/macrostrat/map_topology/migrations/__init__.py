@@ -10,6 +10,6 @@ Each migration gets its own directory: `Migration.apply` runs *every* `.sql`
 file next to the class, so sharing a directory would run unrelated migrations.
 """
 
-from . import source_id_rename  # noqa: F401 -- registers the migration
+from . import relation_trigger_repair, source_id_rename  # noqa: F401
 
-__all__ = ["source_id_rename"]
+__all__ = ["source_id_rename", "relation_trigger_repair"]

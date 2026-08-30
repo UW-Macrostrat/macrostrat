@@ -122,8 +122,14 @@ def filter_changes_from_plan(changes):
 
 
 def filter_topogeometry_elements(inspector):
-    """Filter out the topology layer constraints that do not respond well to schema
-    diffing due to their reliance on stable IDs in the topology.topology table."""
+    """Filter out topology objects that do not respond well to schema diffing
+    due to their reliance on stable IDs in the topology.topology table.
+
+    A planning database builds its topology from scratch, so `CreateTopology`
+    assigns id 1 there while a long-lived database is on some other id. Anything
+    that embeds that id therefore looks like a difference on every diff, and
+    "fixing" it writes the planning database's id into the live one.
+    """
     inspector.constraints = {
         k: v
         for k, v in inspector.constraints.items()
@@ -133,6 +139,15 @@ def filter_topogeometry_elements(inspector):
         k: v
         for k, v in inspector.sequences.items()
         if not v.name.startswith("topogeo_s_")
+    }
+    # PostGIS bakes the topology id into this trigger's arguments as a literal
+    # (`relationtrigger('38', 'map_bounds_topology')`). Left unfiltered, a diff
+    # rewrites it to the planning database's id, after which every topogeometry
+    # insert fails with `Layer N does not exist in topology 1`.
+    inspector.triggers = {
+        k: v
+        for k, v in inspector.triggers.items()
+        if v.name != "relation_integrity_checks"
     }
 
 

@@ -129,7 +129,8 @@ def update_maps(
     **kwargs,
 ):
     db = mgr.database
-    # Copy all maps into the schema
+    # Seed a boundary for any map that lacks one. Existing boundaries -- including
+    # any composed from `boundary_op` -- are left untouched.
     db.run_sql(proc("copy-all-maps"))
 
     # Associate maps with compilations

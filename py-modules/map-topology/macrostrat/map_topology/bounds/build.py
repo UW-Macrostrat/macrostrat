@@ -30,6 +30,7 @@ class BuildResult:
     ops: list[OpRow] = field(default_factory=list)
     area_km: float | None = None
     written: bool = False
+    opened: bool = False
     error: str | None = None
     failed_op: OpRow | None = None
     skipped: str | None = None
@@ -119,17 +120,22 @@ def recompute_union(db: Database, source_id: int) -> None:
     )
 
 
-def _fold(ops: list[OpRow], upto: int | None = None) -> tuple[str, dict[str, Any]]:
+def _fold(
+    ops: list[OpRow], upto: int | None = None, *, seed: str | None = None
+) -> tuple[str, dict[str, Any]]:
     """Build one SQL expression applying `ops` in order.
 
     Geometry never leaves the database: the operations nest into a single
     expression rather than round-tripping through Python.
     """
     params: dict[str, Any] = {}
-    opening = ops[0]
-    params["opening_id"] = opening.id
-    expr = f"({_SEED})"
-    for i, row in enumerate(ops[1 : upto if upto is None else upto], start=1):
+    start = 0
+    if seed is None:
+        seed = _SEED
+        params["opening_id"] = ops[0].id
+        start = 1
+    expr = f"({seed})"
+    for i, row in enumerate(ops[start : upto if upto is None else upto], start=1):
         key = f"operand_{i}"
         params[key] = row.id
         operand = (
@@ -154,25 +160,54 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
         dict(source_id=source_id),
     ).scalar()
 
-    if init:
+    if init and not dry_run:
         recompute_union(db, source_id)
 
     ops = load_ops(db, source_id)
-    result.ops = ops
 
     if not ops:
         # Nothing to replay. The boundary is whatever the union pipeline last
         # produced, which is already in map_area.geometry.
+        result.ops = ops
         result.skipped = "no operations"
         return result
-    if ops[0].operation not in OPENING_OPERATIONS:
+
+    seed = None
+    if ops[0].position != 0:
+        # Operations authored outside the CLI -- QGIS edits `boundary_op`
+        # directly -- have no opening row. Fill it from the current boundary
+        # rather than refusing: the geometry is taken as read, but it has to be
+        # *pinned* into position 0, because the fold otherwise reads its base
+        # from the same column it writes and would re-apply it on every run.
+        #
+        # A dry run must not write, so it folds over `map_area.geometry`
+        # directly instead -- the same geometry the opening row would capture.
+        if dry_run:
+            seed = (
+                "SELECT geometry FROM map_bounds.map_area"
+                " WHERE source_id = :source_id"
+            )
+        elif ensure_opening(db, source_id) is None:
+            result.error = (
+                "no boundary geometry to open from; "
+                "run with --init to compute one from the map's features"
+            )
+            return result
+        else:
+            db.session.commit()
+            result.opened = True
+            ops = load_ops(db, source_id)
+
+    result.ops = ops
+
+    # With an explicit seed there is deliberately no opening row to check.
+    if seed is None and ops[0].operation not in OPENING_OPERATIONS:
         result.error = (
-            f"first operation is {ops[0].operation!r} at position "
-            f"{ops[0].position}; no opening operation at position 0"
+            f"position 0 holds {ops[0].operation!r}, which cannot open a boundary"
         )
         return result
 
-    expr, params = _fold(ops)
+    expr, params = _fold(ops, seed=seed)
     params["source_id"] = source_id
 
     if dry_run:
@@ -189,7 +224,8 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
             f"""
             UPDATE map_bounds.map_area
             SET geometry = ({expr}),
-                boundary_error = NULL
+                boundary_error = NULL,
+                geometry_hash = NULL
             WHERE source_id = :source_id
             RETURNING {_AREA_KM.format(geom='geometry')} AS area_km
             """,

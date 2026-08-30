@@ -60,7 +60,14 @@ from . import migrations  # noqa: E402,F401
 
 TopologySchema = SchemaDefinition(
     "map-topology",
-    provides=[create_topo_fixtures],
+    provides=[
+        create_topo_fixtures,
+        # Listed as a file as well, so `schema sync --data` can sweep the seed
+        # rows out of it -- the callable above is opaque to that pass. `sync`
+        # pre-filters to data statements, so the surrounding DDL is ignored, and
+        # everything here is idempotent either way.
+        __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+    ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),
 )
@@ -72,4 +79,5 @@ def get_topo_manager():
 
 
 def get_topo_context():
-    return get_topo_manager().context
+    # `TopologyManager` exposes the context as `ctx`; there is no `.context`.
+    return get_topo_manager().ctx

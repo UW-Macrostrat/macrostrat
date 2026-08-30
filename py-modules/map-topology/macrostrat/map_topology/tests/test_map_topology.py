@@ -277,10 +277,10 @@ def set_priority(
     db.run_query(
         """
         INSERT INTO map_bounds.map_priority
-            (map_id, priority, map_layer)
+            (source_id, priority, map_layer)
         VALUES
             (:map_id, :priority, map_bounds.layer_id(:layer_id))
-        ON CONFLICT (map_id, map_layer) DO UPDATE SET priority = EXCLUDED.priority
+        ON CONFLICT (source_id, map_layer) DO UPDATE SET priority = EXCLUDED.priority
         """,
         params=[dict(map_id=p[0], priority=p[1], layer_id=map_layer) for p in priority],
     )

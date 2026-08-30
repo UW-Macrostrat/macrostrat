@@ -1,7 +1,7 @@
 WITH existing_count AS (
   SELECT COUNT(*) as n
   FROM map_bounds.map_topo
-  WHERE map_id = :map_id
+  WHERE source_id = :map_id
 ), to_insert AS (
   SELECT
     a.source_id,
