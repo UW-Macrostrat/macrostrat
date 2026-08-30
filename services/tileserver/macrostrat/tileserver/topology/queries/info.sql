@@ -18,7 +18,7 @@ JOIN map_bounds.map_area ma
 JOIN maps.sources s ON s.source_id = ma.source_id
 JOIN loc ON ST_Intersects(ma.geometry, loc.geometry)
 LEFT JOIN map_bounds_topology.map_face mf
-  ON mf.source_id = ma.source_id
+  ON mf.map_id = ma.source_id
   AND mf.map_layer = coalesce(map_bounds.layer_id(:map_layer), -1)
   AND ST_Intersects(mf.geometry, loc.geometry)
 WHERE ::where_clauses

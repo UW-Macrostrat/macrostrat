@@ -61,6 +61,6 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_is_identified(map_face {topo_schema}.map_face)
   RETURNS boolean AS $$
 BEGIN
-  RETURN map_face.source_id IS NOT NULL;
+  RETURN map_face.map_id IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;

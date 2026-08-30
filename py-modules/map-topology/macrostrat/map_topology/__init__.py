@@ -122,7 +122,7 @@ def _update_identity(db):
     db.run_query(
         """
          UPDATE map_bounds_topology.map_face
-         SET source_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+         SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
         """
     )
 

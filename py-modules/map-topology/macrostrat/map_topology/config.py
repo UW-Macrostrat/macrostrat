@@ -19,7 +19,7 @@ config = dict(
 
 
 IDENTITY_STRATEGY = IdentityStrategy(
-    identity_column="source_id",
+    identity_column="map_id",
     install=lambda ctx: ctx.database.run_fixtures(
         __dir__ / "fixtures" / "03-identity-management.sql"
     ),
@@ -53,6 +53,10 @@ def create_topo_fixtures(db: Database):
     mgr = MacrostratTopologyManager(ctx)
     mgr.create_tables(check=False)
 
+
+# Importing the migrations package registers its `Migration` subclasses, which
+# are discovered by subclass lookup rather than by scanning a directory.
+from . import migrations  # noqa: E402,F401
 
 TopologySchema = SchemaDefinition(
     "map-topology",

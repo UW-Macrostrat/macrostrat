@@ -10,7 +10,7 @@ WITH tile AS (
 ),
 map_bounds AS (
   SELECT
-    source_id,
+    map_id AS source_id,
     lines_oriented,
     s.scale,
     ST_Intersection(geometry, tile.projected_bbox) AS geometry,
@@ -19,7 +19,7 @@ map_bounds AS (
   JOIN tile
     ON ST_Intersects(mf.geometry, tile.projected_bbox)
   JOIN maps.sources s
-    ON s.source_id = mf.source_id
+    ON s.source_id = mf.map_id
   WHERE map_layer = map_bounds.layer_id(tile.layer_slug)
     AND ST_Intersects(geometry, tile.projected_bbox)
 ),

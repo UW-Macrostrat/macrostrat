@@ -64,10 +64,14 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
 
 
 /** map_topo */
+/** The identity column stays `map_id` rather than `source_id`: the
+  topology-manager submodule already defines `map_face.source_id` as a
+  self-reference (the face a composite face was derived from), so the name is
+  taken in this schema and means something else. */
 ALTER TABLE map_bounds_topology.map_face
-  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 ALTER TABLE map_bounds_topology.face_identity
-  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 
 SELECT topology.AddTopoGeometryColumn('map_bounds_topology', 'map_bounds','map_topo', 'topo','POLYGON')
 WHERE NOT EXISTS (

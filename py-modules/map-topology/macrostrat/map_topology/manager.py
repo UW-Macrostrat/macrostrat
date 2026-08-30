@@ -41,8 +41,8 @@ class MacrostratTopologyManager(TopologyManager):
             self.db.run_query(
                 """
                 UPDATE map_bounds_topology.map_face
-                SET source_id = map_bounds_topology.identity_for_area(geometry, map_layer)
-                WHERE source_id IS null;
+                SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+                WHERE map_id IS null;
                 """
             )
 
