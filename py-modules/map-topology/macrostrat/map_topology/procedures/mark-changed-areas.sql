@@ -12,8 +12,11 @@ WITH elements AS (
   FROM elements
   JOIN map_bounds.map_area ma ON ma.source_id = elements.source_id
 )
+/* An element-count mismatch means the *assembly* is stale, not the parts, so
+   clear the assembled topogeometry rather than the parts' provenance hash.
+   `create-source-topogeometry` rebuilds it from the parts. */
 UPDATE map_bounds.map_area
-SET geometry_hash = NULL
+SET topo = NULL
 FROM counts
 WHERE map_area.source_id = counts.source_id
   AND counts.topo_count != counts.area_count;

@@ -48,13 +48,13 @@ class MacrostratTopologyManager(TopologyManager):
 
         update_maps(self, maps)
 
-        # Error if there are any maps without a topogeometry added or an error
+        # Error if there are any maps left un-assembled or carrying an error
         res = self.db.run_query(
             """
             SELECT count(*)
             FROM map_bounds.map_area a
-            WHERE geometry_hash IS NULL
-              AND (topo IS NULL OR topology_error IS NOT NULL)
+            JOIN map_bounds.map_area_sync sync ON sync.source_id = a.source_id
+            WHERE NOT sync.assembled OR a.topology_error IS NOT NULL
             """
         ).scalar()
         if res > 0:
@@ -166,10 +166,11 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
             area_km
         FROM map_bounds.map_area ma
         JOIN maps.sources s
-        ON ma.source_id = s.source_id
-        WHERE geometry IS NOT NULL
-          AND geometry_hash IS NULL
-           OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
+          ON ma.source_id = s.source_id
+        JOIN map_bounds.map_area_sync sync
+          ON sync.source_id = ma.source_id
+        WHERE ma.geometry IS NOT NULL
+          AND NOT sync.is_current
         """
     ).all()
 
@@ -184,27 +185,34 @@ def process_map(db, map, **kwargs):
         # Test whether we should process this map
         res = db.run_query(
             """
-            SELECT 1
-            FROM map_bounds.map_area ma
-            WHERE geometry_hash IS NOT NULL
-              AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
-              AND topo IS NOT null
-              AND ma.source_id = :map_id
+            SELECT 1 FROM map_bounds.map_area_sync
+            WHERE source_id = :map_id AND is_current
             """,
             dict(map_id=map.map_id),
         ).scalar()
         if res == 1:
             _print_map_info(map, prefix="  Skipping map ")
-            print("  Geometry has not changed since last update")
+            print("  Boundary, parts and assembly are all current")
             return
 
-        # We also want to skip this step if the topogeometries for the map are full added and processed
-        query_sql = proc("get-map-topo-status")
-        res = db.run_query(query_sql, dict(map_id=map.map_id)).one()
-        if res.total > 0 and res.processed == res.total:
-            _print_map_info(map, prefix="  Skipping map ")
-            print(f"  {res.processed} topogeometries already processed")
-            return
+        # Every part being solved is only a reason to skip if the parts still
+        # reflect the current boundary. Otherwise a recomposed boundary looks
+        # "fully processed" on the strength of parts derived from the old one --
+        # which is precisely how a stale map goes unnoticed.
+        parts_current = db.run_query(
+            """
+            SELECT parts_current FROM map_bounds.map_area_sync
+            WHERE source_id = :map_id
+            """,
+            dict(map_id=map.map_id),
+        ).scalar()
+        if parts_current:
+            query_sql = proc("get-map-topo-status")
+            res = db.run_query(query_sql, dict(map_id=map.map_id)).one()
+            if res.total > 0 and res.processed == res.total:
+                _print_map_info(map, prefix="  Skipping map ")
+                print(f"  {res.processed} topogeometries already processed")
+                return
 
     _print_map_info(map, prefix="Processing map ")
 
@@ -340,10 +348,12 @@ def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
         print(f"  Recovered {recovered} errored features at reduced tolerance")
 
     if updated > 0:
-        # We invalidate the geometry hash for this map area, so we can know to recreate
-        # the topogeometry on the next update.
+        # The parts changed, so the assembled map_area topogeometry no longer
+        # matches them. Clear the *assembly*, not `geometry_hash` -- that now
+        # records which boundary the parts were derived from, and clearing it
+        # would force a needless re-subdivision on every run.
         db.run_query(
-            "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE id = :id",
+            "UPDATE map_bounds.map_area SET topo = NULL WHERE source_id = :id",
             dict(id=map_id),
         )
         db.session.commit()
@@ -358,13 +368,14 @@ def update_map_area_topogeometries(db):
 
     maps_to_update = db.run_query(
         """
-        SELECT ma.source_id AS id, slug FROM map_bounds.map_area ma
+        SELECT ma.source_id AS id, slug
+        FROM map_bounds.map_area ma
         JOIN maps.sources s
-        ON ma.source_id = s.source_id
-        WHERE (
-            geometry_hash is NULL
-                OR geometry_hash != md5(ST_AsBinary(geometry))::uuid -- geometry does not match hash
-            )
+          ON ma.source_id = s.source_id
+        JOIN map_bounds.map_area_sync sync
+          ON sync.source_id = ma.source_id
+        -- Needs assembling, and has parts to assemble from.
+        WHERE NOT sync.assembled
           AND EXISTS (
             SELECT 1
             FROM map_bounds.map_topo mt

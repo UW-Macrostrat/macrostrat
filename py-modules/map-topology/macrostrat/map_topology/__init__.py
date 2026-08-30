@@ -120,8 +120,14 @@ def _update_identity(db):
 
 
 def _set_dirty(db, map_id: int):
+    """Force a map to be reprocessed from its boundary.
+
+    Clearing `geometry_hash` now means "the parts came from no known boundary",
+    which makes `insert-map-topo-features` re-derive them -- the strongest form
+    of dirty, and the one `topo rebuild` wants.
+    """
     db.run_query(
-        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE id = :id",
+        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE source_id = :id",
         dict(id=map_id),
     )
 

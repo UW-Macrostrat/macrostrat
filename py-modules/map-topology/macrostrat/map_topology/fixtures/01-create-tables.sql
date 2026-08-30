@@ -93,6 +93,8 @@ WHERE NOT EXISTS (
 );
 
 CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_topo USING gist (geometry);
+-- Every per-map procedure filters on this; without it they seq-scan the table.
+CREATE INDEX IF NOT EXISTS map_bounds_map_topo_source_idx ON map_bounds.map_topo (source_id);
 
 /** Function to update topogeometry for a row, updating the geometry hash and setting/clearing
   topology errors as appropriate.
@@ -170,10 +172,11 @@ BEGIN
     -- No change to topology, so we can ignore this change
     RETURN NULL;
   END IF;
-  /** Ensure that the map_area's geometry_hash is cleared so that it will be recalculated. */
-  UPDATE map_bounds.map_area
-  SET geometry_hash = null
-  WHERE source_id = _source_id;
+  /** Nothing to mark. `geometry_hash` records which boundary the `map_topo`
+    parts were derived from (see `map_area_sync`), so clearing it here would
+    force a needless re-subdivision. That a part's topogeometry changed means
+    the *assembly* step is stale, which `map_area_sync.assembled` and the
+    element-count comparison in `mark-changed-areas` already derive. */
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -209,6 +212,45 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER sync_source_rgeom
   AFTER INSERT OR UPDATE OF geometry ON map_bounds.map_area
   FOR EACH ROW EXECUTE FUNCTION map_bounds.sync_source_rgeom();
+
+
+/** Synchronisation state of each map area, derived rather than flagged.
+
+  The pipeline has four stages, and only the first has an input that cannot be
+  recovered from the data: `map_topo` parts are a simplified, subdivided
+  transform of `map_area.geometry`, and that transform cannot be inverted. So
+  `map_area.geometry_hash` records the boundary those parts were built from --
+  exactly what `map_topo.geometry_hash` records one level down, for the geometry
+  its topogeometry was built from.
+
+  Everything else is derivable:
+    parts_current  the parts still reflect the current boundary
+    parts_solved   every part has a topogeometry, or a recorded error
+    assembled      map_area.topo has been built from the parts
+*/
+CREATE OR REPLACE VIEW map_bounds.map_area_sync AS
+SELECT
+  a.source_id,
+  a.geometry_hash IS NOT DISTINCT FROM md5(ST_AsBinary(a.geometry))::uuid
+    AS parts_current,
+  NOT EXISTS (
+    SELECT 1 FROM map_bounds.map_topo t
+    WHERE t.source_id = a.source_id
+      AND t.topo IS NULL
+      AND t.topology_error IS NULL
+  ) AS parts_solved,
+  a.topo IS NOT NULL AS assembled,
+  (
+    a.geometry_hash IS NOT DISTINCT FROM md5(ST_AsBinary(a.geometry))::uuid
+    AND a.topo IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM map_bounds.map_topo t
+      WHERE t.source_id = a.source_id
+        AND t.topo IS NULL
+        AND t.topology_error IS NULL
+    )
+  ) AS is_current
+FROM map_bounds.map_area a;
 
 
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
