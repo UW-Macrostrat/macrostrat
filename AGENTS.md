@@ -40,6 +40,22 @@ Design migrations to be **order-independent and re-runnable**, and key
 postconditions on something that only becomes true once the migration has
 actually run (not on a state the declarative chunk could also produce).
 
+**Compactness and clarity are explicit goals.** A migration should be readable
+at a glance: plain `ALTER` statements over generated SQL, an `apply()` method
+over a SQL file when it is only a few statements, and no defensive machinery for
+states that will not occur in practice. Rationale and history belong in the
+relevant `Feature areas` doc, not in the migration's docstring. Migrations are
+also housed **with the code they touch** where a subsystem owns the schema (e.g.
+`map_topology/migrations/`) rather than in the central tree; discovery is by
+`Migration.__subclasses__()`, so importing the package from the subsystem is what
+registers them.
+
+**Running SQL by hand is fine for one-offs**, especially in local development —
+not everything needs a migration. Reach for one when a change must reach other
+environments or be reproducible; otherwise a direct statement is often the right
+tool, and the condition-based design means a hand-applied change and a
+migration-applied one converge on the same `APPLIED` state.
+
 ## SQL gotchas
 
 - **No bare `%` in SQL that runs through SQLAlchemy** — including inside

@@ -1,4 +1,5 @@
-INSERT INTO map_bounds.map_area (source_id, geometry, area_km, map_layer)
+-- `source_id` is a generated alias and cannot be written; the key is `id`.
+INSERT INTO map_bounds.map_area (id, geometry, area_km, map_layer)
 SELECT
   source_id,
   ST_Multi(rgeom),
@@ -8,7 +9,7 @@ FROM maps.sources
 WHERE rgeom IS NOT NULL
   AND is_finalized
   AND status_code = 'active'
-ON CONFLICT (source_id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- Update maps that are already in the table to make sure that the area is set correctly
 UPDATE map_bounds.map_area

@@ -202,7 +202,7 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
         JOIN maps.sources_metadata m
           ON t.source_id = m.source_id
         JOIN map_bounds.map_area
-          ON t.source_id = map_area.source_id
+          ON t.source_id = map_area.id
         WHERE t.topology_error IS NOT NULL
         ORDER BY t.source_id, ST_GeoHash(t.geometry::geography)
     """

@@ -26,7 +26,14 @@ WHERE NOT EXISTS (
   replaying the operations preserves every correction instead of freezing it.
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_area (
-  source_id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  /** The key stays `id`: the topology-manager submodule is the boundary table's
+    consumer and hard-codes that name -- in `__edge_relation`'s foreign key and in
+    a dozen `l.id` / `OLD.id` references across its fixtures and procedures.
+    `source_id` is a generated alias, so the column can be read by the name it
+    actually holds (a `maps.sources` key) without forking the submodule.
+    Note it cannot be *written*: inserts must target `id`. */
+  id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  source_id integer GENERATED ALWAYS AS (id) STORED UNIQUE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
   geometry_hash uuid,
   topology_error text,
