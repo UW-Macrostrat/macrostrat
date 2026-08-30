@@ -4,7 +4,7 @@ WITH existing_count AS (
   WHERE map_id = :map_id
 ), to_insert AS (
   SELECT
-    a.id map_id,
+    a.source_id,
     -- We have to remove snapping behavior to make sure that the geometry is valid.
     ST_Multi(ST_Subdivide(
       ST_MakeValid(
@@ -18,15 +18,15 @@ WITH existing_count AS (
              )) geometry
   FROM map_bounds.map_area a
   JOIN maps.sources_metadata m
-  ON a.id = m.source_id
-  WHERE a.id = :map_id
+  ON a.source_id = m.source_id
+  WHERE a.source_id = :map_id
 ),
 ins AS (
-  INSERT INTO map_bounds.map_topo (map_id, geometry)
-    SELECT map_id, geometry
+  INSERT INTO map_bounds.map_topo (source_id, geometry)
+    SELECT source_id, geometry
     FROM to_insert
     WHERE (SELECT n FROM existing_count) = 0
-    RETURNING id, map_id
+    RETURNING id, source_id
 )
 SELECT count(*) as inserted, (SELECT n FROM existing_count) as existing
 FROM ins

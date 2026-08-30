@@ -7,12 +7,12 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
 )
   RETURNS integer AS $$
   -- Get maps that overlap the area
-  SELECT mc.map_id
+  SELECT mc.source_id
   FROM map_bounds.map_area ma
   JOIN map_bounds.map_layer ml
     ON ma.map_layer = ml.id
   JOIN map_bounds.map_priority mc
-    ON mc.map_id = ma.id
+    ON mc.source_id = ma.source_id
    AND mc.map_layer = ml.id
   -- The center of the area must be within each candidate map
   WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
@@ -32,13 +32,13 @@ $$ LANGUAGE sql;
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
 SELECT
-  map_id
+  mc.source_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
   ON (f.topo).id = r.topogeo_id
  AND f.map_layer = $2
 JOIN map_bounds.map_priority mc
-  ON mc.map_id = f.id
+  ON mc.source_id = f.source_id
  AND mc.map_layer = $2
 WHERE element_id = $1
   AND element_type = 3
@@ -61,6 +61,6 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_is_identified(map_face {topo_schema}.map_face)
   RETURNS boolean AS $$
 BEGIN
-  RETURN map_face.map_id IS NOT NULL;
+  RETURN map_face.source_id IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;

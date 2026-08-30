@@ -219,8 +219,17 @@ from macrostrat.map_topology import cli as topo_cli
 main.add_typer(
     topo_cli,
     name="topo",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Maps",
     short_help="Manage the Macrostrat maps topology",
+)
+
+from macrostrat.map_topology.bounds import cli as bounds_cli
+
+main.add_typer(
+    bounds_cli,
+    name="bounds",
+    rich_help_panel="Maps",
+    short_help="Compose and edit map boundaries",
 )
 
 from .cache import cli as cache_cli
@@ -263,7 +272,7 @@ try:
     main.add_typer(
         map_app,
         name="maps",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Maps",
         short_help="Map integration system",
     )
 
@@ -276,7 +285,7 @@ try:
     main.add_typer(
         build_raster_cli(),
         name="raster",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Maps",
         short_help="Raster data integration",
     )
 except ImportError as err:

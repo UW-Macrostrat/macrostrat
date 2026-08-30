@@ -41,8 +41,8 @@ class MacrostratTopologyManager(TopologyManager):
             self.db.run_query(
                 """
                 UPDATE map_bounds_topology.map_face
-                SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
-                WHERE map_id IS null;
+                SET source_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+                WHERE source_id IS null;
                 """
             )
 
@@ -68,7 +68,7 @@ def _remove_map_topo_elements(db, map_id: int):
         db.run_query(
             """
             DELETE FROM map_bounds.map_topo
-            WHERE map_id = :map_id
+            WHERE source_id = :map_id
             RETURNING id
             """,
             dict(map_id=map_id),
@@ -88,13 +88,13 @@ def get_map_list(db, filter_by: list[str] = None):
     all_maps = db.run_query(
         """
         SELECT
-            a.id map_id,
+            a.source_id AS map_id,
             slug,
             scale,
             area_km
         FROM map_bounds.map_area a
         JOIN maps.sources s
-        ON a.id = s.source_id
+        ON a.source_id = s.source_id
         ORDER BY area_km DESC
         """
     ).all()
@@ -160,12 +160,12 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     return mgr.db.run_query(
         """
         SELECT
-            ma.id map_id,
+            ma.source_id AS map_id,
             slug,
             area_km
         FROM map_bounds.map_area ma
         JOIN maps.sources s
-        ON ma.id = s.source_id
+        ON ma.source_id = s.source_id
         WHERE geometry IS NOT NULL
           AND geometry_hash IS NULL
            OR geometry_hash <> md5(ST_AsBinary(geometry))::uuid
@@ -188,7 +188,7 @@ def process_map(db, map, **kwargs):
             WHERE geometry_hash IS NOT NULL
               AND geometry_hash = md5(ST_AsBinary(geometry))::uuid -- geometry matches hash
               AND topo IS NOT null
-              AND ma.id = :map_id
+              AND ma.source_id = :map_id
             """,
             dict(map_id=map.map_id),
         ).scalar()
@@ -234,7 +234,7 @@ def prepare_map_topo_features(
     # Force insertion
     if restart:
         db.run_query(
-            "DELETE FROM map_bounds.map_topo WHERE map_id = :map_id",
+            "DELETE FROM map_bounds.map_topo WHERE source_id = :map_id",
             dict(map_id=map_id),
         )
 
@@ -357,9 +357,9 @@ def update_map_area_topogeometries(db):
 
     maps_to_update = db.run_query(
         """
-        SELECT id, slug FROM map_bounds.map_area ma
+        SELECT ma.source_id AS id, slug FROM map_bounds.map_area ma
         JOIN maps.sources s
-        ON ma.id = s.source_id
+        ON ma.source_id = s.source_id
         WHERE (
             geometry_hash is NULL
                 OR geometry_hash != md5(ST_AsBinary(geometry))::uuid -- geometry does not match hash
@@ -367,7 +367,7 @@ def update_map_area_topogeometries(db):
           AND EXISTS (
             SELECT 1
             FROM map_bounds.map_topo mt
-            WHERE mt.map_id = ma.id
+            WHERE mt.source_id = ma.source_id
               AND mt.topo IS NOT NULL
         )
         """

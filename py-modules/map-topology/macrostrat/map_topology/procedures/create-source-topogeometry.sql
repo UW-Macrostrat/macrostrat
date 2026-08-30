@@ -37,7 +37,7 @@ SET
   topo = topogeo.topo,
   geometry_hash = md5(ST_AsBinary(geometry))::uuid
 FROM topogeo
-WHERE map_area.id = :map_id
+WHERE map_area.source_id = :map_id
 
 
 

@@ -15,14 +15,25 @@ WHERE NOT EXISTS (
   WHERE name = 'map_bounds_topology'
 );
 
-/** The area of full maps in the topology */
+/** The area of full maps in the topology.
+
+  A map''s boundary is described entirely by its `boundary_op` list: an `init`
+  operation at position 0 establishes the starting geometry, and later operations
+  modify it. `geometry` is the composed result, mirrored to `maps.sources.rgeom`
+  for v2 compatibility.
+
+  Because the boundary is a fold rather than a stored edit, re-running `init` and
+  replaying the operations preserves every correction instead of freezing it.
+*/
 CREATE TABLE IF NOT EXISTS map_bounds.map_area (
-  id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  source_id integer PRIMARY KEY REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
   geometry_hash uuid,
   topology_error text,
   map_layer integer REFERENCES map_bounds.map_layer(id),
-  area_km double precision
+  area_km double precision,
+  /** Set when replaying the operation list failed; cleared on a clean compose. */
+  boundary_error text
 );
 
 /** Create a topogeometry column for the area of full maps. */
@@ -44,7 +55,7 @@ WHERE NOT EXISTS (
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  map_id integer REFERENCES map_bounds.map_area(id) ON DELETE CASCADE,
+  source_id integer REFERENCES map_bounds.map_area(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
   -- For tracking whether the geometry and topology are in sync
   geometry_hash uuid,
@@ -54,9 +65,9 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
 
 /** map_topo */
 ALTER TABLE map_bounds_topology.map_face
-  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
 ALTER TABLE map_bounds_topology.face_identity
-  ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
+  ADD COLUMN source_id integer REFERENCES maps.sources(source_id);
 
 SELECT topology.AddTopoGeometryColumn('map_bounds_topology', 'map_bounds','map_topo', 'topo','POLYGON')
 WHERE NOT EXISTS (
@@ -128,30 +139,30 @@ $$
 LANGUAGE plpgsql VOLATILE;
 
 /** Trigger to force map_area recalculation when a map_topo's topogeometry
-  is updated, or a map_topo row is deleted, for a given map_id. */
+  is updated, or a map_topo row is deleted, for a given source_id. */
 CREATE OR REPLACE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change()
 RETURNS trigger
 AS $$
 DECLARE
-  map_id integer;
+  _source_id integer;
 BEGIN
-  map_id := NULL;
+  _source_id := NULL;
   IF (TG_OP = 'DELETE' AND OLD.topo IS NOT NULL) THEN
     -- No change to topology if the topo column is null, so we can ignore this change
-    map_id := OLD.map_id;
+    _source_id := OLD.source_id;
   ELSEIF (TG_OP = 'UPDATE' AND NOT topology.equals(OLD.topo, NEW.topo)) THEN
-    map_id := NEW.map_id;
+    _source_id := NEW.source_id;
   ELSEIF (TG_OP = 'INSERT' AND NEW.topo IS NOT NULL) THEN
-    map_id := NEW.map_id;
+    _source_id := NEW.source_id;
   END IF;
-  IF (map_id IS NULL) THEN
+  IF (_source_id IS NULL) THEN
     -- No change to topology, so we can ignore this change
     RETURN NULL;
   END IF;
   /** Ensure that the map_area's geometry_hash is cleared so that it will be recalculated. */
   UPDATE map_bounds.map_area
   SET geometry_hash = null
-  WHERE id = map_id;
+  WHERE source_id = _source_id;
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -160,6 +171,34 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_map_area_from_topo
 AFTER INSERT OR UPDATE OR DELETE ON map_bounds.map_topo
 FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change();
+
+/** Keep `maps.sources.rgeom` in step with the composed boundary.
+
+  `map_area.geometry` is authoritative; `rgeom` is a read-compatibility mirror.
+  The v2 API filters on `rgeom IS NOT NULL` and runs point/shape intersection
+  against it (`/defs/sources`), and `web_geom` derives from it -- so the column
+  must stay populated and GIST-indexed even though nothing writes it directly
+  any more.
+
+  A trigger rather than a write in the compose path, so the mirror cannot drift
+  regardless of what updates `map_area`. The `IS DISTINCT FROM` guard makes it
+  inert when the geometry did not actually change.
+*/
+CREATE OR REPLACE FUNCTION map_bounds.sync_source_rgeom()
+  RETURNS trigger AS $$
+BEGIN
+  UPDATE maps.sources
+  SET rgeom = NEW.geometry
+  WHERE source_id = NEW.source_id
+    AND rgeom IS DISTINCT FROM NEW.geometry;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER sync_source_rgeom
+  AFTER INSERT OR UPDATE OF geometry ON map_bounds.map_area
+  FOR EACH ROW EXECUTE FUNCTION map_bounds.sync_source_rgeom();
+
 
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
   RETURNS integer AS $$
@@ -182,11 +221,11 @@ $$ LANGUAGE SQL IMMUTABLE;
 
 CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
   map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
-  map_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   priority integer,
   /** Cached bounds for the map's contribution to the compilation. */
   --geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (map_layer, map_id)
+  PRIMARY KEY (map_layer, source_id)
 );
 
 

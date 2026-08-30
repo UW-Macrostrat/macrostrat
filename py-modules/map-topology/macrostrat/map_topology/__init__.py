@@ -122,7 +122,7 @@ def _update_identity(db):
     db.run_query(
         """
          UPDATE map_bounds_topology.map_face
-         SET map_id = map_bounds_topology.identity_for_area(geometry, map_layer)
+         SET source_id = map_bounds_topology.identity_for_area(geometry, map_layer)
         """
     )
 
@@ -197,14 +197,14 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
     # Try to re-run errors
     all_maps = db.run_query(
         """
-        SELECT t.id, t.map_id, slug, area_km, t.topology_error
+        SELECT t.id, t.source_id AS map_id, slug, area_km, t.topology_error
         FROM map_bounds.map_topo t
         JOIN maps.sources_metadata m
-          ON t.map_id = m.source_id
+          ON t.source_id = m.source_id
         JOIN map_bounds.map_area
-          ON t.map_id = map_area.id
+          ON t.source_id = map_area.source_id
         WHERE t.topology_error IS NOT NULL
-        ORDER BY t.map_id, ST_GeoHash(t.geometry::geography)
+        ORDER BY t.source_id, ST_GeoHash(t.geometry::geography)
     """
     ).all()
 

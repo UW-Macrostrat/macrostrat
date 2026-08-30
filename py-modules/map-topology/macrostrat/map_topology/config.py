@@ -19,7 +19,7 @@ config = dict(
 
 
 IDENTITY_STRATEGY = IdentityStrategy(
-    identity_column="map_id",
+    identity_column="source_id",
     install=lambda ctx: ctx.database.run_fixtures(
         __dir__ / "fixtures" / "03-identity-management.sql"
     ),
@@ -35,8 +35,14 @@ def create_topo_context(db: Database):
         tolerance=0.0001,
         identity_strategy=IDENTITY_STRATEGY,
         boundary_table="map_area",
+        # Explicit file list, not the directory: `03-identity-management.sql`
+        # must run later, via IDENTITY_STRATEGY.install, once the core topology
+        # functions it depends on exist.
         create_data_tables=lambda ctx: db.run_fixtures(
-            __dir__ / "fixtures" / "01-create-tables.sql"
+            [
+                __dir__ / "fixtures" / "01-create-tables.sql",
+                __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+            ]
         ),
         notify_triggers=False,
     )
@@ -45,7 +51,7 @@ def create_topo_context(db: Database):
 def create_topo_fixtures(db: Database):
     ctx = create_topo_context(db)
     mgr = MacrostratTopologyManager(ctx)
-    mgr.create_tables()
+    mgr.create_tables(check=False)
 
 
 TopologySchema = SchemaDefinition(

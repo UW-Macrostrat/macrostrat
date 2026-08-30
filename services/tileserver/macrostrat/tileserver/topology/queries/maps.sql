@@ -17,12 +17,12 @@ WITH tile AS (
   JOIN tile
     ON ST_Intersects(geometry, projected_envelope)
   JOIN maps.sources s
-    ON ma.id = s.source_id
+    ON ma.source_id = s.source_id
   JOIN map_bounds.map_layer ml
     ON ma.map_layer = ml.id
     OR ma.map_layer = ANY(ml.composited_from)
   LEFT JOIN map_bounds.map_priority mp
-    ON ma.id = mp.map_id AND mp.map_layer = ml.id
+    ON ma.source_id = mp.source_id AND mp.map_layer = ml.id
   WHERE ml.slug = :map_layer
 )
 SELECT ST_AsMVT(sources, 'maps', 4096, 'geom') FROM sources;

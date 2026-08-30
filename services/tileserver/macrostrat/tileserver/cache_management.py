@@ -160,7 +160,7 @@ _FOOTPRINTS_ACTIVE = """
     FROM map_bounds_topology.map_face f
     JOIN map_bounds.map_layer ml ON f.map_layer = ml.id
     JOIN tile ON ST_Intersects(f.geometry, tile.projected_envelope)
-    JOIN maps.sources s ON f.map_id = s.source_id
+    JOIN maps.sources s ON f.source_id = s.source_id
     WHERE ml.slug = :band AND s.status_code = 'active'
 """
 
