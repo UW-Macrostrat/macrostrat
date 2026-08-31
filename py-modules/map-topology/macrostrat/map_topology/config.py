@@ -28,6 +28,9 @@ IDENTITY_STRATEGY = IdentityStrategy(
     # and `faces_are_joinable` compares those identities. So a change in a member
     # layer must mark the composite's faces dirty.
     solves_composites=True,
+    # `resolve_layer_identity` above resolves a whole layer in one query, which
+    # the dissolve caches instead of re-resolving each face once per incident edge.
+    bulk_identity=True,
 )
 
 

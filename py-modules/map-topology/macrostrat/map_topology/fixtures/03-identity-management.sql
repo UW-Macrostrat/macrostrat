@@ -52,6 +52,34 @@ ORDER BY
 LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE;
 
+/** The set-oriented form of `identity_for_face`, for a whole layer at once.
+
+  Must agree with `identity_for_face` exactly -- same candidate set, same ordering,
+  same `holds_polygons` exclusion -- because the dissolve uses whichever is
+  available and the two must not disagree about which map owns a face. `DISTINCT ON`
+  is the bulk equivalent of that function's `LIMIT 1`.
+
+  Identity is returned as text so the library can hold it without knowing the
+  strategy's key type; joinability only ever tests equality.
+*/
+CREATE OR REPLACE FUNCTION map_bounds_topology.resolve_layer_identity(_map_layer integer)
+  RETURNS TABLE (face_id integer, identity text) AS $$
+SELECT DISTINCT ON (r.element_id)
+  r.element_id,
+  mc.source_id::text
+FROM map_bounds_topology.relation r
+JOIN map_bounds.map_area f
+  ON (f.topo).id = r.topogeo_id
+ AND (f.topo).layer_id = r.layer_id
+JOIN map_bounds.map_priority mc
+  ON mc.source_id = f.source_id
+ AND mc.map_layer = _map_layer
+WHERE r.element_type = 3
+  AND map_bounds.holds_polygons(mc.source_id)
+ORDER BY r.element_id, mc.priority_path DESC, f.area_km;
+$$ LANGUAGE SQL STABLE;
+
+
 CREATE OR REPLACE FUNCTION map_bounds_topology.faces_are_joinable(f1 integer, f2 integer, map_layer integer)
   RETURNS boolean AS $$
 DECLARE
