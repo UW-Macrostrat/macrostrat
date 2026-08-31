@@ -23,7 +23,7 @@ WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
   -- geometry, and this keeps the compilation itself out of the running.
   AND map_bounds.holds_polygons(mc.source_id)
 ORDER BY
-  coalesce(mc.priority_path, ARRAY[coalesce(mc.priority, 0)]) DESC,
+  mc.priority_path DESC,
   ma.area_km -- smaller areas first
 LIMIT 1;
 $$ LANGUAGE sql;
@@ -43,7 +43,7 @@ WHERE element_id = $1
   AND element_type = 3
   AND map_bounds.holds_polygons(mc.source_id)
 ORDER BY
-  coalesce(mc.priority_path, ARRAY[coalesce(mc.priority, 0)]) DESC,
+  mc.priority_path DESC,
   f.area_km -- smaller areas first
 LIMIT 1;
 $$ LANGUAGE SQL IMMUTABLE;

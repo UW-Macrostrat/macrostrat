@@ -326,15 +326,8 @@ VALUES
   ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false)
 ON CONFLICT (slug) DO NOTHING;
 
-/** Layer membership. Priority ascends bottom-to-top, so the second member of
-  each pair wins where the two overlap -- the ordering the `composited_from`
-  array used to carry positionally. */
-INSERT INTO map_bounds.map_layer_composition (parent_id, member_id, priority)
-VALUES
- (map_bounds.layer_id('carto-small'),  map_bounds.layer_id('tiny'),   1),
- (map_bounds.layer_id('carto-small'),  map_bounds.layer_id('small'),  2),
- (map_bounds.layer_id('carto-medium'), map_bounds.layer_id('small'),  1),
- (map_bounds.layer_id('carto-medium'), map_bounds.layer_id('medium'), 2),
- (map_bounds.layer_id('carto-large'),  map_bounds.layer_id('medium'), 1),
- (map_bounds.layer_id('carto-large'),  map_bounds.layer_id('large'),  2)
-ON CONFLICT (parent_id, member_id) DO NOTHING;
+/** Carto layer membership. `carto-large` is the compilation of `medium` and
+  `large`; higher priority wins where they overlap. These are ordinary
+  membership edges -- a served layer is still just a compilation. Seeded in
+  `04-compilation-tables.sql`, which is where layer source identities are
+  assigned. */

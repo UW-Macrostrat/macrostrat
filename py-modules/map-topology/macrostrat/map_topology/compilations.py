@@ -2,7 +2,7 @@
 
 A compilation is a map: a `maps.sources` row with members. There is no kind
 flag -- "is a compilation" means *has members*, and "is a constituent" means
-*is a member* -- so every command here reads and writes `map_bounds.map_composition`
+*is a member* -- so every command here reads and writes `map_bounds.compilation_member`
 and derives the rest.
 """
 
@@ -75,7 +75,7 @@ def show(compilation: Annotated[str, Argument(help="Slug or source id")]):
         SELECT
           mc.member_id, s.slug, mc.priority, mc.role,
           map_bounds.holds_polygons(mc.member_id) AS holds_polygons
-        FROM map_bounds.map_composition mc
+        FROM map_bounds.compilation_member mc
         JOIN maps.sources s ON s.source_id = mc.member_id
         WHERE mc.compilation_id = :source_id
         ORDER BY mc.priority DESC NULLS LAST, s.slug
@@ -112,7 +112,7 @@ def add(
         member_id, member_slug = _resolve(member)
         db.run_query(
             """
-            INSERT INTO map_bounds.map_composition
+            INSERT INTO map_bounds.compilation_member
               (compilation_id, member_id, priority, role)
             VALUES (:compilation_id, :member_id, :priority, :role)
             ON CONFLICT (compilation_id, member_id) DO UPDATE
@@ -141,7 +141,7 @@ def remove(
         member_id, member_slug = _resolve(member)
         db.run_query(
             """
-            DELETE FROM map_bounds.map_composition
+            DELETE FROM map_bounds.compilation_member
             WHERE compilation_id = :compilation_id AND member_id = :member_id
             """,
             dict(compilation_id=source_id, member_id=member_id),
@@ -189,9 +189,11 @@ def sync():
     db.session.commit()
     counts = db.run_query(
         """
-        SELECT count(*) FILTER (WHERE derived) AS derived,
-               count(*) FILTER (WHERE NOT derived) AS authored
+        SELECT count(*) AS resolved, count(DISTINCT map_layer) AS layers
         FROM map_bounds.map_priority
         """
     ).first()
-    print(f"[green]{counts.authored}[/] authored, [green]{counts.derived}[/] derived")
+    print(
+        f"[green]{counts.resolved}[/] resolutions across "
+        f"[green]{counts.layers}[/] served layers"
+    )

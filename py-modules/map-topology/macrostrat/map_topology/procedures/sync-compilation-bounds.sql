@@ -7,6 +7,10 @@
   is unioned and no edge is noded, so the expensive half of the topology never
   runs for a compilation.
 
+  Faces are gathered from *transitive* members, not just direct ones, so a
+  compilation of compilations -- `carto-large` over `medium` and `large` -- does
+  not depend on its members having been assembled first. Order does not matter.
+
   Three statements rather than one because the `__edge_relation` trigger fires on
   the topogeometry and its foreign key needs the `map_area` row to exist first --
   the same insert-then-assign order every other map follows. `geometry` is filled
@@ -21,22 +25,31 @@ SELECT topology.clearTopoGeom(a.topo)
 FROM map_bounds.map_area a
 WHERE a.topo IS NOT NULL
   AND EXISTS (
-    SELECT 1 FROM map_bounds.map_composition mc
-    WHERE mc.compilation_id = a.source_id
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = a.source_id
   );
 
 /* An empty placeholder satisfies the NOT NULL; the real extent arrives below,
    read off the assembled topogeometry rather than unioned from scratch. */
 INSERT INTO map_bounds.map_area (id, geometry, map_layer)
 SELECT DISTINCT
-  mc.compilation_id,
+  cm.compilation_id,
   ST_GeomFromText('MULTIPOLYGON EMPTY', 4326),
   map_bounds.layer_id(s.scale)
-FROM map_bounds.map_composition mc
-JOIN maps.sources s ON s.source_id = mc.compilation_id
+FROM map_bounds.compilation_member cm
+JOIN maps.sources s ON s.source_id = cm.compilation_id
 WHERE s.status_code = 'active'
 ON CONFLICT (id) DO NOTHING;
 
+WITH RECURSIVE descendants AS (
+  SELECT cm.compilation_id AS root, cm.member_id
+  FROM map_bounds.compilation_member cm
+  UNION
+  SELECT d.root, cm.member_id
+  FROM descendants d
+  JOIN map_bounds.compilation_member cm
+    ON cm.compilation_id = d.member_id
+)
 UPDATE map_bounds.map_area ma
 SET topo = topology.createTopoGeom(
       'map_bounds_topology',
@@ -51,26 +64,26 @@ SET topo = topology.createTopoGeom(
         SELECT array_agg(ARRAY[face_id, 3])
         FROM (
           SELECT r.element_id AS face_id
-          FROM map_bounds.map_composition mc
+          FROM descendants d
           JOIN map_bounds.map_area a
-            ON a.source_id = mc.member_id
+            ON a.source_id = d.member_id
            AND a.topo IS NOT NULL
           JOIN map_bounds_topology.relation r
             ON r.layer_id = (a.topo).layer_id
            AND r.topogeo_id = (a.topo).id
            AND r.element_type = 3
-          WHERE mc.compilation_id = ma.source_id
+          WHERE d.root = ma.source_id
           GROUP BY r.element_id
         ) faces
       )
     )
 WHERE EXISTS (
   SELECT 1
-  FROM map_bounds.map_composition mc
+  FROM descendants d
   JOIN map_bounds.map_area a
-    ON a.source_id = mc.member_id
+    ON a.source_id = d.member_id
    AND a.topo IS NOT NULL
-  WHERE mc.compilation_id = ma.source_id
+  WHERE d.root = ma.source_id
 );
 
 UPDATE map_bounds.map_area ma
@@ -80,6 +93,6 @@ SET geometry = ST_Multi(ma.topo::geometry),
     ) / 1e6
 WHERE ma.topo IS NOT NULL
   AND EXISTS (
-    SELECT 1 FROM map_bounds.map_composition mc
-    WHERE mc.compilation_id = ma.source_id
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = ma.source_id
   );

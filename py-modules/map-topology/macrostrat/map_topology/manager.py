@@ -95,6 +95,12 @@ def get_map_list(db, filter_by: list[str] = None):
         FROM map_bounds.map_area a
         JOIN maps.sources s
         ON a.source_id = s.source_id
+        -- Compilations have no features of their own; their boundaries are
+        -- assembled from their members' faces by `sync-compilation-bounds`.
+        WHERE NOT EXISTS (
+          SELECT 1 FROM map_bounds.compilation_member cm
+          WHERE cm.compilation_id = a.source_id
+        )
         ORDER BY area_km DESC
         """
     ).all()
