@@ -60,7 +60,12 @@ class MacrostratTopologyManager(TopologyManager):
         if res > 0:
             print(f"[red]Found [bold]{res}[/bold] maps without a topogeometry[/red]")
 
-        self.update(incremental=True, composite_layers=True, boundaries=False)
+        # Composite layers are solved by the ordinary face pipeline now that the
+        # flattened priority paths give them identity resolution, so the
+        # painter's-algorithm overlay is no longer asked for. It stays in the
+        # submodule for linework mode, whose `search` strategy has no meaningful
+        # `faces_are_joinable` and therefore cannot dissolve a composite.
+        self.update(incremental=True, boundaries=False)
 
 
 def _remove_map_topo_elements(db, map_id: int):

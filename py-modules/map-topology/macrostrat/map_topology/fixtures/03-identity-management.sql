@@ -35,7 +35,11 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer
 SELECT mc.source_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
+  -- A topogeometry id is only unique *within* a layer, so both halves are
+  -- needed: `map_face` topogeometries live in a different layer and would
+  -- otherwise collide with `map_area` ones by id alone.
   ON (f.topo).id = r.topogeo_id
+ AND (f.topo).layer_id = r.layer_id
 JOIN map_bounds.map_priority mc
   ON mc.source_id = f.source_id
  AND mc.map_layer = $2

@@ -90,7 +90,6 @@ def mark_all():
                 SELECT f.face_id, ml.id
                 FROM map_bounds_topology.face f
                 CROSS JOIN map_bounds.map_layer ml
-                WHERE NOT map_bounds.is_composite_layer(ml.id)
                 ON CONFLICT DO NOTHING
                 RETURNING id
         )

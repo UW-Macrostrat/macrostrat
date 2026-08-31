@@ -23,6 +23,11 @@ IDENTITY_STRATEGY = IdentityStrategy(
     install=lambda ctx: ctx.database.run_fixtures(
         __dir__ / "fixtures" / "03-identity-management.sql"
     ),
+    # A composite layer is solved by dissolving, not filled by overlay: identity
+    # resolves across its composition closure through `map_priority.priority_path`,
+    # and `faces_are_joinable` compares those identities. So a change in a member
+    # layer must mark the composite's faces dirty.
+    solves_composites=True,
 )
 
 

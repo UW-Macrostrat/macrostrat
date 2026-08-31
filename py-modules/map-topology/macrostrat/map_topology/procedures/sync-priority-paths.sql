@@ -44,8 +44,7 @@ FROM leaves;
   in `compilation_member`, so this keeps the library's view of composition in
   step without giving it a second source of truth. It is what `constraining_layers`
   reads when deciding which boundaries constrain a dissolve, and what
-  `update_composite_layers` reads while composite layers are still filled by
-  overlay rather than solved.
+  `dirty_layers_for` reads when deciding which composites a change invalidates.
 */
 DELETE FROM map_bounds.map_layer_composition;
 

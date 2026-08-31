@@ -157,7 +157,7 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         map_layer = insp.map_layer_id("Large")
         cases = [
@@ -177,7 +177,7 @@ class TestMapTopology:
         # Check that there are three maps in the map_areas table
         assert n_map_areas(db) == 3
         # Number of overlapping primitives
-        assert insp.n_faces() == 3
+        assert n_base_faces(db) == 3
 
     def test_map_reprioritization(self, ctx):
         """Check that the map faces are updated correctly when a map is reprioritized"""
@@ -195,7 +195,7 @@ class TestMapTopology:
         # After reprioritization, the center face should be at priority 10, so it should occupy the two faces on either side of it
         # update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         # Check map identity for shared areas
 
@@ -249,24 +249,41 @@ class TestMapTopology:
 
         mgr = MacrostratTopologyManager(ctx)
         update_maps(mgr, subdivide_vertices=32)
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         insp = TopologyInspector(ctx)
-        assert insp.n_faces() == 4
+        assert n_base_faces(db) == 4
         assert insp.n_faces(map_layer="Medium") == 1
         assert insp.n_faces(map_layer="Large") == 3
 
     def test_composite_layers(self, ctx):
+        """A composite layer is solved like any other, not copied from its members.
 
+        The flattened priority paths give it identity resolution, so the ordinary
+        face pipeline dissolves it; nothing calls the painter's-algorithm overlay.
+        """
+        db = ctx.database
         mgr = MacrostratTopologyManager(ctx)
-        mgr.update(composite_layers=True)
+        mgr.update()
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1
         assert insp.n_faces(map_layer="Carto large") == 4
         assert insp.n_faces(map_layer="Carto medium") == 1
         assert insp.n_faces(map_layer="Carto small") == 0
-        assert insp.n_faces() == 4 + 4 + 1
+
+        # Solved, not copied: an overlaid face carries a back-reference to the
+        # member face it was cloned from.
+        assert (
+            db.run_query(
+                """
+                SELECT count(*) FROM map_bounds_topology.map_face mf
+                WHERE map_bounds.is_composite_layer(mf.map_layer)
+                  AND mf.source_id IS NOT NULL
+                """
+            ).scalar()
+            == 0
+        )
 
 
     def test_virtual_compilation(self, ctx):
@@ -449,6 +466,18 @@ def set_priority(
     # are rebuilt.
     db.run_sql(proc("sync-priority-paths"))
     db.session.commit()
+
+
+def n_base_faces(db):
+    """Faces in ordinary layers. `TopologyInspector.n_faces()` counts every layer,
+    and composite layers are solved now, so a bare total no longer isolates the
+    base ones."""
+    return db.run_query(
+        """
+        SELECT count(*) FROM map_bounds_topology.map_face mf
+        WHERE NOT map_bounds.is_composite_layer(mf.map_layer)
+        """
+    ).scalar()
 
 
 def add_polygons(db, geometries: dict[int, str], *, scale: str = "large"):
