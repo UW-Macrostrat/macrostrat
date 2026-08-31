@@ -409,10 +409,11 @@ def n_map_areas(db):
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds.map_area a
-        WHERE NOT EXISTS (
-          SELECT 1 FROM map_bounds.compilation_member cm
-          WHERE cm.compilation_id = a.source_id
-        )
+        WHERE NOT map_bounds.is_served_layer(a.source_id)
+          AND NOT EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member cm
+            WHERE cm.compilation_id = a.source_id
+          )
         """
     ).scalar()
 

@@ -15,6 +15,11 @@ SELECT
 FROM maps.sources s
 JOIN map_bounds.map_layer ml
   ON ml.slug = s.scale
+/* Only maps that are actually in the topology. A source with a matching scale but
+   no boundary is not in the layer -- most of `maps.sources` has never been
+   ingested. */
+JOIN map_bounds.map_area a
+  ON a.source_id = s.source_id
 WHERE s.scale IS NOT NULL
   AND ml.source_id IS NOT NULL
   /* A map that belongs to a real compilation is placed *through* it, not beside
@@ -28,6 +33,19 @@ WHERE s.scale IS NOT NULL
   )
 ON CONFLICT (compilation_id, member_id)
 DO UPDATE SET priority = EXCLUDED.priority;
+
+/** Drop layer placements for maps that no longer have a boundary -- and clear out
+  any that were placed without one. */
+DELETE FROM map_bounds.compilation_member cm
+WHERE map_bounds.is_served_layer(cm.compilation_id)
+  /* Leaf maps only. A served layer is a compilation by construction -- its
+     boundary derives from its members -- so it legitimately has none on a first
+     run. Testing "does it have members?" instead would misread an empty layer as
+     a leaf and strip the carto layers' composition before it could be built. */
+  AND NOT map_bounds.is_served_layer(cm.member_id)
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.map_area a WHERE a.source_id = cm.member_id
+  );
 
 /** Retire the direct layer placement of any map that has since become a member
   of a real compilation. */
