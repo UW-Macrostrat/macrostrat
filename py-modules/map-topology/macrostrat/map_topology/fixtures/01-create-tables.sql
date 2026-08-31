@@ -293,6 +293,19 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
 );
 
 
+/** `identity_for_face` joins `relation` to `map_area` on the topogeometry id, and
+  a composite field access cannot use an ordinary index -- so without this every
+  call sequentially scanned `map_area`, whose rows are wide. That scan was ~1.4ms,
+  invoked twice per candidate edge inside the face dissolve, which is the bulk of
+  a topology update. With the index the same lookup is ~18us.
+
+  Only `(topo).id` is indexed: `(topo).layer_id` is constant by construction --
+  the `check_topogeom_topo` constraint pins it -- so it adds nothing.
+*/
+CREATE INDEX IF NOT EXISTS map_area_topogeom_id_idx
+  ON map_bounds.map_area (((topo).id));
+
+
 CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
   RETURNS integer AS $$
 SELECT id FROM map_bounds.map_layer WHERE slug = _slug;
