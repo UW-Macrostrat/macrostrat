@@ -201,6 +201,17 @@ FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_c
 CREATE OR REPLACE FUNCTION map_bounds.sync_source_rgeom()
   RETURNS trigger AS $$
 BEGIN
+  -- A compilation's `map_area.geometry` is only an envelope, and `rgeom` is the
+  -- v2 compatibility mirror -- which knows nothing about compilations. Mirroring
+  -- them would put tens of megabytes into a table whose size already makes
+  -- client listings painful.
+  IF EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = NEW.source_id
+  ) THEN
+    RETURN NULL;
+  END IF;
+
   UPDATE maps.sources
   SET rgeom = NEW.geometry
   WHERE source_id = NEW.source_id

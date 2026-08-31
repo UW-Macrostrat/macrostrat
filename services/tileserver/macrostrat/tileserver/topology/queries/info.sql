@@ -3,7 +3,8 @@ WITH loc AS (
 )
 SELECT
     mp.source_id,
-    mp.priority,
+    array_to_string(mp.priority_path, '.') AS priority,
+    mp.priority_path,
     ml.slug map_layer,
     ml.name layer_name,
     s.name,
@@ -22,4 +23,4 @@ LEFT JOIN map_bounds_topology.map_face mf
   AND mf.map_layer = coalesce(map_bounds.layer_id(:map_layer), -1)
   AND ST_Intersects(mf.geometry, loc.geometry)
 WHERE ::where_clauses
-ORDER BY mp.priority DESC;
+ORDER BY mp.priority_path DESC;

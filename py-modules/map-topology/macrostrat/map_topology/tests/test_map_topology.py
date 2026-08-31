@@ -296,38 +296,47 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
 
-        # The compilation has no features of its own; its boundary is assembled
-        # from its members' face sets, so it covers exactly their union.
-        compiled, members = db.run_query(
+        # The stored geometry is only an envelope -- cheap, and enough to say
+        # roughly where the compilation is. The exact footprint stays in
+        # `composite_topo`, resolved on demand.
+        envelope, exact, members, area_km = db.run_query(
             """
             SELECT
-              (SELECT ST_Area(geometry) FROM map_bounds.map_area WHERE source_id = 1005),
+              ST_Area(a.geometry),
+              ST_Area(a.composite_topo::geometry),
               (SELECT ST_Area(ST_Union(geometry)) FROM map_bounds.map_area
-               WHERE source_id IN (1001, 1002))
+               WHERE source_id IN (1001, 1002)),
+              a.area_km
+            FROM map_bounds.map_area a WHERE a.source_id = 1005
             """
         ).first()
-        assert compiled > 0
-        assert compiled == approx(members, rel=1e-9)
+        assert exact == approx(members, rel=1e-9)
+        assert envelope > exact
+        # An envelope's area would be a wrong answer rather than no answer.
+        assert area_km is None
 
-        # It is assembled in topology space -- the same faces its members hold,
-        # with no new primitives created.
+        # It references its members' topogeometries rather than re-listing every
+        # face they cover -- one element per member, at any nesting depth.
+        assert set(
+            db.run_query(
+                """
+                SELECT a2.source_id
+                FROM map_bounds.map_area a
+                JOIN map_bounds_topology.relation r
+                  ON r.layer_id = (a.composite_topo).layer_id
+                 AND r.topogeo_id = (a.composite_topo).id
+                JOIN map_bounds.map_area a2
+                  ON (a2.topo).id = r.element_id
+                 AND (a2.topo).layer_id = r.element_type
+                WHERE a.source_id = 1005
+                """
+            ).scalars()
+        ) == {1001, 1002}
+
+        # A compilation lives in the composite layer, not the primitive one.
         assert db.run_query(
-            """
-            SELECT (SELECT count(DISTINCT r.element_id)
-                    FROM map_bounds.map_area a
-                    JOIN map_bounds_topology.relation r
-                      ON r.layer_id = (a.topo).layer_id
-                     AND r.topogeo_id = (a.topo).id
-                     AND r.element_type = 3
-                    WHERE a.source_id = 1005)
-                 = (SELECT count(DISTINCT r.element_id)
-                    FROM map_bounds.map_area a
-                    JOIN map_bounds_topology.relation r
-                      ON r.layer_id = (a.topo).layer_id
-                     AND r.topogeo_id = (a.topo).id
-                     AND r.element_type = 3
-                    WHERE a.source_id IN (1001, 1002))
-            """
+            "SELECT topo IS NULL AND composite_topo IS NOT NULL"
+            " FROM map_bounds.map_area WHERE source_id = 1005"
         ).scalar()
 
         layer = insp.map_layer_id("Large")

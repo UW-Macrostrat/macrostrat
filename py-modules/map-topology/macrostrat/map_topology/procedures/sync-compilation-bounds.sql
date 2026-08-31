@@ -1,36 +1,51 @@
-/** Assemble each compilation's boundary from its members', in topology space.
+/** Assemble each compilation's boundary by referencing its members', in the
+  hierarchical `composite_topo` layer.
 
-  A compilation has no features of its own, but its members' boundaries are
-  already in the topology. Its boundary is therefore the union of their face
-  sets -- an array of element ids handed to `createTopoGeom`, exactly as
-  `create-source-topogeometry` does for an ordinary map's own parts. No geometry
-  is unioned and no edge is noded, so the expensive half of the topology never
-  runs for a compilation.
+  A compilation has no features of its own; its boundary is the union of its
+  members', and those are already topogeometries. So it *references* them rather
+  than re-listing every face they cover -- one element per member instead of tens
+  of thousands per compilation.
 
-  Faces are gathered from *transitive* members, not just direct ones, so a
-  compilation of compilations -- `carto-large` over `medium` and `large` -- does
-  not depend on its members having been assembled first. Order does not matter.
+  References are to *transitive leaf* members, not direct ones: `relationtrigger()`
+  requires every element to come from the layer's single `child_id`, so one layer
+  holds one level of nesting. Flattening to leaves keeps arbitrary nesting depth
+  in a single layer. A *materialized* compilation is skipped -- it holds its own
+  polygons, so its boundary comes from them like any other map's.
 
-  Three statements rather than one because the `__edge_relation` trigger fires on
-  the topogeometry and its foreign key needs the `map_area` row to exist first --
-  the same insert-then-assign order every other map follows. `geometry` is filled
-  from the topogeometry afterwards, so it can never drift from the faces.
-
-  Members are allowed to overlap, so each face is claimed once.
+  `map_bounds.compilation_assembly` decides what to build and what has already
+  been built. Only stale compilations are touched, because resolving a
+  hierarchical topogeometry to a geometry costs tens of seconds each.
 */
 
-/* Release the previous assembly's elements. `createTopoGeom` mints a new
-   topogeometry; without this the old one's `relation` rows would be orphaned. */
+/* Release the previous assembly. `createTopoGeom` mints a new topogeometry, so
+   without this the old one's `relation` rows would be orphaned. */
+SELECT topology.clearTopoGeom(a.composite_topo)
+FROM map_bounds.map_area a
+JOIN map_bounds.compilation_assembly ca ON ca.source_id = a.source_id
+WHERE a.composite_topo IS NOT NULL
+  AND ca.is_stale;
+
+/* A compilation belongs in the composite layer, not the primitive one. Clears
+   the face-based assembly this approach replaced. */
 SELECT topology.clearTopoGeom(a.topo)
 FROM map_bounds.map_area a
 WHERE a.topo IS NOT NULL
+  AND NOT map_bounds.holds_polygons(a.source_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = a.source_id
   );
 
-/* An empty placeholder satisfies the NOT NULL; the real extent arrives below,
-   read off the assembled topogeometry rather than unioned from scratch. */
+UPDATE map_bounds.map_area ma
+SET topo = NULL
+WHERE ma.topo IS NOT NULL
+  AND NOT map_bounds.holds_polygons(ma.source_id)
+  AND EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = ma.source_id
+  );
+
+/* An empty placeholder satisfies the NOT NULL; the real extent arrives below. */
 INSERT INTO map_bounds.map_area (id, geometry, map_layer)
 SELECT DISTINCT
   cm.compilation_id,
@@ -41,58 +56,57 @@ JOIN maps.sources s ON s.source_id = cm.compilation_id
 WHERE s.status_code = 'active'
 ON CONFLICT (id) DO NOTHING;
 
-WITH RECURSIVE descendants AS (
-  SELECT cm.compilation_id AS root, cm.member_id
-  FROM map_bounds.compilation_member cm
-  UNION
-  SELECT d.root, cm.member_id
-  FROM descendants d
-  JOIN map_bounds.compilation_member cm
-    ON cm.compilation_id = d.member_id
-)
 UPDATE map_bounds.map_area ma
-SET topo = topology.createTopoGeom(
+SET composite_topo = topology.createTopoGeom(
       'map_bounds_topology',
       3,
       (
         SELECT layer_id FROM topology.layer
         WHERE schema_name = 'map_bounds'
           AND table_name = 'map_area'
-          AND feature_column = 'topo'
+          AND feature_column = 'composite_topo'
       ),
-      (
-        SELECT array_agg(ARRAY[face_id, 3])
-        FROM (
-          SELECT r.element_id AS face_id
-          FROM descendants d
-          JOIN map_bounds.map_area a
-            ON a.source_id = d.member_id
-           AND a.topo IS NOT NULL
-          JOIN map_bounds_topology.relation r
-            ON r.layer_id = (a.topo).layer_id
-           AND r.topogeo_id = (a.topo).id
-           AND r.element_type = 3
-          WHERE d.root = ma.source_id
-          GROUP BY r.element_id
-        ) faces
-      )
+      ca.elements
     )
-WHERE EXISTS (
-  SELECT 1
-  FROM descendants d
-  JOIN map_bounds.map_area a
-    ON a.source_id = d.member_id
-   AND a.topo IS NOT NULL
-  WHERE d.root = ma.source_id
-);
+FROM map_bounds.compilation_assembly ca
+WHERE ca.source_id = ma.source_id
+  AND ca.is_stale;
 
+/* `geometry` is deliberately *not* materialised for a compilation.
+
+   `composite_topo` already holds the exact footprint, as references; resolving it
+   costs ~40s and 19MB for a global layer, and `sync_source_rgeom` would mirror
+   every byte into `maps.sources.rgeom` -- 73MB across the seven layers, into the
+   table whose size already makes client listings painful. What the geometry
+   bought was a coarse spatial filter, and the constituents' own footprints serve
+   that better: `identity_for_area` already resolves through them.
+
+   The envelope is kept instead: it satisfies the NOT NULL, costs milliseconds,
+   and answers "roughly where is this" for listings. Anything needing the precise
+   footprint resolves `composite_topo::geometry`. `area_km` stays NULL for the
+   same reason -- an envelope's area would be a wrong answer rather than no
+   answer. */
 UPDATE map_bounds.map_area ma
-SET geometry = ST_Multi(ma.topo::geometry),
-    area_km = ST_Area(
-      ST_Segmentize(ST_Multi(ma.topo::geometry), 90)::geography
-    ) / 1e6
-WHERE ma.topo IS NOT NULL
-  AND EXISTS (
-    SELECT 1 FROM map_bounds.compilation_member cm
-    WHERE cm.compilation_id = ma.source_id
-  );
+SET geometry = ST_Multi(box.envelope),
+    area_km = NULL
+FROM map_bounds.compilation_assembly ca
+CROSS JOIN LATERAL (
+  SELECT ST_Envelope(ST_Collect(ST_Envelope(m.geometry))) AS envelope
+  FROM map_bounds.compilation_member cm
+  JOIN map_bounds.map_area m ON m.source_id = cm.member_id
+  WHERE cm.compilation_id = ca.source_id
+    -- An empty member envelopes to an empty GeometryCollection, which will not
+    -- cast into a MultiPolygon column.
+    AND NOT ST_IsEmpty(m.geometry)
+) box
+WHERE ca.source_id = ma.source_id
+  AND ca.is_stale
+  AND box.envelope IS NOT NULL;
+
+/* Record what was assembled, so the next run can skip it. Last, so a failure
+   part-way leaves the compilation stale rather than falsely current. */
+INSERT INTO map_bounds.compilation (source_id, assembly_hash)
+SELECT ca.source_id, ca.current_hash
+FROM map_bounds.compilation_assembly ca
+WHERE ca.is_stale
+ON CONFLICT (source_id) DO UPDATE SET assembly_hash = EXCLUDED.assembly_hash;

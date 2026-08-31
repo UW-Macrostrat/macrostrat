@@ -61,15 +61,15 @@ async def _render_tile(request: Request, sql: str, **query_params: Any):
 
 
 GET_MAP_LAYERS = """
-SELECT id,
-    name,
-    description,
-    parent,
-    composited_from,
-    slug,
-    min_zoom,
-    max_zoom
-FROM map_bounds.map_layer
+SELECT ml.id,
+    ml.name,
+    ml.description,
+    ml.parent,
+    map_bounds.composite_layer_members(ml.id) AS composited_from,
+    ml.slug,
+    ml.min_zoom,
+    ml.max_zoom
+FROM map_bounds.map_layer ml
 """
 
 
@@ -108,9 +108,10 @@ async def get_info(
             ml.id IN (
               SELECT id FROM map_bounds.map_layer WHERE slug = :map_layer
               UNION ALL
-              SELECT unnest(composited_from) id
-              FROM map_bounds.map_layer
-              WHERE slug = :map_layer
+              SELECT c.member_id
+              FROM map_bounds.map_layer_composition c
+              JOIN map_bounds.map_layer parent ON parent.id = c.parent_id
+              WHERE parent.slug = :map_layer
             )
             """,
         )

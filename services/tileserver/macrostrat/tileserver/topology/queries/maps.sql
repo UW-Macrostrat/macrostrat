@@ -8,7 +8,7 @@ WITH tile AS (
     s.name,
     s.slug,
     scale,
-    mp.priority,
+    array_to_string(mp.priority_path, '.') AS priority,
     tile_layers.tile_geom(
      ST_Intersection(geometry, projected_envelope),
       mercator_bbox
@@ -20,7 +20,7 @@ WITH tile AS (
     ON ma.source_id = s.source_id
   JOIN map_bounds.map_layer ml
     ON ma.map_layer = ml.id
-    OR ma.map_layer = ANY(ml.composited_from)
+    OR ma.map_layer = ANY(map_bounds.composite_layer_members(ml.id))
   LEFT JOIN map_bounds.map_priority mp
     ON ma.source_id = mp.source_id AND mp.map_layer = ml.id
   WHERE ml.slug = :map_layer

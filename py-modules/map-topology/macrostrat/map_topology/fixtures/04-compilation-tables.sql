@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
   /** The member set the compilation's derived polygons were built from. NULL
     while virtual; stale once it no longer matches the current members. */
   member_hash uuid,
+  /** The member state the *boundary* was last assembled from. Separate from
+    `member_hash`: the footprint and the polygon cache are independent derived
+    things and go stale for different reasons. */
+  assembly_hash uuid,
   note text
 );
 
@@ -176,6 +180,86 @@ JOIN map_bounds.map_layer member ON member.slug = v.member_slug
 WHERE parent.source_id IS NOT NULL
   AND member.source_id IS NOT NULL
 ON CONFLICT (compilation_id, member_id) DO NOTHING;
+
+/** THE COMPOSITE TOPOGEOMETRY
+
+  A compilation's boundary is the union of its members', and both are already in
+  the topology -- so it should reference them, not re-list every face they cover.
+  Representing `tiny` (one member) as 94,693 face elements is absurd; as one
+  reference it is one row.
+
+  This is PostGIS's hierarchical topology: a level-1 layer whose `child` is the
+  level-0 `map_area.topo` layer. `relationtrigger()` enforces that every element
+  comes from the child layer, so a layer holds exactly one level of nesting.
+  Rather than add a layer per level, a compilation references its *transitive
+  leaf* members -- the maps that actually hold polygons. That works at any depth
+  with a single layer, and costs 619 elements across the whole system where the
+  face representation cost 621,443.
+
+  Compilations therefore live in this layer and leave `topo` NULL; ordinary maps,
+  whose boundaries genuinely node into the topology, keep `topo` and leave this
+  NULL.
+*/
+SELECT topology.AddTopoGeometryColumn(
+  'map_bounds_topology',
+  'map_bounds',
+  'map_area',
+  'composite_topo',
+  'POLYGON',
+  (
+    SELECT layer_id FROM topology.layer
+    WHERE schema_name = 'map_bounds'
+      AND table_name = 'map_area'
+      AND feature_column = 'topo'
+  )
+)
+WHERE NOT EXISTS (
+  SELECT 1 FROM topology.layer
+  WHERE schema_name = 'map_bounds'
+    AND table_name = 'map_area'
+    AND feature_column = 'composite_topo'
+);
+
+/** What each compilation's boundary should be assembled from, and whether it
+  already has been.
+
+  `elements` is the `createTopoGeom` argument: one reference per transitive leaf
+  member. `current_hash` covers both the member set and each member's
+  topogeometry id, so a member's boundary being rebuilt makes its parents stale
+  too -- `createTopoGeom` mints a new id every time, so the reference would
+  otherwise dangle.
+
+  Resolving a hierarchical topogeometry to a geometry costs tens of seconds, so
+  the point of this view is to do it only for compilations that actually moved.
+*/
+CREATE OR REPLACE VIEW map_bounds.compilation_assembly AS
+WITH RECURSIVE descendants AS (
+  SELECT cm.compilation_id AS root, cm.member_id
+  FROM map_bounds.compilation_member cm
+  UNION
+  SELECT d.root, cm.member_id
+  FROM descendants d
+  JOIN map_bounds.compilation_member cm
+    ON cm.compilation_id = d.member_id
+  -- Stop at a map that holds polygons: it is a leaf, not a container.
+  WHERE NOT map_bounds.holds_polygons(d.member_id)
+)
+SELECT
+  d.root AS source_id,
+  array_agg(DISTINCT ARRAY[(a.topo).id, (a.topo).layer_id]) AS elements,
+  md5(string_agg(d.member_id || '/' || (a.topo).id, ',' ORDER BY d.member_id))::uuid
+    AS current_hash,
+  c.assembly_hash,
+  c.assembly_hash IS DISTINCT FROM
+    md5(string_agg(d.member_id || '/' || (a.topo).id, ',' ORDER BY d.member_id))::uuid
+    AS is_stale
+FROM descendants d
+JOIN map_bounds.map_area a
+  ON a.source_id = d.member_id
+ AND a.topo IS NOT NULL
+LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
+WHERE NOT map_bounds.holds_polygons(d.root)
+GROUP BY d.root, c.assembly_hash;
 
 /** Compilation state: virtual, materialized, or stale. */
 CREATE OR REPLACE VIEW map_bounds.compilation_sync AS
