@@ -30,7 +30,6 @@ WHERE a.composite_topo IS NOT NULL
 SELECT topology.clearTopoGeom(a.topo)
 FROM map_bounds.map_area a
 WHERE a.topo IS NOT NULL
-  AND NOT map_bounds.holds_polygons(a.source_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = a.source_id
@@ -39,11 +38,24 @@ WHERE a.topo IS NOT NULL
 UPDATE map_bounds.map_area ma
 SET topo = NULL
 WHERE ma.topo IS NOT NULL
-  AND NOT map_bounds.holds_polygons(ma.source_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = ma.source_id
   );
+
+/* A materialized compilation gets a level-0 topogeometry too: `identity_for_face`
+   resolves there, so it cannot own a face without one. Same face set, assembled by
+   reference -- never noded. */
+UPDATE map_bounds.map_area ma
+SET topo = topology.createTopoGeom(
+      'map_bounds_topology',
+      3,
+      map_bounds_topology.boundary_layer_id(),
+      ca.face_elements
+    )
+FROM map_bounds.compilation_assembly ca
+WHERE ca.source_id = ma.source_id
+  AND map_bounds.holds_polygons(ma.source_id);
 
 /* An empty placeholder satisfies the NOT NULL; the real extent arrives below. */
 INSERT INTO map_bounds.map_area (id, geometry, map_layer)

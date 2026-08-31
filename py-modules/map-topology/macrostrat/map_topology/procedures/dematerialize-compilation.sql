@@ -13,3 +13,24 @@ DELETE FROM maps.polygons WHERE source_id = :compilation_id;
 UPDATE maps.sources SET is_finalized = false WHERE source_id = :compilation_id;
 
 UPDATE map_bounds.compilation SET member_hash = NULL WHERE source_id = :compilation_id;
+
+/* Materializing changes who owns the territory while no boundary moves, so
+   nothing else notices. `mark-stale-identity` catches faces whose owner stops
+   resolving, but not primitive faces left without a `map_face` at all -- and a
+   half-dissolved territory leaves exactly those. Mark the whole territory.
+
+   Layers are taken from where the members currently resolve, which is still true
+   at this point: the sync that retires them has not run yet. */
+INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
+SELECT DISTINCT r.element_id, mp.map_layer
+FROM map_bounds.compilation_member cm
+JOIN map_bounds.map_area a
+  ON a.source_id = cm.member_id
+ AND a.topo IS NOT NULL
+JOIN map_bounds_topology.relation r
+  ON r.layer_id = (a.topo).layer_id
+ AND r.topogeo_id = (a.topo).id
+ AND r.element_type = 3
+JOIN map_bounds.map_priority mp ON mp.source_id = cm.member_id
+WHERE cm.compilation_id = :compilation_id
+ON CONFLICT DO NOTHING;

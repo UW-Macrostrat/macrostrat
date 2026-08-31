@@ -253,19 +253,31 @@ WITH RECURSIVE descendants AS (
 )
 SELECT
   d.root AS source_id,
+  -- References to the members' own topogeometries, for the hierarchical layer.
   array_agg(DISTINCT ARRAY[(a.topo).id, (a.topo).layer_id]) AS elements,
-  md5(string_agg(d.member_id || '/' || (a.topo).id, ',' ORDER BY d.member_id))::uuid
-    AS current_hash,
+  -- The primitive faces those members cover. A *materialized* compilation needs a
+  -- level-0 topogeometry as well, because `identity_for_face` resolves there and
+  -- a compilation cannot own a face without one. Assembled by reference either
+  -- way: its boundary is already in the topology as its members' edges, and
+  -- re-noding a simplified transform of it fails where the simplified line
+  -- crosses an edge it should have followed.
+  array_agg(DISTINCT ARRAY[r.element_id, 3]) AS face_elements,
+  md5(string_agg(DISTINCT
+        d.member_id || '/' || (a.topo).id, ',')
+      )::uuid AS current_hash,
   c.assembly_hash,
   c.assembly_hash IS DISTINCT FROM
-    md5(string_agg(d.member_id || '/' || (a.topo).id, ',' ORDER BY d.member_id))::uuid
+    md5(string_agg(DISTINCT d.member_id || '/' || (a.topo).id, ','))::uuid
     AS is_stale
 FROM descendants d
 JOIN map_bounds.map_area a
   ON a.source_id = d.member_id
  AND a.topo IS NOT NULL
+JOIN map_bounds_topology.relation r
+  ON r.layer_id = (a.topo).layer_id
+ AND r.topogeo_id = (a.topo).id
+ AND r.element_type = 3
 LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
-WHERE NOT map_bounds.holds_polygons(d.root)
 GROUP BY d.root, c.assembly_hash;
 
 /** Every map a compilation resolves to, with the *unit* each is presented as.
@@ -276,9 +288,18 @@ GROUP BY d.root, c.assembly_hash;
   meaningful answer is one level further: British Columbia appears as
   `bc-surface`, not as two layers and not as its two constituent maps.
 
+  `_deep` chooses where the descent stops. By default it stops where the polygons
+  are -- a materialized compilation is an answer in its own right, so resolution
+  goes no further. Set it to descend all the way to maps with no members of their
+  own: the referenceable units of mapping, which stay reachable whether or not
+  anything above them has been materialized.
+
   A map with no compilation above it is its own unit.
 */
-CREATE OR REPLACE FUNCTION map_bounds.compilation_leaves(_source_id integer)
+CREATE OR REPLACE FUNCTION map_bounds.compilation_leaves(
+  _source_id integer,
+  _deep boolean DEFAULT false
+)
   RETURNS TABLE (source_id integer, via integer) AS $$
 WITH RECURSIVE descent AS (
   SELECT
@@ -296,10 +317,16 @@ WITH RECURSIVE descent AS (
     )
   FROM descent d
   JOIN map_bounds.compilation_member cm ON cm.compilation_id = d.member_id
-  WHERE NOT map_bounds.holds_polygons(d.member_id)
+  WHERE _deep OR NOT map_bounds.holds_polygons(d.member_id)
 )
 SELECT member_id, coalesce(via, member_id) FROM descent
-WHERE map_bounds.holds_polygons(member_id);
+WHERE CASE
+        WHEN _deep THEN NOT EXISTS (
+          SELECT 1 FROM map_bounds.compilation_member c
+          WHERE c.compilation_id = descent.member_id
+        )
+        ELSE map_bounds.holds_polygons(member_id)
+      END;
 $$ LANGUAGE SQL STABLE;
 
 /** Which layer's faces represent a compilation.

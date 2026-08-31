@@ -259,35 +259,53 @@ def materialize(
     """
     db = get_database()
     source_id, slug = _resolve(compilation)
+    scale = db.run_query(
+        "SELECT scale FROM maps.sources WHERE source_id = :id", dict(id=source_id)
+    ).scalar()
 
     estimate = db.run_query(
         """
-        SELECT count(*) AS faces,
-               sum((SELECT count(*) FROM maps.polygons p
-                    WHERE p.source_id = cm.member_id
-                      AND ST_Intersects(p.geom, f.geometry))) AS polygon_clips
-        FROM map_bounds.compilation_member cm
-        JOIN map_bounds_topology.map_face f
-          ON f.map_id = cm.member_id
-         AND f.map_layer = map_bounds.face_layer_for(:source_id)
-        WHERE cm.compilation_id = :source_id
+        WITH member AS (
+          SELECT cm.member_id, cm.priority
+          FROM map_bounds.compilation_member cm
+          WHERE cm.compilation_id = :source_id
+        ), covered_by AS (
+          SELECT m.member_id, ST_Union(a.geometry) AS geometry
+          FROM member m
+          JOIN member higher ON higher.priority > m.priority
+          JOIN map_bounds.map_area a ON a.source_id = higher.member_id
+          GROUP BY m.member_id
+        )
+        SELECT
+          count(*) AS polygons,
+          count(*) FILTER (
+            WHERE c.geometry IS NOT NULL AND ST_Intersects(p.geom, c.geometry)
+          ) AS need_clipping
+        FROM member m
+        JOIN maps.polygons p
+          ON p.source_id = m.member_id AND p.scale = :scale::maps.map_scale
+        LEFT JOIN covered_by c ON c.member_id = m.member_id
         """,
-        dict(source_id=source_id),
+        dict(source_id=source_id, scale=scale),
     ).first()
 
-    if not estimate or not estimate.faces:
-        print(f"[red]{slug}[/] has no member faces to clip; run [cyan]sync[/] first")
+    if not estimate or not estimate.polygons:
+        print(f"[red]{slug}[/] has no member polygons to assemble")
         raise typer.Exit(1)
 
     print(
-        f"[bold]{slug}[/] [dim]#{source_id}[/]: "
-        f"{estimate.faces} faces, ~{estimate.polygon_clips} polygon clips"
+        f"[bold]{slug}[/] [dim]#{source_id}[/]: {estimate.polygons} polygons, "
+        f"{estimate.need_clipping} needing clipping "
+        f"({estimate.polygons - estimate.need_clipping} copied as-is)"
     )
     if not apply:
         print("[dim]Dry run. Pass --apply to write.[/]")
         return
 
-    db.run_sql(proc("materialize-compilation"), dict(compilation_id=source_id))
+    db.run_sql(
+        proc("materialize-compilation"),
+        dict(compilation_id=source_id, scale=scale),
+    )
     db.session.commit()
     n = db.run_query(
         "SELECT count(*) FROM maps.polygons WHERE source_id = :id",
@@ -335,6 +353,10 @@ def sync():
         "sync-compilation-bounds",
         "set-map-priority",
         "sync-priority-paths",
+        # Identity can change without a boundary moving, and only boundary edits
+        # mark faces dirty -- so a resolution change would otherwise leave stale
+        # faces behind with nothing to notice.
+        "mark-stale-identity",
         "sync-unit-faces",
     ):
         db.run_sql(proc(step))

@@ -21,7 +21,7 @@ WITH tile AS (
     CASE WHEN :expand THEN l.source_id ELSE l.via END AS source_id,
     l.via
   FROM root
-  CROSS JOIN LATERAL map_bounds.compilation_leaves(root.source_id) l
+  CROSS JOIN LATERAL map_bounds.compilation_leaves(root.source_id, :expand) l
 ), sources AS (
   SELECT
     s.source_id,

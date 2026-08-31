@@ -18,7 +18,7 @@ WITH tile AS (
 ), resolved AS (
   SELECT l.source_id, l.via
   FROM root
-  CROSS JOIN LATERAL map_bounds.compilation_leaves(root.source_id) l
+  CROSS JOIN LATERAL map_bounds.compilation_leaves(root.source_id, :expand) l
 ), map_faces AS (
   SELECT
     DISTINCT ON (f.id)
