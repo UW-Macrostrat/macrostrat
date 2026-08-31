@@ -69,6 +69,7 @@ TopologySchema = SchemaDefinition(
         # everything here is idempotent either way.
         __dir__ / "fixtures" / "01-create-tables.sql",
         __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+        __dir__ / "fixtures" / "04-compilation-tables.sql",
     ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),

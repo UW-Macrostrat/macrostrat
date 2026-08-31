@@ -179,13 +179,21 @@ def mode(
 
 @cli.command("sync")
 def sync():
-    """Rebuild the flattened priority paths identity resolution orders by.
+    """Rebuild everything derived from compilation membership.
 
-    Runs as part of `macrostrat topo update`; this is for checking the effect of
-    a membership edit without a full topology run.
+    The same three steps `macrostrat topo update` runs, without the per-map
+    topology work in between -- for picking up a membership edit, or for
+    finishing a schema apply. Order matters: `sync-priority-paths` empties
+    `map_priority` and rebuilds it from the membership edges, so the placements
+    have to be written first.
     """
     db = get_database()
-    db.run_sql(proc("sync-priority-paths"))
+    for step in (
+        "set-map-priority",
+        "sync-priority-paths",
+        "sync-compilation-bounds",
+    ):
+        db.run_sql(proc(step))
     db.session.commit()
     counts = db.run_query(
         """
