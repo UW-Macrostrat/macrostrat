@@ -252,6 +252,51 @@ async def get_role_id(
         )
 
 
+async def list_tokens(
+    async_session: async_sessionmaker[AsyncSession],
+    token_type: str | None = None,
+) -> list[schemas.Token]:
+    """Every issued token, newest first.
+
+    Callers must not expose `Token.token` — it is the stored digest, and a
+    response that carries it invites pasting it somewhere it can leak.
+    """
+    async with async_session() as session:
+        stmt = select(schemas.Token).order_by(schemas.Token.id.desc())
+        if token_type is not None:
+            stmt = stmt.where(schemas.Token.token_type == token_type)
+        return list(await session.scalars(stmt))
+
+
+async def revoke_token(engine: AsyncEngine, token_id: int) -> str:
+    """Expire a token now. Returns what happened.
+
+    The row is kept rather than deleted, so the record of who was issued what
+    survives a revocation. Guarded on `expires_on > now()` so an already
+    expired token is reported honestly instead of silently "succeeding".
+    """
+    async with engine.begin() as conn:
+        stmt = (
+            update(schemas.Token)
+            .where(
+                schemas.Token.id == token_id,
+                schemas.Token.expires_on > func.now(),
+            )
+            .values(expires_on=func.now())
+            .returning(schemas.Token.id)
+        )
+        if (await conn.execute(stmt)).scalar() is not None:
+            return "revoked"
+
+        # `id`, not a nullable column: a token delegated to a user has a NULL
+        # label, which would make an existence check on `label` report a real
+        # token as missing.
+        exists = await conn.execute(
+            select(schemas.Token.id).where(schemas.Token.id == token_id)
+        )
+        return "already_expired" if exists.scalar() is not None else "not_found"
+
+
 #
 # Here starts the use on the engine object directly
 #

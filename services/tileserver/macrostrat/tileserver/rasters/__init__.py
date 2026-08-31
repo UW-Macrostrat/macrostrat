@@ -24,6 +24,8 @@ from typing_extensions import Annotated
 
 from macrostrat.utils import get_logger
 
+from ..auth import require_scope
+
 log = get_logger(__name__)
 
 __all__ = ["register_raster_routes", "RASTER_LAYERS", "RASTER_PREFIX"]
@@ -242,6 +244,13 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
             _layer_router(config, index, prefix),
             prefix=prefix,
             tags=["Rasters"],
+            # Every route the layer exposes needs a delegated token scoped to
+            # it — not just the tiles. `/point` returns the underlying values
+            # and `/footprints` reveals where the datasets live, so gating the
+            # tiles alone would protect the picture and not the data. Applied
+            # per layer, so a layer added later gets its own scope rather than
+            # inheriting this one.
+            dependencies=[Depends(require_scope(f"rasters:{config.slug}"))],
         )
 
     # Register cache invalidation routes for the raster layers.

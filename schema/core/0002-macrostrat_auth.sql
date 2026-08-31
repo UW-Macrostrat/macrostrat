@@ -63,3 +63,7 @@ GRANT USAGE ON SCHEMA macrostrat_auth TO macrostrat;
 GRANT SELECT ON macrostrat_auth."user" TO macrostrat;
 
 CREATE TRIGGER update_updated_on_trigger BEFORE UPDATE ON macrostrat_auth."user" FOR EACH ROW WHEN ((old.* IS DISTINCT FROM new.*)) EXECUTE FUNCTION public.update_updated_on();
+
+CREATE UNIQUE INDEX token_label_live_key
+    ON macrostrat_auth.token (label)
+    WHERE expires_on > now();

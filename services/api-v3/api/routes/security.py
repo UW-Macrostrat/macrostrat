@@ -1,9 +1,6 @@
-import base64
 import hashlib
-import hmac
 import os
-import secrets
-import string
+import re
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
@@ -32,14 +29,10 @@ import api.database as db
 import api.schemas as schemas
 from api.database import DatabaseDep
 
-ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # can change to 1m for manual testing
-API_TOKEN_LENGTH = 32
-
-# The only roles PostgREST can SET ROLE to (see schema/core/0000-roles.sql).
-# macrostrat_auth.role also carries rows that are not Postgres roles (e.g.
-# `test-only`), so a role name is only emitted as the `role` claim when it is
-# one of these
+DELEGATED_TOKEN_TYPE = "delegated"
+SCOPE_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$")
+SCOPE_EXAMPLE = "rasters:emit-minerals"
 POSTGREST_ROLES = frozenset({"web_admin", "web_user"})
 DEFAULT_ROLE = "web_user"
 
@@ -50,21 +43,11 @@ refresh_token_key = "refresh_token"
 log = get_logger("uvicorn")
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
 class TokenData(BaseModel):
+    """The claims this service reads back out of an access JWT."""
+
     sub: str
     role: str | None = None
-
-
-class User(BaseModel):
-    username: str
-    email: str | None = None
-    full_name: str | None = None
-    disabled: bool | None = None
 
 
 class DelegateTokenRequest(BaseModel):
@@ -95,6 +78,41 @@ class DelegateToken(BaseModel):
     label: str | None = None
     user_id: int | None = None
     scopes: list[str] | None = None
+
+
+class DelegateTokenInfo(BaseModel):
+    """An issued token, as seen when administering it.
+
+    Deliberately has no `token` field. The stored value is a digest and is not
+    needed to administer a token, so it is never returned — a response that
+    carries it invites pasting it somewhere it can leak.
+    """
+
+    id: int
+    label: str | None = None
+    token_type: str
+    scopes: list[str] | None = None
+    user_id: int | None = None
+    created_by: int | None = None
+    created_on: datetime
+    expires_on: datetime
+    used_on: datetime | None = None
+    active: bool
+
+    @classmethod
+    def from_token(cls, token: schemas.Token, *, now: datetime) -> "DelegateTokenInfo":
+        return cls(
+            id=token.id,
+            label=token.label,
+            token_type=token.token_type,
+            scopes=token.scopes,
+            user_id=token.user_id,
+            created_by=token.created_by,
+            created_on=token.created_on,
+            expires_on=token.expires_on,
+            used_on=token.used_on,
+            active=token.expires_on > now,
+        )
 
 
 access_token_key = "access_token"
@@ -135,13 +153,6 @@ router = APIRouter(
 )
 
 
-def hash_refresh_token(raw_token: str) -> str:
-    # Deterministic hash so you can LOOKUP in DB by value.
-    key = os.environ["SECRET_KEY"].encode("utf-8")
-    digest = hmac.new(key, raw_token.encode("utf-8"), hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(digest).decode("utf-8")
-
-
 def hash_token(raw_token: str) -> str:
     """Digest an API token for storage and lookup.
 
@@ -151,11 +162,31 @@ def hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-def generate_token() -> str:
-    """A new random API token, in the clear. Digest it before storing."""
-    return "".join(
-        secrets.choice(string.ascii_letters + string.digits)
-        for _ in range(API_TOKEN_LENGTH)
+def sign_delegated_token(label: str | None, expires_on: datetime) -> str:
+    """A delegated token: a JWT signed with SECRET_KEY.
+
+    Signed rather than random so a token is self-describing and provably ours —
+    decode one and read what it is for and when it lapses, with no database
+    access. The signature proves origin, not authority: it is still the stored
+    row that grants scopes, and revocation acts on that row rather than on the
+    signature (a signature cannot be un-signed).
+
+    This is deliberately the same signer the login flow uses, so there is one
+    place where SECRET_KEY is applied. Note the tile server does **not** verify
+    the signature — it hashes the token and looks the row up, which it must do
+    for revocation anyway. Keeping SECRET_KEY out of the tile server matters:
+    the same key signs login JWTs, so a tile server compromise would otherwise
+    let an attacker forge `role: web_admin` sessions.
+
+    The payload is `{label, exp}` and nothing else, so the token is a pure
+    function of those two values and the key. Labels are unique by convention,
+    which is what keeps the stored digest (UNIQUE) from colliding: minting the
+    same label twice in the same second with the same expiry produces the same
+    token and so fails on that constraint.
+    """
+    return create_access_token(
+        data={"label": label},
+        expires_delta=expires_on - datetime.now(timezone.utc),
     )
 
 
@@ -520,29 +551,39 @@ async def refresh_token(
     return {"status": "refreshed"}
 
 
-@router.post("/token", response_model=DelegateToken)
+async def require_admin(
+    user_token: TokenData = Depends(get_user_token_from_cookie),
+    user_has_access: bool = Depends(has_access),
+) -> TokenData:
+    """Require a web_admin session, and hand back who it is.
+
+    Token administration is the same three operations as
+    `macrostrat auth …` in the CLI. The CLI's authorization is possession of
+    database credentials; here it is the `web_admin` role on the caller's JWT.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="Only admins can administer API tokens"
+        )
+    return user_token
+
+
+@router.post("/tokens", response_model=DelegateToken)
 async def create_delegate_token(
     token_request: DelegateTokenRequest,
     database: DatabaseDep,
-    user_token: TokenData = Depends(get_user_token_from_cookie),
-    user_has_access: bool = Depends(has_access),
+    user_token: TokenData = Depends(require_admin),
 ):
     """Mint a delegated API token. Admin only.
 
     Issuing a credential that outlives a session is an admin action, so this is
-    gated on `has_access` rather than on the caller's own authority — the old
+    gated on the caller's role rather than on their own authority — the old
     group-scoped version let any user mint a token for a group they belonged to.
 
     The raw token is returned here and nowhere else; only its digest is stored.
     """
-
-    if user_token is None:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="Only admins can create delegated tokens"
-        )
 
     if token_request.user_id is None and token_request.label is None:
         raise HTTPException(
@@ -554,14 +595,27 @@ async def create_delegate_token(
     if expires_on <= datetime.now(timezone.utc):
         raise HTTPException(status_code=422, detail="Expiration is in the past")
 
+    # Scopes are compared as exact strings by the guarded service, so a
+    # malformed one would mint a token that authenticates and then grants
+    # nothing. Reject it here instead.
+    malformed = [s for s in (token_request.scopes or []) if not SCOPE_PATTERN.match(s)]
+    if malformed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Malformed scope: {', '.join(malformed)}. "
+                f"Scopes are `<namespace>:<resource>`, e.g. {SCOPE_EXAMPLE}"
+            ),
+        )
+
     issuer = await get_user(user_token.sub, database.async_sessionmaker)
 
-    token = generate_token()
+    token = sign_delegated_token(token_request.label, expires_on)
     token_id = await db.insert_token(
         engine=database.async_engine,
         token_hash=hash_token(token),
         expires_on=expires_on,
-        token_type="delegate",
+        token_type=DELEGATED_TOKEN_TYPE,
         user_id=token_request.user_id,
         created_by=issuer.id if issuer is not None else None,
         label=token_request.label,
@@ -576,6 +630,45 @@ async def create_delegate_token(
         user_id=token_request.user_id,
         scopes=token_request.scopes,
     )
+
+
+@router.get("/tokens", response_model=list[DelegateTokenInfo])
+async def list_delegate_tokens(
+    database: DatabaseDep,
+    token_type: str | None = None,
+    _admin: TokenData = Depends(require_admin),
+):
+    """List issued API tokens, newest first. Admin only.
+
+    Never returns the tokens themselves — the stored value is a digest, and it
+    is not needed to administer a token. Pass `token_type` to narrow to one
+    kind (e.g. `delegate`).
+    """
+
+    tokens = await db.list_tokens(database.async_sessionmaker, token_type=token_type)
+    now = datetime.now(timezone.utc)
+    return [DelegateTokenInfo.from_token(token, now=now) for token in tokens]
+
+
+@router.post("/tokens/{token_id}/revoke")
+async def revoke_delegate_token(
+    token_id: int,
+    database: DatabaseDep,
+    _admin: TokenData = Depends(require_admin),
+):
+    """Revoke a token by expiring it now. Admin only.
+
+    The row is kept, so the record of who was issued what survives. Consumers
+    of guarded endpoints cache token lookups briefly, so a revocation can take
+    up to a minute to take effect.
+    """
+
+    outcome = await db.revoke_token(database.async_engine, token_id)
+
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail=f"No token with id {token_id}")
+
+    return {"id": token_id, "status": outcome}
 
 
 @router.post("/logout")
