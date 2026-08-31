@@ -14,11 +14,26 @@
 DELETE FROM map_bounds.map_priority;
 
 WITH RECURSIVE paths AS (
-  SELECT ml.id AS map_layer, ml.source_id, ARRAY[]::integer[] AS path
+  SELECT
+    ml.id AS map_layer,
+    ml.source_id,
+    ARRAY[]::integer[] AS path,
+    NULL::integer AS via
   FROM map_bounds.map_layer ml
   WHERE ml.source_id IS NOT NULL
   UNION ALL
-  SELECT p.map_layer, cm.member_id, p.path || coalesce(cm.priority, 0)
+  SELECT
+    p.map_layer,
+    cm.member_id,
+    p.path || coalesce(cm.priority, 0),
+    -- The unit a map is presented as: the first member on the way down that is
+    -- not a served layer. Layers are structural containers -- nobody means to
+    -- see `medium` -- so the meaningful ancestor is one level further.
+    coalesce(
+      p.via,
+      CASE WHEN map_bounds.is_served_layer(cm.member_id) THEN NULL
+           ELSE cm.member_id END
+    )
   FROM paths p
   JOIN map_bounds.compilation_member cm
     ON cm.compilation_id = p.source_id
@@ -28,13 +43,13 @@ WITH RECURSIVE paths AS (
   again through a compilation, which is the state a half-migrated compilation is
   in. The winning route is the one that would win anyway. */
 leaves AS (
-  SELECT DISTINCT ON (map_layer, source_id) map_layer, source_id, path
+  SELECT DISTINCT ON (map_layer, source_id) map_layer, source_id, path, via
   FROM paths
   WHERE map_bounds.holds_polygons(source_id)
   ORDER BY map_layer, source_id, path DESC
 )
-INSERT INTO map_bounds.map_priority (map_layer, source_id, priority_path)
-SELECT map_layer, source_id, path
+INSERT INTO map_bounds.map_priority (map_layer, source_id, priority_path, via)
+SELECT map_layer, source_id, path, coalesce(via, source_id)
 FROM leaves;
 
 

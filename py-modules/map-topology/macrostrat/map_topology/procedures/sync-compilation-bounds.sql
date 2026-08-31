@@ -72,20 +72,37 @@ FROM map_bounds.compilation_assembly ca
 WHERE ca.source_id = ma.source_id
   AND ca.is_stale;
 
-/* `geometry` is deliberately *not* materialised for a compilation.
+/* A region-scale compilation gets its real boundary; a served layer keeps an
+   envelope.
 
-   `composite_topo` already holds the exact footprint, as references; resolving it
-   costs ~40s and 19MB for a global layer, and `sync_source_rgeom` would mirror
-   every byte into `maps.sources.rgeom` -- 73MB across the seven layers, into the
-   table whose size already makes client listings painful. What the geometry
-   bought was a coarse spatial filter, and the constituents' own footprints serve
-   that better: `identity_for_area` already resolves through them.
+   The two differ by two orders of magnitude, and only in one direction does the
+   geometry earn its keep. `bc-surface` resolves to 8,418 points -- fewer than
+   either member's *stored* geometry, because the topology's form is noded and
+   simplified -- and it is rendered, as a source footprint. `carto-large` resolves
+   to 1,048,106 points and 16MB, is global, and is never rendered as a footprint
+   at all (`map_layer` is null for a served layer, so the tile query skips it).
 
-   The envelope is kept instead: it satisfies the NOT NULL, costs milliseconds,
-   and answers "roughly where is this" for listings. Anything needing the precise
-   footprint resolves `composite_topo::geometry`. `area_km` stays NULL for the
-   same reason -- an envelope's area would be a wrong answer rather than no
-   answer. */
+   Without this a compilation renders as its bounding rectangle, which for
+   `bc-surface` is a box over British Columbia sitting on top of the real maps. */
+UPDATE map_bounds.map_area ma
+SET geometry = ST_Multi(ma.composite_topo::geometry)
+FROM map_bounds.compilation_assembly ca
+WHERE ca.source_id = ma.source_id
+  AND ca.is_stale
+  AND ma.composite_topo IS NOT NULL
+  AND NOT map_bounds.is_served_layer(ma.source_id);
+
+UPDATE map_bounds.map_area ma
+SET area_km = ST_Area(ST_Segmentize(ma.geometry, 90)::geography) / 1e6
+FROM map_bounds.compilation_assembly ca
+WHERE ca.source_id = ma.source_id
+  AND ca.is_stale
+  AND NOT map_bounds.is_served_layer(ma.source_id)
+  AND NOT ST_IsEmpty(ma.geometry);
+
+/* A served layer's extent is global and unrendered, so the envelope of its
+   members is all it needs -- and all it can afford. `area_km` stays NULL rather
+   than reporting an envelope's area as if it were the layer's. */
 UPDATE map_bounds.map_area ma
 SET geometry = ST_Multi(box.envelope),
     area_km = NULL
@@ -95,12 +112,11 @@ CROSS JOIN LATERAL (
   FROM map_bounds.compilation_member cm
   JOIN map_bounds.map_area m ON m.source_id = cm.member_id
   WHERE cm.compilation_id = ca.source_id
-    -- An empty member envelopes to an empty GeometryCollection, which will not
-    -- cast into a MultiPolygon column.
     AND NOT ST_IsEmpty(m.geometry)
 ) box
 WHERE ca.source_id = ma.source_id
   AND ca.is_stale
+  AND map_bounds.is_served_layer(ma.source_id)
   AND box.envelope IS NOT NULL;
 
 /* Record what was assembled, so the next run can skip it. Last, so a failure

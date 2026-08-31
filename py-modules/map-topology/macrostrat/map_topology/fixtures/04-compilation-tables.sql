@@ -161,6 +161,13 @@ ALTER TABLE map_bounds.map_priority
   ADD COLUMN IF NOT EXISTS priority_path integer[];
 ALTER TABLE map_bounds.map_priority DROP COLUMN IF EXISTS derived;
 ALTER TABLE map_bounds.map_priority DROP COLUMN IF EXISTS priority;
+/** The direct member of `map_layer` through which this map is reached -- itself,
+  when it sits directly in the layer. `priority_path` records the priorities along
+  the way but not the nodes, and rendering needs the node: a face in `carto-large`
+  belongs to member `medium` from that layer's point of view, even though the map
+  that actually owns it is two levels further down. */
+ALTER TABLE map_bounds.map_priority
+  ADD COLUMN IF NOT EXISTS via integer REFERENCES maps.sources(source_id);
 
 /** Carto composition. `carto-large` is the compilation of `medium` and `large`;
   higher priority wins where they overlap. Ordinary membership edges between
@@ -260,6 +267,61 @@ JOIN map_bounds.map_area a
 LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
 WHERE NOT map_bounds.holds_polygons(d.root)
 GROUP BY d.root, c.assembly_hash;
+
+/** Every map a compilation resolves to, with the *unit* each is presented as.
+
+  A unit is the first member on the way down that is not a served layer. Layers
+  are structural -- `carto-large` is assembled from `medium` and `large`, but
+  neither is a thing anyone means to see, and both carry only an envelope. The
+  meaningful answer is one level further: British Columbia appears as
+  `bc-surface`, not as two layers and not as its two constituent maps.
+
+  A map with no compilation above it is its own unit.
+*/
+CREATE OR REPLACE FUNCTION map_bounds.compilation_leaves(_source_id integer)
+  RETURNS TABLE (source_id integer, via integer) AS $$
+WITH RECURSIVE descent AS (
+  SELECT
+    cm.member_id,
+    CASE WHEN map_bounds.is_served_layer(cm.member_id) THEN NULL ELSE cm.member_id END
+      AS via
+  FROM map_bounds.compilation_member cm
+  WHERE cm.compilation_id = _source_id
+  UNION ALL
+  SELECT
+    cm.member_id,
+    coalesce(
+      d.via,
+      CASE WHEN map_bounds.is_served_layer(cm.member_id) THEN NULL ELSE cm.member_id END
+    )
+  FROM descent d
+  JOIN map_bounds.compilation_member cm ON cm.compilation_id = d.member_id
+  WHERE NOT map_bounds.holds_polygons(d.member_id)
+)
+SELECT member_id, coalesce(via, member_id) FROM descent
+WHERE map_bounds.holds_polygons(member_id);
+$$ LANGUAGE SQL STABLE;
+
+/** Which layer's faces represent a compilation.
+
+  Faces are materialised per served layer, so a compilation that is not one has no
+  faces of its own -- it borrows those of the layer it sits in, filtered to the
+  maps it resolves to.
+*/
+CREATE OR REPLACE FUNCTION map_bounds.face_layer_for(_source_id integer)
+  RETURNS integer AS $$
+SELECT coalesce(
+  (SELECT id FROM map_bounds.map_layer WHERE source_id = _source_id),
+  (SELECT map_layer FROM map_bounds.map_area WHERE source_id = _source_id)
+);
+$$ LANGUAGE SQL STABLE;
+
+/** Resolve a compilation by slug. Any compilation is addressable, not just the
+  served layers the tile routes originally took. */
+CREATE OR REPLACE FUNCTION map_bounds.compilation_id(_slug text)
+  RETURNS integer AS $$
+SELECT source_id FROM maps.sources WHERE slug = _slug;
+$$ LANGUAGE SQL STABLE;
 
 /** Compilation state: virtual, materialized, or stale. */
 CREATE OR REPLACE VIEW map_bounds.compilation_sync AS

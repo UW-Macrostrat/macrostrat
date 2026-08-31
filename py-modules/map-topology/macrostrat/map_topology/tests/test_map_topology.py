@@ -316,7 +316,7 @@ class TestMapTopology:
         # The stored geometry is only an envelope -- cheap, and enough to say
         # roughly where the compilation is. The exact footprint stays in
         # `composite_topo`, resolved on demand.
-        envelope, exact, members, area_km = db.run_query(
+        stored, exact, members, area_km = db.run_query(
             """
             SELECT
               ST_Area(a.geometry),
@@ -327,10 +327,10 @@ class TestMapTopology:
             FROM map_bounds.map_area a WHERE a.source_id = 1005
             """
         ).first()
+        # A region-scale compilation stores its real boundary, not an envelope.
+        assert stored == approx(exact, rel=1e-9)
         assert exact == approx(members, rel=1e-9)
-        assert envelope > exact
-        # An envelope's area would be a wrong answer rather than no answer.
-        assert area_km is None
+        assert area_km is not None and area_km > 0
 
         # It references its members' topogeometries rather than re-listing every
         # face they cover -- one element per member, at any nesting depth.

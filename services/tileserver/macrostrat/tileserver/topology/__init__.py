@@ -32,24 +32,53 @@ async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = No
 
 @router.get("/faces/{z}/{x}/{y}")
 @router.get("/faces/{map_layer}/{z}/{x}/{y}")
-async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = None):
-    """Get a tile from the tileserver."""
+async def get_tile(
+    request: Request,
+    z: int,
+    x: int,
+    y: int,
+    map_layer: str = None,
+    expand: bool = False,
+):
+    """Solved faces for a compilation.
+
+    `map_layer` is any compilation slug, not only a served layer -- `bc-surface`
+    is as addressable as `carto-large`. Faces are attributed to the direct member
+    they are reached through; `expand=true` attributes them to the map that
+    actually owns them.
+    """
     sql = get_query("map-faces")
     if map_layer is None:
         sql = get_query("map-face-primitives")
+        return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
 
-    return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
+    return await _render_tile(
+        request, sql, z=z, x=x, y=y, map_layer=map_layer, expand=expand
+    )
 
 
 @router.get("/maps/{z}/{x}/{y}")
 @router.get("/maps/{map_layer}/{z}/{x}/{y}")
-async def get_tile(request: Request, z: int, x: int, y: int, map_layer: str = None):
-    """All maps associated with the map layer"""
-    query = "maps"
+async def get_tile(
+    request: Request,
+    z: int,
+    x: int,
+    y: int,
+    map_layer: str = None,
+    expand: bool = False,
+):
+    """Footprints of a compilation's members.
+
+    Direct members by default -- what the compilation is assembled from --
+    or, with `expand=true`, the maps it ultimately resolves to.
+    """
     if map_layer is None:
-        query = "all-maps"
-    sql = get_query(query)
-    return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
+        return await _render_tile(
+            request, get_query("all-maps"), z=z, x=x, y=y, map_layer=map_layer
+        )
+    return await _render_tile(
+        request, get_query("maps"), z=z, x=x, y=y, map_layer=map_layer, expand=expand
+    )
 
 
 async def _render_tile(request: Request, sql: str, **query_params: Any):
@@ -92,9 +121,12 @@ async def get_info(
 ):
     """Get information about the maps and topological faces at a location.
 
-    Returns one row per map covering the point, ordered by descending priority.
-    ``map_face_id`` is null where the location isn't covered by a built
-    topological face for the corresponding layer.
+    Returns one row per map covering the point, ordered by descending priority --
+    every level of the unit graph, unfiltered, with flags (``is_constituent``,
+    ``is_composite``, ``is_materialized``, ``unit_is_layer``) so a client can
+    filter or group as it needs. ``map_face_id`` is the constituent's face and
+    ``unit_face_id`` the merged one; either is null where the location isn't
+    covered by a built face for that layer.
     """
     sql = get_query("info")
     # ``::where_clauses`` is a raw template slot filled in here, before buildpg
@@ -102,19 +134,10 @@ async def get_info(
     if map_layer is None:
         sql = sql.replace("::where_clauses", "true")
     else:
-        sql = sql.replace(
-            "::where_clauses",
-            """
-            ml.id IN (
-              SELECT id FROM map_bounds.map_layer WHERE slug = :map_layer
-              UNION ALL
-              SELECT c.member_id
-              FROM map_bounds.map_layer_composition c
-              JOIN map_bounds.map_layer parent ON parent.id = c.parent_id
-              WHERE parent.slug = :map_layer
-            )
-            """,
-        )
+        # `map_priority` already holds a row per map reachable from a composite
+        # layer, with the full path -- so this no longer needs to union the
+        # layer's members in by hand.
+        sql = sql.replace("::where_clauses", "ml.slug = :map_layer")
 
     query, params = render(sql, lng=lng, lat=lat, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:
