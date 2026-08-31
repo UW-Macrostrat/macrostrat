@@ -42,6 +42,7 @@ def create_topo_context(db: Database):
             [
                 __dir__ / "fixtures" / "01-create-tables.sql",
                 __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+                __dir__ / "fixtures" / "04-compilation-tables.sql",
             ]
         ),
         notify_triggers=False,
@@ -66,6 +67,7 @@ TopologySchema = SchemaDefinition(
         # rows out of it -- the callable above is opaque to that pass. `sync`
         # pre-filters to data statements, so the surrounding DDL is ignored, and
         # everything here is idempotent either way.
+        __dir__ / "fixtures" / "01-create-tables.sql",
         __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
     ],
     depends_on=["core"],

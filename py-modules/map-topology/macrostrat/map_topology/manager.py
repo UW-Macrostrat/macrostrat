@@ -133,9 +133,6 @@ def update_maps(
     # any composed from `boundary_op` -- are left untouched.
     db.run_sql(proc("copy-all-maps"))
 
-    # Associate maps with compilations
-    db.run_sql(proc("set-map-priority"))
-
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
 
@@ -147,6 +144,17 @@ def update_maps(
         mgr.clean_topology()
 
     update_map_area_topogeometries(db)
+
+    # A compilation's boundary is the union of its members' face sets, so it can
+    # only be assembled once those members have topogeometries.
+    db.run_sql(proc("sync-compilation-bounds"))
+
+    # Associate maps with the layer matching their scale, then flatten the
+    # composition DAG into the priority paths identity resolution orders by.
+    # Both follow boundary assembly: a compilation has no `map_area` row, and so
+    # no layer placement, until it has been assembled.
+    db.run_sql(proc("set-map-priority"))
+    db.run_sql(proc("sync-priority-paths"))
 
     if clean:
         mgr.clean_topology()

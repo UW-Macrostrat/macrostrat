@@ -1,0 +1,197 @@
+"""`macrostrat compilations` -- assemble maps out of other maps.
+
+A compilation is a map: a `maps.sources` row with members. There is no kind
+flag -- "is a compilation" means *has members*, and "is a constituent" means
+*is a member* -- so every command here reads and writes `map_bounds.map_composition`
+and derives the rest.
+"""
+
+from typing import Annotated, Optional
+
+import typer
+from rich import print
+from rich.table import Table
+from typer import Argument, Option, Typer
+
+from macrostrat.core.database import get_database
+
+from .manager import proc
+
+cli = Typer(no_args_is_help=True, short_help="Assemble maps out of other maps")
+
+
+def _resolve(name: str) -> tuple[int, str]:
+    """Resolve a slug or source id. Reads `maps.sources`, not `map_area`: a
+    compilation has no boundary until its members give it one."""
+    db = get_database()
+    row = db.run_query(
+        """
+        SELECT source_id, slug FROM maps.sources
+        WHERE slug = :name OR source_id::text = :name
+        """,
+        dict(name=name),
+    ).first()
+    if row is None:
+        print(f"[red]No map matching[/] {name}")
+        raise typer.Exit(1)
+    return row.source_id, row.slug
+
+
+@cli.command("list")
+def list_compilations():
+    """List compilations and whether their polygons are current."""
+    db = get_database()
+    rows = db.run_query(
+        """
+        SELECT source_id, slug, n_members, assembly_mode, state
+        FROM map_bounds.compilation_sync
+        ORDER BY slug
+        """
+    ).all()
+    if not rows:
+        print("[dim]No compilations[/]")
+        return
+    table = Table()
+    for col in ("Compilation", "Members", "Mode", "State"):
+        table.add_column(col)
+    colors = {"virtual": "dim", "current": "green", "stale": "yellow"}
+    for r in rows:
+        table.add_row(
+            f"{r.slug} [dim]#{r.source_id}[/]",
+            str(r.n_members),
+            r.assembly_mode,
+            f"[{colors.get(r.state, 'white')}]{r.state}[/]",
+        )
+    print(table)
+
+
+@cli.command("show")
+def show(compilation: Annotated[str, Argument(help="Slug or source id")]):
+    """Show a compilation's members, highest priority first."""
+    db = get_database()
+    source_id, slug = _resolve(compilation)
+    rows = db.run_query(
+        """
+        SELECT
+          mc.member_id, s.slug, mc.priority, mc.role,
+          map_bounds.holds_polygons(mc.member_id) AS holds_polygons
+        FROM map_bounds.map_composition mc
+        JOIN maps.sources s ON s.source_id = mc.member_id
+        WHERE mc.compilation_id = :source_id
+        ORDER BY mc.priority DESC NULLS LAST, s.slug
+        """,
+        dict(source_id=source_id),
+    ).all()
+    print(f"[bold green]{slug}[/] [dim]#{source_id}[/]")
+    if not rows:
+        print("  [dim]no members[/]")
+        return
+    for r in rows:
+        priority = "[dim]--[/]" if r.priority is None else str(r.priority)
+        # A member without polygons is descended through when identity is
+        # resolved; one with polygons is where resolution stops.
+        leaf = "" if r.holds_polygons else " [dim](virtual)[/]"
+        role = f" [cyan]{r.role}[/]" if r.role else ""
+        print(f"  {priority:>4}  {r.slug} [dim]#{r.member_id}[/]{role}{leaf}")
+
+
+@cli.command("add")
+def add(
+    compilation: Annotated[str, Argument(help="Slug or source id")],
+    members: Annotated[list[str], Argument(help="Member slugs or source ids")],
+    priority: Annotated[
+        Optional[int],
+        Option(help="Priority of the first member; later members ascend from it"),
+    ] = None,
+    role: Annotated[Optional[str], Option(help="Membership role")] = None,
+):
+    """Add members to a compilation."""
+    db = get_database()
+    source_id, slug = _resolve(compilation)
+    for offset, member in enumerate(members):
+        member_id, member_slug = _resolve(member)
+        db.run_query(
+            """
+            INSERT INTO map_bounds.map_composition
+              (compilation_id, member_id, priority, role)
+            VALUES (:compilation_id, :member_id, :priority, :role)
+            ON CONFLICT (compilation_id, member_id) DO UPDATE
+              SET priority = EXCLUDED.priority, role = EXCLUDED.role
+            """,
+            dict(
+                compilation_id=source_id,
+                member_id=member_id,
+                priority=None if priority is None else priority + offset,
+                role=role,
+            ),
+        )
+        print(f"[green]+[/] {slug} <- {member_slug}")
+    db.session.commit()
+
+
+@cli.command("rm")
+def remove(
+    compilation: Annotated[str, Argument(help="Slug or source id")],
+    members: Annotated[list[str], Argument(help="Member slugs or source ids")],
+):
+    """Remove members from a compilation."""
+    db = get_database()
+    source_id, slug = _resolve(compilation)
+    for member in members:
+        member_id, member_slug = _resolve(member)
+        db.run_query(
+            """
+            DELETE FROM map_bounds.map_composition
+            WHERE compilation_id = :compilation_id AND member_id = :member_id
+            """,
+            dict(compilation_id=source_id, member_id=member_id),
+        )
+        print(f"[red]-[/] {slug} <- {member_slug}")
+    db.session.commit()
+
+
+@cli.command("mode")
+def mode(
+    compilation: Annotated[str, Argument(help="Slug or source id")],
+    assembly_mode: Annotated[str, Argument(help="disjoint | layered")],
+):
+    """Set how a compilation's members fit together.
+
+    `layered` means they overlap and priority resolves them; `disjoint` means
+    they mosaic cleanly. Not derivable -- it is an assertion about the data.
+    """
+    if assembly_mode not in ("disjoint", "layered"):
+        print("[red]Mode must be 'disjoint' or 'layered'[/]")
+        raise typer.Exit(1)
+    db = get_database()
+    source_id, slug = _resolve(compilation)
+    db.run_query(
+        """
+        INSERT INTO map_bounds.compilation (source_id, assembly_mode)
+        VALUES (:source_id, :assembly_mode)
+        ON CONFLICT (source_id) DO UPDATE SET assembly_mode = EXCLUDED.assembly_mode
+        """,
+        dict(source_id=source_id, assembly_mode=assembly_mode),
+    )
+    db.session.commit()
+    print(f"[green]{slug}[/] is {assembly_mode}")
+
+
+@cli.command("sync")
+def sync():
+    """Rebuild the flattened priority paths identity resolution orders by.
+
+    Runs as part of `macrostrat topo update`; this is for checking the effect of
+    a membership edit without a full topology run.
+    """
+    db = get_database()
+    db.run_sql(proc("sync-priority-paths"))
+    db.session.commit()
+    counts = db.run_query(
+        """
+        SELECT count(*) FILTER (WHERE derived) AS derived,
+               count(*) FILTER (WHERE NOT derived) AS authored
+        FROM map_bounds.map_priority
+        """
+    ).first()
+    print(f"[green]{counts.authored}[/] authored, [green]{counts.derived}[/] derived")
