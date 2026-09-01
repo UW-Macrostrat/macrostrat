@@ -133,7 +133,7 @@ def filter_topogeometry_elements(inspector):
     inspector.constraints = {
         k: v
         for k, v in inspector.constraints.items()
-        if v.name != "check_topogeom_topo"
+        if not v.name.startswith("check_topogeom_")
     }
     inspector.sequences = {
         k: v
