@@ -23,6 +23,14 @@ IDENTITY_STRATEGY = IdentityStrategy(
     install=lambda ctx: ctx.database.run_fixtures(
         __dir__ / "fixtures" / "03-identity-management.sql"
     ),
+    # A composite layer is solved by dissolving, not filled by overlay: identity
+    # resolves across its composition closure through `map_priority.priority_path`,
+    # and `faces_are_joinable` compares those identities. So a change in a member
+    # layer must mark the composite's faces dirty.
+    solves_composites=True,
+    # `resolve_layer_identity` above resolves a whole layer in one query, which
+    # the dissolve caches instead of re-resolving each face once per incident edge.
+    bulk_identity=True,
 )
 
 
@@ -42,6 +50,7 @@ def create_topo_context(db: Database):
             [
                 __dir__ / "fixtures" / "01-create-tables.sql",
                 __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+                __dir__ / "fixtures" / "04-compilation-tables.sql",
             ]
         ),
         notify_triggers=False,
@@ -66,7 +75,9 @@ TopologySchema = SchemaDefinition(
         # rows out of it -- the callable above is opaque to that pass. `sync`
         # pre-filters to data statements, so the surrounding DDL is ignored, and
         # everything here is idempotent either way.
+        __dir__ / "fixtures" / "01-create-tables.sql",
         __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
+        __dir__ / "fixtures" / "04-compilation-tables.sql",
     ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),

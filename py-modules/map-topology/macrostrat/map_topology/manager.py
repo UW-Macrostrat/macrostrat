@@ -60,7 +60,12 @@ class MacrostratTopologyManager(TopologyManager):
         if res > 0:
             print(f"[red]Found [bold]{res}[/bold] maps without a topogeometry[/red]")
 
-        self.update(incremental=True, composite_layers=True, boundaries=False)
+        # Composite layers are solved by the ordinary face pipeline now that the
+        # flattened priority paths give them identity resolution, so the
+        # painter's-algorithm overlay is no longer asked for. It stays in the
+        # submodule for linework mode, whose `search` strategy has no meaningful
+        # `faces_are_joinable` and therefore cannot dissolve a composite.
+        self.update(incremental=True, boundaries=False)
 
 
 def _remove_map_topo_elements(db, map_id: int):
@@ -95,6 +100,28 @@ def get_map_list(db, filter_by: list[str] = None):
         FROM map_bounds.map_area a
         JOIN maps.sources s
         ON a.source_id = s.source_id
+        -- A compilation assembled from members is not parted out, materialized
+        -- or not. Its boundary is the union of its members' and already exists in
+        -- the topology as their edges; `map_topo` parts are a *simplified*
+        -- transform of the boundary, so re-noding one fails where the simplified
+        -- line crosses an edge it should have followed.
+        -- `sync-compilation-bounds` assembles it by reference instead.
+        --
+        -- A compilation whose content was *ingested* is the other way round: its
+        -- boundary is authored and was parted out long before it gained members,
+        -- so it stays an ordinary map here. Excluding it would strand the parts
+        -- it already has.
+        WHERE NOT (
+          EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member cm
+            WHERE cm.compilation_id = a.source_id
+          )
+          AND NOT map_bounds.is_ingested(a.source_id)
+        )
+        -- Its members, conversely, are documentary: footprints recorded for
+        -- reference, deliberately never noded. Parting them out is the whole
+        -- cost the referenced approach exists to avoid.
+        AND NOT map_bounds.is_documentary(a.source_id)
         ORDER BY area_km DESC
         """
     ).all()
@@ -133,9 +160,6 @@ def update_maps(
     # any composed from `boundary_op` -- are left untouched.
     db.run_sql(proc("copy-all-maps"))
 
-    # Associate maps with compilations
-    db.run_sql(proc("set-map-priority"))
-
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
 
@@ -147,6 +171,17 @@ def update_maps(
         mgr.clean_topology()
 
     update_map_area_topogeometries(db)
+
+    # A compilation's boundary is the union of its members' face sets, so it can
+    # only be assembled once those members have topogeometries.
+    db.run_sql(proc("sync-compilation-bounds"))
+
+    # Associate maps with the layer matching their scale, then flatten the
+    # composition DAG into the priority paths identity resolution orders by.
+    # Both follow boundary assembly: a compilation has no `map_area` row, and so
+    # no layer placement, until it has been assembled.
+    db.run_sql(proc("set-map-priority"))
+    db.run_sql(proc("sync-priority-paths"))
 
     if clean:
         mgr.clean_topology()

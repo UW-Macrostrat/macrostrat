@@ -232,6 +232,15 @@ main.add_typer(
     short_help="Compose and edit map boundaries",
 )
 
+from macrostrat.map_topology.compilations import cli as compilations_cli
+
+main.add_typer(
+    compilations_cli,
+    name="compilations",
+    rich_help_panel="Maps",
+    short_help="Assemble maps out of other maps",
+)
+
 from .cache import cli as cache_cli
 
 main.add_typer(cache_cli, name="cache", rich_help_panel="Subsystems")

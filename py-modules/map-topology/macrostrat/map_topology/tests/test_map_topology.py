@@ -3,12 +3,16 @@ from dataclasses import dataclass
 from geoalchemy2.shape import from_shape
 from mapboard.topology_manager import TopologyInspector, TopologyManager
 from prompt_toolkit.styles.style import default_priority
-from pytest import fixture, mark
+from pytest import approx, fixture, mark
 from shapely.geometry import Point
 
 from macrostrat.map_topology import _set_dirty, _update_identity
 from macrostrat.map_topology.config import create_topo_context
-from macrostrat.map_topology.manager import MacrostratTopologyManager, update_maps
+from macrostrat.map_topology.manager import (
+    MacrostratTopologyManager,
+    proc,
+    update_maps,
+)
 
 
 def geom(_shape, srid=4326):
@@ -18,6 +22,18 @@ def geom(_shape, srid=4326):
 @fixture(scope="class")
 def ctx(test_db_base):
     yield create_topo_context(test_db_base)
+    # These tests commit into the session-scoped database rather than a
+    # rolled-back transaction, so the features they insert would otherwise leak
+    # into later tests that expect `maps.polygons` to be empty.
+    test_db_base.run_query(
+        """
+        DELETE FROM maps.polygons
+        WHERE source_id IN (
+          SELECT source_id FROM maps.sources WHERE starts_with(slug, 'test_source_')
+        )
+        """
+    )
+    test_db_base.session.commit()
 
 
 class TestMapTopology:
@@ -39,10 +55,15 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
             VALUES
-                (1, 'test_source_1', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
-                (2, 'test_source_2', ST_MakeEnvelope(3, 0, 5, 2, 4326), true, 'active', 'large');
+                (1001, 'test_source_1', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
+                (1002, 'test_source_2', ST_MakeEnvelope(3, 0, 5, 2, 4326), true, 'active', 'large');
             """
         )
+        # A boundary is unioned from the map's own polygons, not read from
+        # `rgeom` -- which is now a mirror of the boundary rather than a source
+        # for it -- so a map without polygons never gets one.
+        add_polygons(db, {1001: "ST_MakeEnvelope(0, 0, 2, 2, 4326)",
+                          1002: "ST_MakeEnvelope(3, 0, 5, 2, 4326)"})
 
         update_maps(mgr, bulk=True)
 
@@ -72,10 +93,32 @@ class TestMapTopology:
     def test_map_priority(self, ctx):
         db = ctx.database
 
-        # Check that we have two maps in the priority table
+        # Both maps are placed in the `large` compilation. A served layer is a
+        # compilation like any other, so placement is an ordinary membership edge.
         assert (
-            db.run_query("SELECT count(*) FROM map_bounds.map_priority").scalar() == 2
+            db.run_query(
+                """
+                SELECT count(*)
+                FROM map_bounds.compilation_member cm
+                JOIN map_bounds.map_layer ml ON ml.source_id = cm.compilation_id
+                WHERE ml.slug = 'large'
+                """
+            ).scalar()
+            == 2
         )
+
+        # And they resolve in `large`, plus in `carto-large` by way of it --
+        # rows the flattening generates, which is what lets a composite layer be
+        # solved rather than copied.
+        assert set(
+            db.run_query(
+                """
+                SELECT DISTINCT ml.slug
+                FROM map_bounds.map_priority mp
+                JOIN map_bounds.map_layer ml ON ml.id = mp.map_layer
+                """
+            ).scalars()
+        ) == {"large", "carto-large"}
 
     def test_process_maps(self, ctx):
         # Check that we have the appropriate number of faces
@@ -90,8 +133,8 @@ class TestMapTopology:
 
         # Sanity check that faces have been correctly identified
         args = (ctx.database, insp.map_layer_id("Large"))
-        assert get_identity_for_area(*args, Point(0.5, 0.5)) == 1
-        assert get_identity_for_area(*args, Point(3.5, 0.5)) == 2
+        assert get_identity_for_area(*args, Point(0.5, 0.5)) == 1001
+        assert get_identity_for_area(*args, Point(3.5, 0.5)) == 1002
 
     def test_add_overlapping_map(self, ctx):
         """Add a face that overlaps the other two"""
@@ -102,18 +145,19 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
             VALUES
-                (3, 'test_source_3', ST_MakeEnvelope(1, 1, 4, 4, 4326), true, 'active', 'large')
+                (1003, 'test_source_3', ST_MakeEnvelope(1, 1, 4, 4, 4326), true, 'active', 'large')
             """
         )
+        add_polygons(db, {1003: "ST_MakeEnvelope(1, 1, 4, 4, 4326)"})
         insp = TopologyInspector(ctx)
         mgr = TopologyManager(ctx)
 
         # Set the priority to this new map to 0, so it is prioritized under the others
-        set_priority(db, "large", [(3, 0)], default=1)
+        set_priority(db, "large", [(1003, 0)], default=1)
 
         update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         map_layer = insp.map_layer_id("Large")
         cases = [
@@ -123,7 +167,7 @@ class TestMapTopology:
             MapFaceTestCase(Point(2, 2), map_layer, 1),
             MapFaceTestCase(Point(4.5, 0.5), map_layer, 2),
             # Test face identity for shared areas
-            MapFaceTestCase(Point(2.5, 1.5), map_layer, map_id=3),
+            MapFaceTestCase(Point(2.5, 1.5), map_layer, map_id=1003),
         ]
 
         for case in cases:
@@ -133,7 +177,7 @@ class TestMapTopology:
         # Check that there are three maps in the map_areas table
         assert n_map_areas(db) == 3
         # Number of overlapping primitives
-        assert insp.n_faces() == 3
+        assert n_base_faces(db) == 3
 
     def test_map_reprioritization(self, ctx):
         """Check that the map faces are updated correctly when a map is reprioritized"""
@@ -142,27 +186,27 @@ class TestMapTopology:
         insp = TopologyInspector(ctx)
 
         # Set the priority of this new map to 10, so it is prioritized over the others
-        set_priority(db, "large", [(3, 10)], default=0)
+        set_priority(db, "large", [(1003, 10)], default=0)
 
         # We have to set the faces dirty
-        _set_dirty(db, 3)
+        _set_dirty(db, 1003)
         db.session.commit()
 
         # After reprioritization, the center face should be at priority 10, so it should occupy the two faces on either side of it
         # update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         # Check map identity for shared areas
 
         map_layer = insp.map_layer_id("Large")
         cases = [
-            MapFaceTestCase(Point(0.5, 0.5), map_layer, 1, map_id=1),
+            MapFaceTestCase(Point(0.5, 0.5), map_layer, 1, map_id=1001),
             # The center face is at a higher priority than the other two,
             # so it only occupies the one face
-            MapFaceTestCase(Point(2.5, 2), map_layer, 2, map_id=3),
-            MapFaceTestCase(Point(4.5, 0.5), map_layer, 1, map_id=2),
-            MapFaceTestCase(Point(2.5, 1.5), map_layer, map_id=3),
+            MapFaceTestCase(Point(2.5, 2), map_layer, 2, map_id=1003),
+            MapFaceTestCase(Point(4.5, 0.5), map_layer, 1, map_id=1002),
+            MapFaceTestCase(Point(2.5, 1.5), map_layer, map_id=1003),
         ]
 
         for case in cases:
@@ -194,30 +238,147 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
             VALUES
-                (4, 'test_source_4', ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326), true, 'active', 'medium')
+                (1004, 'test_source_4', ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326), true, 'active', 'medium')
             """
+        )
+        add_polygons(
+            db,
+            {1004: "ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326)"},
+            scale="medium",
         )
 
         mgr = MacrostratTopologyManager(ctx)
         update_maps(mgr, subdivide_vertices=32)
-        mgr.update(composite_layers=False)
+        mgr.update()
 
         insp = TopologyInspector(ctx)
-        assert insp.n_faces() == 4
+        assert n_base_faces(db) == 4
         assert insp.n_faces(map_layer="Medium") == 1
         assert insp.n_faces(map_layer="Large") == 3
 
     def test_composite_layers(self, ctx):
+        """A composite layer is solved like any other, not copied from its members.
 
+        The flattened priority paths give it identity resolution, so the ordinary
+        face pipeline dissolves it; nothing calls the painter's-algorithm overlay.
+        """
+        db = ctx.database
         mgr = MacrostratTopologyManager(ctx)
-        mgr.update(composite_layers=True)
+        mgr.update()
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1
         assert insp.n_faces(map_layer="Carto large") == 4
         assert insp.n_faces(map_layer="Carto medium") == 1
         assert insp.n_faces(map_layer="Carto small") == 0
-        assert insp.n_faces() == 4 + 4 + 1
+
+        # Solved, not copied: an overlaid face carries a back-reference to the
+        # member face it was cloned from.
+        assert (
+            db.run_query(
+                """
+                SELECT count(*) FROM map_bounds_topology.map_face mf
+                WHERE map_bounds.is_composite_layer(mf.map_layer)
+                  AND mf.source_id IS NOT NULL
+                """
+            ).scalar()
+            == 0
+        )
+
+
+    def test_virtual_compilation(self, ctx):
+        """A compilation with no polygons of its own is descended through.
+
+        Identity resolves to whichever member actually holds the geometry, so a
+        compilation can be named and referred to without being materialized.
+        """
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+        insp = TopologyInspector(ctx)
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1005, 'test_source_5', false, 'active', 'large')
+            """
+        )
+        # Sources 1 and 2 are now placed through the compilation, not beside it.
+        db.run_query(
+            """
+            INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
+            VALUES (1005, 1001, 1), (1005, 1002, 2)
+            """
+        )
+        db.session.commit()
+
+        update_maps(mgr, bulk=True)
+
+        # The stored geometry is only an envelope -- cheap, and enough to say
+        # roughly where the compilation is. The exact footprint stays in
+        # `composite_topo`, resolved on demand.
+        stored, exact, members, area_km = db.run_query(
+            """
+            SELECT
+              ST_Area(a.geometry),
+              ST_Area(a.composite_topo::geometry),
+              (SELECT ST_Area(ST_Union(geometry)) FROM map_bounds.map_area
+               WHERE source_id IN (1001, 1002)),
+              a.area_km
+            FROM map_bounds.map_area a WHERE a.source_id = 1005
+            """
+        ).first()
+        # A region-scale compilation stores its real boundary, not an envelope.
+        assert stored == approx(exact, rel=1e-9)
+        assert exact == approx(members, rel=1e-9)
+        assert area_km is not None and area_km > 0
+
+        # It references its members' topogeometries rather than re-listing every
+        # face they cover -- one element per member, at any nesting depth.
+        assert set(
+            db.run_query(
+                """
+                SELECT a2.source_id
+                FROM map_bounds.map_area a
+                JOIN map_bounds_topology.relation r
+                  ON r.layer_id = (a.composite_topo).layer_id
+                 AND r.topogeo_id = (a.composite_topo).id
+                JOIN map_bounds.map_area a2
+                  ON (a2.topo).id = r.element_id
+                 AND (a2.topo).layer_id = r.element_type
+                WHERE a.source_id = 1005
+                """
+            ).scalars()
+        ) == {1001, 1002}
+
+        # A compilation lives in the composite layer, not the primitive one.
+        assert db.run_query(
+            "SELECT topo IS NULL AND composite_topo IS NOT NULL"
+            " FROM map_bounds.map_area WHERE source_id = 1005"
+        ).scalar()
+
+        layer = insp.map_layer_id("Large")
+        rows = dict(
+            db.run_query(
+                """
+                SELECT source_id, priority_path
+                FROM map_bounds.map_priority
+                WHERE map_layer = :layer
+                """,
+                dict(layer=layer),
+            ).all()
+        )
+        # The members carry the compilation's standing plus their own, and the
+        # compilation itself is not a resolution target -- it holds no polygons.
+        assert 1005 not in rows
+        assert {1001, 1002} <= set(rows)
+        assert rows[1001][-1] == 1 and rows[1002][-1] == 2
+        assert rows[1001][:-1] == rows[1002][:-1]
+        # One hop deeper than a map placed directly in the layer.
+        assert len(rows[1001]) == len(rows[1003]) + 1
+
+        # Identity lands on a member, never on the virtual compilation.
+        assert get_identity_for_area(db, layer, Point(0.5, 0.5)) == 1001
+        assert get_identity_for_area(db, layer, Point(3.5, 0.5)) == 1002
 
 
 @dataclass
@@ -243,7 +404,18 @@ class MapFaceTestCase:
 
 
 def n_map_areas(db):
-    return db.run_query("SELECT count(*) FROM map_bounds.map_area").scalar()
+    """Count maps, not compilations -- every compilation has a `map_area` row too,
+    assembled from its members' faces."""
+    return db.run_query(
+        """
+        SELECT count(*) FROM map_bounds.map_area a
+        WHERE NOT map_bounds.is_served_layer(a.source_id)
+          AND NOT EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member cm
+            WHERE cm.compilation_id = a.source_id
+          )
+        """
+    ).scalar()
 
 
 @dataclass
@@ -266,24 +438,59 @@ def set_priority(
     default: int = None,
 ):
     """
-    Set priority for maps in a layer
+    Set priority for maps within a layer's compilation.
     """
-    tbl = db.get_table("map_bounds.map_priority")
-    if default is None:
+    if default is not None:
         db.run_query(
-            "UPDATE map_bounds.map_priority SET priority = :default_priority",
-            dict(default_priority=default),
+            """
+            UPDATE map_bounds.compilation_member cm
+            SET priority = :default_priority
+            FROM map_bounds.map_layer ml
+            WHERE ml.slug = :layer
+              AND cm.compilation_id = ml.source_id
+            """,
+            dict(default_priority=default, layer=map_layer),
         )
     db.run_query(
         """
-        INSERT INTO map_bounds.map_priority
-            (source_id, priority, map_layer)
-        VALUES
-            (:map_id, :priority, map_bounds.layer_id(:layer_id))
-        ON CONFLICT (source_id, map_layer) DO UPDATE SET priority = EXCLUDED.priority
+        INSERT INTO map_bounds.compilation_member
+            (compilation_id, member_id, priority)
+        SELECT ml.source_id, :map_id, :priority
+        FROM map_bounds.map_layer ml
+        WHERE ml.slug = :layer
+        ON CONFLICT (compilation_id, member_id)
+        DO UPDATE SET priority = EXCLUDED.priority
         """,
-        params=[dict(map_id=p[0], priority=p[1], layer_id=map_layer) for p in priority],
+        params=[dict(map_id=p[0], priority=p[1], layer=map_layer) for p in priority],
     )
+    # Paths are derived from the edges, so an edit only takes effect once they
+    # are rebuilt.
+    db.run_sql(proc("sync-priority-paths"))
+    db.session.commit()
+
+
+def n_base_faces(db):
+    """Faces in ordinary layers. `TopologyInspector.n_faces()` counts every layer,
+    and composite layers are solved now, so a bare total no longer isolates the
+    base ones."""
+    return db.run_query(
+        """
+        SELECT count(*) FROM map_bounds_topology.map_face mf
+        WHERE NOT map_bounds.is_composite_layer(mf.map_layer)
+        """
+    ).scalar()
+
+
+def add_polygons(db, geometries: dict[int, str], *, scale: str = "large"):
+    """Give each source a polygon, so a boundary can be unioned from it."""
+    for source_id, geometry in geometries.items():
+        db.run_query(
+            """
+            INSERT INTO maps.polygons (source_id, scale, geom)
+            VALUES (:source_id, :scale, ST_Multi({geometry}))
+            """.replace("{geometry}", geometry),
+            dict(source_id=source_id, scale=scale),
+        )
     db.session.commit()
 
 

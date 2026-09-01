@@ -201,6 +201,17 @@ FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_c
 CREATE OR REPLACE FUNCTION map_bounds.sync_source_rgeom()
   RETURNS trigger AS $$
 BEGIN
+  -- A compilation's `map_area.geometry` is only an envelope, and `rgeom` is the
+  -- v2 compatibility mirror -- which knows nothing about compilations. Mirroring
+  -- them would put tens of megabytes into a table whose size already makes
+  -- client listings painful.
+  IF EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = NEW.source_id
+  ) THEN
+    RETURN NULL;
+  END IF;
+
   UPDATE maps.sources
   SET rgeom = NEW.geometry
   WHERE source_id = NEW.source_id
@@ -258,7 +269,7 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line m
 SELECT ml.id
 FROM map_bounds.map_layer ml
 WHERE ml.id = $1.map_layer
-  AND ml.composited_from IS NULL
+  AND NOT map_bounds.is_composite_layer(ml.id)
   AND ml.topological;
 $$ LANGUAGE SQL IMMUTABLE;
 
@@ -280,6 +291,19 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
   --geometry Geometry(MultiPolygon, 4326),
   PRIMARY KEY (map_layer, source_id)
 );
+
+
+/** `identity_for_face` joins `relation` to `map_area` on the topogeometry id, and
+  a composite field access cannot use an ordinary index -- so without this every
+  call sequentially scanned `map_area`, whose rows are wide. That scan was ~1.4ms,
+  invoked twice per candidate edge inside the face dissolve, which is the bulk of
+  a topology update. With the index the same lookup is ~18us.
+
+  Only `(topo).id` is indexed: `(topo).layer_id` is constant by construction --
+  the `check_topogeom_topo` constraint pins it -- so it adds nothing.
+*/
+CREATE INDEX IF NOT EXISTS map_area_topogeom_id_idx
+  ON map_bounds.map_area (((topo).id));
 
 
 CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
@@ -316,15 +340,18 @@ VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 /** Composite compilations */
-INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological, editable, composited_from)
+INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological, editable)
 VALUES
  ('carto-small', 'Carto small', 4, 8,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('tiny'), map_bounds.layer_id('small')]),
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
  ('carto-medium', 'Carto medium', 8, 12,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('small'), map_bounds.layer_id('medium')]),
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
  ('carto-large', 'Carto large', 12, 18,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false,
-  ARRAY[map_bounds.layer_id('medium'), map_bounds.layer_id('large')])
+  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false)
 ON CONFLICT (slug) DO NOTHING;
+
+/** Carto layer membership. `carto-large` is the compilation of `medium` and
+  `large`; higher priority wins where they overlap. These are ordinary
+  membership edges -- a served layer is still just a compilation. Seeded in
+  `04-compilation-tables.sql`, which is where layer source identities are
+  assigned. */
