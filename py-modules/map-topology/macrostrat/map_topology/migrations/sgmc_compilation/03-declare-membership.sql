@@ -29,3 +29,6 @@ SELECT 133, s.source_id, 0, 'constituent'
 FROM maps.sources s
 WHERE s.slug LIKE 'sgmc-%'
 ON CONFLICT (compilation_id, member_id) DO NOTHING;
+
+UPDATE maps.sources SET ref_compilation = 'SGMC'
+WHERE source_id = 133 AND ref_compilation IS DISTINCT FROM 'SGMC';

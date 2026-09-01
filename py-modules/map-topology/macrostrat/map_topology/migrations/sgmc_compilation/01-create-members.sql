@@ -16,7 +16,8 @@
   read worse than uniform ones. The citation itself goes to `ref_title`, which is
   unbounded, and a client that wants a prettier label can render it.
 */
-INSERT INTO maps.sources (slug, name, scale, status_code, is_finalized, url, ref_title)
+INSERT INTO maps.sources (
+  slug, name, scale, status_code, is_finalized, url, ref_title, ref_compilation)
 SELECT
   lower('sgmc-' || g.ref_id),
   -- `maps.sources.name` is varchar(255); the state list keeps it recognisable.
@@ -30,7 +31,11 @@ SELECT
   -- `holds_polygons` reads.
   false,
   max(g.digital_ur),
-  max(g.reference)
+  max(g.reference),
+  -- The programme these were published under, in the bibliographic sense --
+  -- separate from the `compilation_member` edge that records what SGMC is
+  -- assembled from.
+  'SGMC'
 FROM sources.sgmc_polygons g
 JOIN maps.polygons p ON p.orig_id::integer = g._pkid AND p.source_id = 133
 GROUP BY g.ref_id

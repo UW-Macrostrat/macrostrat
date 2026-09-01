@@ -31,6 +31,7 @@ CREATE TABLE maps.sources (
   authors character varying(255),
   ref_year text,
   ref_source character varying(255),
+  ref_compilation text,
   isbn_doi character varying(100),
   scale character varying(20),
   primary_line_table character varying(50),
@@ -56,6 +57,13 @@ CREATE TABLE maps.sources (
 );
 
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
+
+COMMENT ON COLUMN maps.sources.ref_compilation IS
+  'Published compilation or programme this map was produced under -- NGS, SGMC, '
+  'IODP. Bibliographic, like the other ref_ fields, and distinct from '
+  'map_bounds.compilation_member, which records what a map is assembled from. '
+  'Free text and single-valued on purpose: a placeholder until organizations and '
+  'projects are modelled properly, kept deliberately too small to grow into them.';
 
 -- TODO: integrate lines sequence into maps schema
 CREATE TABLE maps.lines (
