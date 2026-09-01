@@ -37,28 +37,74 @@ def _resolve(name: str) -> tuple[int, str]:
     return row.source_id, row.slug
 
 
+def _is_ingested(db, source_id: int) -> bool:
+    """Whether the compilation's polygons arrived with it rather than from members."""
+    return bool(
+        db.run_query(
+            "SELECT map_bounds.is_ingested(:id)", dict(id=source_id)
+        ).scalar()
+    )
+
+
+def _refuse_if_ingested(db, source_id: int, slug: str, verb: str):
+    """Guard the polygon-rewriting commands.
+
+    Only `derived` content can be materialized or dematerialized -- it came from
+    the members and can go back to them. Ingested polygons are the original
+    dataset, and `dematerialize` would delete them outright.
+    """
+    if not _is_ingested(db, source_id):
+        return
+    print(
+        f"[red]{slug}[/] holds ingested content: its members are provenance, not"
+        f" material, so there is nothing to {verb}."
+        "\n[dim]Its polygons are the original dataset, not a derived cache.[/]"
+    )
+    raise typer.Exit(1)
+
+
 @cli.command("list")
 def list_compilations():
     """List compilations and whether their polygons are current."""
     db = get_database()
+    # `Members` is what the compilation is authored from; `Sources` is what it
+    # actually resolves to, descending through member compilations to the maps at
+    # the bottom -- so `carto-large` reads 2 and 284.
     rows = db.run_query(
         """
-        SELECT source_id, slug, n_members, assembly_mode, state
-        FROM map_bounds.compilation_sync
-        ORDER BY slug
+        SELECT cs.source_id, cs.slug, cs.n_members, cs.assembly_mode, cs.state,
+            l.n_sources
+        FROM map_bounds.compilation_sync cs
+        CROSS JOIN LATERAL (
+            SELECT count(DISTINCT source_id) AS n_sources
+            FROM map_bounds.compilation_leaves(cs.source_id, true)
+        ) l
+        ORDER BY cs.slug
         """
     ).all()
     if not rows:
         print("[dim]No compilations[/]")
         return
     table = Table()
-    for col in ("Compilation", "Members", "Mode", "State"):
+    for col in ("Compilation", "Members", "Sources", "Mode", "State"):
         table.add_column(col)
-    colors = {"virtual": "dim", "current": "green", "stale": "yellow"}
+    colors = {
+        "virtual": "dim",
+        "current": "green",
+        "stale": "yellow",
+        # Not a sync state at all -- there is nothing to keep in step.
+        "ingested": "cyan",
+    }
     for r in rows:
+        if r.n_sources == r.n_members:
+            # Nothing below the members is itself a compilation.
+            n_sources = f"[dim]{r.n_sources}[/]"
+        else:
+            n_sources = str(r.n_sources)
         table.add_row(
             f"{r.slug} [dim]#{r.source_id}[/]",
             str(r.n_members),
+            n_sources,
             r.assembly_mode,
             f"[{colors.get(r.state, 'white')}]{r.state}[/]",
         )
@@ -246,6 +292,53 @@ def mode(
     print(f"[green]{slug}[/] is {assembly_mode}")
 
 
+@cli.command("content")
+def content(
+    compilation: Annotated[str, Argument(help="Slug or source id")],
+    content: Annotated[str, Argument(help="ingested | derived | none")],
+):
+    """Record where a compilation's polygons came from.
+
+    `derived` -- assembled from its members; `dematerialize` can put them back.
+    `ingested` -- they arrived with the compilation, and its members record where
+    they came from. Documentary members are never noded and own no faces, so
+    declaring them costs nothing in the topology.
+    `none` -- the compilation holds no polygons at all.
+
+    `materialize` and `dematerialize` maintain this themselves; setting it by
+    hand is for a compilation whose polygons Macrostrat ingested directly.
+    """
+    if content not in ("ingested", "derived", "none"):
+        print("[red]Content must be 'ingested', 'derived' or 'none'[/]")
+        raise typer.Exit(1)
+    value = None if content == "none" else content
+
+    db = get_database()
+    source_id, slug = _resolve(compilation)
+    # `content` tracks `holds_polygons` exactly: provenance with no polygons, or
+    # polygons with no provenance, is a bug either way.
+    holds = db.run_query(
+        "SELECT map_bounds.holds_polygons(:id)", dict(id=source_id)
+    ).scalar()
+    if value is not None and not holds:
+        print(f"[red]{slug}[/] holds no polygons, so its content is [bold]none[/].")
+        raise typer.Exit(1)
+    if value is None and holds:
+        print(f"[red]{slug}[/] holds polygons; say where they came from.")
+        raise typer.Exit(1)
+
+    db.run_query(
+        """
+        INSERT INTO map_bounds.compilation (source_id, content)
+        VALUES (:source_id, :content)
+        ON CONFLICT (source_id) DO UPDATE SET content = EXCLUDED.content
+        """,
+        dict(source_id=source_id, content=value),
+    )
+    db.session.commit()
+    print(f"[green]{slug}[/] content is [bold]{content}[/]")
+
+
 @cli.command("materialize")
 def materialize(
     compilation: Annotated[str, Argument(help="Slug or source id")],
@@ -259,6 +352,7 @@ def materialize(
     """
     db = get_database()
     source_id, slug = _resolve(compilation)
+    _refuse_if_ingested(db, source_id, slug, "materialize")
     scale = db.run_query(
         "SELECT scale FROM maps.sources WHERE source_id = :id", dict(id=source_id)
     ).scalar()
@@ -325,6 +419,7 @@ def dematerialize(
     """Drop a compilation's derived polygons, returning it to virtual."""
     db = get_database()
     source_id, slug = _resolve(compilation)
+    _refuse_if_ingested(db, source_id, slug, "dematerialize")
     n = db.run_query(
         "SELECT count(*) FROM maps.polygons WHERE source_id = :id", dict(id=source_id)
     ).scalar()

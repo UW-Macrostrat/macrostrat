@@ -26,10 +26,18 @@ WHERE a.composite_topo IS NOT NULL
   AND ca.is_stale;
 
 /* A compilation belongs in the composite layer, not the primitive one. Clears
-   the face-based assembly this approach replaced. */
+   the face-based assembly this approach replaced.
+
+   Compilations with *ingested* content are exempt, and the exemption is load-bearing:
+   their boundary is authored, not assembled, so nothing downstream would rebuild
+   what this clears. SGMC would lose its 12,787 primitive faces and the
+   conterminous US would lose its identity in `medium` -- silently, because
+   `compilation_assembly` inner-joins members on `topo IS NOT NULL` and
+   documentary members have none, so the rebuild simply never fires. */
 SELECT topology.clearTopoGeom(a.topo)
 FROM map_bounds.map_area a
 WHERE a.topo IS NOT NULL
+  AND NOT map_bounds.is_ingested(a.source_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = a.source_id
@@ -38,6 +46,7 @@ WHERE a.topo IS NOT NULL
 UPDATE map_bounds.map_area ma
 SET topo = NULL
 WHERE ma.topo IS NOT NULL
+  AND NOT map_bounds.is_ingested(ma.source_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = ma.source_id
@@ -66,6 +75,7 @@ SELECT DISTINCT
 FROM map_bounds.compilation_member cm
 JOIN maps.sources s ON s.source_id = cm.compilation_id
 WHERE s.status_code = 'active'
+  AND NOT map_bounds.is_ingested(cm.compilation_id)
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE map_bounds.map_area ma

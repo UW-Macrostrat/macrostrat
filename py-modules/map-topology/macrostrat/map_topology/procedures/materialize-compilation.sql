@@ -87,9 +87,13 @@ ON CONFLICT (legend_id, map_id) DO NOTHING;
    to its members. */
 UPDATE maps.sources SET is_finalized = true WHERE source_id = :compilation_id;
 
-INSERT INTO map_bounds.compilation (source_id, member_hash)
-VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id))
-ON CONFLICT (source_id) DO UPDATE SET member_hash = EXCLUDED.member_hash;
+INSERT INTO map_bounds.compilation (source_id, member_hash, content)
+VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id), 'derived')
+ON CONFLICT (source_id) DO UPDATE
+  SET member_hash = EXCLUDED.member_hash,
+      -- These polygons came from the members and can go back; recording that is
+      -- what makes `dematerialize` safe to offer.
+      content = 'derived';
 
 DROP TABLE IF EXISTS _staged;
 

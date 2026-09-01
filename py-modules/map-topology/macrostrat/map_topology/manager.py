@@ -100,16 +100,28 @@ def get_map_list(db, filter_by: list[str] = None):
         FROM map_bounds.map_area a
         JOIN maps.sources s
         ON a.source_id = s.source_id
-        -- No compilation is parted out, materialized or not. Its boundary is the
-        -- union of its members' and already exists in the topology as their
-        -- edges; `map_topo` parts are a *simplified* transform of the boundary,
-        -- so re-noding one fails where the simplified line crosses an edge it
-        -- should have followed. `sync-compilation-bounds` assembles it by
-        -- reference instead.
-        WHERE NOT EXISTS (
-          SELECT 1 FROM map_bounds.compilation_member cm
-          WHERE cm.compilation_id = a.source_id
+        -- A compilation assembled from members is not parted out, materialized
+        -- or not. Its boundary is the union of its members' and already exists in
+        -- the topology as their edges; `map_topo` parts are a *simplified*
+        -- transform of the boundary, so re-noding one fails where the simplified
+        -- line crosses an edge it should have followed.
+        -- `sync-compilation-bounds` assembles it by reference instead.
+        --
+        -- A compilation whose content was *ingested* is the other way round: its
+        -- boundary is authored and was parted out long before it gained members,
+        -- so it stays an ordinary map here. Excluding it would strand the parts
+        -- it already has.
+        WHERE NOT (
+          EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member cm
+            WHERE cm.compilation_id = a.source_id
+          )
+          AND NOT map_bounds.is_ingested(a.source_id)
         )
+        -- Its members, conversely, are documentary: footprints recorded for
+        -- reference, deliberately never noded. Parting them out is the whole
+        -- cost the referenced approach exists to avoid.
+        AND NOT map_bounds.is_documentary(a.source_id)
         ORDER BY area_km DESC
         """
     ).all()

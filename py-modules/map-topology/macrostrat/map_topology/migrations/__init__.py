@@ -11,9 +11,17 @@ file next to the class, so sharing a directory would run unrelated migrations.
 """
 
 from . import (  # noqa: F401
+    compilation_content,
     composite_topo_layer,
     relation_trigger_repair,
+    sgmc_compilation,
     source_id_rename,
 )
 
-__all__ = ["source_id_rename", "relation_trigger_repair", "composite_topo_layer"]
+__all__ = [
+    "source_id_rename",
+    "relation_trigger_repair",
+    "composite_topo_layer",
+    "compilation_content",
+    "sgmc_compilation",
+]

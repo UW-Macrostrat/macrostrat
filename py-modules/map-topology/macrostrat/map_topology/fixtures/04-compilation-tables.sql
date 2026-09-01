@@ -42,6 +42,27 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
     Not derivable -- whether members overlap is an assertion the operator makes. */
   assembly_mode text NOT NULL DEFAULT 'layered'
     CHECK (assembly_mode IN ('disjoint', 'layered')),
+  /** Where the compilation's polygons came from -- NULL while it has none.
+
+    `derived`: assembled from its members by `materialize`, and reversible by
+    `dematerialize`, which is safe precisely because the members still hold the
+    originals. Every compilation materialized so far.
+
+    `ingested`: the polygons arrived with the compilation and its members record
+    *where they came from*. SGMC is the case -- 312,286 polygons ingested as one
+    map, decomposable into the 65 published state maps Macrostrat has never held
+    separately. Those members are documentary: real sources with citations, URLs
+    and footprints, but no polygons, no linework in the topology, no faces.
+
+    NULL is the virtual case, and the column is co-extensive with
+    `holds_polygons` by construction: polygons with no recorded provenance, or a
+    provenance with no polygons, is a bug either way.
+
+    Not derivable, and not cosmetic. It decides whether a compilation's boundary
+    is its own or gets overwritten from its members, and it is what stops
+    `dematerialize` from deleting an ingested dataset it mistook for a cache. */
+  content text
+    CHECK (content IN ('ingested', 'derived')),
   /** The member set the compilation's derived polygons were built from. NULL
     while virtual; stale once it no longer matches the current members. */
   member_hash uuid,
@@ -91,6 +112,29 @@ CREATE OR REPLACE FUNCTION map_bounds.is_served_layer(_source_id integer)
   RETURNS boolean AS $$
 SELECT EXISTS (
   SELECT 1 FROM map_bounds.map_layer WHERE source_id = _source_id
+);
+$$ LANGUAGE SQL STABLE;
+
+/** Whether a compilation's polygons were ingested with it rather than assembled
+  from its members -- so its members are provenance, not material. See
+  `compilation.content`. A map that is not a compilation is trivially not one. */
+CREATE OR REPLACE FUNCTION map_bounds.is_ingested(_source_id integer)
+  RETURNS boolean AS $$
+SELECT EXISTS (
+  SELECT 1 FROM map_bounds.compilation c
+  WHERE c.source_id = _source_id AND c.content = 'ingested'
+);
+$$ LANGUAGE SQL STABLE;
+
+/** Whether a map's footprint is recorded for reference only -- a documentary
+  member of a compilation whose content was ingested. Such a map is never parted
+  out into `map_topo`, never enters the topology, and therefore owns no faces. */
+CREATE OR REPLACE FUNCTION map_bounds.is_documentary(_source_id integer)
+  RETURNS boolean AS $$
+SELECT EXISTS (
+  SELECT 1 FROM map_bounds.compilation_member cm
+  WHERE cm.member_id = _source_id
+    AND map_bounds.is_ingested(cm.compilation_id)
 );
 $$ LANGUAGE SQL STABLE;
 
@@ -241,8 +285,13 @@ WHERE NOT EXISTS (
 */
 CREATE OR REPLACE VIEW map_bounds.compilation_assembly AS
 WITH RECURSIVE descendants AS (
+  -- A compilation that owns its content is not assembled from anything: its
+  -- members are provenance. Excluding it here is what keeps every consumer of
+  -- this view -- boundary read-back, `face_elements`, staleness -- from acting
+  -- on a compilation whose boundary is authored rather than derived.
   SELECT cm.compilation_id AS root, cm.member_id
   FROM map_bounds.compilation_member cm
+  WHERE NOT map_bounds.is_ingested(cm.compilation_id)
   UNION
   SELECT d.root, cm.member_id
   FROM descendants d
@@ -325,7 +374,15 @@ WHERE CASE
           SELECT 1 FROM map_bounds.compilation_member c
           WHERE c.compilation_id = descent.member_id
         )
+        -- A leaf is either something holding polygons or something with nothing
+        -- beneath it. The second half matters for documentary members, which are
+        -- the addressable units of a compilation whose content was ingested,
+        -- despite holding no polygons of their own.
         ELSE map_bounds.holds_polygons(member_id)
+          OR NOT EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member c
+            WHERE c.compilation_id = descent.member_id
+          )
       END;
 $$ LANGUAGE SQL STABLE;
 
@@ -357,10 +414,14 @@ SELECT
   s.slug,
   count(*) AS n_members,
   coalesce(c.assembly_mode, 'layered') AS assembly_mode,
+  c.content,
   map_bounds.holds_polygons(mc.compilation_id) AS materialized,
   c.member_hash,
   map_bounds.compilation_member_hash(mc.compilation_id) AS current_member_hash,
   CASE
+    -- Members are provenance, not material: there is nothing to assemble, so the
+    -- member hash says nothing and 'stale' would invite a destructive rebuild.
+    WHEN c.content = 'ingested' THEN 'ingested'
     WHEN NOT map_bounds.holds_polygons(mc.compilation_id) THEN 'virtual'
     WHEN c.member_hash IS NOT DISTINCT FROM
          map_bounds.compilation_member_hash(mc.compilation_id) THEN 'current'
@@ -369,4 +430,4 @@ SELECT
 FROM map_bounds.compilation_member mc
 JOIN maps.sources s ON s.source_id = mc.compilation_id
 LEFT JOIN map_bounds.compilation c ON c.source_id = mc.compilation_id
-GROUP BY mc.compilation_id, s.slug, c.assembly_mode, c.member_hash;
+GROUP BY mc.compilation_id, s.slug, c.assembly_mode, c.content, c.member_hash;
