@@ -22,6 +22,16 @@ WITH tile AS (
     l.via
   FROM root
   CROSS JOIN LATERAL map_bounds.compilation_leaves(root.source_id, :expand) l
+  UNION
+  -- A map with nothing beneath it is its own footprint, so any source is
+  -- addressable by name -- `bc_2017` and `sgmc-nv001` as much as `carto-large`.
+  -- Without this the route is silently empty for every leaf map.
+  SELECT root.source_id, root.source_id
+  FROM root
+  WHERE NOT EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = root.source_id
+  )
 ), sources AS (
   SELECT
     s.source_id,

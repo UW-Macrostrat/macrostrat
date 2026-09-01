@@ -95,6 +95,12 @@ SELECT
        row a client wants to mark: the map that *replaced* its constituents. */
     k.holds_polygons,
     k.is_composite AND k.holds_polygons AS is_materialized,
+    /* Where a compilation's polygons came from -- `derived` if assembled from its
+       members, `ingested` if they arrived with it and the members are provenance,
+       null if it holds none or is not a compilation. `is_materialized` says only
+       *that* a compilation holds polygons; this says whether they are a cache or
+       the original dataset, which is the difference a client should show. */
+    k.content,
     n.source_id IS DISTINCT FROM n.via AS is_constituent,
     n.source_id = n.via AS is_unit,
     n.via AS unit_id,
@@ -109,7 +115,11 @@ CROSS JOIN LATERAL (
       SELECT 1 FROM map_bounds.compilation_member cm
       WHERE cm.compilation_id = n.source_id
     ) AS is_composite,
-    map_bounds.holds_polygons(n.source_id) AS holds_polygons
+    map_bounds.holds_polygons(n.source_id) AS holds_polygons,
+    (
+      SELECT c.content FROM map_bounds.compilation c
+      WHERE c.source_id = n.source_id
+    ) AS content
 ) k
 JOIN map_bounds.map_layer ml ON ml.id = n.map_layer
 JOIN maps.sources s ON s.source_id = n.source_id

@@ -12,6 +12,17 @@ SELECT EXISTS (
 )
 """
 
+# The backfill, not the column, is what only this migration produces. Keying the
+# postcondition on the column alone marks it applied when the declarative chunk
+# adds the column first -- which is exactly what happened, leaving `bc-surface`
+# and `mid-atlantic-surface` holding polygons with no recorded provenance.
+_UNRECORDED = """
+SELECT EXISTS (
+  SELECT 1 FROM map_bounds.compilation c
+  WHERE map_bounds.holds_polygons(c.source_id) AND c.content IS NULL
+)
+"""
+
 
 class CompilationContent(Migration):
     """Add `map_bounds.compilation.content`.
@@ -33,14 +44,19 @@ class CompilationContent(Migration):
     readiness_state = "ga"
     destructive = False
 
-    preconditions = [lambda db: not _column_exists(db)]
-    postconditions = [lambda db: _column_exists(db)]
+    preconditions = [
+        lambda db: not _scalar(db, _COLUMN_EXISTS) or _scalar(db, _UNRECORDED)
+    ]
+    postconditions = [
+        lambda db: _scalar(db, _COLUMN_EXISTS),
+        lambda db: not _scalar(db, _UNRECORDED),
+    ]
 
     def apply(self, database: Database):
         database.run_sql(
             """
             ALTER TABLE map_bounds.compilation
-              ADD COLUMN content text
+              ADD COLUMN IF NOT EXISTS content text
                 CHECK (content IN ('ingested', 'derived'))
             """
         )
@@ -51,9 +67,10 @@ class CompilationContent(Migration):
             UPDATE map_bounds.compilation c
             SET content = 'derived'
             WHERE map_bounds.holds_polygons(c.source_id)
+              AND c.content IS NULL
             """
         )
 
 
-def _column_exists(db: Database) -> bool:
-    return db.run_query(_COLUMN_EXISTS).scalar() is True
+def _scalar(db: Database, sql: str) -> bool:
+    return db.run_query(sql).scalar() is True
