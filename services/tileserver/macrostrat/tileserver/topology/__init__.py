@@ -121,23 +121,33 @@ async def get_info(
 ):
     """Get information about the maps and topological faces at a location.
 
-    Returns one row per map covering the point, ordered by descending priority --
-    every level of the unit graph, unfiltered, with flags (``is_constituent``,
-    ``is_composite``, ``is_materialized``, ``unit_is_layer``) so a client can
-    filter or group as it needs. ``map_face_id`` is the constituent's face and
-    ``unit_face_id`` the merged one; either is null where the location isn't
-    covered by a built face for that layer.
+    Returns one row per node of the compilation hierarchy covering the point --
+    every compilation *and* every constituent, whether or not the compilation has
+    been materialized -- ordered by descending priority within each layer. Nothing
+    is chosen server-side; flags describe each row so a client can filter or build
+    the tree as it needs:
+
+    - ``is_composite`` -- the map is assembled from members.
+    - ``holds_polygons`` -- the map has polygons of its own, so resolution stops
+      here. True for an ordinary map, and for a compilation once it is solved.
+    - ``is_materialized`` -- a composite that holds polygons: the compilation that
+      *replaced* its constituents. This is the row to mark in a UI.
+    - ``is_unit`` -- the level the ``maps`` and ``faces`` tiles are drawn at by
+      default, so this is the row matching a clicked feature.
+    - ``is_constituent`` -- the map is presented as some compilation above it.
+
+    ``map_face_id`` is that row's own solved face, null where the location isn't
+    covered by a built face for the layer (as for the constituents of a
+    materialized compilation, which are no longer in the topology).
     """
     sql = get_query("info")
-    # ``::where_clauses`` is a raw template slot filled in here, before buildpg
-    # renders the value parameters (:lng, :lat, :map_layer) below.
+    # ``::layer_filter`` is a raw template slot filled in here, before buildpg
+    # renders the value parameters (:lng, :lat, :map_layer) below. It prunes the
+    # walk at its roots rather than filtering the results.
     if map_layer is None:
-        sql = sql.replace("::where_clauses", "true")
+        sql = sql.replace("::layer_filter", "true")
     else:
-        # `map_priority` already holds a row per map reachable from a composite
-        # layer, with the full path -- so this no longer needs to union the
-        # layer's members in by hand.
-        sql = sql.replace("::where_clauses", "ml.slug = :map_layer")
+        sql = sql.replace("::layer_filter", "ml.slug = :map_layer")
 
     query, params = render(sql, lng=lng, lat=lat, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:

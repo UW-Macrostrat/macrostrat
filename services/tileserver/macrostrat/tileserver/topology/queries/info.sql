@@ -1,56 +1,120 @@
-/* Everything covering a point, at every level of the unit graph.
+/* Everything covering a point, at every level of the compilation hierarchy.
 
-   Deliberately unfiltered: rather than choosing a level server-side, this returns
-   the constituent map, the unit it is presented as, and flags describing each, so
-   a client can filter or group however it needs. `is_composite` marks a row whose
-   map is assembled from others; `is_materialized` marks one that holds polygons
-   of its own and is therefore where resolution stops.
+   `map_priority` is deliberately *not* the source here: it holds only the leaves
+   of each layer's descent, which is the wrong shape twice over. A virtual
+   compilation (mid-atlantic) never gets a row of its own even though the map and
+   face tiles are drawn at that level, and a materialized one (bc-surface)
+   swallows its constituents entirely, since materialization is what terminates
+   the descent.
+
+   So this walks `compilation_member` itself, all the way down, and emits a row
+   per node -- compilation and constituent alike -- with flags describing each.
+   Nothing is chosen server-side; a client filters or groups the tree as it needs.
+
+   The walk is pruned by footprint: a compilation's `map_area` geometry covers
+   its members (exactly for a region compilation, as an envelope for a served
+   layer), so a node that misses the point cannot have a descendant that hits it,
+   and the whole covering set can be resolved up front in one spatial scan.
 */
-WITH loc AS (
+WITH RECURSIVE loc AS (
   SELECT ST_SetSRID(ST_MakePoint(:lng, :lat), 4326) AS geometry
+),
+covering AS MATERIALIZED (
+  /* Every map whose footprint covers the point, resolved once. Folding this into
+     the recursion instead re-scans `map_area` on every iteration. */
+  SELECT ma.source_id
+  FROM map_bounds.map_area ma, loc
+  WHERE ST_Intersects(ma.geometry, loc.geometry)
+),
+covering_face AS MATERIALIZED (
+  /* Likewise for solved faces: one spatial scan, joined back by map. Left as a
+     correlated join the planner re-runs it once per output row. */
+  SELECT mf.id, mf.map_id, mf.map_layer
+  FROM map_bounds_topology.map_face mf, loc
+  WHERE ST_Intersects(mf.geometry, loc.geometry)
+),
+nodes AS (
+  /* Roots are the served layers -- structural containers, never emitted. */
+  SELECT
+    ml.id AS map_layer,
+    ml.source_id AS source_id,
+    ARRAY[]::integer[] AS path,
+    NULL::integer AS parent_id,
+    NULL::integer AS via,
+    0 AS depth
+  FROM map_bounds.map_layer ml
+  WHERE ml.source_id IN (SELECT source_id FROM covering)
+    AND ::layer_filter
+  UNION ALL
+  SELECT
+    n.map_layer,
+    cm.member_id,
+    n.path || coalesce(cm.priority, 0),
+    n.source_id,
+    /* The unit a map is presented as: the first member on the way down that is
+       not a served layer. This is the level the `maps` and `faces` tiles are
+       drawn at by default, so `is_unit` is what matches a clicked feature. */
+    coalesce(
+      n.via,
+      CASE WHEN map_bounds.is_served_layer(cm.member_id) THEN NULL
+           ELSE cm.member_id END
+    ),
+    n.depth + 1
+  FROM nodes n
+  JOIN map_bounds.compilation_member cm
+    ON cm.compilation_id = n.source_id
+  WHERE cm.member_id IN (SELECT source_id FROM covering)
+),
+/* A map can be reachable under one layer by more than one route -- directly and
+   again through a compilation, the state a half-migrated compilation is in. The
+   winning route is the one that would win anyway. */
+resolved AS (
+  SELECT DISTINCT ON (map_layer, source_id) *
+  FROM nodes
+  WHERE depth > 0
+    AND NOT map_bounds.is_served_layer(source_id)
+  ORDER BY map_layer, source_id, path DESC
 )
 SELECT
-    mp.source_id,
-    array_to_string(mp.priority_path, '.') AS priority,
-    mp.priority_path,
-    ml.slug map_layer,
-    ml.name layer_name,
-    s.name,
+    n.source_id,
     s.slug,
+    s.name,
     s.scale,
-    -- The unit this map is presented as at this level: the nearest compilation
-    -- above it that is not a structural layer. Equal to the map itself when it
-    -- stands alone.
-    mp.via AS unit_id,
+    ml.slug AS map_layer,
+    ml.name AS layer_name,
+    array_to_string(n.path, '.') AS priority,
+    n.path AS priority_path,
+    n.depth,
+    /* The compilation this row was reached through. May be a served layer, in
+       which case it has no row of its own. */
+    n.parent_id,
+    k.is_composite,
+    /* `holds_polygons` is where resolution stops -- true for an ordinary map,
+       and for a compilation only once it has been solved into polygons of its
+       own. `is_materialized` narrows that to the compilation case, which is the
+       row a client wants to mark: the map that *replaced* its constituents. */
+    k.holds_polygons,
+    k.is_composite AND k.holds_polygons AS is_materialized,
+    n.source_id IS DISTINCT FROM n.via AS is_constituent,
+    n.source_id = n.via AS is_unit,
+    n.via AS unit_id,
     v.slug AS unit,
     v.name AS unit_name,
-    mp.via IS DISTINCT FROM mp.source_id AS is_constituent,
+    map_bounds.holds_polygons(n.via) AS unit_is_materialized,
+    mf.id AS map_face_id
+FROM resolved n
+CROSS JOIN LATERAL (
+  SELECT
     EXISTS (
       SELECT 1 FROM map_bounds.compilation_member cm
-      WHERE cm.compilation_id = mp.via
+      WHERE cm.compilation_id = n.source_id
     ) AS is_composite,
-    map_bounds.holds_polygons(mp.source_id) AS is_materialized,
-    map_bounds.holds_polygons(mp.via) AS unit_is_materialized,
-    map_bounds.is_served_layer(mp.via) AS unit_is_layer,
-    mf.id map_face_id,
-    uf.id unit_face_id
-FROM map_bounds.map_priority mp
-JOIN map_bounds.map_layer ml
-  ON ml.id = mp.map_layer
-JOIN map_bounds.map_area ma
-  ON ma.source_id = mp.source_id
-JOIN maps.sources s ON s.source_id = ma.source_id
-LEFT JOIN maps.sources v ON v.source_id = mp.via
-JOIN loc ON ST_Intersects(ma.geometry, loc.geometry)
-LEFT JOIN map_bounds_topology.map_face mf
-  ON mf.map_id = mp.source_id
-  AND mf.map_layer = mp.map_layer
-  AND ST_Intersects(mf.geometry, loc.geometry)
--- The merged face for the unit, where the unit is a compilation.
-LEFT JOIN map_bounds_topology.map_face uf
-  ON uf.map_id = mp.via
-  AND uf.map_layer = mp.map_layer
-  AND uf.map_id IS DISTINCT FROM mp.source_id
-  AND ST_Intersects(uf.geometry, loc.geometry)
-WHERE ::where_clauses
-ORDER BY mp.priority_path DESC;
+    map_bounds.holds_polygons(n.source_id) AS holds_polygons
+) k
+JOIN map_bounds.map_layer ml ON ml.id = n.map_layer
+JOIN maps.sources s ON s.source_id = n.source_id
+LEFT JOIN maps.sources v ON v.source_id = n.via
+LEFT JOIN covering_face mf
+  ON mf.map_id = n.source_id
+  AND mf.map_layer = n.map_layer
+ORDER BY ml.id, n.path DESC;
