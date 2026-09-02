@@ -614,6 +614,7 @@ async def create_delegate_token(
         data={"label": token_request.label, "user_id": token_request.user_id},
         expires_delta=expires_on - datetime.now(timezone.utc),
     )
+    token_id = await db.insert_token(
         engine=database.async_engine,
         token_hash=hash_token(token),
         expires_on=expires_on,
