@@ -34,7 +34,8 @@ function buildSQL(req, scale, where, limit) {
      AND timescales.id IN (11,14)
      ORDER BY age_bottom - age_top
      LIMIT 1
-    ) AS best_int_name
+    ) AS best_int_name,
+    '${scale}' AS scale
   `;
   if (req.query.map) {
     sql = "(SELECT mm.color, m.source_id";
@@ -208,6 +209,18 @@ module.exports = function (req, res, next, cb) {
           .join(" UNION ");
 
         var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
+
+        // Sort by map scale: large, medium, small, tiny. The ?map= projection
+        // omits the scale column, so it cannot be ordered this way.
+        if (!req.query.map) {
+          toRun +=
+            " ORDER BY CASE scale" +
+            " WHEN 'large' THEN 1" +
+            " WHEN 'medium' THEN 2" +
+            " WHEN 'small' THEN 3" +
+            " WHEN 'tiny' THEN 4" +
+            " END";
+        }
 
         larkin.queryPg("burwell", toRun, params, function (error, result) {
           if (error) {
