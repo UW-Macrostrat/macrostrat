@@ -610,8 +610,10 @@ async def create_delegate_token(
 
     issuer = await get_user(user_token.sub, database.async_sessionmaker)
 
-    token = sign_delegated_token(token_request.label, expires_on)
-    token_id = await db.insert_token(
+    token = create_access_token(
+        data={"label": token_request.label, "user_id": token_request.user_id},
+        expires_delta=expires_on - datetime.now(timezone.utc),
+    )
         engine=database.async_engine,
         token_hash=hash_token(token),
         expires_on=expires_on,
@@ -642,7 +644,7 @@ async def list_delegate_tokens(
 
     Never returns the tokens themselves — the stored value is a digest, and it
     is not needed to administer a token. Pass `token_type` to narrow to one
-    kind (e.g. `delegate`).
+    kind (e.g. `delegated`).
     """
 
     tokens = await db.list_tokens(database.async_sessionmaker, token_type=token_type)

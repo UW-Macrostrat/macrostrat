@@ -80,8 +80,14 @@ async def _scopes_for(pool, token_hash: str) -> Optional[list[str]]:
     clock skew between this process and the stored timestamp.
     """
     cached = _cache.get(token_hash)
-    if cached is not None and cached[0] > monotonic():
+    now = monotonic()
+    if cached is not None and cached[0] > now:
         return cached[1]
+
+    # Keep the cache bounded under token-guessing attacks.
+    if len(_cache) > 10_000:
+        while len(_cache) > 10_000:
+            _cache.pop(next(iter(_cache)))
 
     q, p = render(_LOOKUP, token_hash=token_hash, token_type=DELEGATED_TOKEN_TYPE)
     async with pool.acquire() as conn:
