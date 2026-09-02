@@ -59,35 +59,96 @@ SELECT
   last_used
 FROM tile_cache.tile;
 
-CREATE OR REPLACE FUNCTION tile_cache.remove_excess_tiles(max_size bigint DEFAULT 100000) RETURNS void AS $$
+/* High-churn cache table: evictions are DELETEs, so autovacuum has to keep pace or
+   the relation bloats without bound. The tile payload lives in TOAST, so the TOAST
+   table needs the same treatment as the heap. */
+ALTER TABLE tile_cache.tile SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_vacuum_threshold = 50000,
+  autovacuum_vacuum_cost_limit = 2000,
+  autovacuum_analyze_scale_factor = 0.05,
+  toast.autovacuum_vacuum_scale_factor = 0.02,
+  toast.autovacuum_vacuum_threshold = 50000,
+  toast.autovacuum_vacuum_cost_limit = 2000
+);
+
+/* Superseded by the byte-budgeted signature below. Dropped explicitly because
+   CREATE OR REPLACE would leave the old single-argument form in place as an
+   overload, making a one-argument call ambiguous. */
+DROP FUNCTION IF EXISTS tile_cache.remove_excess_tiles(bigint);
+
+CREATE OR REPLACE FUNCTION tile_cache.remove_excess_tiles(
+  max_bytes bigint DEFAULT 20000000000,
+  max_tiles bigint DEFAULT 2000000,
+  batch_size integer DEFAULT 50000
+) RETURNS bigint AS $$
 DECLARE
-  _current_size bigint;
-  _num_deleted integer;
+  _n_tiles bigint;
+  _avg_tile_bytes numeric;
+  _target_tiles bigint;
+  _deleted bigint := 0;
+  _batch bigint;
 BEGIN
-  /** Delete the most stale tiles until fewer than max_size tiles remain. */
-  -- Get approximate size of cache
-  SELECT pg_total_relation_size('tile_cache.tile') INTO _current_size;
-  
-  -- Get approximate number of tiles in cache table (without full table scan)
-  SELECT reltuples::bigint AS estimate
-  FROM pg_class
+  /** Evict least-recently-used tiles until the cache fits within max_bytes.
+
+    The budget is on *logical* payload bytes -- mean tile length times row count --
+    and deliberately not on pg_total_relation_size. Eviction is a DELETE, which
+    does not return space to the filesystem, so budgeting against physical size
+    would chase bloat: the function would delete live tiles trying to reach a
+    target that deleting cannot move. Physical size is held down by the autovacuum
+    storage parameters set on the table above.
+
+    max_tiles is a secondary ceiling, retaining the old row-count behaviour as a
+    guard against pathologically small tiles.
+  */
+
+  SELECT reltuples::bigint FROM pg_class
   WHERE oid = 'tile_cache.tile'::regclass
-  INTO _current_size;
+  INTO _n_tiles;
 
-  -- Delete tiles until cache size is less than max_size
-  _num_deleted := _current_size - max_size;
+  IF _n_tiles IS NULL OR _n_tiles <= 0 THEN
+    RETURN 0;
+  END IF;
 
-  IF _current_size > max_size THEN
+  /* Sampled rather than aggregated: length(tile) over the whole table would
+     detoast every row on every pass. */
+  SELECT avg(length(tile)) FROM tile_cache.tile TABLESAMPLE SYSTEM (1)
+  INTO _avg_tile_bytes;
+
+  IF _avg_tile_bytes IS NULL OR _avg_tile_bytes <= 0 THEN
+    -- Sample came back empty (small or sparsely-packed table); fall back to a head read.
+    SELECT avg(length(tile)) FROM (SELECT tile FROM tile_cache.tile LIMIT 1000) s
+    INTO _avg_tile_bytes;
+  END IF;
+
+  IF _avg_tile_bytes IS NULL OR _avg_tile_bytes <= 0 THEN
+    RETURN 0;
+  END IF;
+
+  _target_tiles := least(max_tiles, (max_bytes / _avg_tile_bytes)::bigint);
+
+  /* Batched so a large trim never lands as one oversized WAL burst. */
+  WHILE _n_tiles - _deleted > _target_tiles LOOP
+    _batch := least(batch_size::bigint, _n_tiles - _deleted - _target_tiles);
+
     DELETE FROM tile_cache.tile
-    WHERE last_used < (
-      SELECT last_used FROM tile_cache.tile
+    WHERE ctid IN (
+      SELECT ctid FROM tile_cache.tile
       ORDER BY last_used ASC
-      LIMIT 1
-      OFFSET _num_deleted
+      LIMIT _batch
     );
 
-    RAISE NOTICE 'Deleted % tiles to reduce cache size', _num_deleted;
+    GET DIAGNOSTICS _batch = ROW_COUNT;
+    EXIT WHEN _batch = 0;
+    _deleted := _deleted + _batch;
+  END LOOP;
+
+  IF _deleted > 0 THEN
+    RAISE NOTICE USING MESSAGE =
+      'Evicted ' || _deleted || ' tiles from tile_cache.tile (target ' || _target_tiles || ')';
   END IF;
+
+  RETURN _deleted;
 END;
 $$ LANGUAGE plpgsql VOLATILE;
 
