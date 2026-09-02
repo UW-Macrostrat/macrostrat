@@ -227,6 +227,10 @@ from .cache import cli as cache_cli
 
 main.add_typer(cache_cli, name="cache", rich_help_panel="Subsystems")
 
+from .auth import cli as auth_cli
+
+main.add_typer(auth_cli, name="auth", rich_help_panel="Subsystems")
+
 
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},

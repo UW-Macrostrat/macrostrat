@@ -17,115 +17,51 @@ GRANT EXECUTE ON FUNCTION macrostrat_auth.current_app_user_id() TO web_anon, web
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
-CREATE TABLE macrostrat_auth."group" (
-    id integer NOT NULL,
-    name character varying(255) NOT NULL
+CREATE TABLE macrostrat_auth.role (
+    id   serial primary key,
+    name text not null unique
 );
 
-CREATE SEQUENCE macrostrat_auth.group_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+INSERT INTO macrostrat_auth.role (id, name) VALUES
+    (1, 'web_admin'),
+    (2, 'test-only'),
+    (3, 'web_user')
+ON CONFLICT (id) DO NOTHING;
 
-ALTER SEQUENCE macrostrat_auth.group_id_seq OWNED BY macrostrat_auth."group".id;
+SELECT setval('macrostrat_auth.role_id_seq', (SELECT max(id) FROM macrostrat_auth.role));
 
-CREATE TABLE macrostrat_auth.group_members (
-    id integer NOT NULL,
-    group_id integer NOT NULL,
-    user_id integer NOT NULL
-);
-
-CREATE SEQUENCE macrostrat_auth.group_members_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE macrostrat_auth.group_members_id_seq OWNED BY macrostrat_auth.group_members.id;
-
-CREATE TABLE macrostrat_auth.token (
-    id integer NOT NULL,
-    token character varying(255) NOT NULL,
-    "group" integer NOT NULL,
-    used_on timestamp with time zone,
-    expires_on timestamp with time zone NOT NULL,
-    created_on timestamp with time zone DEFAULT now() NOT NULL
-);
-
-CREATE SEQUENCE macrostrat_auth.token_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE macrostrat_auth.token_id_seq OWNED BY macrostrat_auth.token.id;
-
+--user has to be in quotes since it's a postgresql keyword
 CREATE TABLE macrostrat_auth."user" (
     id           serial primary key,
-    sub          varchar(255) not null unique,
-    name         varchar(255),
-    email        varchar(255),
-    display_name varchar(255),
+    sub          text not null unique,
+    name         text,
+    email        text,
+    display_name text,
+    role_id      integer not null references macrostrat_auth.role(id),
     created_on   timestamp with time zone default now() not null,
     updated_on   timestamp with time zone default now() not null
 );
 
--- current_app_user_id() is SECURITY DEFINER owned by `macrostrat`, but this
--- schema/table are owned by the (superuser) `macrostrat_admin`. Grant the
--- definer role just enough to resolve sub → id: read-only on this one table.
--- (Owning the function with `macrostrat` rather than the superuser keeps the
--- definer least-privilege.)
-GRANT USAGE ON SCHEMA macrostrat_auth TO macrostrat;
-GRANT SELECT ON macrostrat_auth."user" TO macrostrat;
+CREATE TABLE macrostrat_auth.token (
+    id         serial primary key,
+    token      text not null unique,
+    user_id    integer references macrostrat_auth."user"(id),
+    created_by integer references macrostrat_auth."user"(id),
+    token_type text not null default 'api',
+    label      text,
+    scopes     text[],
+    used_on    timestamp with time zone,
+    expires_on timestamp with time zone not null,
+    created_on timestamp with time zone default now() not null,
 
-CREATE SEQUENCE macrostrat_auth.user_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE macrostrat_auth.user_id_seq OWNED BY macrostrat_auth."user".id;
-
-ALTER TABLE ONLY macrostrat_auth."group" ALTER COLUMN id SET DEFAULT nextval('macrostrat_auth.group_id_seq'::regclass);
-
-ALTER TABLE ONLY macrostrat_auth.group_members ALTER COLUMN id SET DEFAULT nextval('macrostrat_auth.group_members_id_seq'::regclass);
-
-ALTER TABLE ONLY macrostrat_auth.token ALTER COLUMN id SET DEFAULT nextval('macrostrat_auth.token_id_seq'::regclass);
-
-ALTER TABLE ONLY macrostrat_auth."user" ALTER COLUMN id SET DEFAULT nextval('macrostrat_auth.user_id_seq'::regclass);
-
-ALTER TABLE ONLY macrostrat_auth.group_members
-    ADD CONSTRAINT group_members_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat_auth."group"
-    ADD CONSTRAINT group_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat_auth.token
-    ADD CONSTRAINT token_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat_auth.token
-    ADD CONSTRAINT token_token_key UNIQUE (token);
-
-ALTER TABLE ONLY macrostrat_auth."user"
-    ADD CONSTRAINT user_pkey PRIMARY KEY (id);
+    --the token is delegated to a Macrostrat user, or to a third party with no account (in
+    --if issued to 3rd party with no account, then label must be populated
+    constraint token_has_subject check (user_id is not null or label is not null)
+);
 
 CREATE TRIGGER update_updated_on_trigger BEFORE UPDATE ON macrostrat_auth."user" FOR EACH ROW WHEN ((old.* IS DISTINCT FROM new.*)) EXECUTE FUNCTION public.update_updated_on();
 
-ALTER TABLE ONLY macrostrat_auth.group_members
-    ADD CONSTRAINT group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES macrostrat_auth."group"(id);
-
-ALTER TABLE ONLY macrostrat_auth.group_members
-    ADD CONSTRAINT group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES macrostrat_auth."user"(id);
-
-ALTER TABLE ONLY macrostrat_auth.token
-    ADD CONSTRAINT token_group_fkey FOREIGN KEY ("group") REFERENCES macrostrat_auth."group"(id);
-
+-- "One live token per label" cannot be an index: a partial index predicated on
+-- `expires_on > now()` is rejected (42P17, now() is STABLE not IMMUTABLE), and
+-- a plain UNIQUE on label would block reissuing after a revocation, since
+-- revoked rows are kept for the record. Enforced in the API and CLI instead.

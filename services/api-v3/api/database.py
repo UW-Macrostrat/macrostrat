@@ -172,30 +172,57 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
         return map(lambda x: x[0], result.fetchall())
 
 
-async def insert_access_token(
+async def insert_token(
     engine: AsyncEngine,
-    token: str,
-    group_id: int,
-    expiration: datetime.datetime,
+    *,
+    token_hash: str,
+    expires_on: datetime.datetime,
     token_type: str = "api",
-):
+    user_id: int | None = None,
+    created_by: int | None = None,
+    label: str | None = None,
+    scopes: list[str] | None = None,
+) -> int:
+    """Store an issued token into the macrostrat_auth.token table and return its id.
+
+    `token_hash` is the sha256 digest of the token, from `api.routes.security.hash_token`.
+     The token must be associated to a macrostrat user_id (created when a user creates a macrostrat
+     orcid account) or a label (assigned when generating
+     a delegated 3rd party token). This is enforced by the `token_has_subject` check constraint in the db.
+    """
     async with engine.begin() as conn:
-        q = insert(schemas.Token).values(
-            token=token,
-            expires_on=expiration,
-            group=group_id,
-            token_type=token_type,
+        q = (
+            insert(schemas.Token)
+            .values(
+                token=token_hash,
+                expires_on=expires_on,
+                token_type=token_type,
+                user_id=user_id,
+                created_by=created_by,
+                label=label,
+                scopes=scopes,
+            )
+            .returning(schemas.Token.id)
         )
         result = await conn.execute(q)
-        return result
+        return result.scalar_one()
 
 
-async def get_access_token(async_session: async_sessionmaker[AsyncSession], token: str):
+async def get_token_by_hash(
+    async_session: async_sessionmaker[AsyncSession],
+    token_hash: str,
+    token_type: str | None = None,
+) -> schemas.Token | None:
+    """Look up a live token by its sha256 digest, or None if absent/expired.
+
+    Pass `token_type` to restrict the lookup to one kind of token; omit it to
+    accept any. Touches `used_on` on a hit, so this is not suitable for
+    high-volume callers (tile requests) — those should read without the write.
+    """
     async with async_session() as session:
-        select_stmt = select(schemas.Token).where(
-            schemas.Token.token == token,
-            schemas.Token.token_type == "api",
-        )
+        select_stmt = select(schemas.Token).where(schemas.Token.token == token_hash)
+        if token_type is not None:
+            select_stmt = select_stmt.where(schemas.Token.token_type == token_type)
 
         result = (await session.scalars(select_stmt)).first()
         if result is None:
@@ -207,12 +234,67 @@ async def get_access_token(async_session: async_sessionmaker[AsyncSession], toke
         stmt = (
             update(schemas.Token)
             .where(schemas.Token.id == result.id)
-            .values(used_on=datetime.datetime.utcnow())
+            .values(used_on=datetime.datetime.now(datetime.timezone.utc))
         )
         await session.execute(stmt)
         await session.commit()
 
         return result
+
+
+async def get_role_id(
+    async_session: async_sessionmaker[AsyncSession], name: str
+) -> int | None:
+    """Resolve a role name to its id. Roles are seeded by the schema."""
+    async with async_session() as session:
+        return await session.scalar(
+            select(schemas.Role.id).where(schemas.Role.name == name)
+        )
+
+
+async def list_tokens(
+    async_session: async_sessionmaker[AsyncSession],
+    token_type: str | None = None,
+) -> list[schemas.Token]:
+    """Every issued token, newest first.
+
+    Callers must not expose `Token.token` — it is the stored digest, and a
+    response that carries it invites pasting it somewhere it can leak.
+    """
+    async with async_session() as session:
+        stmt = select(schemas.Token).order_by(schemas.Token.id.desc())
+        if token_type is not None:
+            stmt = stmt.where(schemas.Token.token_type == token_type)
+        return list(await session.scalars(stmt))
+
+
+async def revoke_token(engine: AsyncEngine, token_id: int) -> str:
+    """Expire a token now. Returns what happened.
+
+    The row is kept rather than deleted, so the record of who was issued what
+    survives a revocation. Guarded on `expires_on > now()` so an already
+    expired token is reported honestly instead of silently "succeeding".
+    """
+    async with engine.begin() as conn:
+        stmt = (
+            update(schemas.Token)
+            .where(
+                schemas.Token.id == token_id,
+                schemas.Token.expires_on > func.now(),
+            )
+            .values(expires_on=func.now())
+            .returning(schemas.Token.id)
+        )
+        if (await conn.execute(stmt)).scalar() is not None:
+            return "revoked"
+
+        # `id`, not a nullable column: a token delegated to a user has a NULL
+        # label, which would make an existence check on `label` report a real
+        # token as missing.
+        exists = await conn.execute(
+            select(schemas.Token.id).where(schemas.Token.id == token_id)
+        )
+        return "already_expired" if exists.scalar() is not None else "not_found"
 
 
 #
