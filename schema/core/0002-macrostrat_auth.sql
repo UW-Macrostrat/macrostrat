@@ -59,9 +59,6 @@ CREATE TABLE macrostrat_auth.token (
     constraint token_has_subject check (user_id is not null or label is not null)
 );
 
-GRANT USAGE ON SCHEMA macrostrat_auth TO macrostrat;
-GRANT SELECT ON macrostrat_auth."user" TO macrostrat;
-
 CREATE TRIGGER update_updated_on_trigger BEFORE UPDATE ON macrostrat_auth."user" FOR EACH ROW WHEN ((old.* IS DISTINCT FROM new.*)) EXECUTE FUNCTION public.update_updated_on();
 
 -- "One live token per label" cannot be an index: a partial index predicated on
