@@ -9,8 +9,6 @@ import datetime
 from os import environ
 from typing import Annotated, Iterator, Literal, Type
 
-import api.schemas as schemas
-from api.query_parser import QueryParser
 from dotenv import load_dotenv
 from fastapi import Depends, Request
 from pydantic import BaseModel
@@ -24,6 +22,8 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+import api.schemas as schemas
+from api.query_parser import QueryParser
 from macrostrat.database import Database
 
 load_dotenv()

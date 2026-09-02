@@ -199,8 +199,7 @@ def create_token(
 
 
 def _report(token_id, token, label, scope, days, expires_on, sub):
-    """Print the new token, and warn if it grants nothing.
-    """
+    """Print the new token, and warn if it grants nothing."""
 
     print(f"\nCreated delegated token [bold]{token_id}[/]\n")
     print(f"  For       {label}")
