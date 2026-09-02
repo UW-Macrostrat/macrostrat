@@ -29,6 +29,7 @@ expiry, so it keeps working while others are minted and revoked around it.
 
 import hashlib
 import re
+import sys
 from datetime import datetime, timedelta, timezone
 from os import environ
 from typing import List, Optional
@@ -198,10 +199,10 @@ def create_token(
 
 
 def _report(token_id, token, label, scope, days, expires_on, sub):
-    """Print the new token, and warn if it grants nothing."""
+    """Print the new token, and warn if it grants nothing.
+    """
 
     print(f"\nCreated delegated token [bold]{token_id}[/]\n")
-    print(f"  Token     [bold cyan]{token}[/]")
     print(f"  For       {label}")
     print(f"  Scopes    {', '.join(scope) if scope else '[dim]none[/]'}")
     print(f"  Expires   {expires_on:%Y-%m-%d} ({days} days)")
@@ -209,9 +210,12 @@ def _report(token_id, token, label, scope, days, expires_on, sub):
         print(f"  User      {sub}")
 
     print(
-        "\n[yellow]Copy the token now.[/] Only its hash is stored, "
-        "so it cannot be shown again."
+        "\n[yellow]Copy the token now.[/] Only its hash is stored, so it "
+        "cannot be shown again.\n[dim]It is one line — select the whole thing, "
+        "including anything your terminal wrapped.[/]\n"
     )
+    sys.stdout.write(token + "\n")
+    sys.stdout.flush()
 
     if not scope and not sub:
         print(

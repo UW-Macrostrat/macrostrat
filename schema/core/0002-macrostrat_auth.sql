@@ -64,6 +64,7 @@ GRANT SELECT ON macrostrat_auth."user" TO macrostrat;
 
 CREATE TRIGGER update_updated_on_trigger BEFORE UPDATE ON macrostrat_auth."user" FOR EACH ROW WHEN ((old.* IS DISTINCT FROM new.*)) EXECUTE FUNCTION public.update_updated_on();
 
-CREATE UNIQUE INDEX token_label_live_key
-    ON macrostrat_auth.token (label)
-    WHERE expires_on > now();
+-- "One live token per label" cannot be an index: a partial index predicated on
+-- `expires_on > now()` is rejected (42P17, now() is STABLE not IMMUTABLE), and
+-- a plain UNIQUE on label would block reissuing after a revocation, since
+-- revoked rows are kept for the record. Enforced in the API and CLI instead.
