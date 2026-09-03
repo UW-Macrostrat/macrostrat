@@ -33,8 +33,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # can change to 1m for manual testing
 DELEGATED_TOKEN_TYPE = "delegated"
 SCOPE_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$")
 SCOPE_EXAMPLE = "rasters:emit-minerals"
+# Postgres roles PostgREST may be asked to assume. The mapping from an
+# application role to one of these lives in `macrostrat_auth.role.postgres_role`;
+# this set is the guard against a bad mapping turning into an unusable — or
+# over-privileged — `role` claim.
 POSTGREST_ROLES = frozenset({"web_admin", "web_user"})
-DEFAULT_ROLE = "web_user"
+DEFAULT_POSTGREST_ROLE = "web_user"
+ADMIN_POSTGREST_ROLE = "web_admin"
+
+# Application roles (`macrostrat_auth.role.id`). `role` has no database default,
+# so a new user is created in DEFAULT_ROLE explicitly.
+DEFAULT_ROLE = "user"
+ADMIN_ROLE = "admin"
 
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 refresh_token_key = "refresh_token"
@@ -191,11 +201,17 @@ def sign_delegated_token(label: str | None, expires_on: datetime) -> str:
 
 
 def role_claim(user: schemas.User) -> str:
-    """The `role` claim for a user's JWT — always a role PostgREST can assume."""
-    name = user.role.name if user.role is not None else None
+    """The `role` claim for a user's JWT — always a role PostgREST can assume.
+
+    The application role (`admin`) is *not* the claim; the Postgres role it maps
+    to (`web_admin`) is, because PostgREST `SET ROLE`s to whatever the claim says
+    and the RLS policies are written against those names.
+    """
+    definition = user.role_definition if user is not None else None
+    name = definition.postgres_role if definition is not None else None
     if name in POSTGREST_ROLES:
         return name
-    return DEFAULT_ROLE
+    return DEFAULT_POSTGREST_ROLE
 
 
 def parse_redirect_uri():
@@ -255,24 +271,17 @@ async def create_user(
 ) -> schemas.User:
     """Create a new user, in the default role.
 
-    `role_id` is NOT NULL with no database default, so it has to be set here or
-    the insert fails. Resolved by name rather than by the seeded id so a
-    rebuilt database with different ids still works.
+    `role` is NOT NULL with no database default, so it has to be set here or the
+    insert fails. It is the role's own name, so there is no id to look up — the
+    insert fails loudly on the foreign key if the role table was never seeded.
     """
-
-    role_id = await db.get_role_id(async_session, DEFAULT_ROLE)
-    if role_id is None:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Role {DEFAULT_ROLE} is missing from macrostrat_auth.role",
-        )
 
     user = schemas.User(
         sub=sub,
         name=name,
         display_name=get_display_name(name),
         email=email,
-        role_id=role_id,
+        role=DEFAULT_ROLE,
     )
 
     async with async_session() as session:
@@ -317,13 +326,15 @@ async def has_access(
     the old "token belongs to group 1" check, which conflated an API key with
     membership in an authorization group.
     """
-    if user_token_data is not None and user_token_data.role == "web_admin":
+    # The JWT carries the *Postgres* role (what PostgREST assumes), the user row
+    # the application role — hence the two different names for the same check.
+    if user_token_data is not None and user_token_data.role == ADMIN_POSTGREST_ROLE:
         return True
 
     if header_token is None or header_token.user is None:
         return False
 
-    return header_token.user.role.name == "web_admin"
+    return header_token.user.role == ADMIN_ROLE
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):

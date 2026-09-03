@@ -17,18 +17,30 @@ GRANT EXECUTE ON FUNCTION macrostrat_auth.current_app_user_id() TO web_anon, web
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
+-- Application roles. The primary key is the role's own name, so a user's role
+-- reads as `'admin'` at every call site instead of an opaque integer that has
+-- to be joined back before it means anything. There is deliberately no default:
+-- whoever creates a user has to say which role it gets.
 CREATE TABLE macrostrat_auth.role (
-    id   serial primary key,
-    name text not null unique
+    id            text primary key,
+    -- The Postgres role a session in this application role assumes. PostgREST
+    -- reads it from the JWT `role` claim, and the RLS policies and grants are
+    -- written against these names, so the mapping is data here rather than a
+    -- convention buried in the API.
+    postgres_role text not null,
+    description   text
 );
 
-INSERT INTO macrostrat_auth.role (id, name) VALUES
-    (1, 'web_admin'),
-    (2, 'test-only'),
-    (3, 'web_user')
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval('macrostrat_auth.role_id_seq', (SELECT max(id) FROM macrostrat_auth.role));
+-- Seeded, not defaulted. `ON CONFLICT ... DO UPDATE` (rather than DO NOTHING)
+-- so `macrostrat schema sync` converges the mapping columns too, not just the
+-- set of role names.
+INSERT INTO macrostrat_auth.role (id, postgres_role, description) VALUES
+    ('user',  'web_user',  'A signed-in Macrostrat user'),
+    ('admin', 'web_admin', 'A Macrostrat administrator'),
+    ('test',  'web_user',  'A synthetic account used by the test suite')
+ON CONFLICT (id) DO UPDATE
+    SET postgres_role = EXCLUDED.postgres_role,
+        description   = EXCLUDED.description;
 
 --user has to be in quotes since it's a postgresql keyword
 CREATE TABLE macrostrat_auth."user" (
@@ -37,7 +49,7 @@ CREATE TABLE macrostrat_auth."user" (
     name         text,
     email        text,
     display_name text,
-    role_id      integer not null references macrostrat_auth.role(id),
+    role         text not null references macrostrat_auth.role(id),
     created_on   timestamp with time zone default now() not null,
     updated_on   timestamp with time zone default now() not null
 );

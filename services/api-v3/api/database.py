@@ -242,16 +242,6 @@ async def get_token_by_hash(
         return result
 
 
-async def get_role_id(
-    async_session: async_sessionmaker[AsyncSession], name: str
-) -> int | None:
-    """Resolve a role name to its id. Roles are seeded by the schema."""
-    async with async_session() as session:
-        return await session.scalar(
-            select(schemas.Role.id).where(schemas.Role.name == name)
-        )
-
-
 async def list_tokens(
     async_session: async_sessionmaker[AsyncSession],
     token_type: str | None = None,
