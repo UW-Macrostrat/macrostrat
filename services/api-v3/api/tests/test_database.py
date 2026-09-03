@@ -79,14 +79,15 @@ class TestEngineDB:
     async def test_token_insert(self, engine: AsyncEngine):
         test_value = f"test-{random.randint(0, 10000000)}"
 
-        result = await db.insert_access_token(
+        # A token with no user_id needs a label to satisfy token_has_subject.
+        token_id = await db.insert_token(
             engine,
-            token=test_value,
-            group_id=1,
-            expiration=datetime.datetime.fromtimestamp(1),
+            token_hash=test_value,
+            label=f"test token {test_value}",
+            expires_on=datetime.datetime.fromtimestamp(1, tz=datetime.timezone.utc),
         )
 
-        assert result is not None
+        assert token_id is not None
 
     @pytest.mark.asyncio
     async def test_get_schema_tables(self, engine: AsyncEngine):

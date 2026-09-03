@@ -84,20 +84,29 @@ async def startup_event():
     )
 
 
+# Budget for the L2 tile cache, in bytes of tile payload. This is a *logical* size
+# (mean tile length times row count), not the relation's on-disk size -- see
+# `tile_cache.remove_excess_tiles`. Sized against the database volume: the cache is
+# the largest discretionary consumer on it, and an unbounded one filled the volume and
+# took production down in September 2026.
+TILE_CACHE_MAX_BYTES = 20_000_000_000  # 20 GB
+
+
 @app.on_event("startup")
 @repeat_every(seconds=600)  # 10 minutes
-async def truncate_tile_cache_if_needed() -> None:
-    """Truncate the tile cache if it's too big."""
+async def trim_tile_cache_if_needed() -> None:
+    """Evict least-recently-used tiles until the cache fits its byte budget."""
     pool = app.state.pool
     async with pool.acquire() as conn:
-        max_size = 1e6
-
         q, p = render(
-            "SELECT tile_cache.remove_excess_tiles(:max_size)",
-            max_size=max_size,
+            "SELECT tile_cache.remove_excess_tiles(:max_bytes)",
+            max_bytes=TILE_CACHE_MAX_BYTES,
         )
 
-        await conn.execute(q, *p)
+        deleted = await conn.fetchval(q, *p)
+
+    if deleted:
+        log.info("Evicted %s tiles from the L2 cache", deleted)
 
 
 @app.on_event("shutdown")

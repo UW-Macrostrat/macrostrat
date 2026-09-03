@@ -12,6 +12,7 @@ from sqlalchemy import (
     PrimaryKeyConstraint,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import (
     ARRAY,
@@ -59,36 +60,26 @@ class Sources(Base):
     ingest_process: Mapped["IngestProcess"] = relationship(back_populates="source")
 
 
-class GroupMembers(Base):
-    __tablename__ = "group_members"
+class Role(Base):
+    """A Postgres role a web session can be granted (see 0000-roles.sql)."""
+
+    __tablename__ = "role"
     __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    group_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.user.id"))
-
-
-class Group(Base):
-    __tablename__ = "group"
-    __table_args__ = {"schema": "macrostrat_auth"}
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(VARCHAR(255))
-    users: Mapped[List["User"]] = relationship(
-        secondary="macrostrat_auth.group_members",
-        lazy="joined",
-        back_populates="groups",
-    )
+    name: Mapped[str] = mapped_column(TEXT, unique=True)
+    users: Mapped[List["User"]] = relationship(back_populates="role")
 
 
 class User(Base):
     __tablename__ = "user"
     __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    sub: Mapped[str] = mapped_column(VARCHAR(255))
-    name: Mapped[str] = mapped_column(VARCHAR(255))
-    email: Mapped[str] = mapped_column(VARCHAR(255))
-    groups: Mapped[List[Group]] = relationship(
-        secondary="macrostrat_auth.group_members", lazy="joined", back_populates="users"
-    )
+    sub: Mapped[str] = mapped_column(TEXT, unique=True)
+    name: Mapped[str] = mapped_column(TEXT, nullable=True)
+    display_name: Mapped[str] = mapped_column(TEXT, nullable=True)
+    email: Mapped[str] = mapped_column(TEXT, nullable=True)
+    role_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.role.id"))
+    role: Mapped[Role] = relationship(lazy="joined", back_populates="users")
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -98,11 +89,23 @@ class User(Base):
 
 
 class Token(Base):
+    """An issued API token. `token` is the sha256 digest, never the token."""
+
     __tablename__ = "token"
     __table_args__ = {"schema": "macrostrat_auth"}
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    token: Mapped[str] = mapped_column(VARCHAR(255), unique=True)
-    group: Mapped[Group] = mapped_column(ForeignKey("macrostrat_auth.group.id"))
+    token: Mapped[str] = mapped_column(TEXT, unique=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("macrostrat_auth.user.id"), nullable=True
+    )
+    created_by: Mapped[int] = mapped_column(
+        ForeignKey("macrostrat_auth.user.id"), nullable=True
+    )
+    token_type: Mapped[str] = mapped_column(
+        TEXT, nullable=False, server_default=text("'api'")
+    )
+    label: Mapped[str] = mapped_column(TEXT, nullable=True)
+    scopes: Mapped[list[str]] = mapped_column(ARRAY(TEXT), nullable=True)
     used_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -110,6 +113,8 @@ class Token(Base):
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    user: Mapped[User] = relationship(lazy="joined", foreign_keys=[user_id])
 
 
 class SchemeEnum(enum.Enum):
@@ -190,9 +195,10 @@ class IngestProcess(Base):
 
     comments: Mapped[str] = mapped_column(TEXT, nullable=True)
     # map_id: Mapped[str] = mapped_column(TEXT, nullable=True)
-    # access_group_id: Mapped[int] = mapped_column(
-    #     ForeignKey("macrostrat_auth.group.id"), nullable=True
-    # )
+    # access_group_id — note that `macrostrat_auth.group` no longer exists; if
+    # per-map access control is revived it belongs against organizations, not
+    # the role table that replaced it.
+    # access_group_id: Mapped[int] = mapped_column(nullable=True)
 
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
