@@ -4,7 +4,7 @@ from pathlib import Path
 import typer
 from rich import print
 from rich.traceback import install
-from typer import Argument, Typer
+from typer import Argument, Option, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
@@ -255,11 +255,33 @@ main.add_typer(auth_cli, name="auth", rich_help_panel="Subsystems")
     name="run",
 )
 def _run(
-    ctx: typer.Context, command: str = Argument(help="Command to run", default=None)
+    ctx: typer.Context,
+    command: str = Argument(help="Command to run", default=None),
+    database: str = Option(
+        None, "--database", "-d", help="Named database to point a pipeline at"
+    ),
 ):
-    """Run a command in the Macrostrat command-line context"""
+    """Run a command or a data pipeline in the Macrostrat command-line context.
+
+    A `command` that names an existing path is run as a **pipeline**: a directory
+    with a Makefile goes through `make` (extra arguments become the target), a file
+    through `uv run python`. Anything else is looked up in `srcroot/bin`.
+
+    A pipeline is *executed, not imported*, so it may live in its own virtualenv
+    with dependencies Macrostrat will never carry, or not be Python at all. It
+    receives the resolved environment:
+
+      MACROSTRAT_ENV           for a child that resolves config itself
+      MACROSTRAT_DATABASE_URL  for a child that has no Macrostrat in it
+
+        macrostrat run Maps/NGS sources
+        macrostrat run -d test Maps/NGS sources   # against a named database
+    """
 
     bindir = Path(settings.srcroot) / "bin"
+
+    if command is not None and Path(command).exists():
+        return _run_pipeline(Path(command), ctx.args, database)
 
     if command is None:
         # List available commands
@@ -518,3 +540,45 @@ for entry_point in discovered_plugins:
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
 
 # main = setup_exception_handling(main)
+
+
+def _run_pipeline(path: Path, args: list[str], database: str | None = None):
+    """Execute a pipeline with the active environment resolved into its own.
+
+    `database` names an entry in the environment's `databases` registry, which is
+    how a pipeline is pointed at a throwaway copy without changing anything
+    persistent -- the environment stays put and only the target moves.
+    """
+    from subprocess import run as run_process
+
+    from macrostrat.core.database import database_url_for
+
+    child = dict(environ)
+    # The launcher exports its own VIRTUAL_ENV; leaving it set makes `uv` ignore it
+    # with a warning and would shadow a pipeline's interpreter in tools that honour
+    # it. Running a pipeline in *its* environment is the point.
+    for var in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
+        child.pop(var, None)
+    if app.settings.env is not None:
+        child["MACROSTRAT_ENV"] = app.settings.env
+    try:
+        child["MACROSTRAT_DATABASE_URL"] = database_url_for(database or "macrostrat")
+    except KeyError as err:
+        # Not fatal. A pipeline may read from somewhere else entirely, and refusing
+        # here would break the runner for the case it exists to support.
+        print(f"[yellow]{err}[/yellow]")
+
+    if path.is_dir():
+        if not (path / "Makefile").exists():
+            raise MacrostratError(
+                f"[item]{path}[/item] has no Makefile",
+                details="Point at a script instead, or add one.",
+            )
+        cmd = ["make", "-C", str(path), *args]
+        cwd = None
+    else:
+        cmd = ["uv", "run", "python", path.name, *args]
+        cwd = path.parent
+
+    print(f"[dim]{' '.join(cmd)}[/dim] in {env_text()}")
+    raise typer.Exit(run_process(cmd, env=child, cwd=cwd).returncode)

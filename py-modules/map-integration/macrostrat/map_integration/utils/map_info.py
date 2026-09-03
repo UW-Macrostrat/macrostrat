@@ -108,8 +108,7 @@ def create_sources_record(db, slug) -> MapInfo:
     return MapInfo(id=source_id, slug=slug)
 
 
-def feature_counts(db, info: MapInfo):
-    db = get_database()
+def feature_counts(db: Database, info: MapInfo):
     res = db.run_query(
         """SELECT
             (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,

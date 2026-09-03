@@ -220,7 +220,7 @@ def lookup_and_validate_strat_name(
     return pd.NA
 
 
-def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
+def map_strat_name(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """
     Update legend_df with a new column 'ranked_strat_name' based on matched strat names.
     Looks for rank words and matches against known stratigraphic names.
@@ -232,7 +232,7 @@ def map_strat_name(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     Returns:
     - GeoDataFrame with an additional 'ranked_strat_name' column.
     """
-    rank_name_df = get_strat_names_df()
+    rank_name_df = get_strat_names_df(db)
     rank_name_set = set(rank_name_df["rank_name"].dropna().unique())
     # check name for matched strat_name
     meta_df["strat_name"] = (
@@ -315,7 +315,7 @@ def lookup_and_validate_age(
 
 # need to modify this logic and maybe need to reference another table besides intervals.
 # look in the name and age column to infer the age
-def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
+def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     """Populate the b_interval field using age and name information.
     The function first tries a direct match between legend_df.age and the
     canonical interval list. For formations whose age is not explicit, it scans
@@ -326,7 +326,7 @@ def map_t_b_intervals(meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     Returns:
     G.GeoDataFrame: The input frame with a newly filled/created b_interval column.
     """
-    interval_df = get_age_interval_df().reset_index(drop=True)
+    interval_df = get_age_interval_df(db).reset_index(drop=True)
     interval_lookup = {
         row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
     }

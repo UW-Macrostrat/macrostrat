@@ -101,3 +101,30 @@ migration-applied one converge on the same `APPLIED` state.
   `py-modules/cli/macrostrat/cli/entrypoint.py`.
 - Prefer `db.run_query()` (which accepts a list of param dicts for executemany)
   over raw SQLAlchemy connections.
+
+### Libraries take a database; only the CLI resolves one
+
+`get_database()` belongs in the **command layer and nowhere else**. Every function
+beneath it takes an explicit `db` (or engine / sessionmaker / connection), so it
+can be called from a notebook, a test, or a pipeline in a separate virtualenv that
+never loads Macrostrat's config. Keep heavy imports inside the command body rather
+than at module scope, so importing a subsystem stays cheap.
+
+`column-ingestion` is the model — `get_database()` appears only in its
+`__init__.py`, and commands are three lines:
+
+```python
+@app.command(name="ingest")
+def ingest_command(data_file: Path = Argument(...)):
+    from .ingest import ingest_columns_from_file   # lazy
+    db = get_database()                            # only here
+    ingest_columns_from_file(db, data_file)        # library takes it
+```
+
+This is the same rule the API v3 work settled from the other direction: utilities
+take a concrete engine, sessionmaker or connection, never the manager.
+
+`map-integration` predates the convention and is the outlier (21 files resolve
+their own database, e.g. `match/liths.py`, whose `get_lith_count` calls
+`get_database()` under the comment *"Not sure where this gets created to be
+honest..."*). Move a function to the convention when you touch it.

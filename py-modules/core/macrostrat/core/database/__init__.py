@@ -6,9 +6,45 @@ from sqlalchemy import create_engine, event
 
 from macrostrat.database import Database
 
-from ..config import PG_DATABASE
+from ..config import PG_DATABASE, settings
 
 db_ctx: ContextVar[Database | None] = ContextVar("db_ctx", default=None)
+
+# `pg_database` is the main database's key in the config; the named registry in
+# `[<env>.databases]` holds everything else.
+MAIN_DATABASE = "macrostrat"
+
+
+def database_url_for(name: str = MAIN_DATABASE, env: str | None = None) -> str:
+    """Look up a database URL by name, optionally in a named environment.
+
+    Independent of the process-global active environment, so a caller can target a
+    known deployment without the CLI having selected it first — which is what makes
+    a pipeline runnable against `test` without changing anything persistent.
+    """
+    cfg = settings if env is None else settings.from_env(env)
+    if name == MAIN_DATABASE:
+        # Injected into `settings.databases` at import rather than written in the
+        # TOML, so it is not in the registry when reached through `from_env`.
+        url = cfg.get("pg_database")
+    else:
+        url = (cfg.get("databases") or {}).get(name)
+    if url in (None, "None"):
+        where = f"environment {env!r}" if env else "the active environment"
+        raise KeyError(f"No database {name!r} configured for {where}")
+    return str(url)
+
+
+def database_for(name: str = MAIN_DATABASE, env: str | None = None) -> Database:
+    """Resolve a named database from configuration. See `database_url_for`.
+
+    Pass the result explicitly to library functions, or install it for code that
+    still resolves its own with `get_database()`:
+
+        with database_context(database_for(env="test")):
+            ...
+    """
+    return Database(database_url_for(name, env))
 
 
 def get_database():

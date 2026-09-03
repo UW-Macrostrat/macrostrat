@@ -30,7 +30,7 @@ def match_strat_names(map: MapInfo):
 
     print("      Starting strat name match at ", str(datetime.datetime.now()))
 
-    prepare_match_strat_names(source_id)
+    prepare_match_strat_names(db, source_id)
 
     elapsed = int(time.time() - start_time)
     print(
@@ -59,7 +59,7 @@ def match_strat_names(map: MapInfo):
         " seconds",
     )
 
-    count = get_match_count(source_id, Identifier("maps", "map_strat_names"))
+    count = get_match_count(db, source_id, Identifier("maps", "map_strat_names"))
     print(f"Matched [bold cyan]{count}[/] strat names")
 
 
@@ -72,9 +72,8 @@ def describe_argument(match_type: MatchType | None):
         return "no"
 
 
-def prepare_match_strat_names(source_id: int):
+def prepare_match_strat_names(db, source_id: int):
     proc = sql_file("prepare-match-strat-names")
-    db = get_database()
 
     db.run_sql(proc, {"source_id": source_id})
 
