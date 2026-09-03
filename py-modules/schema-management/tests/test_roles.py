@@ -4,11 +4,22 @@ Database roles are cluster objects, so the schema diff cannot see them; without
 this category, a diff-built database has none of the roles its grants name.
 """
 
+from macrostrat.schema_management.composer import SchemaDefinition
 from macrostrat.schema_management.roles import (
     iter_role_statements,
     rebuild_roles,
     role_statements_in,
 )
+
+_PROBE_ROLE = "macrostrat_sync_probe"
+
+
+def _role_exists(db, name: str) -> bool:
+    return bool(
+        db.run_query(
+            "SELECT 1 FROM pg_roles WHERE rolname = :name", dict(name=name)
+        ).scalar()
+    )
 
 
 def test_role_statements_in_finds_role_creation_only():
@@ -28,25 +39,49 @@ def test_role_statements_in_finds_role_creation_only():
     assert found[2].startswith("CREATE USER logs_writer")
 
 
-def test_sync_restores_a_dropped_role(schema_harness):
-    """A role missing from the cluster is re-created; the rest are stepped over."""
+def test_sync_creates_a_missing_role(schema_harness, tmp_path):
+    """A declared role absent from the cluster is created; a second pass skips it.
+
+    The role is declared by a chunk this test owns rather than by dropping a real
+    one: declared roles accumulate grants across the shared cluster (dropping
+    `rockd_reader` fails on its privileges for `audit.record_history`), so
+    removing one to manufacture the "missing" case is neither reliable nor safe.
+    """
+    db = schema_harness.load_schema(target="macrostrat")
+    sql = tmp_path / "01-roles.sql"
+    sql.write_text(
+        f"CREATE ROLE {_PROBE_ROLE} NOLOGIN;\n"
+        f"GRANT {_PROBE_ROLE} TO macrostrat;  -- a grant, not a creation\n"
+    )
+    chunks = [SchemaDefinition(name="probe-roles", provides=[sql])]
+
+    with db.transaction(rollback=True):
+        assert not _role_exists(db, _PROBE_ROLE)
+
+        created = rebuild_roles(db, chunks)
+        assert (created.total, created.applied) == (1, 1)
+        assert created.skipped == [] and created.failed == []
+        assert _role_exists(db, _PROBE_ROLE)
+
+        # Applied again, the role is already there: noted, not failed.
+        again = rebuild_roles(db, chunks)
+        assert (again.total, again.applied, again.failed) == (1, 0, [])
+        assert len(again.skipped) == 1
+
+
+def test_sync_steps_over_roles_the_build_already_created(schema_harness):
+    """Against a provisioned database the sweep is a whole-cluster no-op.
+
+    Each statement runs in its own transaction and is rolled back on failure, so
+    the duplicates neither abort the run nor land in the failure report.
+    """
     db = schema_harness.load_schema(target="macrostrat")
     chunks = schema_harness.chunks()
 
-    def exists(name: str) -> bool:
-        return bool(
-            db.run_query(
-                "SELECT 1 FROM pg_roles WHERE rolname = :name", dict(name=name)
-            ).scalar()
-        )
+    with db.transaction(rollback=True):
+        report = rebuild_roles(db, chunks)
 
-    assert exists("rockd_reader")  # the declarative build created it
-    db.run_sql("DROP ROLE rockd_reader", raise_errors=True)
-    assert not exists("rockd_reader")
-
-    report = rebuild_roles(db, chunks)
-    assert exists("rockd_reader")
-    assert report.failed == []
-    # Everything else was already there: noted as skipped, not failed.
-    assert len(report.skipped) == report.total - 1
     assert report.total == len(list(iter_role_statements(chunks)))
+    assert report.total > 0
+    assert report.failed == []
+    assert len(report.skipped) == report.total
