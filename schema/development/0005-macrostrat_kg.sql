@@ -122,6 +122,9 @@ CREATE TABLE macrostrat_kg.all_runs (
 CREATE TABLE macrostrat_kg.entity (
     name text NOT NULL,
     corrected_name text,
+    strat_name_id integer,
+    lith_id integer,
+    lith_att_id integer,
     start_index integer NOT NULL,
     end_index integer NOT NULL,
     run_id integer NOT NULL,
