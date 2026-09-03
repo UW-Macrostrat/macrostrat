@@ -267,6 +267,19 @@ CREATE TABLE maps.lines_tiny (
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
 
+/** Hand-made additions and removals layered over the derived strat-name and unit
+  matches for a polygon.
+
+  `map_id` deliberately carries **no** foreign key: `maps.polygons` is partitioned
+  by scale, so its primary key is `(map_id, scale)` and a unique index on `map_id`
+  alone cannot exist. The reference is unenforceable rather than unenforced.
+
+  That matters because `maps.polygons.map_id` defaults to `nextval('maps.map_ids')`
+  and is therefore regenerated when a source is re-ingested -- so curation for that
+  source silently stops resolving, with nothing to notice. The durable key is
+  `(source_id, orig_id)`, which is what re-ingestion preserves; rekeying to it is
+  the real repair, and is tracked separately.
+*/
 CREATE TABLE maps.manual_matches (
     match_id integer NOT NULL,
     map_id integer NOT NULL,
@@ -274,7 +287,15 @@ CREATE TABLE maps.manual_matches (
     unit_id integer,
     addition boolean DEFAULT false,
     removal boolean DEFAULT false,
-    type character varying(20)
+    type character varying(20),
+    CONSTRAINT manual_matches_pkey PRIMARY KEY (match_id),
+    CONSTRAINT manual_matches_unit_fk FOREIGN KEY (unit_id)
+      REFERENCES macrostrat.units(id),
+    -- 53 of 21,711 rows point at strat names that no longer exist. `NOT VALID`
+    -- stops new ones without asserting the past is clean, the way
+    -- `strat_tree_refs_fk` already does.
+    CONSTRAINT manual_matches_strat_name_fk FOREIGN KEY (strat_name_id)
+      REFERENCES macrostrat.strat_names(id) NOT VALID
 );
 
 CREATE SEQUENCE maps.manual_matches_match_id_seq
