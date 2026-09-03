@@ -109,7 +109,7 @@ def test_sync_creates_a_missing_role(schema_harness, tmp_path):
     db = schema_harness.load_schema(target="macrostrat")
     sql = tmp_path / "01-roles.sql"
     sql.write_text(
-        f"CREATE ROLE {_PROBE_ROLE} NOLOGIN;\n" f"GRANT {_PROBE_ROLE} TO macrostrat;\n"
+        f"CREATE ROLE {_PROBE_ROLE} NOLOGIN;\nGRANT {_PROBE_ROLE} TO macrostrat;\n"
     )
     chunks = [SchemaDefinition(name="probe-roles", provides=[sql])]
 
