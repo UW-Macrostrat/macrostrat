@@ -1,16 +1,10 @@
 """Tests for seed-data detection and re-application."""
 
-from pytest import mark
-
-from macrostrat.schema_management.composer import build_schema, selected_chunks
-from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.seed_data import (
     _is_non_idempotent_insert,
     data_statements_in,
     rebuild_seed_data,
 )
-
-_ENV = "development"
 
 
 def test_seed_statements_in_detects_data_dml_only():
@@ -63,14 +57,13 @@ def test_non_idempotent_insert_detection():
     assert _is_non_idempotent_insert("UPDATE s.t SET x = 1") is False
 
 
-@mark.docker
-@mark.slow
-def test_sync_reapplies_seed_data():
+def test_sync_reapplies_seed_data(schema_harness):
     """After provisioning, `sync`'s data category restores wiped seed rows."""
-    with temporary_database_cluster(username="macrostrat_admin") as db:
-        # `core` includes maps_metadata and its ingest_state seed insert.
-        chunks = selected_chunks(_ENV, target="core")
-        build_schema(db, _ENV, chunks=chunks)
+    # `core` includes maps_metadata and its ingest_state seed insert.
+    db = schema_harness.load_schema(target="core")
+    chunks = schema_harness.chunks()
+
+    with db.transaction(rollback=True):
 
         def states():
             return set(
@@ -91,33 +84,26 @@ def test_sync_reapplies_seed_data():
         assert states() == seeded  # sync re-applied the seed INSERT
 
 
-@mark.docker
-@mark.slow
-def test_auth_roles_are_seeded_and_resynced():
-    """The `macrostrat_auth.role` rows exist after a de-novo build, and sync
-    restores them from the same `INSERT … ON CONFLICT` if they are wiped.
+def test_auth_roles_are_seeded_and_resynced(schema_harness):
+    """`macrostrat_auth.role` is seeded by the build, and sync converges it.
 
-    This is the seeded-reference-data contract in miniature: `user.role` is a
-    string FK with no database default, so a database whose role table is empty
-    cannot create a user at all.
+    `user.role` is a string FK with no database default, so a database whose role
+    table is empty cannot create a user at all. The seed is `ON CONFLICT ... DO
+    UPDATE`, so sync owns the postgres_role mapping and not just the keys.
     """
-    with temporary_database_cluster(username="macrostrat_admin") as db:
-        chunks = selected_chunks(_ENV, target="core")
-        build_schema(db, _ENV, chunks=chunks)
+    db = schema_harness.load_schema(target="macrostrat")
+    chunks = schema_harness.chunks()
+    expected = {"user": "web_user", "admin": "web_admin", "test": "web_user"}
+
+    with db.transaction(rollback=True):
 
         def roles():
             return dict(
                 db.run_query("SELECT id, postgres_role FROM macrostrat_auth.role").all()
             )
 
-        assert roles() == {
-            "user": "web_user",
-            "admin": "web_admin",
-            "test": "web_user",
-        }
+        assert roles() == expected
 
-        # A drifted mapping converges too: the seed is ON CONFLICT DO UPDATE,
-        # not DO NOTHING, so sync owns the column values and not just the keys.
         db.run_sql(
             "UPDATE macrostrat_auth.role SET postgres_role = 'web_anon'",
             raise_errors=True,
@@ -127,8 +113,4 @@ def test_auth_roles_are_seeded_and_resynced():
         )
 
         rebuild_seed_data(db, chunks)
-        assert roles() == {
-            "user": "web_user",
-            "admin": "web_admin",
-            "test": "web_user",
-        }
+        assert roles() == expected

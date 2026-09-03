@@ -334,8 +334,10 @@ def provision(
     counter.print_report()
 
 
-def _report(label: str, applied: int, failed: int):
+def _report(label: str, applied: int, failed: int, skipped: int = 0):
     msg = f"[dim]{applied} {label} applied"
+    if skipped:
+        msg += f" ({skipped} already present)"
     if failed:
         msg += f" ([yellow]{failed} failed[/])"
     print(msg)
@@ -383,7 +385,7 @@ def sync(
     if roles:
         r = rebuild_roles(db, chunks)
         failures += r.failed
-        _report("roles", r.applied, len(r.failed))
+        _report("roles", r.applied, len(r.failed), len(r.skipped))
     if procedures:
         r = rebuild_procedures(db, chunks)
         failures += r.failed

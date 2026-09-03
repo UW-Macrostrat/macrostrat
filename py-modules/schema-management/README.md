@@ -36,11 +36,12 @@ builds them.
   `--no-roles` / `--no-views` / `--no-procedures` / `--no-data` / `--no-permissions`, and
   restrict to a subsystem with the shared `--target` / `--no-dependents` option block (see
   below). Per category:
-    - *roles* (`roles.py`) — `CREATE ROLE` / `USER` / `GROUP`, wrapped in a `pg_roles` existence
-      check (there is no `IF NOT EXISTS`). Roles are **cluster** objects, so `migra` cannot see
-      them at all: on a diff-built database they never exist and every grant naming one fails
-      silently. Applied **first**, before grants. Attribute drift on an existing role is
-      deliberately not reconciled — that is a live credential, not a rebuild.
+    - *roles* (`roles.py`) — `CREATE ROLE` / `USER` / `GROUP`, applied as declared. Roles are
+      **cluster** objects, so `migra` cannot see them at all: on a diff-built database they
+      never exist and every grant naming one fails. Applied **first**, before grants; a role
+      that already exists raises `42710`, which is counted as skipped and stepped over rather
+      than pre-checked. Attributes of an existing role are not reconciled — that is a live
+      credential, not a rebuild.
     - *views* (`views.py`) — `CREATE OR REPLACE` by default; drop-and-recreate (restoring grants)
       only on a signature change (SQLSTATE 42P16), via the `macrostrat.database` `on_error` hook.
     - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; signature changes

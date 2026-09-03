@@ -40,10 +40,13 @@ def iter_chunk_statements(
 class RebuildReport:
     total: int = 0
     failed: list[str] = field(default_factory=list)
+    # Statements whose failure was expected and is not worth reporting as one —
+    # e.g. creating a role that is already there.
+    skipped: list[str] = field(default_factory=list)
 
     @property
     def applied(self) -> int:
-        return self.total - len(self.failed)
+        return self.total - len(self.failed) - len(self.skipped)
 
 
 def apply_statements(
@@ -51,12 +54,17 @@ def apply_statements(
     statements: Iterator[str],
     *,
     transform: Optional[Callable[[str], str]] = None,
+    tolerate: Optional[Callable[[Exception], bool]] = None,
 ) -> RebuildReport:
     """Best-effort: run each statement, recording (not raising on) failures.
 
     ``transform`` optionally rewrites a statement before it runs (e.g. ``CREATE`` →
     ``CREATE OR REPLACE``). A statement that fails — e.g. a grant on an object
     absent in this environment — is logged and skipped so the rebuild completes.
+
+    ``tolerate`` recognizes an error that is an expected outcome rather than a
+    problem (an object that already exists, say); those are counted as skipped
+    and left out of the failure report.
     """
     report = RebuildReport()
     for statement in statements:
@@ -65,6 +73,9 @@ def apply_statements(
         try:
             db.run_sql(sql, raise_errors=True)
         except Exception as err:  # noqa: BLE001 — best-effort; record and continue
+            if tolerate is not None and tolerate(err):
+                report.skipped.append(statement)
+                continue
             log.warning("statement failed (%s): %s", err, str(sql)[:100])
             report.failed.append(statement)
     return report

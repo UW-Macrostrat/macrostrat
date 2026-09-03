@@ -49,6 +49,10 @@ actually run (not on a state the declarative chunk could also produce).
   rather than a `%`-format string.
 - Similarly, a literal `:` in SQL (e.g. in a regex like `(?:www\.)`) trips
   SQLAlchemy's bind-parameter parsing and must be escaped as `\:`.
+- **Don't guard against "already exists".** Schema application tolerates errors,
+  so state objects declaratively and let a duplicate raise, get noted, and be
+  stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more
+  than they buy.
 
 ## Running things
 
@@ -59,6 +63,11 @@ actually run (not on a state the declarative chunk could also produce).
   and restart before any schema depending on them can be applied.
 - Tests: `macrostrat test all` (pulls config from the local DB, avoiding cert
   issues).
+- **Use the shared testing cluster.** Build on the session-scoped `schema_harness`
+  / `empty_db` fixtures (a rollback transaction for writes, as `test_audit_triggers`
+  does) rather than standing up a `temporary_database_cluster` per module — a new
+  cluster costs CI minutes. Spin one up only when a test genuinely needs its own
+  (e.g. the unoptimized drift build).
 
 ## Python
 
