@@ -4,10 +4,14 @@ Database roles are cluster objects, so the schema diff cannot see them; without
 this category, a diff-built database has none of the roles its grants name.
 """
 
+from psycopg.errors import DuplicateObject, InsufficientPrivilege
+from sqlalchemy.exc import ProgrammingError
+
 from macrostrat.schema_management.composer import SchemaDefinition
 from macrostrat.schema_management.roles import (
     iter_role_statements,
     rebuild_roles,
+    role_already_exists,
     role_statements_in,
 )
 
@@ -39,6 +43,21 @@ def test_role_statements_in_finds_role_creation_only():
     assert found[2].startswith("CREATE USER logs_writer")
 
 
+def test_role_already_exists_reads_the_drivers_sqlstate():
+    """Against the real driver exception, not a stand-in.
+
+    psycopg 3 spells the code `sqlstate` (psycopg 2 `pgcode`), so a check written
+    for one attribute silently classifies every duplicate as a failure.
+    """
+
+    def wrapped(err):
+        return ProgrammingError("CREATE ROLE x", {}, err)
+
+    assert role_already_exists(wrapped(DuplicateObject("role x already exists")))
+    assert not role_already_exists(wrapped(InsufficientPrivilege("permission denied")))
+    assert not role_already_exists(RuntimeError("something else"))
+
+
 def test_sync_creates_a_missing_role(schema_harness, tmp_path):
     """A declared role absent from the cluster is created; a second pass skips it.
 
@@ -55,9 +74,8 @@ def test_sync_creates_a_missing_role(schema_harness, tmp_path):
     )
     chunks = [SchemaDefinition(name="probe-roles", provides=[sql])]
 
-    with db.transaction(rollback=True):
-        assert not _role_exists(db, _PROBE_ROLE)
-
+    assert not _role_exists(db, _PROBE_ROLE)
+    try:
         created = rebuild_roles(db, chunks)
         assert (created.total, created.applied) == (1, 1)
         assert created.skipped == [] and created.failed == []
@@ -67,19 +85,23 @@ def test_sync_creates_a_missing_role(schema_harness, tmp_path):
         again = rebuild_roles(db, chunks)
         assert (again.total, again.applied, again.failed) == (1, 0, [])
         assert len(again.skipped) == 1
+    finally:
+        db.run_sql(f"DROP ROLE IF EXISTS {_PROBE_ROLE}", raise_errors=False)
 
 
 def test_sync_steps_over_roles_the_build_already_created(schema_harness):
     """Against a provisioned database the sweep is a whole-cluster no-op.
 
-    Each statement runs in its own transaction and is rolled back on failure, so
-    the duplicates neither abort the run nor land in the failure report.
+    Each statement gets its own transaction and is rolled back on failure, so the
+    duplicates neither abort the run nor land in the failure report. Nothing is
+    written, so there is nothing to roll back — and a sweep must not be wrapped
+    in `db.transaction` anyway: with the session already in a transaction,
+    `_execute_one` cannot open its own and rolls back the caller's instead.
     """
     db = schema_harness.load_schema(target="macrostrat")
     chunks = schema_harness.chunks()
 
-    with db.transaction(rollback=True):
-        report = rebuild_roles(db, chunks)
+    report = rebuild_roles(db, chunks)
 
     assert report.total == len(list(iter_role_statements(chunks)))
     assert report.total > 0

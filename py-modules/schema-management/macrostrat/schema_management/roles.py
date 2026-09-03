@@ -47,8 +47,15 @@ def iter_role_statements(chunks) -> Iterator[str]:
 
 
 def role_already_exists(err: Exception) -> bool:
-    """Whether ``err`` is the "this role is already there" error."""
-    return getattr(getattr(err, "orig", None), "pgcode", None) == _DUPLICATE_OBJECT
+    """Whether ``err`` is the "this role is already there" error.
+
+    Read from the driver exception SQLAlchemy wraps (``.orig``). psycopg 3 spells
+    the code ``sqlstate`` and psycopg 2 ``pgcode``; both drivers are installed
+    here, so check for either rather than matching on the message text.
+    """
+    orig = getattr(err, "orig", err)
+    code = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
+    return code == _DUPLICATE_OBJECT
 
 
 def rebuild_roles(db: Database, chunks) -> RebuildReport:

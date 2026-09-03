@@ -52,7 +52,13 @@ actually run (not on a state the declarative chunk could also produce).
 - **Don't guard against "already exists".** Schema application tolerates errors,
   so state objects declaratively and let a duplicate raise, get noted, and be
   stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more
-  than they buy.
+  than they buy. Classify such an error by SQLSTATE off the wrapped driver
+  exception (`err.orig`), reading psycopg 3's `sqlstate` **or** psycopg 2's
+  `pgcode` — both drivers are installed.
+- **Never wrap an error-tolerating sweep in `db.transaction`.** `run_sql` gives
+  each statement its own transaction *only* when the session isn't already in
+  one; inside `db.transaction` a failed statement rolls back the caller's
+  transaction instead, and the fixture's own rollback then fails.
 
 ## Running things
 
