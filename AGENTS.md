@@ -50,6 +50,28 @@ actually run (not on a state the declarative chunk could also produce).
 - Similarly, a literal `:` in SQL (e.g. in a regex like `(?:www\.)`) trips
   SQLAlchemy's bind-parameter parsing and must be escaped as `\:`.
 
+## Environments and write safety
+
+Read **`docs/Environment configuration and write safety.md`** before running
+anything against a non-local environment. In short:
+
+- Every environment in `macrostrat.toml` declares an `env_class`
+  (`local` / `development` / `staging` / `production`), which selects a gate on
+  `data` and `schema` writes. **An environment that declares no class is
+  treated as `production`.**
+- Mutating commands are gated. `staging` and `production` gates **cannot be
+  satisfied without an interactive terminal** — there is no flag or environment
+  variable that bypasses them, by design. Do not try to work around a refusal;
+  it is the intended behaviour.
+- `macrostrat env <name>` expires after 15 minutes for any non-`local`
+  environment. Use `--env` for a single command.
+- Credentials may be literals or references (`op://`, `env://`, `file://`,
+  `keychain://`). An environment using references gets **no ambient `PG*` /
+  `STORAGE_*` / `SECRET_KEY`** variables — reach credentials through
+  `settings.database_url(role=...)` / `settings.storage_endpoint(...)`.
+- Commands that print config redact by default; `--reveal` is refused without a
+  terminal. Do not add a command that prints a credential unredacted.
+
 ## Running things
 
 - `macrostrat up` rebuilds the docker-compose stack. Python and SQL changes in
@@ -64,8 +86,15 @@ actually run (not on a state the declarative chunk could also produce).
 
 - The workspace is `uv`-managed; py-modules are editable path dependencies wired
   in `py-modules/cli/pyproject.toml` and the root `pyproject.toml`.
-- Format with `black` and `isort` (profile `black`, line length 88), configured
-  in the root `pyproject.toml`.
+- Format with **ruff**: `make format` runs `ruff format .` then
+  `ruff check --fix .`. Configured in the root `pyproject.toml`
+  (`line-length = 88`, `lint.select = ["I"]` for import sorting,
+  `lint.isort.known-first-party = ["macrostrat"]`, and
+  `extend-exclude = ["__archive*", "submodules"]`). CI runs `make format` on
+  every pull request and commits the result, so formatting with anything else
+  produces churn. The `[tool.black]` / `[tool.isort]` blocks left in
+  `py-modules/core/pyproject.toml` are vestigial — black and isort are not
+  installed as dev dependencies and disagree with ruff on import grouping.
 - CLI subsystems are Typer apps registered through the
   `macrostrat.subsystems` entry-point group, plus explicit `add_typer` calls in
   `py-modules/cli/macrostrat/cli/entrypoint.py`.

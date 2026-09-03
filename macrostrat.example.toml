@@ -31,3 +31,96 @@ pg_database_pod = "dev-macrostrat-db"
 
 pg_database = "postgresql://remote_user:remote_password@cool-other-server.usgs.gov:5432/criticalmaas_maps"
 
+
+# ---------------------------------------------------------------------------
+# Environment classification and secret references
+# ---------------------------------------------------------------------------
+# Every environment above still works exactly as written. The keys below are
+# additive: an older CLI ignores them, and a newer CLI treats an environment
+# that omits `env_class` as `production` unless it is named `local`.
+
+# `env_class` says how expensive it should be to write here — one of
+# local | development | staging | production. It selects a default gate for
+# each scope of write (data / schema), which a `write_gate` table can override
+# per scope. There is no `services` scope: `up`/`down`/`restart` manage the
+# local compose stack only.
+[staging]
+env_class = "staging"
+pg_database = "postgresql://macrostrat-admin:my-cool-password@staging.example.org:5432/macrostrat"
+
+[staging.write_gate]
+schema = "escalate"    # stricter than the staging default for DDL
+
+# A credential may *name* a secret rather than containing one. Any value whose
+# scheme is a registered resolver is fetched on demand, never at config load:
+#
+#   op://<vault>/<item>/<section>/<field>   1Password CLI (`op read`)
+#   env://VAR_NAME                          process environment (CI, cloud)
+#   file:///run/secrets/db-password          Kubernetes / Docker secret mounts
+#   keychain://service/account               macOS keychain
+#
+# `postgresql://…` is not a registered scheme, so ordinary connection URLs are
+# still literals.
+#
+# The smallest adoption step keeps the existing shape and puts the whole URL in
+# the vault:
+[staging-vaulted]
+env_class = "staging"
+pg_database = "op://Macrostrat Staging/macrostrat-db/admin/url"
+
+# The full form keeps the topology in plaintext — greppable, reviewable, safe to
+# commit — and names one credential per role. A read path then cannot
+# accidentally hold write capability.
+[production]
+env_class = "production"
+
+[production.database]
+host = "db.production.svc.macrostrat.org"
+port = 5432
+database = "macrostrat"
+reader_user = "macrostrat_reader"
+writer_user = "macrostrat-admin"
+reader = "op://Macrostrat Prod/macrostrat-db/reader/password"
+writer = "op://Macrostrat Prod/macrostrat-db/admin/password"
+
+# Note: an environment whose credential is a reference gets **no ambient PG*
+# environment variables**. Exporting them would mean resolving the secret at
+# import and handing it to every subprocess, which is the leak the indirection
+# exists to close. Adopting a reference is therefore also how an environment
+# opts out of ambient credentials; configs holding literals are unaffected.
+
+# --- Storage (Ceph / S3) ----------------------------------------------------
+# Same treatment as databases: plaintext topology, credentials by reference,
+# one line per additional store.
+[default.storage]
+endpoint = "https://storage.macrostrat.org"
+
+[production.storage]
+access_key = "op://Macrostrat Prod/ceph-app/access_key"
+secret_key = "op://Macrostrat Prod/ceph-app/secret_key"
+
+[production.storage.buckets]                    # logical name -> bucket
+map-staging = "map-staging-prod"
+
+# The cluster-admin credential is a separate named endpoint on purpose:
+# radosgw-admin can create and delete users and buckets cluster-wide, so
+# nothing should reach it while resolving an ordinary object credential.
+[production.storage.admin]
+type = "ceph-object-storage"
+access_key = "op://Macrostrat Prod/ceph-admin/access_key"
+secret_key = "op://Macrostrat Prod/ceph-admin/secret_key"
+
+[production.storage.endpoints]
+access-logs  = "macrostrat-access-logs"         # bucket on the default endpoint
+rockd-backup = { bucket = "rockd-photo-backup" }
+
+# NOTE: `[<env>.storage].secret_key` is an S3 secret access key. The *top-level*
+# `secret_key` below is something else entirely — the JWT signing key for
+# api-v3 and, via PGRST_JWT_SECRET, for PostgREST. A JWT signed with it and
+# carrying `role: web_admin` is honoured by PostgREST, so it confers full write
+# access without any database password. Treat it as the most sensitive value
+# here, not as an afterthought.
+# `token_signing_key` is the preferred name for exactly this reason; plain
+# `secret_key` is still honoured, and the preferred name wins when both appear.
+[production]
+token_signing_key = "op://Macrostrat Prod/api-v3/jwt/secret_key"
