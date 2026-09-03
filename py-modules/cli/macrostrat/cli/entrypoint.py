@@ -4,12 +4,19 @@ from pathlib import Path
 import typer
 from rich import print
 from rich.traceback import install
-from typer import Argument, Typer
+from typer import Argument, Option, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
+from macrostrat.core.environment import declared_policy_for
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.utils import env_text, set_app_state
+from macrostrat.core.secrets import redact_mapping, refuse_non_interactive_reveal
+from macrostrat.core.utils import (
+    NON_LOCAL_TTL,
+    active_env_remaining,
+    env_text,
+    set_active_env,
+)
 from macrostrat.schema_management import schema_app
 from macrostrat.usage_stats import app as usage_stats_app
 from macrostrat.utils import get_logger
@@ -150,30 +157,77 @@ for sub in subsystem_commands:
 
 
 @main.command(name="env")
-def set_env(env: str = Argument(None), unset: bool = False):
-    """Set the active environment"""
+def set_env(
+    env: str = Argument(None),
+    unset: bool = False,
+    shell: bool = Option(
+        False,
+        "--shell",
+        help="Print an export line instead of remembering the environment. "
+        'Use as: eval "$(macrostrat env --shell staging)"',
+    ),
+):
+    """Set the active environment
+
+    A `local`-class environment is remembered indefinitely. Anything else is
+    remembered for 15 minutes, because a persisted pointer at a remote database
+    that outlives the task is the sticky-global-state problem this guards
+    against: a different terminal, a subagent's shell or a cron job days later
+    would otherwise silently target it.
+
+    For a longer session that ends when the terminal does, use `--shell`.
+    """
     try:
         current_env = app.settings.env
     except AttributeError:
         current_env = None
+
     if env is None:
         if current_env is None:
             raise MacrostratError("No environment set")
-        print(current_env)
+        remaining = active_env_remaining()
+        if remaining is None:
+            print(current_env)
+        else:
+            minutes = max(0, int(remaining.total_seconds() // 60))
+            print(f"{current_env} [dim](lapses in {minutes} min)[/dim]")
         return
+
     if unset:
-        set_app_state("active_env", None, wipe_others=True)
+        set_active_env(None)
         return
+
     environments = app.settings.all_environments()
     if env not in environments:
         raise MacrostratError(
             f"Environment [item]{env}[/item] is not valid",
             details=_available_environments(environments),
         )
-    should_wipe = current_env != env
-    set_app_state("active_env", env, wipe_others=should_wipe)
+
+    policy = declared_policy_for(app.settings.config_file, env)
+
+    if shell:
+        # Nothing is persisted: the environment lives in the shell that
+        # evaluates this and dies with it.
+        print(f"export MACROSTRAT_ENV={env}")
+        return
+
+    expires_in = None if policy.is_local else NON_LOCAL_TTL
+    expires = set_active_env(env, expires_in=expires_in)
     environ["MACROSTRAT_ENV"] = env
-    print(f"Activated {env_text()}")
+
+    if expires is None:
+        print(f"Activated {env_text()}")
+    else:
+        minutes = int(NON_LOCAL_TTL.total_seconds() // 60)
+        print(
+            f"Activated {env_text()} [bold yellow]({policy.env_class.value})[/] "
+            f"[dim]for {minutes} min, until {expires:%H:%M}[/dim]"
+        )
+        print(
+            "[dim]Use --env for a single command, or "
+            f'eval "$(macrostrat env --shell {env})" for a shell session.[/dim]'
+        )
 
 
 def _available_environments(environments):
@@ -377,18 +431,6 @@ if sgp_url := getattr(settings, "sgp_database", None):
 
     main.add_typer(sgp, rich_help_panel="Integrations")
 
-# Mariadb CLI
-if mariadb_url := getattr(settings, "mysql_database", None):
-    from .database.mariadb import app as mariadb_app
-
-    main.add_typer(
-        mariadb_app,
-        name="mariadb",
-        rich_help_panel="Legacy",
-        short_help="Manage the MariaDB database",
-        deprecated=True,
-    )
-
 # Knowledge graph CLI
 from .subsystems.xdd import cli as kg_cli
 
@@ -426,9 +468,22 @@ def inspect():
 
 # Print the environment variables
 @self_app.command()
-def printenv():
-    """Print the environment variables"""
-    for k, v in environ.items():
+def printenv(
+    reveal: bool = Option(
+        False, "--reveal", help="Show credential values in plain text"
+    ),
+):
+    """Print the environment variables
+
+    Values whose name looks like a credential — and any value containing a
+    secret resolved in this process — are redacted unless --reveal is passed.
+    This command used to print PGPASSWORD and SECRET_KEY verbatim.
+    """
+    if reveal:
+        refuse_non_interactive_reveal("environment variables")
+
+    items = environ.items() if reveal else redact_mapping(environ).items()
+    for k, v in items:
         print(f"[bold cyan]{k}[/]: {v}")
 
 

@@ -2,22 +2,20 @@
 Storage system management
 """
 
-import re
 import subprocess
-import tempfile
+from functools import wraps
 from os import environ, path
-from subprocess import run
 from textwrap import dedent
-from typing import List, Optional
 
 from rich import print
-from typer import Argument, Option, Typer
+from typer import Option, Typer
 
 from macrostrat.core import app as app_
 from macrostrat.utils import get_logger
 
 from ...core.exc import MacrostratError
-from ..kubernetes import _kubectl, get_secret
+from ...core.storage import ADMIN_ENDPOINT, credential_file
+from ..kubernetes import _kubectl
 from .rebuild import short_help
 
 settings = app_.settings
@@ -28,21 +26,96 @@ log = get_logger(__name__)
 admonitions = "[bold red](none defined for the current environment)[/]"
 app = Typer(no_args_is_help=True, help="Storage system management\n" + admonitions)
 
+
+def _export_radosgw_credentials():
+    """Put the Ceph cluster-admin credential in the environment, per invocation.
+
+    `radosgw_admin` reads `RADOSGW_*` inside `get_connection()`, at command-run
+    time, so this only has to have happened before a storage command's body
+    runs — not at import.
+
+    That distinction is the whole point. This used to run in the module body, so
+    importing the storage subsystem — which the CLI does while building its
+    command tree for *any* invocation, `macrostrat --help` included — put a
+    credential that can create and delete users and buckets cluster-wide into
+    the environment of every subprocess of every command.
+
+    Residual exposure, worth being clear about: for the storage admin commands
+    themselves the credential still passes through `os.environ` and is
+    inherited by anything they spawn. Closing that needs `radosgw_admin` to
+    accept credentials directly (`get_connection` already takes them as
+    arguments) rather than reading the environment, which is a change in the
+    storage-admin submodule.
+    """
+    endpoint = settings.storage_endpoint(ADMIN_ENDPOINT)
+    if endpoint is None:
+        raise MacrostratError(
+            "No Ceph object-storage admin endpoint is configured",
+            details="Expected a [<env>.storage.admin] table for this environment.",
+        )
+    access_key, secret_key = endpoint.credentials()
+    environ["RADOSGW_ACCESS_KEY"] = access_key
+    environ["RADOSGW_SECRET_KEY"] = secret_key
+    environ["RADOSGW_HOST"] = endpoint.host
+
+
+def _wrap_callback(typer_app, hook):
+    """Run *hook* before *typer_app*'s existing group callback.
+
+    Typer allows one callback per app and `radosgw_admin` already registers one
+    (`--output`, `--json/--human`, `--verbose`), so the existing function is
+    wrapped rather than replaced. `functools.wraps` copies `__wrapped__`, which
+    is what keeps `inspect.signature` — and so Typer's option generation —
+    seeing the original signature.
+    """
+    info = getattr(typer_app, "registered_callback", None)
+    original = getattr(info, "callback", None) if info is not None else None
+
+    if original is None:
+        typer_app.callback()(hook)
+        return
+
+    @wraps(original)
+    def wrapped(*args, **kwargs):
+        hook()
+        return original(*args, **kwargs)
+
+    info.callback = wrapped
+
+
 if admin := settings.get("storage.admin", None):
-    host = settings.get("storage.endpoint", None)
-
-    if getattr(admin, "type") == "ceph-object-storage":
-        access_key = getattr(admin, "access_key")
-        secret_key = getattr(admin, "secret_key")
-
-        # Set up the radosgw-admin command
-
-        environ["RADOSGW_ACCESS_KEY"] = access_key
-        environ["RADOSGW_SECRET_KEY"] = secret_key
-        environ["RADOSGW_HOST"] = re.sub("^https?://", "", host)
+    if str(getattr(admin, "type", "")) == "ceph-object-storage":
         from macrostrat.radosgw_admin.cli import app as storage_app
 
+        # Imported at module scope so `--help` still lists the commands; the
+        # credential itself is resolved and exported only once one of them runs.
+        _wrap_callback(storage_app, _export_radosgw_credentials)
         app = storage_app
+
+
+def _bucket_credentials(endpoint_name: str, legacy_prefix: str):
+    """An access/secret pair, preferring a named storage endpoint.
+
+    Falls back to the flat `storage.<prefix>_access` / `_secret` keys this
+    command has always read, so existing configs keep working while new ones
+    can name the credential in a secret manager under
+    `[<env>.storage.endpoints.<name>]`.
+    """
+    endpoint = settings.storage_endpoint(endpoint_name)
+    if endpoint is not None:
+        return endpoint.credentials()
+
+    access = settings.get(f"storage.{legacy_prefix}_access")
+    secret = settings.get(f"storage.{legacy_prefix}_secret")
+    if access is None or secret is None:
+        raise MacrostratError(
+            f"No credentials for {endpoint_name}",
+            details=(
+                f"Expected [<env>.storage.endpoints.{endpoint_name}], or the "
+                f"legacy storage.{legacy_prefix}_access / _secret keys."
+            ),
+        )
+    return access, secret
 
 
 @app.command()
@@ -56,13 +129,10 @@ def s3_bucket_migration(
 ):
     """Must be in the development env to run this command."""
     endpoint = settings.get("storage.endpoint")
-    b_access = settings.get("storage.rockd_backup_access")
-    b_secret = settings.get("storage.rockd_backup_secret")
-    p_access = settings.get("storage.rockd_prod_access")
-    p_secret = settings.get("storage.rockd_prod_secret")
+    b_access, b_secret = _bucket_credentials("rockd-backup", "rockd_backup")
+    p_access, p_secret = _bucket_credentials("rockd-prod", "rockd_prod")
 
-    cfg = dedent(
-        f"""
+    cfg = dedent(f"""
         [rockd-backup]
         type = s3
         provider = Minio
@@ -78,13 +148,14 @@ def s3_bucket_migration(
         access_key_id = {p_access}
         secret_access_key = {p_secret}
         acl = private
-    """
-    )
+    """)
 
-    with tempfile.NamedTemporaryFile("w+", delete=False) as tf:
-        tf.write(cfg)
-        tf.flush()
-
+    # rclone has no way to take credentials on stdin, so they have to reach it
+    # as a file. Two things follow: the file is created private and truncated on
+    # the way out (`_credential_file` below), and it is *deleted* — this used to
+    # be a NamedTemporaryFile(delete=False) with no unlink anywhere, so every
+    # run left four Ceph access/secret pairs in the temp directory permanently.
+    with credential_file(cfg, prefix="macrostrat-rclone-", suffix=".conf") as tf_name:
         # local rclone cmd
         cmd = [
             "rclone",
@@ -92,7 +163,7 @@ def s3_bucket_migration(
             f"rockd-backup:{src}",
             f"rockd-prod:{dst}",
             "--config",
-            tf.name,
+            tf_name,
             "--checksum",
             "--metadata",
             "--transfers",
@@ -115,7 +186,7 @@ def s3_bucket_migration(
             subprocess.run(cmd, check=True)
         except FileNotFoundError:
             # use rclone docker image
-            conf_dir, conf_name = path.dirname(tf.name), path.basename(tf.name)
+            conf_dir, conf_name = path.dirname(tf_name), path.basename(tf_name)
             docker_cmd = [
                 "docker",
                 "run",
@@ -148,92 +219,3 @@ def s3_bucket_migration(
             subprocess.run(docker_cmd, check=True)
 
         print("[green]Backup complete[/green]")
-
-
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-    add_help_option=False,
-    short_help="Run the Minio client in a Docker container",
-    rich_help_panel="Tools",
-)
-def mc(args: List[str] = Argument(None)):
-    """
-    Run the Minio client in a Docker container.
-    """
-
-    script = "mc"
-    if args is not None:
-        script += " " + " ".join(args)
-
-    _mc(script)
-
-
-def _mc(command: str, **kwargs):
-    """
-    Run the Minio client in a Docker container.
-    """
-    _script = []
-    for user in _s3_users():
-        cfg = get_secret(settings, "s3-user-" + user)
-        if cfg is None:
-            raise Exception(f"No secret found for S3 user {user}.")
-
-        access_key = cfg["access_key"]
-        secret_key = cfg["secret_key"]
-        endpoint = getattr(settings, "s3_endpoint")
-
-        _script.append(
-            f"mc alias set {user} {endpoint} {access_key} {secret_key} --api s3v4 > /dev/null 2>&1"
-        )
-
-    # Delete common aliases
-    for alias in ["gcs", "local", "play", "s3"]:
-        _script.append(f"mc alias remove {alias} > /dev/null 2>&1")
-
-    _script.append(command)
-    script = "\n".join(_script)
-
-    host = getattr(settings, "docker_base_url", "unix://var/run/docker.sock")
-
-    log.info(f"Running Minio client in Docker host {host}")
-
-    return run(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "-it",
-            "--entrypoint=/bin/sh",
-            "minio/mc:latest",
-            "-c",
-            script,
-        ],
-        env={
-            "DOCKER_HOST": host,
-            **environ,
-        },
-        **kwargs,
-    )
-
-
-@app.command(rich_help_panel="Tools")
-def mirror(
-    src: Optional[str] = Argument(None),
-    dst: Optional[str] = Argument(None),
-    overwrite=Option(False, help="Overwrite existing files"),
-):
-    """
-    Mirror two buckets using a worker
-    """
-    # Build and run a Docker container with mc
-
-    if src is None or dst is None:
-        raise Exception("Both source and destination buckets must be specified.")
-
-    flags = ""
-    if overwrite:
-        flags = "--overwrite"
-
-    script = "\n".join([f"mc mb {dst}", f"mc mirror {flags} {src} {dst}"])
-
-    _mc(script)
