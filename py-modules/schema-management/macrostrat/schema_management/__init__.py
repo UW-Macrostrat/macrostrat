@@ -353,39 +353,31 @@ def sync(
         True, "--data/--no-data", help="Re-apply idempotent seed data (INSERT/UPDATE)"
     ),
     permissions: bool = Option(
-        True, "--permissions/--no-permissions", help="Re-apply grants"
-    ),
-    roles: bool = Option(
-        True, "--roles/--no-roles", help="Create declared database roles if missing"
+        True, "--permissions/--no-permissions", help="Re-apply roles and grants"
     ),
     target: str = TARGET_OPTION,
     no_dependents: bool = NO_DEPENDENTS_OPTION,
 ):
-    """Re-apply the re-runnable schema content: roles, views, procedures, seed data, grants.
+    """Re-apply the re-runnable schema content: views, procedures, seed data, permissions.
 
-    Everything a schema diff can't manage on its own — database roles, code objects,
-    idempotent seed rows, and permissions — so that [cyan]provision[/] ≡ [cyan]diff[/] +
-    [cyan]sync[/]. Select a subset with [cyan]--no-views[/] etc., and restrict to a
-    subsystem with [cyan]--target[/].
+    Everything a schema diff can't manage on its own — code objects, idempotent seed
+    rows, and the roles and grants that make up permissions — so that
+    [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/]. Select a subset with
+    [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
     """
     from .composer import selected_chunks
     from .grants import rebuild_grants
     from .procedures import rebuild_procedures
-    from .roles import rebuild_roles
     from .seed_data import rebuild_seed_data
     from .views import rebuild_views
 
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
-    # Roles first — they are cluster objects the diff cannot see, and every grant
-    # below names one. Then dependencies (functions before the views/seed that use
-    # them); grants last.
+    # Dependencies first (functions before views/seed that use them); permissions
+    # last — roles and grants are swept together, in the order the schema declares
+    # them, so each grant follows the role it names.
     failures = []
-    if roles:
-        r = rebuild_roles(db, chunks)
-        failures += r.failed
-        _report("roles", r.applied, len(r.failed), len(r.skipped))
     if procedures:
         r = rebuild_procedures(db, chunks)
         failures += r.failed
@@ -401,7 +393,7 @@ def sync(
     if permissions:
         r = rebuild_grants(db, chunks)
         failures += r.failed
-        _report("grants", r.applied, len(r.failed))
+        _report("permission statements", r.applied, len(r.failed), len(r.skipped))
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
 
