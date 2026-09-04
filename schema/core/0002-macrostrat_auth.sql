@@ -26,8 +26,12 @@ CREATE TABLE macrostrat_auth.role (
     -- The Postgres role a session in this application role assumes. PostgREST
     -- reads it from the JWT `role` claim, and the RLS policies and grants are
     -- written against these names, so the mapping is data here rather than a
-    -- convention buried in the API.
-    postgres_role text not null,
+    -- convention buried in the API. Constrained to the web roles created in
+    -- `0000-roles.sql`: a typo here would otherwise be stored happily and only
+    -- surface as a session that silently falls back to the default role.
+    postgres_role text not null
+        constraint role_postgres_role_is_a_web_role
+        check (postgres_role in ('web_user', 'web_admin', 'web_anon')),
     description   text
 );
 

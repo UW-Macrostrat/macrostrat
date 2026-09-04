@@ -1,5 +1,8 @@
 """Tests for seed-data detection and re-application."""
 
+from pytest import raises
+from sqlalchemy.exc import IntegrityError
+
 from macrostrat.schema_management.seed_data import (
     _is_non_idempotent_insert,
     data_statements_in,
@@ -114,3 +117,23 @@ def test_auth_roles_are_seeded_and_resynced(schema_harness):
 
         rebuild_seed_data(db, chunks)
         assert roles() == expected
+
+
+def test_postgres_role_must_be_a_web_role(schema_harness):
+    """The mapping column is free text, so a check constraint guards it.
+
+    Without it a typo is stored happily and only shows up as a session that
+    silently falls back to the default role — `role_claim` rejects anything
+    outside `POSTGREST_ROLES`, so a bad mapping fails quietly rather than loudly.
+    """
+    db = schema_harness.load_schema(target="macrostrat")
+
+    # Not wrapped in `db.transaction`: the insert is rejected, so it writes
+    # nothing to roll back, and a failing statement inside one would roll back
+    # the caller's transaction rather than its own.
+    with raises(IntegrityError):
+        db.run_sql(
+            "INSERT INTO macrostrat_auth.role (id, postgres_role) "
+            "VALUES ('bogus', 'web_amdin')",
+            raise_errors=True,
+        )
