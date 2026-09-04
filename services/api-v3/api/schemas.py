@@ -59,20 +59,23 @@ class Sources(Base):
 
 
 class Role(Base):
-    """A Postgres role a web session can be granted.
+    """An application role — `user`, `admin` or `test`.
 
-    `name` must match a role created in `schema/core/0000-roles.sql`, because it
-    becomes the `role` claim in the access JWT and PostgREST applies it verbatim.
-    The table also carries non-PostgREST rows (e.g. `test-only`), so callers
-    should go through `api.routes.security.role_claim` rather than using `name`
-    as a claim directly.
+    Keyed on its own name, so `User.role` is the role itself rather than an
+    integer that has to be joined back. `postgres_role` is the Postgres role a
+    session in this role assumes; it must match a role created in
+    `schema/core/0000-roles.sql`, because it becomes the `role` claim in the
+    access JWT and PostgREST applies it verbatim. Callers should still go
+    through `api.routes.security.role_claim` rather than reading it directly, so
+    an unknown mapping falls back rather than producing an unusable claim.
     """
 
     __tablename__ = "role"
     __table_args__ = {"schema": "macrostrat_auth"}
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(TEXT, unique=True)
-    users: Mapped[List["User"]] = relationship(back_populates="role")
+    id: Mapped[str] = mapped_column(TEXT, primary_key=True)
+    postgres_role: Mapped[str] = mapped_column(TEXT)
+    description: Mapped[str] = mapped_column(TEXT, nullable=True)
+    users: Mapped[List["User"]] = relationship(back_populates="role_definition")
 
 
 class User(Base):
@@ -83,8 +86,11 @@ class User(Base):
     name: Mapped[str] = mapped_column(TEXT, nullable=True)
     display_name: Mapped[str] = mapped_column(TEXT, nullable=True)
     email: Mapped[str] = mapped_column(TEXT, nullable=True)
-    role_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.role.id"))
-    role: Mapped[Role] = relationship(lazy="joined", back_populates="users")
+    # The role *name* is the foreign key, so `user.role == "admin"` is the check —
+    # no join, no id to resolve. `role_definition` is the row behind it, needed
+    # only when the Postgres-role mapping matters.
+    role: Mapped[str] = mapped_column(ForeignKey("macrostrat_auth.role.id"))
+    role_definition: Mapped[Role] = relationship(lazy="joined", back_populates="users")
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

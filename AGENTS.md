@@ -49,6 +49,16 @@ actually run (not on a state the declarative chunk could also produce).
   rather than a `%`-format string.
 - Similarly, a literal `:` in SQL (e.g. in a regex like `(?:www\.)`) trips
   SQLAlchemy's bind-parameter parsing and must be escaped as `\:`.
+- **Don't guard against "already exists".** Schema application tolerates errors,
+  so state objects declaratively and let a duplicate raise, get noted, and be
+  stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more
+  than they buy. Classify such an error by SQLSTATE off the wrapped driver
+  exception (`err.orig`), reading psycopg 3's `sqlstate` **or** psycopg 2's
+  `pgcode` — both drivers are installed.
+- **Never wrap an error-tolerating sweep in `db.transaction`.** `run_sql` gives
+  each statement its own transaction *only* when the session isn't already in
+  one; inside `db.transaction` a failed statement rolls back the caller's
+  transaction instead, and the fixture's own rollback then fails.
 
 ## Environments and write safety
 
@@ -81,6 +91,11 @@ anything against a non-local environment. In short:
   and restart before any schema depending on them can be applied.
 - Tests: `macrostrat test all` (pulls config from the local DB, avoiding cert
   issues).
+- **Use the shared testing cluster.** Build on the session-scoped `schema_harness`
+  / `empty_db` fixtures (a rollback transaction for writes, as `test_audit_triggers`
+  does) rather than standing up a `temporary_database_cluster` per module — a new
+  cluster costs CI minutes. Spin one up only when a test genuinely needs its own
+  (e.g. the unoptimized drift build).
 
 ## Python
 

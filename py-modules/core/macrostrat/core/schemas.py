@@ -61,13 +61,20 @@ class Sources(Base):
 
 
 class Role(Base):
-    """A Postgres role a web session can be granted (see 0000-roles.sql)."""
+    """An application role — `user`, `admin` or `test`.
+
+    Keyed on its own name, so `User.role` is the role itself rather than an
+    integer that has to be joined back. `postgres_role` is the Postgres role a
+    session in this role assumes (see 0000-roles.sql); PostgREST reads it from
+    the JWT `role` claim, and the RLS policies are written against those names.
+    """
 
     __tablename__ = "role"
     __table_args__ = {"schema": "macrostrat_auth"}
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(TEXT, unique=True)
-    users: Mapped[List["User"]] = relationship(back_populates="role")
+    id: Mapped[str] = mapped_column(TEXT, primary_key=True)
+    postgres_role: Mapped[str] = mapped_column(TEXT)
+    description: Mapped[str] = mapped_column(TEXT, nullable=True)
+    users: Mapped[List["User"]] = relationship(back_populates="role_definition")
 
 
 class User(Base):
@@ -78,8 +85,11 @@ class User(Base):
     name: Mapped[str] = mapped_column(TEXT, nullable=True)
     display_name: Mapped[str] = mapped_column(TEXT, nullable=True)
     email: Mapped[str] = mapped_column(TEXT, nullable=True)
-    role_id: Mapped[int] = mapped_column(ForeignKey("macrostrat_auth.role.id"))
-    role: Mapped[Role] = relationship(lazy="joined", back_populates="users")
+    # The role *name* is the foreign key, so `user.role == "admin"` is the check —
+    # no join, no id to resolve. `role_definition` is the row behind it, needed
+    # only when the Postgres-role mapping matters.
+    role: Mapped[str] = mapped_column(ForeignKey("macrostrat_auth.role.id"))
+    role_definition: Mapped[Role] = relationship(lazy="joined", back_populates="users")
     created_on: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
