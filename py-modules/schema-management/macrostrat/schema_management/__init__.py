@@ -13,7 +13,9 @@ from macrostrat.app_frame import CommandBase
 from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import engine_for_db_name, get_database
+from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
+from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
@@ -165,10 +167,14 @@ def review(edit=False):
 
 
 @schema_app.command(rich_help_panel="Automated migrations")
+@writes(WriteScope.Schema, action="schema application")
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
     archive: bool = Option(False, "--archive/--no-archive"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Apply migration plan to database"""
     db = get_database()
@@ -243,8 +249,17 @@ def migrate(
     apply: bool = Option(False, "--apply/--no-apply"),
     force: bool = Option(False, "--force/--no-force"),
     data: bool = Option(False, "--data/--no-data"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Run all pending migrations"""
+    # Gated imperatively rather than by decorator: without --apply this is a
+    # dry run, and a dry run should not require write authorization.
+    if apply:
+        require_write_access(
+            WriteScope.Schema, assume_yes=yes, action="schema migration"
+        )
     load_migrations()
     run_migrations(apply=apply, name=name, force=force, data_changes=data)
 

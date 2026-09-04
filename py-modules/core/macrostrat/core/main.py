@@ -1,6 +1,6 @@
 from os import environ
 from pathlib import Path
-from sys import argv, exit
+from sys import exit
 
 from click.utils import get_app_dir
 from dynaconf import Dynaconf
@@ -12,7 +12,13 @@ from macrostrat.utils import get_logger
 
 from .console import console_theme
 from .exc import MacrostratError
-from .utils import env_text, get_app_state, get_app_state_file, set_app_state
+from .utils import (
+    env_text,
+    extract_env_from_argv,
+    get_app_state,
+    get_app_state_file,
+    set_app_state,
+)
 
 log = get_logger(__name__)
 
@@ -52,12 +58,13 @@ class MacrostratControlCommand(ControlCommand):
         self,
         ctx: Context,
         verbose: bool = Option(False, "--verbose", help="Enable verbose output"),
-        # This sets the env var too late to be used in config, but it does show the argument in the help text
+        # Declared only so `--env` appears in the help text. It is already gone
+        # from argv by now — `extract_env_from_argv` consumed it before config
+        # loaded — so this parameter is always None and assigning from it here
+        # would be a second, later-losing source of truth.
         env: str = Option(None, "--env", "-e", help="Set the active environment"),
     ):
         """:app_name: command-line interface"""
-        if env is not None:
-            environ["MACROSTRAT_ENV"] = env
         super().callback(ctx, verbose=verbose)
 
 
@@ -68,13 +75,10 @@ class Macrostrat(Application):
 
     def __init__(self):
 
-        # Check sys args for --env or -e, and use that to set the environment
-        # TODO: this is pretty hacky.
-        for i, arg in enumerate(argv):
-            if arg in ("--env", "-e") and i + 1 < len(argv):
-                environ["MACROSTRAT_ENV"] = argv[i + 1]
-                argv.pop(i + 1)
-                argv.pop(i)  # Remove the arg and its value so Typer doesn't see it
+        # `--env` has to be read before Typer parses anything, because config
+        # is loaded while this object is constructed. One parser, in utils.
+        if (env := extract_env_from_argv()) is not None:
+            environ["MACROSTRAT_ENV"] = env
 
         self.console = Console(theme=console_theme)
         self.settings = load_settings(self.console)

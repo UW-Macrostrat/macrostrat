@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta
 from os import environ, unsetenv
 from pathlib import Path
+from sys import argv
 from typing import Optional
 
 import toml
@@ -26,7 +28,89 @@ def env_text():
     return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
 
 
+#: App-state keys holding the remembered environment and, for a non-local one,
+#: when it lapses.
+ACTIVE_ENV_KEY = "active_env"
+ACTIVE_ENV_EXPIRES_KEY = "active_env_expires"
+
+#: How long a *non-local* environment stays active after `macrostrat env <name>`.
+#: Short on purpose: the point is that forgetting to switch back cannot hurt you
+#: tomorrow. `local` never expires.
+NON_LOCAL_TTL = timedelta(minutes=15)
+
+
+def extract_env_from_argv(args=None) -> Optional[str]:
+    """Pull `--env`/`-e` out of *args*, removing both tokens. Mutates in place.
+
+    The single place this happens. It used to be scraped in
+    `Macrostrat.__init__` *and* set again in `MacrostratControlCommand.callback`
+    — the latter, by its own comment, too late to affect config. Two parsers for
+    one flag is how they drift.
+
+    Scraping is still necessary rather than ugly: config is loaded while the
+    application is constructed, which is before Typer has parsed anything.
+    """
+    argv_list = argv if args is None else args
+    for i, arg in enumerate(argv_list):
+        if arg in ("--env", "-e") and i + 1 < len(argv_list):
+            value = argv_list[i + 1]
+            argv_list.pop(i + 1)
+            argv_list.pop(i)
+            return value
+        if arg.startswith("--env="):
+            argv_list.pop(i)
+            return arg.split("=", 1)[1]
+    return None
+
+
+def active_env_expiry() -> Optional[datetime]:
+    """When the remembered environment lapses, or None if it does not."""
+    raw = get_app_state(ACTIVE_ENV_EXPIRES_KEY)
+    if raw is None:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    try:
+        return datetime.fromisoformat(str(raw))
+    except ValueError:
+        # Unparseable expiry: treat as already lapsed rather than as absent.
+        return datetime.min
+
+
+def active_env_remaining() -> Optional[timedelta]:
+    """Time left on the remembered environment, or None if it does not expire."""
+    expires = active_env_expiry()
+    if expires is None:
+        return None
+    return expires - datetime.now()
+
+
+def set_active_env(env: Optional[str], *, expires_in: Optional[timedelta] = None):
+    """Remember *env*, with an expiry unless it is exempt.
+
+    `local`-class environments are remembered indefinitely, as before. Anything
+    else gets a TTL, so that `macrostrat env staging` does not silently still
+    be in force in a different terminal next week — the sticky-global-state
+    problem this whole area starts from.
+    """
+    if env is None:
+        set_app_state(ACTIVE_ENV_KEY, None, wipe_others=True)
+        return None
+    set_app_state(ACTIVE_ENV_KEY, env, wipe_others=True)
+    if expires_in is None:
+        return None
+    expires = datetime.now() + expires_in
+    set_app_state(ACTIVE_ENV_EXPIRES_KEY, expires.isoformat())
+    return expires
+
+
 def normalize_macrostrat_env():
+    """The active environment for this invocation, or None.
+
+    Order: an explicit `MACROSTRAT_ENV` (which `--env` has already been folded
+    into) always wins and is never subject to expiry — it is per-invocation by
+    construction. Only a *remembered* environment can lapse.
+    """
     if "MACROSTRAT_ENV" in environ:
         log.info("active environment: %s", env_text())
         # Check environment value
@@ -35,15 +119,30 @@ def normalize_macrostrat_env():
             unsetenv("MACROSTRAT_ENV")
             return None
         return env
-    active_env = get_app_state_file()
-    # TODO: unset env here if the config file does not contain the correct env
-    if "MACROSTRAT_ENV" not in environ and active_env.exists():
-        env = get_app_state("active_env")
-        if env is not None:
-            environ["MACROSTRAT_ENV"] = env
-        log.info("active environment: %s", env_text())
-        return env
-    return None
+
+    if not get_app_state_file().exists():
+        return None
+
+    env = get_app_state(ACTIVE_ENV_KEY)
+    if env is None:
+        return None
+
+    remaining = active_env_remaining()
+    if remaining is not None and remaining <= timedelta(0):
+        log.warning(
+            "The remembered environment %r has lapsed and is being ignored. "
+            "Pass --env %s to use it for this command, or run "
+            "`macrostrat env %s` to activate it again.",
+            env,
+            env,
+            env,
+        )
+        set_app_state(ACTIVE_ENV_KEY, None, wipe_others=True)
+        return None
+
+    environ["MACROSTRAT_ENV"] = env
+    log.info("active environment: %s", env_text())
+    return env
 
 
 def find_macrostrat_config() -> Optional[Path]:

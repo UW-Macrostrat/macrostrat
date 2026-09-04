@@ -19,6 +19,14 @@ from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
+from ...core.environment import WriteScope
+from ...core.safety import writes
+from ...core.secrets import (
+    REDACTED,
+    is_sensitive_name,
+    redact_text,
+    refuse_non_interactive_reveal,
+)
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
 
@@ -228,6 +236,7 @@ def _reset_sequence(
 
 
 @db_app.command()
+@writes(WriteScope.Data, action="database restore")
 def restore(
     dumpfile: Path,
     database: str = Argument(None),
@@ -239,6 +248,9 @@ def restore(
         "--version",
         "-v",
         help="Postgres version or docker container to restore with",
+    ),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
 ):
     """Load a database using [cyan]pg_restore[/]"""
@@ -364,7 +376,11 @@ def update_permissions():
 
 db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions)
 
-db_app.command(name="load-csv", rich_help_panel="Helpers")(load_csv)
+# Gated at registration rather than at the definition, so `load_csv` stays
+# importable and callable as a library function without a policy check.
+db_app.command(name="load-csv", rich_help_panel="Helpers")(
+    writes(WriteScope.Data, action="CSV load")(load_csv)
+)
 db_app.command(name="load-geo", rich_help_panel="Helpers")(load_geo)
 
 
@@ -384,16 +400,33 @@ def refresh_postgrest():
 
 
 @db_app.command(name="credentials", rich_help_panel="Helpers")
-def connection_details():
-    """Show PostgreSQL connection credentials"""
+def connection_details(
+    reveal: bool = Option(
+        False, "--reveal", help="Show the password and full URL in plain text"
+    ),
+):
+    """Show PostgreSQL connection credentials
+
+    The password and URL are redacted unless --reveal is passed. This command
+    used to print a live connection URL, password included, so running it once
+    from an agent or a CI job put a working credential into a transcript.
+    """
+    if reveal:
+        refuse_non_interactive_reveal("database credentials")
+
     db = get_db()
     url = raw_database_url(db.engine.url)
     for key in keys:
-        print(
-            field_title(key.capitalize()),
-            f"[dim bold green]{getattr(db.engine.url, key)}",
-        )
-    print(field_title("URL"), f"[dim white]{url}")
+        value = getattr(db.engine.url, key)
+        if not reveal and is_sensitive_name(key):
+            value = REDACTED
+        print(field_title(key.capitalize()), f"[dim bold green]{value}")
+    # SQLAlchemy's URL.__str__ masks the password; render_as_string(False) is
+    # the only thing that discloses it.
+    shown = url if reveal else str(db.engine.url)
+    print(
+        field_title("URL"), f"[dim white]{redact_text(shown) if not reveal else shown}"
+    )
 
 
 def field_title(name):

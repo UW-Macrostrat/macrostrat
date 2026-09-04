@@ -12,6 +12,8 @@ from rich.console import Console
 from typer import Argument, Option
 
 from macrostrat.core import app
+from macrostrat.core.environment import WriteScope
+from macrostrat.core.safety import require_write_access
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.commands.prepare_fields.utils import PointsTableUpdater
@@ -114,6 +116,9 @@ def delete_sources(
     ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Delete sources from the map ingestion database."""
     db = get_database()
@@ -130,6 +135,19 @@ def delete_sources(
 
         print("\nDry run; not actually deleting anything")
         return
+
+    # Gated here rather than by decorator so that --dry-run needs no
+    # authorization, and so the prompt can say how many maps are at stake —
+    # the slug list can come from a file or stdin, so the caller may not have
+    # counted them.
+    require_write_access(
+        WriteScope.Data,
+        assume_yes=yes,
+        action=(
+            f"deletion of {len(slug)} map source(s)"
+            + (" and their published data" if all_data else "")
+        ),
+    )
 
     storage = _staging_storage_config()
     for s in slug:
