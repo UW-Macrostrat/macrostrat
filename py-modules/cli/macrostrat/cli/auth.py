@@ -40,7 +40,9 @@ from rich.table import Table
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
+from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
+from macrostrat.core.safety import writes
 
 cli = Typer(name="auth", help="API tokens", no_args_is_help=True)
 
@@ -137,6 +139,7 @@ def _user_id_for(db, sub: str) -> int:
 
 
 @cli.command(name="create-token")
+@writes(WriteScope.Data, action="token creation")
 def create_token(
     label: str = Option(
         ...,
@@ -160,8 +163,16 @@ def create_token(
     created_by: Optional[str] = Option(
         None, "--created-by", help="ORCID iD of the admin issuing this token"
     ),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
-    """Create a delegated API token and print it once."""
+    """Create a delegated API token and print it once.
+
+    Gated as a data write: it inserts a row into `macrostrat_auth.token`, and
+    the token it mints carries write capability through the API for as long as
+    it lives.
+    """
 
     db = get_database()
 
@@ -301,8 +312,12 @@ _TOKEN_EXISTS = "SELECT id FROM macrostrat_auth.token WHERE id = :token_id"
 
 
 @cli.command(name="revoke-token")
+@writes(WriteScope.Data, action="token revocation")
 def revoke_token(
     token_id: int = Argument(..., help="Token id, from `macrostrat auth list-tokens`"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Revoke a token by expiring it. The row is kept for the record."""
 

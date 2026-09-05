@@ -335,3 +335,96 @@ class TestInteractivityDetection:
         assert safety._prompt("Type the name: ") == "staging"
         assert err.getvalue() == "Type the name: "
         assert out.getvalue() == ""
+
+
+class TestRequireEnvironment:
+    """A lapsed environment is questioned before it is used, not dropped."""
+
+    from datetime import datetime, timedelta, timezone
+
+    def state(self, monkeypatch, *, lapsed=True, source="remembered", approved=False):
+        from datetime import datetime, timedelta, timezone
+
+        from macrostrat.core.utils import ActiveEnvironment
+
+        delta = timedelta(minutes=-12) if lapsed else timedelta(minutes=12)
+        st = ActiveEnvironment(
+            name="production",
+            source=source,
+            expires=datetime.now(timezone.utc) + delta,
+            approved=approved,
+        )
+        monkeypatch.setattr(safety, "active_environment", lambda: st)
+        renewed = []
+        monkeypatch.setattr(safety, "renew_active_env", lambda ttl: renewed.append(ttl))
+        return st, renewed
+
+    def settings(self):
+        return _Settings(policy_for("production", "production"))
+
+    def test_no_environment_is_fine(self, no_tty, monkeypatch):
+        monkeypatch.setattr(safety, "active_environment", lambda: None)
+        assert safety.require_environment(settings=self.settings()) is None
+
+    def test_a_fresh_environment_is_fine(self, no_tty, monkeypatch):
+        self.state(monkeypatch, lapsed=False)
+        assert safety.require_environment(settings=self.settings()) is None
+
+    def test_lapsed_without_a_tty_refuses(self, no_tty, monkeypatch):
+        self.state(monkeypatch)
+        with raises(safety.StaleEnvironment) as err:
+            safety.require_environment(settings=self.settings(), action="restore")
+        text = str(err.value.format_message())
+        assert "production" in text
+        assert "--env production" in text
+        assert "12 min ago" in text
+
+    def test_lapsed_with_approval_is_fine(self, no_tty, monkeypatch):
+        self.state(monkeypatch, approved=True)
+        assert safety.require_environment(settings=self.settings()) is None
+
+    def test_yes_renews_a_remembered_environment(self, tty, monkeypatch):
+        st, renewed = self.state(monkeypatch)
+        tty.feed("y")
+        safety.require_environment(settings=self.settings())
+        assert renewed == [self.settings().policy.ttl]
+        assert "lapsed 12 min ago" in tty.prompts[0]
+        assert "15 min" in tty.prompts[0]
+
+    def test_yes_approves_a_shell_session_without_persisting(self, tty, monkeypatch):
+        st, renewed = self.state(monkeypatch, source="shell")
+        tty.feed("yes")
+        safety.require_environment(settings=self.settings())
+        assert st.approved
+        assert renewed == []
+
+    @mark.parametrize("answer", ["", "n", "no", "production"])
+    def test_anything_else_declines(self, tty, monkeypatch, answer):
+        self.state(monkeypatch)
+        tty.feed(answer)
+        with raises(safety.StaleEnvironment):
+            safety.require_environment(settings=self.settings())
+
+    def test_a_write_gate_asks_about_the_environment_first(self, tty, monkeypatch):
+        """Both prompts fire, environment first, so the write prompt is
+        unambiguously about the environment just confirmed."""
+        self.state(monkeypatch)
+        s = _Settings(policy_for("development", "development"))
+        tty.feed("y", "y")
+        require_write_access(WriteScope.Data, settings=s, escalate_connection=False)
+        assert len(tty.prompts) == 2
+        assert "lapsed" in tty.prompts[0]
+        assert "Proceed?" in tty.prompts[1]
+
+    def test_a_write_on_a_lapsed_environment_refuses_without_a_tty(
+        self, no_tty, monkeypatch
+    ):
+        self.state(monkeypatch)
+        s = _Settings(policy_for("local", "local"))
+        # Even an ungated local write: the environment itself is in question.
+        with raises(safety.StaleEnvironment):
+            require_write_access(WriteScope.Data, settings=s, escalate_connection=False)
+
+    def test_stale_environment_is_a_refusal(self):
+        assert issubclass(safety.StaleEnvironment, safety.Refusal)
+        assert issubclass(WriteRefused, safety.Refusal)

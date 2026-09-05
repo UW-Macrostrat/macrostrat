@@ -1,7 +1,9 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
+from os import environ
 from weakref import WeakKeyDictionary
 
+from click.exceptions import ClickException
 from sqlalchemy import create_engine, event
 
 from macrostrat.database import Database
@@ -9,6 +11,7 @@ from macrostrat.utils import get_logger
 
 from ..config import PG_DATABASE, settings
 from ..connections import DatabaseRole
+from ..exc import MacrostratError
 
 log = get_logger(__name__)
 
@@ -75,12 +78,46 @@ def use_writer_connection() -> None:
     db_ctx.set(None)
 
 
+class NoDatabaseConfigured(MacrostratError, ClickException):
+    """No connection URL could be composed for the active environment.
+
+    Raised instead of handing `None` to the engine, which failed several
+    frames down with `Invalid input type: None` — the error people met after a
+    remembered environment lapsed, and the reason it read as a crash rather
+    than as "you have no environment".
+    """
+
+    exit_code = 1
+
+    def __init__(self):
+        env = environ.get("MACROSTRAT_ENV")
+        if env:
+            message = f"No database is configured for environment {env}"
+            details = (
+                f"Add pg_database or a [{env}.database] table to its section in "
+                "macrostrat.toml."
+            )
+        else:
+            message = "No environment is active, so there is no database to use"
+            details = (
+                "Run `macrostrat env <name>` to activate one, or pass --env <name> "
+                "for a single command. `macrostrat config environments` lists them."
+            )
+        MacrostratError.__init__(self, message, details)
+
+    def format_message(self) -> str:
+        return f"{self.message}\n{self.details}"
+
+
 def get_database():
     from macrostrat.database import Database
 
     db = db_ctx.get()
     if db is None:
-        db = Database(_default_database_url())
+        url = _default_database_url()
+        if url is None:
+            raise NoDatabaseConfigured()
+        db = Database(url)
         db_ctx.set(db)
     return db
 

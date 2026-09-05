@@ -46,13 +46,14 @@ from click.exceptions import ClickException
 
 from macrostrat.utils import ApplicationError, get_logger
 
-from .environment import EnvironmentPolicy, WriteGate, WriteScope
+from .environment import EnvironmentPolicy, WriteGate, WriteScope, format_duration
+from .utils import active_environment, renew_active_env
 
 log = get_logger(__name__)
 
 
-class WriteRefused(ApplicationError, ClickException):
-    """A write was not authorized. Raised instead of proceeding.
+class Refusal(ApplicationError, ClickException):
+    """Something was not authorized. Raised instead of proceeding.
 
     Also a `ClickException` so that Click renders it as an error and exits 1,
     rather than letting it escape as a traceback. That matters more here than
@@ -74,6 +75,14 @@ class WriteRefused(ApplicationError, ClickException):
         if self.details:
             return f"{self.message}\n{self.details}"
         return self.message
+
+
+class WriteRefused(Refusal):
+    """A write was not authorized. Raised instead of proceeding."""
+
+
+class StaleEnvironment(Refusal):
+    """A lapsed environment was not confirmed for use."""
 
 
 def is_interactive() -> bool:
@@ -112,6 +121,69 @@ def _resolve_policy(settings) -> EnvironmentPolicy:
     return policy
 
 
+def require_environment(*, settings=None, action: Optional[str] = None) -> None:
+    """Confirm a *lapsed* environment before it is used, or raise.
+
+    A remembered environment (`macrostrat env <name>`) is kept past its TTL
+    rather than dropped — dropping it left the CLI with *no* environment, where
+    libpq subprocesses quietly fell back to localhost and everything else
+    crashed. Instead the pointer stays, and this asks before the first
+    consequential use in an invocation:
+
+    - fresh, explicit (`--env`) or absent environment → nothing happens;
+    - lapsed, interactive → one `y/N` prompt; yes renews the TTL (a remembered
+      environment) or approves it for this command (a shell session);
+    - lapsed, non-interactive → :class:`StaleEnvironment`, naming the fix.
+
+    Called from the CLI's top-level callback for every command that could touch
+    an environment, and again from :func:`require_write_access` so a write is
+    covered even outside the CLI. Idempotent within an invocation.
+    """
+    state = active_environment()
+    if state is None or not state.needs_approval:
+        return None
+
+    policy = _resolve_policy(settings)
+    env = state.name
+    klass = policy.env_class.value
+    lapsed_for = format_duration(-state.remaining) if state.remaining else "a while"
+    what = f" before {action}" if action else ""
+
+    if not is_interactive():
+        raise StaleEnvironment(
+            f"The {state.source} environment {env} ({klass}) lapsed {lapsed_for} ago",
+            details=(
+                f"There is no terminal to confirm it on{what}. Pass --env {env} "
+                f"to use it for this command, or run `macrostrat env {env}` to "
+                "activate it again."
+            ),
+        )
+
+    if state.source == "remembered":
+        grant = format_duration(policy.ttl)
+        answer = _prompt(
+            f"Remembered environment {env} ({klass}) lapsed {lapsed_for} ago. "
+            f"Keep using it for another {grant}? [y/N] "
+        )
+    else:
+        answer = _prompt(
+            f"Shell environment {env} ({klass}) lapsed {lapsed_for} ago. "
+            f"Use it for this command? [y/N] "
+        )
+    if answer.lower() not in ("y", "yes"):
+        raise StaleEnvironment(
+            f"Declined to keep using {env}",
+            details=f"Run `macrostrat env <name>` to choose an environment.",
+        )
+
+    if state.source == "remembered":
+        renew_active_env(policy.ttl)
+        log.info("Environment %s renewed for %s.", env, grant)
+    else:
+        state.approved = True
+    return None
+
+
 def require_write_access(
     scope,
     *,
@@ -142,6 +214,10 @@ def require_write_access(
     gate = policy.gate_for(scope)
     env = policy.name or "<no environment>"
     what = action or f"{scope.value} write"
+
+    # A lapsed environment is questioned before the write is, so that the gate
+    # prompt that follows is unambiguously about *this* environment.
+    require_environment(settings=settings, action=what)
 
     inferred = ""
     if policy.inferred:

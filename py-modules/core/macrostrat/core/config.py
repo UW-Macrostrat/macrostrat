@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
-from toml import load as load_toml
 
 from macrostrat.utils import get_logger
 
 from .connections import DEFAULT_DATABASE, DatabaseRole, connection_for, connections_for
-from .environment import DEFAULT_ENV, policy_from_settings
+from .environment import policy_from_settings
+from .exc import UnknownEnvironment
 from .resolvers import cast_sources, setup_source_roots_environment
 from .secrets import as_secret, is_secret_ref, reveal
 from .storage import (
@@ -22,6 +22,7 @@ from .storage import (
 )
 from .utils import (
     convert_to_string,
+    environments_in,
     find_macrostrat_config,
     normalize_macrostrat_env,
     path_list_resolver,
@@ -35,13 +36,6 @@ class BackendType(str, Enum):
     DockerCompose = "docker-compose"
 
 
-def get_default_environment():
-    cfg = find_macrostrat_config()
-    if cfg is None:
-        return None
-    return _all_environments(cfg)[0]
-
-
 class MacrostratConfig(Dynaconf):
     """Macrostrat config manager that reads from a TOML file"""
 
@@ -49,15 +43,21 @@ class MacrostratConfig(Dynaconf):
     srcroot: Path
 
     def __init__(self):
-
         cfg = find_macrostrat_config()
         settings_files = []
         should_load_environments = False
 
         if cfg is not None:
             settings_files.append(cfg)
-            env = normalize_macrostrat_env()
+            env = normalize_macrostrat_env(cfg)
             if env is not None:
+                # A remembered environment has already been checked against
+                # this file; an explicit one has not. Dynaconf would accept any
+                # name and yield an empty environment, so refuse here, with
+                # the list of names that would have worked.
+                available = environments_in(cfg)
+                if env not in available:
+                    raise UnknownEnvironment(env, available, cfg)
                 should_load_environments = True
 
         env_kwargs = dict()
@@ -155,16 +155,8 @@ class MacrostratConfig(Dynaconf):
 
 
 def _all_environments(config_file: Path):
-    """The selectable environments in a config file.
-
-    `default` is Dynaconf's shared base layer rather than an environment, so it
-    is excluded by name. It used to be skipped by *position*, which silently
-    dropped the first real environment from any file that did not happen to
-    lead with `[default]`.
-    """
-    with open(config_file, "r") as f:
-        cfg = load_toml(f)
-        return [k for k in cfg.keys() if k != DEFAULT_ENV]
+    """The selectable environments in a config file. See `environments_in`."""
+    return environments_in(config_file)
 
 
 settings = MacrostratConfig()

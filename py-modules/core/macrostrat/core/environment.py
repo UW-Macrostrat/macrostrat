@@ -24,6 +24,8 @@ declared values, and :func:`policy_from_settings` is a thin adapter over it.
 See the workbench note "System configuration safety" for the design rationale.
 """
 
+import re
+from datetime import timedelta
 from enum import Enum
 from typing import Any, Mapping, Optional
 
@@ -39,6 +41,11 @@ ENV_CLASS_KEY = "env_class"
 
 #: TOML key holding per-scope gate overrides.
 WRITE_GATE_KEY = "write_gate"
+
+#: TOML key overriding how long `macrostrat env <name>` keeps this environment
+#: active. A duration (``"15m"``, ``"8h"``, ``"2h30m"``, a bare number of
+#: minutes) or ``"never"``. Absent, the class default applies.
+ACTIVE_TTL_KEY = "active_ttl"
 
 #: The name Dynaconf treats as the shared base layer rather than a selectable
 #: environment.
@@ -124,6 +131,89 @@ DEFAULT_GATES: Mapping[EnvironmentClass, Mapping[WriteScope, WriteGate]] = {
 }
 
 
+#: Default time-to-live for a *remembered* environment, per class. `local` never
+#: lapses. The rest lapse on a scale matched to how long a task there plausibly
+#: takes and how bad a forgotten pointer is: a day's work on development, an
+#: hour on staging, a quarter-hour on production. A lapsed environment is not
+#: dropped — it is kept and the operator is asked before it is used again.
+DEFAULT_TTL: Mapping[EnvironmentClass, Optional[timedelta]] = {
+    EnvironmentClass.Local: None,
+    EnvironmentClass.Development: timedelta(hours=8),
+    EnvironmentClass.Staging: timedelta(hours=1),
+    EnvironmentClass.Production: timedelta(minutes=15),
+}
+
+_NEVER = {"never", "none", "off", "infinite", "indefinite", "forever"}
+_DURATION = re.compile(
+    r"^\s*(?:(?P<d>\d+)\s*d)?\s*(?:(?P<h>\d+)\s*h)?\s*(?:(?P<m>\d+)\s*m(?:in)?)?"
+    r"\s*(?:(?P<s>\d+)\s*s)?\s*$",
+    re.IGNORECASE,
+)
+
+
+class InvalidDuration(ValueError):
+    """A TTL that could not be understood."""
+
+
+def parse_duration(value: Any) -> Optional[timedelta]:
+    """Parse a TTL: ``"15m"``, ``"8h"``, ``"2h30m"``, ``"1d"``, ``90`` (minutes),
+    or ``"never"`` for no expiry. ``None`` means "not declared" and is returned
+    as-is so the caller can apply a default.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        if value is False:
+            return None
+        raise InvalidDuration(f"{value!r} is not a duration")
+    if isinstance(value, timedelta):
+        return value
+    if isinstance(value, (int, float)):
+        if value <= 0:
+            raise InvalidDuration(f"{value!r} is not a positive duration")
+        return timedelta(minutes=float(value))
+    text = str(value).strip().lower()
+    if text in _NEVER:
+        return None
+    if text.isdigit():
+        return timedelta(minutes=int(text))
+    m = _DURATION.match(text)
+    if m is None or not any(m.groupdict().values()):
+        raise InvalidDuration(
+            f"{value!r} is not a duration; use e.g. 15m, 8h, 2h30m, 1d, or never"
+        )
+    parts = {k: int(v) for k, v in m.groupdict().items() if v is not None}
+    out = timedelta(
+        days=parts.get("d", 0),
+        hours=parts.get("h", 0),
+        minutes=parts.get("m", 0),
+        seconds=parts.get("s", 0),
+    )
+    if out <= timedelta(0):
+        raise InvalidDuration(f"{value!r} is not a positive duration")
+    return out
+
+
+def format_duration(value: Optional[timedelta]) -> str:
+    """``timedelta`` → ``"15 min"``, ``"8 h"``, ``"2 h 30 min"``, ``"never"``."""
+    if value is None:
+        return "never"
+    total = int(value.total_seconds())
+    if total < 60:
+        return f"{total} s"
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes = rem // 60
+    parts = []
+    if days:
+        parts.append(f"{days} d")
+    if hours:
+        parts.append(f"{hours} h")
+    if minutes:
+        parts.append(f"{minutes} min")
+    return " ".join(parts)
+
+
 class EnvironmentPolicy(BaseModel):
     """The resolved safety policy for one environment."""
 
@@ -137,6 +227,9 @@ class EnvironmentPolicy(BaseModel):
     inferred: bool = False
     #: Human-readable account of how the class was arrived at.
     reason: str = "declared"
+    #: How long `macrostrat env <name>` keeps this environment active before the
+    #: operator is asked again. ``None`` means it never lapses.
+    ttl: Optional[timedelta] = None
 
     @property
     def is_local(self) -> bool:
@@ -152,11 +245,13 @@ class EnvironmentPolicy(BaseModel):
         name: Optional[str],
         env_class: Any = None,
         write_gate: Optional[Mapping[str, Any]] = None,
+        active_ttl: Any = None,
     ) -> "EnvironmentPolicy":
-        """Build a policy from an environment's two declared values.
+        """Build a policy from an environment's declared values.
 
-        Pure: no settings object, no I/O. ``env_class`` and ``write_gate`` are
-        whatever the config file held, including ``None`` and junk.
+        Pure: no settings object, no I/O. ``env_class``, ``write_gate`` and
+        ``active_ttl`` are whatever the config file held, including ``None``
+        and junk.
         """
         resolved, inferred, reason = _resolve_class(name, env_class)
         gates = dict(DEFAULT_GATES[resolved])
@@ -167,7 +262,30 @@ class EnvironmentPolicy(BaseModel):
             gates=gates,
             inferred=inferred,
             reason=reason,
+            ttl=_resolve_ttl(name, resolved, active_ttl),
         )
+
+
+def _resolve_ttl(
+    name: Optional[str], env_class: EnvironmentClass, declared: Any
+) -> Optional[timedelta]:
+    """The declared TTL, or the class default when absent or unparseable."""
+    default = DEFAULT_TTL[env_class]
+    if declared is None:
+        return default
+    try:
+        return parse_duration(declared)
+    except InvalidDuration as err:
+        log.warning(
+            "Environment %r declares %s = %r (%s); using the %s default of %s.",
+            name,
+            ACTIVE_TTL_KEY,
+            declared,
+            err,
+            env_class.value,
+            format_duration(default),
+        )
+        return default
 
 
 def _resolve_class(name: Optional[str], declared: Any) -> tuple:
@@ -271,6 +389,7 @@ def policy_from_settings(settings) -> EnvironmentPolicy:
         name,
         env_class=settings.get(ENV_CLASS_KEY, None),
         write_gate=settings.get(WRITE_GATE_KEY, None),
+        active_ttl=settings.get(ACTIVE_TTL_KEY, None),
     )
 
 
@@ -302,4 +421,5 @@ def declared_policy_for(config_file, env_name: Optional[str]) -> EnvironmentPoli
         env_name,
         env_class=table.get(ENV_CLASS_KEY, None),
         write_gate=table.get(WRITE_GATE_KEY, None),
+        active_ttl=table.get(ACTIVE_TTL_KEY, None),
     )

@@ -32,25 +32,55 @@ macrostrat --env staging db tables
 # 2. A shell session. Dies when the shell does.
 eval "$(macrostrat env --shell staging)"
 
-# 3. Remembered. `local` indefinitely; anything else for 15 minutes.
+# 3. Remembered. `local` indefinitely; anything else for its class's TTL.
 macrostrat env local
-macrostrat env staging        # → "Activated environment staging (staging) for 15 min, until 14:32"
-macrostrat env                # → "staging (lapses in 12 min)"
+macrostrat env staging        # → "Activated environment staging (staging) for 1 h, until 15:32"
+macrostrat env                # → "staging (staging) (remembered, lapses in 48 min)"
+macrostrat env --unset        # forget it
 ```
 
-A remembered non-`local` environment **expires**, and a lapsed one is ignored
-and forgotten:
+A remembered non-`local` environment **lapses** after a time-to-live that
+depends on its class — 8 h for `development`, 1 h for `staging`, 15 min for
+`production` — or on `active_ttl` in its section (`"2h"`, `"30m"`, `"never"`).
+A lapsed environment is **kept, and you are asked before the next command that
+would use it**:
 
 ```
-The remembered environment 'staging' has lapsed and is being ignored.
-Pass --env staging to use it for this command, or run `macrostrat env staging`
-to activate it again.
+Remembered environment staging (staging) lapsed 12 min ago. Keep using it for another 1 h? [y/N]
 ```
+
+Answering yes renews it for another TTL, the same as running `macrostrat env
+staging` again. Without a terminal — an agent, a cron job — a lapsed
+environment is refused rather than used:
+
+```
+The remembered environment staging (staging) lapsed 12 min ago
+There is no terminal to confirm it on. Pass --env staging to use it for this
+command, or run `macrostrat env staging` to activate it again.
+```
+
+`macrostrat env`, `macrostrat config …` and `--help` never ask: they inspect or
+change the environment rather than use it. `--shell` exports an expiry
+alongside the name, so a shell session lapses the same way and is confirmed per
+command.
 
 This is deliberate. A persisted pointer at a remote database that outlives the
 task will otherwise still be in force in a different terminal, in a script, or
 next week — and nothing in your working tree tells you which database you are
-about to write to. `local` is exempt because local work is disposable.
+about to write to. `local` is exempt because local work is disposable. The
+earlier behaviour — a lapsed pointer was silently dropped — left the CLI with
+*no* environment, where `psql`-based commands quietly fell back to localhost
+and everything else failed with an obscure database error.
+
+**The pointer is scoped to the config file it was set against.** `macrostrat`
+finds `macrostrat.toml` by walking up from the working directory, so two
+projects can have different files; a pointer set in one is ignored, with a
+notice, in the other. A pointer naming an environment the file does not define
+is likewise ignored. An explicit `--env` naming an unknown environment is an
+error that lists the environments the file does define.
+
+`macrostrat config environments` shows every environment with its class
+(marking those still *inferred* as production), its gates and its TTL.
 
 ## Environment classes
 
@@ -101,11 +131,14 @@ schema = "escalate"     # stricter than staging's default for DDL
 
 ### Which commands are gated
 
-`db restore`, `db load-csv`, `maps sources delete`, `topo reset`, `topo clean`,
-`topo rebuild`, `topo remove` (data); `schema apply`, `topo init` (schema);
-`schema migrate` **only with `--apply`**, since without it the command is a dry
-run. Read-only commands — `db dump`, `db tables`, `db credentials` — are never
-gated.
+`db restore`, `db load-csv`, `maps sources delete`, `maps change-slug`,
+`maps update-status`, `maps staging reingest-points` / `bulk-reingest-points` /
+`bulk-ingest` / `s3-delete`, `auth create-token`, `auth revoke-token`,
+`topo reset`, `topo clean`, `topo rebuild`, `topo remove` (data);
+`schema apply`, `topo init` (schema); `schema migrate` **only with `--apply`**,
+since without it the command is a dry run. `maps change-slug --dry-run` is
+likewise ungated. Read-only commands — `db dump`, `db tables`,
+`db credentials` — are never gated.
 
 Each gated command takes `--yes`/`-y`, which satisfies a `confirm` gate and
 nothing stronger.

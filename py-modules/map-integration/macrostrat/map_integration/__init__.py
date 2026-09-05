@@ -13,7 +13,7 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.environment import WriteScope
-from macrostrat.core.safety import require_write_access
+from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.commands.prepare_fields.utils import PointsTableUpdater
@@ -167,7 +167,14 @@ def delete_sources(
 
 
 @cli.command(name="change-slug")
-def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
+def change_slug(
+    map: MapInfo,
+    new_slug: str,
+    dry_run: bool = False,
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
+):
     """Change a map's slug."""
 
     db = get_database()
@@ -177,6 +184,14 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
 
     if new_slug == map.slug:
         return
+
+    # Gated imperatively so that a dry run needs no authorization.
+    if not dry_run:
+        require_write_access(
+            WriteScope.Data,
+            assume_yes=yes,
+            action=f"slug change {map.slug} → {new_slug}",
+        )
 
     print(f"Changing slug for map {map.id} from {map.slug} to {new_slug}")
 
@@ -220,7 +235,12 @@ def change_slug(map: MapInfo, new_slug: str, dry_run: bool = False):
 
 
 @cli.command(name="update-status")
-def update_status():
+@writes(WriteScope.Data, action="map status update")
+def update_status(
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
+):
     """Update the status of all maps."""
     from .status import update_status_for_all_maps
 
@@ -407,11 +427,15 @@ staging_cli.add_typer(normalize_cli, name="normalize")
 
 
 @staging_cli.command("reingest-points")
+@writes(WriteScope.Data, action="points re-ingestion")
 def cmd_reingest_points(
     data_path: str = ...,
     prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
     crs: str = Option(None, help="Force CRS for layers missing projection"),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """
     Re-ingest ONLY the points layer for an already-staged map.
@@ -473,6 +497,7 @@ def _reingest_points_for_path(
 
 
 @staging_cli.command("bulk-reingest-points")
+@writes(WriteScope.Data, action="bulk points re-ingestion")
 def cmd_bulk_reingest_points(
     data_path: str = ...,
     prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
@@ -482,6 +507,9 @@ def cmd_bulk_reingest_points(
     ),
     crs: str = Option(None, help="Force CRS for layers missing projection"),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """
     Re-ingest ONLY the points layer for every map subdirectory under DATA_PATH.
@@ -561,10 +589,14 @@ def cmd_upload_dir(
 
 
 @staging_cli.command("s3-delete")
+@writes(WriteScope.Data, action="staging bucket deletion")
 def cmd_delete_dir(
     slug: str = ...,
     file_name: str = Option(
         None, help="deletes a specified file within the slug directory."
+    ),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
 ):
     """Delete all objects under SLUG/ in the staging bucket."""
@@ -737,6 +769,7 @@ def convert_e00_to_gpkg(
 
 
 @staging_cli.command("bulk-ingest")
+@writes(WriteScope.Data, action="bulk map ingestion")
 def staging_bulk(
     data_path: str,
     prefix: str = Option(..., help="Slug filename_prefix to avoid collisions"),
@@ -749,6 +782,9 @@ def staging_bulk(
         help="Options: polygons, lines, or points. specifies the table in which the metadata is merged into. It defaults to sources polygons",
     ),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """
     Ingest all maps from subdirectories within a parent folder.

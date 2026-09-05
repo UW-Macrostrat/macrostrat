@@ -73,8 +73,11 @@ anything against a non-local environment. In short:
   satisfied without an interactive terminal** — there is no flag or environment
   variable that bypasses them, by design. Do not try to work around a refusal;
   it is the intended behaviour.
-- `macrostrat env <name>` expires after 15 minutes for any non-`local`
-  environment. Use `--env` for a single command.
+- `macrostrat env <name>` lapses after a per-class TTL (8 h development, 1 h
+  staging, 15 min production; `active_ttl` overrides). A lapsed environment is
+  kept and confirmed interactively before use; without a terminal it is
+  refused. Use `--env` for a single command. The pointer applies only to the
+  config file it was set against.
 - Credentials may be literals or references (`op://`, `env://`, `file://`,
   `keychain://`). An environment using references gets **no ambient `PG*` /
   `STORAGE_*` / `SECRET_KEY`** variables — reach credentials through

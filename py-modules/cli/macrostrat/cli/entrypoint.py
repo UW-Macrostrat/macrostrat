@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
 
@@ -8,13 +9,19 @@ from typer import Argument, Option, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
-from macrostrat.core.environment import declared_policy_for
+from macrostrat.core.environment import (
+    WriteScope,
+    declared_policy_for,
+    format_duration,
+)
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.secrets import redact_mapping, refuse_non_interactive_reveal
 from macrostrat.core.utils import (
-    NON_LOCAL_TTL,
-    active_env_remaining,
+    ENV_EXPIRES_VAR,
+    ENV_VAR,
+    active_environment,
     env_text,
+    remembered_environment,
     set_active_env,
 )
 from macrostrat.schema_management import schema_app
@@ -159,42 +166,35 @@ for sub in subsystem_commands:
 @main.command(name="env")
 def set_env(
     env: str = Argument(None),
-    unset: bool = False,
+    unset: bool = Option(False, "--unset", help="Forget the remembered environment"),
     shell: bool = Option(
         False,
         "--shell",
-        help="Print an export line instead of remembering the environment. "
+        help="Print export lines instead of remembering the environment. "
         'Use as: eval "$(macrostrat env --shell staging)"',
     ),
 ):
     """Set the active environment
 
     A `local`-class environment is remembered indefinitely. Anything else is
-    remembered for 15 minutes, because a persisted pointer at a remote database
-    that outlives the task is the sticky-global-state problem this guards
-    against: a different terminal, a subagent's shell or a cron job days later
-    would otherwise silently target it.
+    remembered for its class's time-to-live (8 h development, 1 h staging,
+    15 min production; `active_ttl` in the environment's section overrides it).
+    A lapsed environment is kept, and you are asked before the next command
+    that would use it — a persisted pointer at a remote database that outlives
+    the task is the sticky-global-state problem this guards against.
 
-    For a longer session that ends when the terminal does, use `--shell`.
+    The pointer applies only to the config file it was set against, so a
+    directory with a different `macrostrat.toml` is unaffected.
+
+    For a session that ends when the terminal does, use `--shell`.
     """
-    try:
-        current_env = app.settings.env
-    except AttributeError:
-        current_env = None
-
-    if env is None:
-        if current_env is None:
-            raise MacrostratError("No environment set")
-        remaining = active_env_remaining()
-        if remaining is None:
-            print(current_env)
-        else:
-            minutes = max(0, int(remaining.total_seconds() // 60))
-            print(f"{current_env} [dim](lapses in {minutes} min)[/dim]")
-        return
-
     if unset:
         set_active_env(None)
+        print("Forgot the remembered environment.")
+        return
+
+    if env is None:
+        _report_active_environment()
         return
 
     environments = app.settings.all_environments()
@@ -208,21 +208,27 @@ def set_env(
 
     if shell:
         # Nothing is persisted: the environment lives in the shell that
-        # evaluates this and dies with it.
-        print(f"export MACROSTRAT_ENV={env}")
+        # evaluates this and dies with it. The expiry makes it lapse the same
+        # way a remembered one does, so an exported variable is not a way
+        # around the TTL.
+        print(f"export {ENV_VAR}={env}")
+        if policy.ttl is not None:
+            expires = datetime.now(timezone.utc) + policy.ttl
+            print(f"export {ENV_EXPIRES_VAR}={expires.isoformat()}")
         return
 
-    expires_in = None if policy.is_local else NON_LOCAL_TTL
-    expires = set_active_env(env, expires_in=expires_in)
-    environ["MACROSTRAT_ENV"] = env
+    expires = set_active_env(
+        env, expires_in=policy.ttl, config_file=app.settings.config_file
+    )
+    environ[ENV_VAR] = env
 
     if expires is None:
         print(f"Activated {env_text()}")
     else:
-        minutes = int(NON_LOCAL_TTL.total_seconds() // 60)
         print(
             f"Activated {env_text()} [bold yellow]({policy.env_class.value})[/] "
-            f"[dim]for {minutes} min, until {expires:%H:%M}[/dim]"
+            f"[dim]for {format_duration(policy.ttl)}, "
+            f"until {expires.astimezone():%H:%M}[/dim]"
         )
         print(
             "[dim]Use --env for a single command, or "
@@ -230,11 +236,42 @@ def set_env(
         )
 
 
-def _available_environments(environments):
-    res = "Available environments:\n"
-    for k in environments:
-        res += f"- [item]{k}[/item]\n"
-    return res
+def _report_active_environment():
+    """`macrostrat env` with no argument: what is active, from where, how fresh."""
+    state = active_environment()
+    if state is None:
+        remembered = remembered_environment()
+        if remembered is not None:
+            where = remembered.config_file or "another config file"
+            print(
+                f"No environment applies here. The remembered environment "
+                f"[bold cyan]{remembered.name}[/] was set for [dim]{where}[/dim]."
+            )
+            return
+        print(
+            "No environment set. Run [bold]macrostrat env <name>[/] to activate "
+            "one; [bold]macrostrat config environments[/] lists them."
+        )
+        return
+
+    policy = declared_policy_for(app.settings.config_file, state.name)
+    line = f"[bold cyan]{state.name}[/] [bold yellow]({policy.env_class.value})[/]"
+    if state.source == "explicit":
+        line += " [dim](--env, this command only)[/dim]"
+    elif state.expires is None:
+        line += " [dim](does not lapse)[/dim]"
+    elif state.lapsed:
+        ago = format_duration(-state.remaining)
+        line += (
+            f" [yellow]lapsed {ago} ago[/yellow] [dim]— you will be asked before "
+            "it is used; `macrostrat env "
+            f"{state.name}` re-activates it[/dim]"
+        )
+    else:
+        left = format_duration(state.remaining)
+        via = "shell session" if state.source == "shell" else "remembered"
+        line += f" [dim]({via}, lapses in {left})[/dim]"
+    print(line)
 
 
 cfg_app = Typer(name="config", short_help="Manage configuration")
@@ -261,9 +298,49 @@ def edit_cfg():
 
 @cfg_app.command(name="environments")
 def environments():
-    """Get all available environments."""
-    envs = app.settings.all_environments()
-    app.console.print(_available_environments(envs))
+    """List the environments in the config file, with class, gates and TTL.
+
+    One look answers the questions that otherwise surface one refusal at a
+    time: which environments are still *inferred* as production because they
+    declare no `env_class`, what each write scope will demand, and how long
+    `macrostrat env <name>` keeps each one active.
+    """
+    from rich.table import Table
+
+    active = active_environment()
+    table = Table(title=str(app.settings.config_file), title_justify="left")
+    table.add_column("environment")
+    table.add_column("class")
+    table.add_column("data")
+    table.add_column("schema")
+    table.add_column("active for")
+    for name in app.settings.all_environments():
+        policy = declared_policy_for(app.settings.config_file, name)
+        label = f"[bold cyan]{name}[/]"
+        if active is not None and active.name == name:
+            label += " [green]●[/]"
+        klass = policy.env_class.value
+        if policy.inferred and not policy.is_local:
+            klass = f"[yellow]{klass}[/] [dim](inferred)[/dim]"
+        table.add_row(
+            label,
+            klass,
+            policy.gate_for(WriteScope.Data).value,
+            policy.gate_for(WriteScope.Schema).value,
+            format_duration(policy.ttl),
+        )
+    app.console.print(table)
+    inferred = [
+        n
+        for n in app.settings.all_environments()
+        if (p := declared_policy_for(app.settings.config_file, n)).inferred
+        and not p.is_local
+    ]
+    if inferred:
+        app.console.print(
+            '[dim]"inferred" means the section declares no env_class = "…", so it '
+            "is gated as production. Declare one to say what it really is.[/dim]"
+        )
 
 
 main.add_typer(cfg_app)
