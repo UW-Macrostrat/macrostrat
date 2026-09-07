@@ -89,8 +89,8 @@ class TestSplitCredentials:
     TABLE = {
         "host": "h",
         "database": "d",
-        "reader": "stub://reader",
-        "writer": "stub://writer",
+        "read_password": "stub://reader",
+        "write_password": "stub://writer",
     }
 
     def test_reads_use_the_reader_credential(self, monkeypatch, stub_resolver):

@@ -81,8 +81,10 @@ help_text = f"""[bold]Macrostrat[/] control interface
 
 app.info_messages.append(f"Active environment: [bold cyan]{_env_text}[/]")
 
-if not settings.pg_database:
-    app.warnings.append("No database URL found in settings")
+# Asks the connection registry, which composes without fetching: a structured
+# `[<env>.database]` table and a vaulted URL both count as configured.
+if settings.database_connection() is None:
+    app.warnings.append("No database configured for this environment")
 reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
 if reinstall_warning is not None:
     if len(reinstall_warning) < 2:

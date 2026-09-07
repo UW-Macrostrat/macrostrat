@@ -80,14 +80,19 @@ active_ttl = "15m"
 # The JWT signing key — see the note at the end of this file.
 token_signing_key = "op://Macrostrat Prod/api-v3/jwt/secret_key"
 
+# One login per role: `read_user` + `read_password`, `write_user` +
+# `write_password`. `user` and `password` stand in for whichever role declares
+# nothing of its own. Any of them may be a literal or a secret reference — a
+# username is topology when it is a role name, and a secret when it is the
+# generated login stored beside its password.
 [production.database]
 host = "db.production.svc.macrostrat.org"
 port = 5432
 database = "macrostrat"
-reader_user = "macrostrat_reader"
-writer_user = "macrostrat-admin"
-reader = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer = "op://Macrostrat Prod/macrostrat-db/admin/password"
+read_user = "macrostrat_reader"
+read_password = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_user = "op://Macrostrat Prod/macrostrat-db/admin/username"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
 # Note: an environment whose credential is a reference gets **no ambient PG*
 # environment variables**. Exporting them would mean resolving the secret at

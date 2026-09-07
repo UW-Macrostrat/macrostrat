@@ -327,7 +327,8 @@ def _require_fresh_writer_credential(settings, env: str) -> None:
                 "manager can require human approval. A password stored "
                 "directly in macrostrat.toml cannot be re-authorized, so this "
                 "gate fails closed. Move it to a reference "
-                '(writer = "op://...") or lower the gate for this environment.'
+                '(write_password = "op://...") or lower the gate for this '
+                "environment."
             ),
         )
 

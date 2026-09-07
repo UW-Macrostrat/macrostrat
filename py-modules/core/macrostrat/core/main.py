@@ -83,6 +83,18 @@ class MacrostratControlCommand(ControlCommand):
 
             require_environment(settings=self.app.settings)
 
+        # The compose stack needs its credentials in plaintext at start time.
+        # A vaulted config withholds them from the ambient environment, so
+        # they are resolved here, for the compose commands only, once the
+        # environment has been confirmed above.
+        from .compose_env import COMPOSE_COMMANDS, export_compose_environment
+
+        if (
+            ctx.invoked_subcommand in COMPOSE_COMMANDS
+            and self.app.settings.backend == "docker-compose"
+        ):
+            export_compose_environment(self.app.settings)
+
 
 class Macrostrat(Application):
     settings: Dynaconf

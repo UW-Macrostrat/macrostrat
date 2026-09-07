@@ -1,6 +1,7 @@
 from enum import Enum
 from os import environ, getenv
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
@@ -9,7 +10,13 @@ from sqlalchemy.engine.url import URL
 
 from macrostrat.utils import get_logger
 
-from .connections import DEFAULT_DATABASE, DatabaseRole, connection_for, connections_for
+from .connections import (
+    DEFAULT_DATABASE,
+    DatabaseRole,
+    MissingCredential,
+    connection_for,
+    connections_for,
+)
 from .environment import policy_from_settings
 from .exc import UnknownEnvironment
 from .resolvers import cast_sources, setup_source_roots_environment
@@ -217,32 +224,95 @@ if storage := getattr(settings, "storage", None):
         environ["STORAGE_ACCESS_KEY"] = access_key
         environ["STORAGE_SECRET_KEY"] = secret_key
 
-# A database connection string for PostgreSQL
-PG_DATABASE = getattr(settings, "pg_database", None)
-url = None
-# Not sure why this happens
-if PG_DATABASE == "None":
-    PG_DATABASE = None
-# environ.get("MACROSTRAT_PG_DATABASE", None)
 
-# A `pg_database` that *names* a secret rather than containing one cannot take
-# the eager path below: resolving it here would put a password-manager prompt in
-# front of every `macrostrat` invocation, and would export the credential into
-# the environment of every subprocess — which is the leak this indirection
-# exists to close. Such an environment gets no ambient PG* variables at all;
-# callers reach the credential through `settings.database_url(role=...)`, and
-# commands that genuinely need PG* for a subprocess ask for it explicitly.
-#
-# Adopting a secret reference is therefore also how an environment opts out of
-# ambient credentials. Configs holding literals are untouched.
-if PG_DATABASE is not None and is_secret_ref(PG_DATABASE):
-    log.info(
-        "pg_database for this environment names a secret (%s); deferring "
-        "resolution and skipping the PG* environment export.",
-        PG_DATABASE.split("://")[0] + "://…",
-    )
-    PG_DATABASE = None
-elif PG_DATABASE is not None:
+def _ambient_database_url(settings, name: str = DEFAULT_DATABASE) -> Optional[str]:
+    """The URL of database *name* exported into the process environment, or None.
+
+    A literal config — a `pg_database` URL, or a `[<env>.database]` table whose
+    login is written in the file — keeps the ambient PG* / POSTGRES_* variables
+    it has always had: the local compose stack and the legacy commands read
+    them. It is composed through the connection registry so both shapes count.
+
+    A credential that *names* a secret cannot take this path: resolving it here
+    would put a password-manager prompt in front of every `macrostrat`
+    invocation and hand the credential to every subprocess — the leak this
+    indirection exists to close. Such an environment gets no ambient PG*
+    variables at all; callers reach the credential through
+    `settings.database_url(role=...)`, and commands that genuinely need PG* for
+    a subprocess build it for that subprocess (see `db psql`). Adopting a
+    reference is therefore also how an environment opts out of ambient
+    credentials.
+
+    The writer login is exported, matching what the single-URL form has always
+    carried. A literal table with distinct read and write logins is a remote
+    environment that should be on references anyway.
+    """
+    conn = settings.database_connection(name)
+    if conn is None:
+        return None
+    if conn.requires_resolution(DatabaseRole.Writer):
+        log.info(
+            "The credential for database %r names a secret (%s); deferring "
+            "resolution and skipping its environment export.",
+            name,
+            conn.location(DatabaseRole.Writer),
+        )
+        return None
+    try:
+        return exported_database_url(conn)
+    except MissingCredential:
+        # A table with no password at all: nothing to export, and `url()`
+        # will say so clearly when something asks.
+        return None
+
+
+def exported_database_url(conn, role=DatabaseRole.Writer) -> str:
+    """*conn*'s URL as a plain string fit for another process's environment.
+
+    Resolves the credential. The registry stamps
+    `application_name=macrostrat-cli/...` on every URL it composes; that
+    attribution is right for this process and wrong for the services that read
+    an exported variable, so it is dropped unless the config asked for one.
+    """
+    url = conn.url(role)
+    configured = getattr(conn, "options", None) or {}
+    if "application_name" not in configured:
+        query = {k: v for k, v in url.query.items() if k != "application_name"}
+        url = url.set(query=query)
+    return url.render_as_string(hide_password=False)
+
+
+def export_database_environment(pg_database: str, env=environ) -> None:
+    """Set the libpq / compose variables for the default database on *env*.
+
+    Shared by the import-time path (a literal config) and the command-time
+    path (`export_compose_environment`, for a vaulted one).
+    """
+    url = make_url(pg_database)
+
+    env["PGHOST"] = url.host
+    env["PGPORT"] = str(url.port)
+
+    for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
+        env[v] = url.password
+
+    for v in ("PGUSER", "POSTGRES_USER"):
+        env[v] = url.username
+
+    for v in ("PGDATABASE", "POSTGRES_DB"):
+        env[v] = url.database
+
+    # Used for local running of Macrostrat
+    env["MACROSTRAT_DB_PORT"] = str(url.port)
+
+    env["MACROSTRAT_DATABASE_URL"] = pg_database
+
+
+# A database connection string for PostgreSQL, when the config holds it in
+# plaintext. None for a vaulted credential — see `_ambient_database_url`.
+PG_DATABASE = _ambient_database_url(settings)
+url = None
+if PG_DATABASE is not None:
     # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
     docker_localhost = getattr(settings, "docker_localhost", "localhost")
     PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
@@ -252,23 +322,7 @@ elif PG_DATABASE is not None:
 
     # Set environment variables
     url = make_url(PG_DATABASE)
-
-    environ["PGHOST"] = url.host
-    environ["PGPORT"] = str(url.port)
-
-    for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
-        environ[v] = url.password
-
-    for v in ("PGUSER", "POSTGRES_USER"):
-        environ[v] = url.username
-
-    for v in ("PGDATABASE", "POSTGRES_DB"):
-        environ[v] = url.database
-
-    # Used for local running of Macrostrat
-    environ["MACROSTRAT_DB_PORT"] = str(url.port)
-
-    environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
+    export_database_environment(PG_DATABASE)
 
 mysql_database = getattr(settings, "mysql_database", None)
 if mysql_database is not None:
@@ -276,7 +330,16 @@ if mysql_database is not None:
     # TODO: handle this more intelligently
 
 
-if elevation_database := getattr(settings, "elevation_database", None):
+# Legacy shim: the API and the compose stack read the elevation database from
+# ELEVATION_DATABASE_URL. The top-level `elevation_database` key is honoured as
+# before; failing that, an `elevation` entry in `[<env>.databases]` is exported
+# under the same rule as PG* — a literal exports, a reference does not. Goes
+# away when the compose commands build their own environment (see the
+# Configuration model note).
+elevation_database = getattr(settings, "elevation_database", None)
+if not elevation_database:
+    elevation_database = _ambient_database_url(settings, "elevation")
+if elevation_database:
     environ["ELEVATION_DATABASE_URL"] = elevation_database
 
 

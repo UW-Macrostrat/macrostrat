@@ -170,11 +170,38 @@ A credential may be written literally, or **name a secret** in a manager:
 
 ```toml
 [production.database]
-host     = "db.production.svc.macrostrat.org"
-database = "macrostrat"
-reader   = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer   = "op://Macrostrat Prod/macrostrat-db/admin/password"
+host           = "db.production.svc.macrostrat.org"
+database       = "macrostrat"
+read_user      = "macrostrat_reader"
+read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_user     = "op://Macrostrat Prod/macrostrat-db/admin/username"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 ```
+
+### Logins
+
+Each role has a login: `read_user` + `read_password`, `write_user` +
+`write_password`. `user` and `password` stand in for whichever role does not
+declare its own, so an environment with one login writes just those two:
+
+```toml
+[development.database]
+host     = "db.development.svc.macrostrat.org"
+database = "macrostrat"
+user     = "macrostrat-admin"
+password = "op://Macrostrat Dev/macrostrat-db/password"
+```
+
+**Any of the four may be a literal or a reference.** A username is topology
+when it is a role name like `macrostrat_reader`, and a secret when it is the
+generated login a password manager stores beside its password — 1Password
+items carry both as `…/username` and `…/password`, and either can be named. A
+username held by reference is fetched only when that role's URL is composed,
+never to render an error message. When nothing declares a user at all the
+login is `macrostrat`.
+
+The earlier spellings `reader` / `writer` (passwords) and `reader_user` /
+`writer_user` are still read, with a warning naming the new key.
 
 Supported reference schemes:
 
@@ -196,6 +223,12 @@ the literal it is.
 > import and handing it to every subprocess — the leak this indirection exists
 > to close. Adopting a reference is therefore also how an environment opts out
 > of ambient credentials. Environments holding literals are unaffected.
+>
+> The one exception is the local compose stack, which needs its values in
+> plaintext to start. `up`, `restart` and `compose` resolve what the stack
+> reads — the database login, `ELEVATION_DATABASE_URL`, `SECRET_KEY`,
+> `STORAGE_*` — for that invocation only, and only the variables a literal
+> config has not already exported. No other command does this.
 
 ### Reader by default
 
@@ -220,9 +253,17 @@ closed and replaced when the gate passes.
 
 This has no effect on an environment configured with a literal `pg_database`
 URL: there is one credential, and the role is ignored. It also has no effect
-where `reader` and `writer` resolve to the same secret. It matters only once an
+where the read and write passwords resolve to the same secret. It matters only once an
 environment has a genuinely distinct, restricted reader role — so it can be
 adopted well before one exists.
+
+#### `psql`
+
+`macrostrat db psql` is an interactive shell and can run any statement, so it
+follows the same rule: it connects with the read login, and `--write` passes
+the `schema` gate before connecting with the write login. The credential is
+resolved for that one invocation and reaches `psql` through the container's
+environment, never through `argv`.
 
 ### The token-signing key is the most sensitive value here
 
@@ -253,10 +294,10 @@ port = 5432
 sslmode = "require"
 
 [production.database]
-host     = "db.production.svc.macrostrat.org"
-database = "macrostrat"
-reader   = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer   = "op://Macrostrat Prod/macrostrat-db/admin/password"
+host           = "db.production.svc.macrostrat.org"
+database       = "macrostrat"
+read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
 [production.databases]
 rockd     = "rockd"                                            # same server
@@ -270,8 +311,17 @@ inheriting host, port, credentials and options. A **table** states only its
 differences. A **URL** is what this key has always held. A malformed entry is
 skipped with a warning rather than taking the environment offline.
 
-`[default.database]` is inherited, so a shared port, TLS mode or reader
-reference is written once rather than once per tier.
+`database` defaults to `macrostrat`, so a `[<env>.database]` table that names
+only a host means the Macrostrat database on that host.
+
+A URL that is a **secret reference** (`elevation = "op://…/url"`) is kept
+unresolved until that database is used. Building the registry fetches nothing,
+so one reference that cannot resolve — the wrong 1Password account, no `op` on
+PATH, a cloud session without the variable — fails when *that* database is
+asked for, not the moment anything asks for the default one.
+
+`[default.database]` is inherited, so a shared port, TLS mode or read login is
+written once rather than once per tier.
 
 Object storage works the same way:
 
@@ -351,8 +401,8 @@ Then the structured `[<env>.database]` form, which is where a remote
 environment should end up: it keeps the credential redactable, keeps topology
 reviewable in a diff, and separates reader from writer.
 
-If the environment declares separate `reader` and `writer` references, reads
-use the reader and only an authorized write reaches for the writer — see
+If the environment declares separate read and write logins, reads use the read
+login and only an authorized write reaches for the write login — see
 [Reader by default](#reader-by-default).
 
 ## Retired commands

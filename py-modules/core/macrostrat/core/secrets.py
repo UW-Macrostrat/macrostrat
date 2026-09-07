@@ -5,9 +5,10 @@ A config value may name a secret instead of containing one:
 .. code-block:: toml
 
     [production.database]
-    host   = "db.production.svc.macrostrat.org"
-    reader = "op://Macrostrat Prod/macrostrat-db/reader/password"
-    writer = "op://Macrostrat Prod/macrostrat-db/admin/password"
+    host           = "db.production.svc.macrostrat.org"
+    read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+    write_user     = "op://Macrostrat Prod/macrostrat-db/admin/username"
+    write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
 That keeps hosts and database names in plaintext — greppable, reviewable, and
 genuinely useful context — while the secret half lives in a password manager, so

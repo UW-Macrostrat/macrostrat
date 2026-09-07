@@ -1,10 +1,11 @@
 """Composing database connections from topology plus a named credential."""
 
-from pytest import fixture, raises
+from pytest import fixture, mark, raises
 
 from macrostrat.core.connections import (
     DatabaseConnection,
     DatabaseRole,
+    DeferredUrlConnection,
     MissingCredential,
     connection_for,
     connections_for,
@@ -13,6 +14,7 @@ from macrostrat.core.connections import (
 from macrostrat.core.secrets import (
     RESOLVERS,
     Secret,
+    SecretResolutionError,
     forget_all_secrets,
     register_resolver,
 )
@@ -20,15 +22,24 @@ from macrostrat.core.secrets import (
 LEGACY = "postgresql://macrostrat-admin:my-cool-password@localhost:5432/macrostrat"
 
 
-@fixture
-def stub_resolver():
-    def resolve(body):
+class _StubResolver:
+    """Resolves `stub://<body>` to `resolved-<body>`, recording each fetch."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, body):
+        self.calls.append(body)
         return f"resolved-{body}"
 
+
+@fixture
+def stub_resolver():
+    resolver = _StubResolver()
     forget_all_secrets()
-    register_resolver("stub", resolve)
+    register_resolver("stub", resolver)
     try:
-        yield
+        yield resolver
     finally:
         RESOLVERS.pop("stub", None)
         forget_all_secrets()
@@ -62,8 +73,8 @@ class TestStructuredTable:
                 "host": "db.production.svc.macrostrat.org",
                 "database": "macrostrat",
                 "user": "macrostrat",
-                "reader": "stub://reader-pw",
-                "writer": "stub://writer-pw",
+                "read_password": "stub://reader-pw",
+                "write_password": "stub://writer-pw",
             }
         )
         assert bare_dsn(c.url(DatabaseRole.Reader)).endswith(
@@ -75,17 +86,17 @@ class TestStructuredTable:
     def test_references_are_not_resolved_at_parse_time(self):
         """Parsing config must not reach for a password manager."""
         c = DatabaseConnection.parse(
-            {"host": "h", "database": "d", "reader": "op://v/i/reader/password"}
+            {"host": "h", "database": "d", "read_password": "op://v/i/reader/password"}
         )
-        assert isinstance(c.reader, Secret)
-        assert not c.reader.is_resolved
+        assert isinstance(c.read_password, Secret)
+        assert not c.read_password.is_resolved
 
     def test_literal_password_stays_a_plain_string(self):
         c = DatabaseConnection.parse(
             {"host": "h", "database": "d", "password": "hunter2"}
         )
-        assert c.reader == "hunter2"
-        assert not isinstance(c.reader, Secret)
+        assert c.credential_for(DatabaseRole.Reader) == "hunter2"
+        assert not isinstance(c.password, Secret)
 
     def test_shared_password_serves_both_roles(self):
         c = DatabaseConnection.parse(
@@ -100,7 +111,7 @@ class TestStructuredTable:
                 "host": "h",
                 "database": "d",
                 "password": "shared",
-                "writer": "stub://only-writer",
+                "write_password": "stub://only-writer",
             }
         )
         assert "shared" in dsn(c.url(DatabaseRole.Reader))
@@ -112,8 +123,8 @@ class TestStructuredTable:
                 "host": "h",
                 "database": "d",
                 "password": "p",
-                "reader_user": "macrostrat_reader",
-                "writer_user": "macrostrat-admin",
+                "read_user": "macrostrat_reader",
+                "write_user": "macrostrat-admin",
             }
         )
         assert c.url(DatabaseRole.Reader).username == "macrostrat_reader"
@@ -121,12 +132,115 @@ class TestStructuredTable:
 
     def test_missing_role_names_the_role_and_not_a_secret(self):
         c = DatabaseConnection.parse(
-            {"host": "h", "database": "d", "writer": "literal-pw"}
+            {"host": "h", "database": "d", "write_password": "literal-pw"}
         )
         with raises(MissingCredential) as err:
             c.url(DatabaseRole.Reader)
         assert "reader" in str(err.value)
+        assert "read_password" in str(err.value)
         assert "literal-pw" not in str(err.value)
+
+    def test_missing_password_does_not_resolve_a_secret_username(self, stub_resolver):
+        """The error names the username by reference, without fetching it."""
+        c = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "read_user": "stub://ro-login"}
+        )
+        with raises(MissingCredential) as err:
+            c.url(DatabaseRole.Reader)
+        assert "stub://ro-login" in str(err.value)
+        assert stub_resolver.calls == []
+
+
+class TestLogins:
+    """`<role>_user` / `<role>_password`, with `user` / `password` standing in
+    for whichever role declares nothing — and any of them may be a secret."""
+
+    def test_username_from_a_secret(self, stub_resolver):
+        c = DatabaseConnection.parse(
+            {
+                "host": "h",
+                "database": "d",
+                "write_user": "stub://admin-login",
+                "write_password": "stub://admin-pw",
+                "read_user": "macrostrat_reader",
+                "read_password": "ro",
+            }
+        )
+        assert c.url(DatabaseRole.Reader).username == "macrostrat_reader"
+        assert stub_resolver.calls == []  # nothing fetched for the reader
+        url = c.url(DatabaseRole.Writer)
+        assert url.username == "resolved-admin-login"
+        assert url.password == "resolved-admin-pw"
+
+    def test_shared_user_serves_the_role_without_its_own(self):
+        c = DatabaseConnection.parse(
+            {
+                "host": "h",
+                "database": "d",
+                "user": "shared-login",
+                "password": "p",
+                "write_user": "admin",
+            }
+        )
+        assert c.url(DatabaseRole.Reader).username == "shared-login"
+        assert c.url(DatabaseRole.Writer).username == "admin"
+
+    def test_shared_user_may_be_a_secret(self, stub_resolver):
+        c = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "user": "stub://login", "password": "p"}
+        )
+        assert c.url(DatabaseRole.Reader).username == "resolved-login"
+        assert c.url(DatabaseRole.Writer).username == "resolved-login"
+
+    def test_default_user_when_nothing_is_declared(self):
+        c = DatabaseConnection.parse({"host": "h", "database": "d", "password": "p"})
+        assert c.url(DatabaseRole.Reader).username == "macrostrat"
+
+    def test_username_is_not_resolved_at_parse_time(self, stub_resolver):
+        c = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "user": "stub://login", "password": "p"}
+        )
+        assert isinstance(c.user, Secret)
+        assert stub_resolver.calls == []
+
+    def test_location_shows_a_secret_username_by_reference(self, stub_resolver):
+        c = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "user": "stub://login", "password": "p"}
+        )
+        assert c.location(DatabaseRole.Reader) == "stub://login@h:5432/d"
+        assert stub_resolver.calls == []
+
+    @mark.parametrize(
+        "legacy,canonical",
+        [
+            ("reader", "read_password"),
+            ("reader_password", "read_password"),
+            ("writer", "write_password"),
+            ("writer_password", "write_password"),
+            ("reader_user", "read_user"),
+            ("writer_user", "write_user"),
+            ("username", "user"),
+        ],
+    )
+    def test_old_spellings_still_work(self, legacy, canonical):
+        from macrostrat.core import connections
+
+        connections._LEGACY_WARNED.clear()
+        c = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "password": "p", legacy: "value"}
+        )
+        assert getattr(c, canonical) == "value"
+
+    def test_canonical_spelling_wins_over_legacy(self):
+        c = DatabaseConnection.parse(
+            {
+                "host": "h",
+                "database": "d",
+                "read_password": "new",
+                "reader": "old",
+            }
+        )
+        assert c.credential_for(DatabaseRole.Reader) == "new"
 
     def test_host_and_database_are_required(self):
         with raises(ValueError, match="host` and `database"):
@@ -156,7 +270,7 @@ class TestPasswordDisclosure:
         self, stub_resolver
     ):
         c = DatabaseConnection.parse(
-            {"host": "h", "database": "d", "reader": "stub://pw"}
+            {"host": "h", "database": "d", "read_password": "stub://pw"}
         )
         c.url(DatabaseRole.Reader)  # resolve and cache
         assert "resolved-pw" not in repr(c)
@@ -194,17 +308,33 @@ class TestLegacyCompatibility:
     def test_unusable_table_falls_back_to_the_legacy_key(self):
         """A malformed new-style table must not take an environment offline."""
         conn = connection_for(
-            _Settings(pg_database=LEGACY, database={"host": "only-a-host"})
+            _Settings(pg_database=LEGACY, database={"database": "no-host-given"})
         )
         assert conn.host == "localhost"
 
+    def test_host_only_table_means_the_macrostrat_database(self):
+        """The default database is `macrostrat` unless the table says otherwise."""
+        conn = connection_for(_Settings(database={"host": "h", "password": "p"}))
+        assert conn.host == "h"
+        assert conn.database == "macrostrat"
+
     def test_whole_url_may_itself_be_a_secret_reference(self, stub_resolver):
         """The smallest adoption step: no structural change at all."""
-        register_resolver("wholeurl", lambda body: LEGACY)
+        calls = []
+
+        def fetch(body):
+            calls.append(body)
+            return LEGACY
+
+        register_resolver("wholeurl", fetch)
         try:
             conn = connection_for(_Settings(pg_database="wholeurl://macrostrat"))
-            assert conn.host == "localhost"
+            # Composing the registry fetched nothing.
+            assert isinstance(conn, DeferredUrlConnection)
+            assert calls == []
             assert bare_dsn(conn.url(DatabaseRole.Writer)) == LEGACY
+            assert calls == ["macrostrat"]
+            assert conn.connection().host == "localhost"
         finally:
             RESOLVERS.pop("wholeurl", None)
 
@@ -320,7 +450,7 @@ class TestNamedDatabases:
             conns = connections_for(
                 _Settings(database=self.BASE, databases={"b": "wholeurl://x"})
             )
-            assert conns["b"].host == "localhost"
+            assert conns["b"].connection().host == "localhost"
         finally:
             RESOLVERS.pop("wholeurl", None)
 
@@ -328,7 +458,9 @@ class TestNamedDatabases:
         conns = connections_for(
             _Settings(
                 database=self.BASE,
-                databases={"sgp": {"database": "sgp", "writer": "stub://sgp-pw"}},
+                databases={
+                    "sgp": {"database": "sgp", "write_password": "stub://sgp-pw"}
+                },
             )
         )
         assert "resolved-sgp-pw" in dsn(conns["sgp"].url(DatabaseRole.Writer))
@@ -486,3 +618,121 @@ class TestApplicationName:
             self.app_name(self.conn().url(DatabaseRole.Reader))
             == "macrostrat-cli/unknown@no-env/reader"
         )
+
+
+class TestDeferredUrl:
+    """A whole-URL reference is kept unresolved until its database is used.
+
+    The failure this guards against was live: an `elevation = "op://…"` entry
+    that could not resolve took *every* database in the environment offline,
+    because composing the registry fetched it.
+    """
+
+    BASE = {"host": "db.example.org", "database": "macrostrat", "password": "pw"}
+
+    @fixture
+    def failing_resolver(self):
+        def fail(body):
+            raise SecretResolutionError(f"cannot reach {body}")
+
+        forget_all_secrets()
+        register_resolver("broken", fail)
+        try:
+            yield
+        finally:
+            RESOLVERS.pop("broken", None)
+            forget_all_secrets()
+
+    def test_composing_the_registry_fetches_nothing(self, stub_resolver):
+        conns = connections_for(
+            _Settings(database=self.BASE, databases={"e": "stub://elevation-url"})
+        )
+        assert set(conns) == {"macrostrat", "e"}
+        assert stub_resolver.calls == []
+
+    def test_an_unreachable_reference_leaves_other_databases_usable(
+        self, failing_resolver
+    ):
+        conns = connections_for(
+            _Settings(database=self.BASE, databases={"e": "broken://elevation"})
+        )
+        assert "pw" in dsn(conns["macrostrat"].url(DatabaseRole.Reader))
+        with raises(SecretResolutionError):
+            conns["e"].url(DatabaseRole.Reader)
+
+    def test_location_is_the_reference_and_does_not_fetch(self, stub_resolver):
+        conn = connection_for(_Settings(pg_database="stub://url"))
+        assert conn.location(DatabaseRole.Reader) == "stub://url"
+        assert repr(conn) == "DeferredUrlConnection('stub://url')"
+        assert stub_resolver.calls == []
+
+    def test_an_unparsable_value_does_not_leak_it(self, stub_resolver):
+        """The driver's own error quotes the string, password included."""
+        register_resolver("junk", lambda body: "postgresql://u:hunter2@")
+        try:
+            conn = connection_for(_Settings(pg_database="junk://x"))
+            with raises(SecretResolutionError) as info:
+                conn.url(DatabaseRole.Reader)
+            assert "hunter2" not in str(info.value)
+            assert "junk://x" in str(info.value)
+        finally:
+            RESOLVERS.pop("junk", None)
+
+    def test_the_credential_is_the_url_reference(self, stub_resolver):
+        """What an escalate gate re-fetches is the URL itself."""
+        conn = connection_for(_Settings(pg_database="stub://url"))
+        credential = conn.credential_for(DatabaseRole.Writer)
+        assert isinstance(credential, Secret)
+        assert credential.ref == "stub://url"
+
+    def test_requires_resolution_until_fetched(self, stub_resolver):
+        register_resolver("wholeurl", lambda body: LEGACY)
+        try:
+            conn = connection_for(_Settings(pg_database="wholeurl://x"))
+            assert conn.requires_resolution(DatabaseRole.Writer)
+            conn.url(DatabaseRole.Writer)
+            assert not conn.requires_resolution(DatabaseRole.Writer)
+        finally:
+            RESOLVERS.pop("wholeurl", None)
+
+
+class TestRequiresResolution:
+    def test_literal_config_needs_no_fetch(self):
+        c = DatabaseConnection.parse({"host": "h", "database": "d", "password": "p"})
+        assert not c.requires_resolution(DatabaseRole.Reader)
+        assert not c.requires_resolution(DatabaseRole.Writer)
+
+    def test_reference_needs_a_fetch_until_resolved(self, stub_resolver):
+        c = DatabaseConnection.parse(
+            {
+                "host": "h",
+                "database": "d",
+                "write_password": "stub://w",
+                "password": "p",
+            }
+        )
+        assert not c.requires_resolution(DatabaseRole.Reader)
+        assert c.requires_resolution(DatabaseRole.Writer)
+        c.url(DatabaseRole.Writer)
+        assert not c.requires_resolution(DatabaseRole.Writer)
+
+    def test_a_missing_password_fetches_nothing(self):
+        c = DatabaseConnection.parse({"host": "h", "database": "d"})
+        assert not c.requires_resolution(DatabaseRole.Reader)
+
+
+class TestParseWarningsDoNotLeak:
+    """A malformed literal URL is reported without quoting it."""
+
+    def test_named_url(self, caplog):
+        conns = connections_for(_Settings(databases={"m": "postgresql://u:hunter2@"}))
+        assert "m" not in conns
+        assert "hunter2" not in caplog.text
+
+    def test_legacy_url(self, caplog):
+        assert connection_for(_Settings(pg_database="postgresql://u:hunter2@")) is None
+        assert "hunter2" not in caplog.text
+
+    def test_surrounding_whitespace_is_tolerated(self):
+        conns = connections_for(_Settings(databases={"m": f"  {LEGACY} "}))
+        assert conns["m"].host == "localhost"
