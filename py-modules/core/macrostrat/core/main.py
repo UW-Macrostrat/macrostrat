@@ -1,9 +1,9 @@
 from os import environ
 from pathlib import Path
 from sys import exit
+from typing import Any
 
 from click.utils import get_app_dir
-from dynaconf import Dynaconf
 from rich.console import Console
 from typer import Context, Option
 
@@ -11,7 +11,7 @@ from macrostrat.app_frame import Application, ControlCommand, DockerComposeManag
 from macrostrat.utils import get_logger
 
 from .console import console_theme
-from .exc import MacrostratError, UnknownEnvironment
+from .exc import ConfigError, MacrostratError, UnknownEnvironment
 from .utils import (
     ENV_EXPIRES_VAR,
     ENV_VAR,
@@ -33,7 +33,7 @@ ENVIRONMENT_NEUTRAL_COMMANDS = frozenset({"env", "config", "self", "install", "u
 def load_settings(console: Console):
     try:
         from .config import settings
-    except UnknownEnvironment as err:
+    except (UnknownEnvironment, ConfigError) as err:
         # Raised during config load, before Click is running, so nothing else
         # will render it. Say what was wrong and stop.
         console.print(f"[bold red]Error:[/] {err.message}")
@@ -97,7 +97,7 @@ class MacrostratControlCommand(ControlCommand):
 
 
 class Macrostrat(Application):
-    settings: Dynaconf
+    settings: Any
     console: Console
     state: StateManager
 

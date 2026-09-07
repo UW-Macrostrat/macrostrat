@@ -298,6 +298,20 @@ def edit_cfg():
     run([editor, str(settings.config_file)])
 
 
+@cfg_app.command(name="schema")
+def config_schema():
+    """Print the JSON Schema of a config environment (config_version = 2)
+
+    The schema is the reference for every key the new loader reads. Point an
+    editor at it for completion, or read it to see what a key means.
+    """
+    from json import dumps
+
+    from macrostrat.core.config_model import config_json_schema
+
+    typer.echo(dumps(config_json_schema(), indent=2))
+
+
 @cfg_app.command(name="environments")
 def environments():
     """List the environments in the config file, with class, gates and TTL.

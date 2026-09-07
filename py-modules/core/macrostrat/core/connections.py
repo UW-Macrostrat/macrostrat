@@ -478,7 +478,13 @@ def _base_table(settings) -> dict:
             inherited = from_env(DEFAULT_ENV).get(DATABASE_KEY, None)
         except Exception:  # pragma: no cover - Dynaconf raises variously here
             inherited = None
-    merged = merge_tables(inherited, settings.get(DATABASE_KEY, None))
+    declared = settings.get(DATABASE_KEY, None)
+    if isinstance(declared, str):
+        # `database = "postgresql://…"`: the URL's own parts are the base a
+        # bare-name entry inherits. A reference contributes nothing here,
+        # because reading its parts would mean fetching it.
+        declared = _components_of(declared)
+    merged = merge_tables(inherited, declared)
     # The environment's default database is `macrostrat` unless it says
     # otherwise: a `[<env>.database]` table that names only a host means the
     # Macrostrat database on that host. Named databases built on this table
@@ -488,6 +494,43 @@ def _base_table(settings) -> dict:
     ):
         merged["database"] = DEFAULT_DATABASE
     return merged
+
+
+def _components_of(url: str) -> dict:
+    """The table equivalent of a literal URL, or ``{}`` for a reference."""
+    url = url.strip()
+    if not url or is_secret_ref(url):
+        return {}
+    try:
+        conn = DatabaseConnection.from_url(url)
+    except (ValueError, ArgumentError):
+        return {}
+    out = dict(
+        host=conn.host,
+        port=conn.port,
+        database=conn.database,
+        driver=conn.driver,
+        options=dict(conn.options),
+    )
+    if conn.user is not None:
+        out["user"] = conn.user
+    if conn.password is not None:
+        out["password"] = conn.password
+    return out
+
+
+def _url_connection(name: str, spec: str) -> Optional[AnyConnection]:
+    """A whole-URL entry: deferred if it is a reference, parsed if literal."""
+    spec = spec.strip()
+    if is_secret_ref(spec):
+        return DeferredUrlConnection(as_secret(spec), str(name))
+    try:
+        return DatabaseConnection.from_url(spec)
+    except (ValueError, ArgumentError) as err:
+        log.warning(
+            "Could not parse the URL for database %r: %s", name, _parse_problem(err)
+        )
+        return None
 
 
 def _legacy_connection(settings) -> Optional[AnyConnection]:
@@ -549,18 +592,8 @@ def _named_connection(name, spec, base: dict) -> Optional[AnyConnection]:
         return None
     spec = spec.strip()
 
-    if is_secret_ref(spec):
-        return DeferredUrlConnection(as_secret(spec), str(name))
-    if "://" in spec:
-        try:
-            return DatabaseConnection.from_url(spec)
-        except (ValueError, ArgumentError) as err:
-            log.warning(
-                "Could not parse the URL for database %r: %s",
-                name,
-                _parse_problem(err),
-            )
-            return None
+    if is_secret_ref(spec) or "://" in spec:
+        return _url_connection(name, spec)
 
     # A bare database name on the environment's default server.
     if not base:
@@ -585,7 +618,12 @@ def connections_for(settings) -> Dict[str, AnyConnection]:
     out: Dict[str, AnyConnection] = {}
 
     default = None
-    if base:
+    declared = settings.get(DATABASE_KEY, None)
+    if isinstance(declared, str) and declared.strip():
+        # `database = "postgresql://…"` or a reference to one: the whole URL
+        # is the default connection. Its parts still seed `base` above.
+        default = _url_connection(DEFAULT_DATABASE, declared)
+    elif base:
         try:
             default = DatabaseConnection.parse(base)
         except ValueError as err:

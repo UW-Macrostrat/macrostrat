@@ -28,7 +28,12 @@ def build_paleogeography_subsystem(app, db_subsystem):
     if conn is None:
         raise SubsystemLoadError("No database configured, skipping corelle subsystem")
 
-    if find_spec("corelle.engine") is None:
+    try:
+        available = find_spec("corelle.engine") is not None
+    except ImportError:
+        # find_spec imports the parent package; an absent `corelle` raises.
+        available = False
+    if not available:
         raise SubsystemLoadError("Corelle subsystem not available")
 
     # corelle reads CORELLE_DB when `corelle.engine.database` is imported. A

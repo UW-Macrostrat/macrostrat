@@ -84,6 +84,11 @@ anything against a non-local environment. In short:
   `settings.database_url(role=...)` / `settings.storage_endpoint(...)`.
 - Commands that print config redact by default; `--reveal` is refused without a
   terminal. Do not add a command that prints a credential unredacted.
+- A `macrostrat.toml` beginning with `config_version = 2` is read by the
+  schema-validated loader in `macrostrat.core.config_loader` (model in
+  `config_model`); `macrostrat config schema` prints its schema. Files without
+  the key use Dynaconf. Both yield the same `settings` surface; do not add a
+  consumer that depends on which loader produced it.
 
 ## Running things
 

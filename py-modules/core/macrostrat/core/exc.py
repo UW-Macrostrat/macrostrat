@@ -34,6 +34,14 @@ class UnknownEnvironment(MacrostratError):
         )
 
 
+class ConfigError(MacrostratError):
+    """The configuration file could not be read, or failed validation.
+
+    Raised by the version-2 loader with the file's problems rendered as
+    details, so a mistyped or removed key is reported before anything runs.
+    """
+
+
 ## We should standardize this
 def setup_exception_handling(app: Typer):
     def wrapped_app():

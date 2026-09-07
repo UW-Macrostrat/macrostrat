@@ -405,6 +405,57 @@ If the environment declares separate read and write logins, reads use the read
 login and only an authorized write reaches for the write login — see
 [Reader by default](#reader-by-default).
 
+## Configuration version 2 (opt-in)
+
+A file that starts with `config_version = 2` is read by a schema-validated
+loader instead of Dynaconf. Nothing else changes: the same commands, the same
+`settings` object, the same environment rules above. Adopting it is a
+per-file decision, and a file without the key keeps the original loader.
+`macrostrat.v2.example.toml` is a complete example.
+
+What the new loader does differently:
+
+- **Every key is checked against a schema.** `macrostrat config schema` prints
+  it as JSON Schema; each key carries a description. A key the schema does not
+  know is reported as a warning, so a typo cannot silently do nothing.
+- **Removed keys are errors that name the replacement.** `pg_database` becomes
+  `database = "postgresql://…"` or a `[<env>.database]` table; the per-database
+  keys (`rockd_database`, `sgp_database`, `elevation_database`, …) become
+  entries in `[<env>.databases]`; the top-level `secret_key` becomes
+  `token_signing_key`; the old `reader` / `writer` / `dbname` spellings inside a
+  database table are refused. `mysql_database` is retired.
+- **`env_class` is required** on every environment. There is no inference to
+  production; a missing class is a load error naming the fix.
+- **The whole `[default]` section is inherited**, and top-level keys count as
+  defaults too. Tables merge recursively, lists replace.
+- **`MACROSTRAT_*` environment variables override settings deliberately:**
+  `MACROSTRAT_BASE_URL`, `MACROSTRAT_DATABASE__PORT` (two underscores nest).
+  The variables the CLI uses for itself — `MACROSTRAT_ENV`, `MACROSTRAT_CONFIG`,
+  `MACROSTRAT_ROOT`, and friends — are never read as settings.
+- **`database` may be a URL, a reference to one, or a table.** A bare-name
+  entry in `[<env>.databases]` inherits from whichever the default is.
+- **`op_account`** points `op` at one 1Password account. Without it, `op` picks
+  its own default, which on a machine signed in to two accounts may be the
+  wrong one.
+- **`item = "op://<vault>/<item>"`** in a database or storage table is sugar
+  for the item's `username` / `password` (or `access_key` / `secret_key`)
+  fields. Independently of the sugar, every `op://` reference is now served
+  from one `op item get` per item, so several fields of one item cost one
+  fetch and one approval.
+
+Compatibility: the new `settings` object still answers the legacy reads.
+`settings.pg_database`, `settings.get("rockd_database")` and
+`settings.databases["test"]` return composed URLs when the login is literal
+(and `None`, or the reference as written, when it is vaulted, because
+composing it would fetch the credential). `settings.get("secret_key")` reads
+`token_signing_key`. Dotted `get()` and attribute access on its results work
+as before. The ambient-variable rules above apply unchanged.
+
+Migrating a file: add `config_version = 2`, add `env_class` to every
+environment, rename the keys the loader refuses (it lists them), and run
+`macrostrat config environments`. The loader reports every problem in one
+pass.
+
 ## Retired commands
 
 `macrostrat mariadb` (dump, restore, and the one-time MariaDB → PostgreSQL

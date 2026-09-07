@@ -10,6 +10,7 @@ from sqlalchemy.engine.url import URL
 
 from macrostrat.utils import get_logger
 
+from .config_loader import config_version, load_settings_v2
 from .connections import (
     DEFAULT_DATABASE,
     DatabaseRole,
@@ -18,7 +19,7 @@ from .connections import (
     connections_for,
 )
 from .environment import policy_from_settings
-from .exc import UnknownEnvironment
+from .exc import ConfigError, UnknownEnvironment
 from .resolvers import cast_sources, setup_source_roots_environment
 from .secrets import as_secret, is_secret_ref, reveal
 from .storage import (
@@ -166,30 +167,44 @@ def _all_environments(config_file: Path):
     return environments_in(config_file)
 
 
-settings = MacrostratConfig()
+# Two loaders share this module. A file that declares `config_version = 2`
+# (or a process with MACROSTRAT_CONFIG_VERSION=2) is read by the schema-
+# validated loader in `config_loader`; everything else takes the Dynaconf path
+# below, unchanged. Both produce a `settings` object with the same surface, so
+# nothing after this block needs to know which one it got.
+_config_file = find_macrostrat_config()
+CONFIG_VERSION = config_version(_config_file)
+IS_V2 = CONFIG_VERSION >= 2
 
-settings.validators.register(
-    # `must_exist` is causing huge problems
-    Validator("COMPOSE_ROOT", cast=Path),
-    Validator(
-        "env_files", cast=path_list_resolver(settings, require_file=True), default=None
-    ),
-    Validator(
-        "script_dirs",
-        cast=path_list_resolver(settings, require_directory=True),
-        default=None,
-    ),
-    Validator("pg_database", cast=convert_to_string, default=None),
-    # Backend information. We could potentially infer this from other environment variables
-    Validator("backend", default="kubernetes", cast=BackendType),
-    Validator("sources", cast=cast_sources, default=None),
-    # Settings to control the location of arbitrary named databases
-    Validator("databases", default={}),
-    Validator("log_modules", cast=list, default=["macrostrat"]),
-    Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
-)
+if IS_V2:
+    settings = load_settings_v2(_config_file, normalize_macrostrat_env(_config_file))
+else:
+    settings = MacrostratConfig()
 
-macrostrat_env = getattr(settings, "env", "default")
+    settings.validators.register(
+        # `must_exist` is causing huge problems
+        Validator("COMPOSE_ROOT", cast=Path),
+        Validator(
+            "env_files",
+            cast=path_list_resolver(settings, require_file=True),
+            default=None,
+        ),
+        Validator(
+            "script_dirs",
+            cast=path_list_resolver(settings, require_directory=True),
+            default=None,
+        ),
+        Validator("pg_database", cast=convert_to_string, default=None),
+        # Backend information. We could potentially infer this from other environment variables
+        Validator("backend", default="kubernetes", cast=BackendType),
+        Validator("sources", cast=cast_sources, default=None),
+        # Settings to control the location of arbitrary named databases
+        Validator("databases", default={}),
+        Validator("log_modules", cast=list, default=["macrostrat"]),
+        Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
+    )
+
+macrostrat_env = getattr(settings, "env", None) or "default"
 
 if env_files := getattr(settings, "env_files", None):
     for env in env_files:
@@ -200,7 +215,8 @@ if env_files := getattr(settings, "env_files", None):
         load_dotenv(env)
 
 # Validate settings
-settings.validators.validate()
+if not IS_V2:
+    settings.validators.validate()
 
 
 # Settings for storage, if provided.
@@ -209,9 +225,9 @@ settings.validators.validate()
 # gets no ambient STORAGE_* variables: resolving them here would fetch on every
 # invocation and hand the pair to every subprocess. Reach them through
 # settings.storage_endpoint(...).credentials() instead.
-if storage := getattr(settings, "storage", None):
-    access_key = storage.get("access_key", None)
-    secret_key = storage.get("secret_key", None)
+if storage := settings.get("storage", None):
+    access_key = settings.get("storage.access_key", None)
+    secret_key = settings.get("storage.secret_key", None)
     if is_secret_ref(access_key) or is_secret_ref(secret_key):
         log.info(
             "Storage credentials for this environment name secrets; deferring "
@@ -314,11 +330,13 @@ PG_DATABASE = _ambient_database_url(settings)
 url = None
 if PG_DATABASE is not None:
     # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
-    docker_localhost = getattr(settings, "docker_localhost", "localhost")
+    docker_localhost = getattr(settings, "docker_localhost", None) or "localhost"
     PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 
-    # add this to the settings.databases mapping
-    settings.databases["macrostrat"] = PG_DATABASE
+    # add this to the settings.databases mapping (the v2 registry already
+    # answers `databases["macrostrat"]`, and its mapping is not for writing)
+    if not IS_V2:
+        settings.databases["macrostrat"] = PG_DATABASE
 
     # Set environment variables
     url = make_url(PG_DATABASE)

@@ -37,12 +37,13 @@ Resolvers are a protocol rather than a hard dependency on 1Password, so the
 backend choice stays reversible and CI can use a different one.
 """
 
+import json
 import re
 from os import environ
 from pathlib import Path
 from shutil import which
 from subprocess import DEVNULL, PIPE, run
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 from click.exceptions import ClickException
 
@@ -123,6 +124,10 @@ class Secret:
         """Resolve and return the credential. The only path to the value."""
         if self._resolved is not None:
             return self._resolved
+        if not self._cache:
+            # An uncached secret promises a fresh fetch on every get, which a
+            # backend-side cache (the 1Password item cache) would defeat.
+            _forget_backend(self._scheme, self._body)
         value = RESOLVERS[self._scheme](self._body)
         if not value:
             raise SecretResolutionError(
@@ -134,8 +139,14 @@ class Secret:
         return value
 
     def forget(self) -> None:
-        """Drop any cached value, so the next :meth:`get` re-authorizes."""
+        """Drop any cached value, so the next :meth:`get` re-authorizes.
+
+        Also drops whatever the backend cached for this reference, so that
+        "re-authorize" means a call that actually reaches the secret manager
+        rather than a hit on a process-local copy of the item.
+        """
         self._resolved = None
+        _forget_backend(self._scheme, self._body)
 
     # -- Everything below exists to keep the value out of output. ----------
 
@@ -207,6 +218,13 @@ def forget_all_secrets() -> None:
     for secret in _INTERNED.values():
         secret.forget()
     _INTERNED.clear()
+    _OP_ITEMS.clear()
+
+
+def _forget_backend(scheme: str, body: str) -> None:
+    hook = _FORGET_HOOKS.get(scheme)
+    if hook is not None:
+        hook(body)
 
 
 def reveal(value) -> Optional[str]:
@@ -223,6 +241,118 @@ def reveal(value) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
+#: The 1Password account `op` is pointed at, as `--account`. Set from the
+#: `op_account` config key by the loader; when unset `op` applies its own
+#: default, which on a machine signed in to two accounts is whichever it
+#: picked first — the failure that made a personal account answer for a work
+#: vault. `OP_ACCOUNT` in the environment also works, because `op` reads it.
+_OP_ACCOUNT: Optional[str] = None
+
+#: Items already fetched in this process, keyed by (account, vault, item).
+#: A 1Password item is usually several fields of one credential — a login's
+#: username and password, an S3 key pair, a whole database record — and a
+#: config names each field separately. Fetching the item once and serving
+#: every field from it is what makes "one item, several keys" cost one call.
+_OP_ITEMS: Dict[tuple, dict] = {}
+
+
+def configure_onepassword(account: Optional[str] = None) -> None:
+    """Point every `op` call at *account* (None clears it)."""
+    global _OP_ACCOUNT
+    _OP_ACCOUNT = account.strip() if account else None
+    _OP_ITEMS.clear()
+
+
+def _run_op(args: List[str]):
+    """Run `op` with the configured account. The single subprocess seam."""
+    cmd = ["op", *args]
+    if _OP_ACCOUNT:
+        cmd += ["--account", _OP_ACCOUNT]
+    return run(cmd, stdout=PIPE, stderr=PIPE, stdin=DEVNULL, text=True)
+
+
+def _op_failure(proc, what: str) -> SecretResolutionError:
+    # `op` reports the reference and the reason, not the value.
+    detail = (proc.stderr or "").strip().splitlines()
+    return SecretResolutionError(
+        f"{what} failed (exit {proc.returncode}): "
+        + (detail[-1] if detail else "no diagnostics")
+    )
+
+
+def _split_op_reference(body: str) -> tuple:
+    """`vault/item[/section]/field` → (vault, item, [section, field])."""
+    parts = [p for p in body.split("/")]
+    if len(parts) < 3 or not all(parts[:2]) or not parts[-1]:
+        raise SecretResolutionError(
+            f"op://{body} does not name a field. Expected "
+            "op://<vault>/<item>/<field> or op://<vault>/<item>/<section>/<field>."
+        )
+    return parts[0], parts[1], parts[2:]
+
+
+def _op_item(vault: str, item: str) -> dict:
+    """The item's JSON, fetched once per process."""
+    key = (_OP_ACCOUNT, vault, item)
+    cached = _OP_ITEMS.get(key)
+    if cached is not None:
+        return cached
+    proc = _run_op(["item", "get", item, "--vault", vault, "--format", "json"])
+    if proc.returncode != 0:
+        raise _op_failure(proc, f"`op item get` for op://{vault}/{item}")
+    try:
+        data = json.loads(proc.stdout)
+    except ValueError:
+        raise SecretResolutionError(
+            f"`op item get` for op://{vault}/{item} returned something other than JSON."
+        ) from None
+    _OP_ITEMS[key] = data
+    return data
+
+
+def _forget_op_item(body: str) -> None:
+    try:
+        vault, item, _ = _split_op_reference(body)
+    except SecretResolutionError:
+        return
+    _OP_ITEMS.pop((_OP_ACCOUNT, vault, item), None)
+
+
+def _field_from_item(data: dict, ref: str, path: List[str]) -> Optional[str]:
+    """The value *ref* names inside a fetched item, or None if unsure.
+
+    Every field carries its own canonical `reference`, so an exact match is
+    tried first. Failing that, the path is matched on section and field labels
+    (or ids), the way `op read` documents. Anything ambiguous returns None and
+    the caller falls back to `op read`, so this can only ever be faster than
+    the vendor tool, never disagree with it.
+    """
+    fields = [f for f in data.get("fields", []) or [] if isinstance(f, dict)]
+
+    exact = [f for f in fields if f.get("reference") == ref]
+    if len(exact) == 1:
+        return exact[0].get("value")
+
+    def norm(value) -> str:
+        return str(value or "").strip().lower()
+
+    field_name = norm(path[-1])
+    section_name = norm(path[0]) if len(path) > 1 else None
+
+    def matches(f: dict) -> bool:
+        if field_name not in (norm(f.get("label")), norm(f.get("id"))):
+            return False
+        if section_name is None:
+            return True
+        section = f.get("section") or {}
+        return section_name in (norm(section.get("label")), norm(section.get("id")))
+
+    found = [f for f in fields if matches(f)]
+    if len(found) == 1 and "value" in found[0]:
+        return found[0]["value"]
+    return None
+
+
 def resolve_onepassword(body: str) -> str:
     """Resolve ``op://vault/item[/section]/field`` via the 1Password CLI.
 
@@ -231,6 +361,10 @@ def resolve_onepassword(body: str) -> str:
     ACLs — not this code — are what keep a dev-scoped credential from reaching
     production, and `op`'s biometric/approval unlock is the human-presence check
     that an `escalate` gate depends on.
+
+    The item is fetched whole and cached for the process, so the second field
+    of the same item costs nothing. A field the item lookup cannot place with
+    certainty is read with `op read`, which is authoritative.
     """
     if which("op") is None:
         raise SecretResolutionError(
@@ -239,20 +373,15 @@ def resolve_onepassword(body: str) -> str:
             "this environment at a different resolver."
         )
     ref = f"op://{body}"
-    proc = run(
-        ["op", "read", "--no-newline", ref],
-        stdout=PIPE,
-        stderr=PIPE,
-        stdin=DEVNULL,
-        text=True,
-    )
+    vault, item, path = _split_op_reference(body)
+
+    value = _field_from_item(_op_item(vault, item), ref, path)
+    if value is not None:
+        return value
+
+    proc = _run_op(["read", "--no-newline", ref])
     if proc.returncode != 0:
-        # `op` reports the reference and the reason, not the value.
-        detail = (proc.stderr or "").strip().splitlines()
-        raise SecretResolutionError(
-            f"`op read` failed for {ref} (exit {proc.returncode}): "
-            + (detail[-1] if detail else "no diagnostics")
-        )
+        raise _op_failure(proc, f"`op read` for {ref}")
     return proc.stdout
 
 
@@ -322,6 +451,13 @@ RESOLVERS: Dict[str, Callable[[str], str]] = {
     "env": resolve_env,
     "file": resolve_file,
     "keychain": resolve_keychain,
+}
+
+
+#: Scheme → "drop what you cached for this reference". Only backends that
+#: cache anything beyond the :class:`Secret` itself need an entry.
+_FORGET_HOOKS: Dict[str, Callable[[str], None]] = {
+    "op": _forget_op_item,
 }
 
 
