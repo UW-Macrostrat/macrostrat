@@ -249,7 +249,7 @@ def eodp_units(db, section_id: int) -> list[Unit]:
     `fo` becomes `b_age` (proportion 0 — the base of the interval) and `lo`
     becomes `t_age` (proportion 1 — its top), which is what those fields mean.
     `eodp_surfaces` only reads the interval off `b_age`; the proportions are
-    set for consistency with how `units.get_units_from_df` populates them.
+    set for consistency with how `columns.parse.get_sections_from_df` populates them.
 
     Ordered by `position_bottom` — see `eodp_surfaces` on why that matters.
 

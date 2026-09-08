@@ -1617,12 +1617,14 @@ CREATE TABLE macrostrat.sections (
     lo integer DEFAULT 0 NOT NULL,
     fo_h smallint,
     lo_h smallint,
-    -- Unlike `cols` and `units`, a section is usually **ours** rather than the source's:
-    -- a gap-bound package we derived, which the source may have no identifier for. So
-    -- this holds a value under a stated per-dataset convention (for GBDB, the `orig_id`
-    -- of the section's basal unit) rather than a source key, and is expected to stay
-    -- NULL for most datasets. Section identity is otherwise ordinal within the column,
-    -- which is why `units.section_id` must not participate in a unit's natural key.
+    -- The identifier this section carries in the dataset it came from — a source's own
+    -- section id, or a workbook author's `section_id` label; see the note on
+    -- `macrostrat.units.orig_id`. Unlike `cols` and `units`, a section is often **ours**
+    -- rather than the source's: a gap-bound package `column_ingestion` derived by splitting
+    -- at non-conformable contacts, which the source has no identifier for. Those stay NULL
+    -- and are matched ordinally within the column, which is why `units.section_id` must
+    -- not participate in a unit's natural key. Both kinds may sit in one column. Scope is
+    -- the column, so uniqueness is `(col_id, orig_id)`.
     orig_id text,
     CONSTRAINT idx_44157294_primary PRIMARY KEY (id)
 );
