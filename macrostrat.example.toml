@@ -73,15 +73,26 @@ pg_database = "op://Macrostrat Staging/macrostrat-db/admin/url"
 # accidentally hold write capability.
 [production]
 env_class = "production"
+# How long `macrostrat env production` stays active. Class defaults: local
+# never lapses, development 8h, staging 1h, production 15m. A lapsed
+# environment is kept and confirmed before use, not silently dropped.
+active_ttl = "15m"
+# The JWT signing key — see the note at the end of this file.
+token_signing_key = "op://Macrostrat Prod/api-v3/jwt/secret_key"
 
+# One login per role: `read_user` + `read_password`, `write_user` +
+# `write_password`. `user` and `password` stand in for whichever role declares
+# nothing of its own. Any of them may be a literal or a secret reference — a
+# username is topology when it is a role name, and a secret when it is the
+# generated login stored beside its password.
 [production.database]
 host = "db.production.svc.macrostrat.org"
 port = 5432
 database = "macrostrat"
-reader_user = "macrostrat_reader"
-writer_user = "macrostrat-admin"
-reader = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer = "op://Macrostrat Prod/macrostrat-db/admin/password"
+read_user = "macrostrat_reader"
+read_password = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_user = "op://Macrostrat Prod/macrostrat-db/admin/username"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
 # Note: an environment whose credential is a reference gets **no ambient PG*
 # environment variables**. Exporting them would mean resolving the secret at
@@ -115,12 +126,10 @@ access-logs  = "macrostrat-access-logs"         # bucket on the default endpoint
 rockd-backup = { bucket = "rockd-photo-backup" }
 
 # NOTE: `[<env>.storage].secret_key` is an S3 secret access key. The *top-level*
-# `secret_key` below is something else entirely — the JWT signing key for
-# api-v3 and, via PGRST_JWT_SECRET, for PostgREST. A JWT signed with it and
-# carrying `role: web_admin` is honoured by PostgREST, so it confers full write
-# access without any database password. Treat it as the most sensitive value
-# here, not as an afterthought.
-# `token_signing_key` is the preferred name for exactly this reason; plain
-# `secret_key` is still honoured, and the preferred name wins when both appear.
-[production]
-token_signing_key = "op://Macrostrat Prod/api-v3/jwt/secret_key"
+# `token_signing_key` (set in [production] above) is something else entirely —
+# the JWT signing key for api-v3 and, via PGRST_JWT_SECRET, for PostgREST. A JWT
+# signed with it and carrying `role: web_admin` is honoured by PostgREST, so it
+# confers full write access without any database password. Treat it as the most
+# sensitive value here, not as an afterthought. `token_signing_key` is the
+# preferred name for exactly this reason; plain `secret_key` is still honoured,
+# and the preferred name wins when both appear.

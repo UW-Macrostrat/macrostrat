@@ -1,22 +1,31 @@
 """Database connections composed from plaintext topology plus a named secret.
 
-An environment can describe its database structurally, naming one credential
-per role, instead of carrying a whole connection URL with a password in it:
+An environment can describe its database structurally, naming a login per
+role, instead of carrying a whole connection URL with a password in it:
 
 .. code-block:: toml
 
     [production.database]
-    host     = "db.production.svc.macrostrat.org"
-    port     = 5432
-    database = "macrostrat"
-    reader   = "op://Macrostrat Prod/macrostrat-db/reader/password"
-    writer   = "op://Macrostrat Prod/macrostrat-db/admin/password"
+    host           = "db.production.svc.macrostrat.org"
+    port           = 5432
+    database       = "macrostrat"
+    read_user      = "macrostrat_reader"
+    read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+    write_user     = "op://Macrostrat Prod/macrostrat-db/admin/username"
+    write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
+
+Each role has a ``<role>_user`` and a ``<role>_password``; ``user`` and
+``password`` stand in for whichever role does not declare its own, so a
+single-login environment writes just those two. **Any of the four may be a
+literal or a secret reference** — a username is topology when it is a role name
+like ``macrostrat_reader``, and a secret when it is the generated login a
+password manager stores beside its password.
 
 Composing the URL from parts, rather than storing whole URLs, buys three things:
 
 - Hosts and database names stay visible and greppable — the half of the config
   that is genuinely useful context, and harmless to commit.
-- There is one credential per *role*, so a caller has to say which one it wants.
+- There is one login per *role*, so a caller has to say which one it wants.
   A read path can no longer accidentally hold write capability.
 - The password is quoted by SQLAlchemy's ``URL.create`` rather than pasted into
   a string, so a credential containing ``@``, ``/`` or ``:`` composes correctly.
@@ -37,10 +46,10 @@ two ways:
     sslmode = "require"
 
     [production.database]
-    host   = "db.production.svc.macrostrat.org"
-    database = "macrostrat"
-    reader = "op://Macrostrat Prod/macrostrat-db/reader/password"
-    writer = "op://Macrostrat Prod/macrostrat-db/admin/password"
+    host           = "db.production.svc.macrostrat.org"
+    database       = "macrostrat"
+    read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+    write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
     [production.databases]
     rockd     = "rockd"                                    # same server
@@ -50,8 +59,8 @@ two ways:
 
 A bare string is a database *name* on the environment's default server, so an
 extra database costs one line. A table states only its differences. And
-`[default.database]` is inherited, so a shared port, TLS mode or reader
-credential is written once rather than once per tier.
+`[default.database]` is inherited, so a shared port, TLS mode or read login is
+written once rather than once per tier.
 
 **The legacy path is untouched.** ``pg_database`` keeps working exactly as it
 does today, and :func:`connection_for` prefers a ``[env.database]`` table only
@@ -73,7 +82,7 @@ from sqlalchemy.exc import ArgumentError
 from macrostrat.utils import get_logger
 
 from .environment import DEFAULT_ENV
-from .secrets import Secret, as_secret, is_secret_ref, reveal
+from .secrets import Secret, SecretResolutionError, as_secret, is_secret_ref, reveal
 
 log = get_logger(__name__)
 
@@ -92,10 +101,6 @@ NAMED_KEY = "databases"
 #: The name of the database an unqualified request resolves to.
 DEFAULT_DATABASE = "macrostrat"
 
-DEFAULT_DRIVER = "postgresql"
-DEFAULT_PORT = 5432
-DEFAULT_USER = "macrostrat"
-
 
 class DatabaseRole(str, Enum):
     """Which credential a caller is asking for.
@@ -109,12 +114,43 @@ class DatabaseRole(str, Enum):
     Writer = "writer"
 
 
+DEFAULT_DRIVER = "postgresql"
+DEFAULT_PORT = 5432
+DEFAULT_USER = "macrostrat"
+
+#: Config keys per role, in the order they are consulted. The first name is the
+#: documented one; the rest are earlier spellings, still honoured so a config
+#: written against them keeps working (a config file and the CLI reading it are
+#: deployed separately).
+USER_KEYS = {
+    DatabaseRole.Reader: ("read_user", "reader_user"),
+    DatabaseRole.Writer: ("write_user", "writer_user"),
+}
+PASSWORD_KEYS = {
+    DatabaseRole.Reader: ("read_password", "reader", "reader_password"),
+    DatabaseRole.Writer: ("write_password", "writer", "writer_password"),
+}
+#: Role-agnostic keys, standing in for whichever role declares nothing.
+SHARED_USER_KEYS = ("user", "username")
+SHARED_PASSWORD_KEYS = ("password",)
+
+
 class MissingCredential(RuntimeError):
     """No credential is configured for the requested role."""
 
 
+#: A config value that may name a secret rather than contain one.
+Credential = Union[str, Secret, None]
+
+
 class DatabaseConnection(BaseModel):
-    """One environment's database, with a credential per role."""
+    """One environment's database, with a login per role.
+
+    Each role resolves its user and password independently: the role-specific
+    field if declared, else the shared one, else — for the user only — the
+    default. A password has no default; a role with none configured raises
+    :class:`MissingCredential` when asked, and never before.
+    """
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
@@ -122,13 +158,14 @@ class DatabaseConnection(BaseModel):
     database: str
     port: int = DEFAULT_PORT
     driver: str = DEFAULT_DRIVER
-    #: Per-role login user. Falls back to :attr:`user` when unset.
-    reader_user: Optional[str] = None
-    writer_user: Optional[str] = None
-    user: str = DEFAULT_USER
-    #: Per-role credential: a literal, or a :class:`Secret` naming one.
-    reader: Union[str, Secret, None] = None
-    writer: Union[str, Secret, None] = None
+    #: Shared login, standing in for whichever role declares none of its own.
+    user: Credential = None
+    password: Credential = None
+    #: Per-role login. Any of these may be a literal or a :class:`Secret`.
+    read_user: Credential = None
+    write_user: Credential = None
+    read_password: Credential = None
+    write_password: Credential = None
     #: Connection parameters carried as URL query string — `sslmode`,
     #: `connect_timeout`, and friends. Decomposing a URL and rebuilding it
     #: drops these unless they are modelled explicitly, and `sslmode` in
@@ -136,22 +173,59 @@ class DatabaseConnection(BaseModel):
     #: required-TLS connection.
     options: Dict[str, str] = {}
 
-    def user_for(self, role: DatabaseRole) -> str:
-        specific = self.reader_user if role == DatabaseRole.Reader else self.writer_user
-        return specific or self.user
+    def user_for(self, role: DatabaseRole) -> Union[str, Secret]:
+        """The unresolved login user for *role*: specific, shared, or default."""
+        role = DatabaseRole(role)
+        specific = self.read_user if role == DatabaseRole.Reader else self.write_user
+        if specific is not None:
+            return specific
+        if self.user is not None:
+            return self.user
+        return DEFAULT_USER
 
     def credential_for(self, role: DatabaseRole) -> Union[str, Secret]:
-        """The unresolved credential for *role*."""
+        """The unresolved password for *role*: specific, else shared, else raise."""
         role = DatabaseRole(role)
-        value = self.reader if role == DatabaseRole.Reader else self.writer
+        specific = (
+            self.read_password if role == DatabaseRole.Reader else self.write_password
+        )
+        value = specific if specific is not None else self.password
         if value is None:
+            key = PASSWORD_KEYS[role][0]
             raise MissingCredential(
-                f"No {role.value!r} credential is configured for "
-                f"{self.user_for(role)}@{self.host}:{self.port}/{self.database}. "
-                f'Add {role.value} = "op://..." (or a literal) to its '
+                f"No {role.value} password is configured for "
+                f"{self.location(role)}. "
+                f'Add {key} = "op://..." (or a literal) to its '
                 f"[<env>.{DATABASE_KEY}] table."
             )
         return value
+
+    def location(self, role: DatabaseRole) -> str:
+        """`user@host:port/database` for messages, without resolving anything.
+
+        A username held in a secret manager is shown by its reference, not
+        fetched: an error about a missing password must not itself prompt for
+        a username.
+        """
+        user = self.user_for(role)
+        label = user.ref if isinstance(user, Secret) else str(user)
+        return f"{label}@{self.host}:{self.port}/{self.database}"
+
+    def requires_resolution(self, role: DatabaseRole = DatabaseRole.Reader) -> bool:
+        """Whether composing this role's URL would fetch from a secret manager.
+
+        For a caller that wants to export a URL eagerly — the corelle subsystem
+        must set ``CORELLE_DB`` before importing corelle — this says whether it
+        may do so now (a literal config, or an already-fetched secret) or has
+        to wait for command time. A role with no password configured fetches
+        nothing, so it reports False; :meth:`url` raises for it regardless.
+        """
+        role = DatabaseRole(role)
+        try:
+            values = (self.user_for(role), self.credential_for(role))
+        except MissingCredential:
+            return False
+        return any(isinstance(v, Secret) and not v.is_resolved for v in values)
 
     def _query_for(self, role: DatabaseRole) -> dict:
         """Connection parameters, with an attributing `application_name`.
@@ -175,10 +249,14 @@ class DatabaseConnection(BaseModel):
         treat every call site that does so as a disclosure point.
         """
         role = DatabaseRole(role)
+        # Password first: if none is configured, fail before fetching a
+        # username that may itself live in the secret manager.
+        password = reveal(self.credential_for(role))
+        username = reveal(self.user_for(role))
         return URL.create(
             drivername=self.driver,
-            username=self.user_for(role),
-            password=reveal(self.credential_for(role)),
+            username=username,
+            password=password,
             host=self.host,
             port=self.port,
             database=self.database,
@@ -194,9 +272,17 @@ class DatabaseConnection(BaseModel):
             )
 
         def field(*names):
-            for name in names:
+            for i, name in enumerate(names):
                 got = value.get(name, None)
                 if got is not None:
+                    if i > 0 and names[0] not in _LEGACY_WARNED:
+                        _LEGACY_WARNED.add(names[0])
+                        log.warning(
+                            "[<env>.%s] key %r is an old spelling; write %r.",
+                            DATABASE_KEY,
+                            name,
+                            names[0],
+                        )
                     return got
             return None
 
@@ -206,12 +292,6 @@ class DatabaseConnection(BaseModel):
             raise ValueError(
                 f"[<env>.{DATABASE_KEY}] needs at least `host` and `database`"
             )
-
-        # A single `password` applies to both roles — the shape a
-        # single-credential environment (local, development) wants.
-        shared = field("password")
-        reader = field("reader", "reader_password")
-        writer = field("writer", "writer_password")
 
         options = field("options", "query") or {}
         if not hasattr(options, "items"):
@@ -226,11 +306,15 @@ class DatabaseConnection(BaseModel):
             options={str(k): str(v) for k, v in options.items()},
             port=int(field("port") or DEFAULT_PORT),
             driver=str(field("driver") or DEFAULT_DRIVER),
-            user=str(field("user", "username") or DEFAULT_USER),
-            reader_user=_opt_str(field("reader_user")),
-            writer_user=_opt_str(field("writer_user")),
-            reader=as_secret(reader if reader is not None else shared),
-            writer=as_secret(writer if writer is not None else shared),
+            # The shared pair stands in for whichever role declares nothing;
+            # `user_for` / `credential_for` apply that rule, so it lives in one
+            # place rather than being baked in here.
+            user=_credential(field(*SHARED_USER_KEYS)),
+            password=_credential(field(*SHARED_PASSWORD_KEYS)),
+            read_user=_credential(field(*USER_KEYS[DatabaseRole.Reader])),
+            write_user=_credential(field(*USER_KEYS[DatabaseRole.Writer])),
+            read_password=_credential(field(*PASSWORD_KEYS[DatabaseRole.Reader])),
+            write_password=_credential(field(*PASSWORD_KEYS[DatabaseRole.Writer])),
         )
 
     @classmethod
@@ -248,16 +332,93 @@ class DatabaseConnection(BaseModel):
             database=parsed.database,
             port=parsed.port or DEFAULT_PORT,
             driver=parsed.drivername or DEFAULT_DRIVER,
-            user=parsed.username or DEFAULT_USER,
-            reader=parsed.password,
-            writer=parsed.password,
+            user=parsed.username,
+            password=parsed.password,
             # Round-tripping a URL must not quietly drop `?sslmode=require`.
             options={k: str(v) for k, v in (parsed.query or {}).items()},
         )
 
 
-def _opt_str(value) -> Optional[str]:
-    return None if value is None else str(value)
+class DeferredUrlConnection:
+    """A whole connection URL held by a secret manager, decomposed on first use.
+
+    Composing the registry must not fetch anything. A reference that cannot
+    resolve right now — the wrong 1Password account, no ``op`` on PATH, a cloud
+    session without the variable — has to fail when *that* database is used,
+    not take every database in the environment offline the moment anything
+    asks for the default one. So the reference is kept as it is, and the URL is
+    fetched and parsed the first time a role's URL is asked for.
+
+    Presents the same surface as :class:`DatabaseConnection` where the
+    distinction does not matter: :meth:`url`, :meth:`location`,
+    :meth:`credential_for`, :meth:`requires_resolution`. It deliberately has no
+    ``host`` / ``database`` attributes — reading topology off it would have to
+    fetch, and an attribute that fetches is exactly what this class exists to
+    avoid. Call :meth:`connection` for the parsed form when you mean to.
+    """
+
+    def __init__(self, secret: Secret, name: str = DEFAULT_DATABASE):
+        self.secret = secret
+        self.name = name
+
+    @property
+    def ref(self) -> str:
+        """The reference. Safe to print — it names the URL, isn't it."""
+        return self.secret.ref
+
+    def connection(self) -> DatabaseConnection:
+        """Fetch the URL and decompose it. This is the disclosure point."""
+        raw = reveal(self.secret)
+        try:
+            return DatabaseConnection.from_url(raw)
+        except (ValueError, ArgumentError):
+            # Neither the URL nor the driver's message (which quotes the URL,
+            # password included) may reach the caller.
+            raise SecretResolutionError(
+                f"{self.ref} did not resolve to a usable connection URL for "
+                f"database {self.name!r}. Expected postgresql://user:pass@host/db."
+            ) from None
+
+    def url(self, role: DatabaseRole = DatabaseRole.Reader) -> URL:
+        return self.connection().url(role)
+
+    def user_for(self, role: DatabaseRole):
+        """The login user for *role*. Fetches — there is no other way to know."""
+        return self.connection().user_for(role)
+
+    def credential_for(self, role: DatabaseRole) -> Secret:
+        """The credential for *role* is the URL reference itself.
+
+        The URL carries one login that serves both roles, so re-authorizing
+        the writer (what an ``escalate`` gate does) means re-fetching the URL.
+        """
+        return self.secret
+
+    def requires_resolution(self, role: DatabaseRole = DatabaseRole.Reader) -> bool:
+        return not self.secret.is_resolved
+
+    def location(self, role: DatabaseRole = DatabaseRole.Reader) -> str:
+        """The reference, never the URL: this must not fetch."""
+        return self.ref
+
+    def __repr__(self) -> str:
+        return f"DeferredUrlConnection({self.ref!r})"
+
+
+#: Either kind of registry entry. Both compose a URL per role on demand.
+AnyConnection = Union[DatabaseConnection, DeferredUrlConnection]
+
+
+#: Old key spellings already warned about in this process, so a config that
+#: still uses them draws one line per key rather than one per database.
+_LEGACY_WARNED: set = set()
+
+
+def _credential(value) -> Credential:
+    """A config value as a login field: None, a :class:`Secret`, or a string."""
+    if value is None:
+        return None
+    return as_secret(value if isinstance(value, str) else str(value))
 
 
 def _application_name(role: DatabaseRole) -> str:
@@ -317,30 +478,101 @@ def _base_table(settings) -> dict:
             inherited = from_env(DEFAULT_ENV).get(DATABASE_KEY, None)
         except Exception:  # pragma: no cover - Dynaconf raises variously here
             inherited = None
-    return merge_tables(inherited, settings.get(DATABASE_KEY, None))
+    declared = settings.get(DATABASE_KEY, None)
+    if isinstance(declared, str):
+        # `database = "postgresql://…"`: the URL's own parts are the base a
+        # bare-name entry inherits. A reference contributes nothing here,
+        # because reading its parts would mean fetching it.
+        declared = _components_of(declared)
+    merged = merge_tables(inherited, declared)
+    # The environment's default database is `macrostrat` unless it says
+    # otherwise: a `[<env>.database]` table that names only a host means the
+    # Macrostrat database on that host. Named databases built on this table
+    # override the name (a bare name replaces it; a table may restate it).
+    if merged.get("host") is not None and not any(
+        merged.get(k) is not None for k in ("database", "dbname")
+    ):
+        merged["database"] = DEFAULT_DATABASE
+    return merged
 
 
-def _legacy_connection(settings) -> Optional[DatabaseConnection]:
-    """The `pg_database` fallback, which may itself be a secret reference."""
+def _components_of(url: str) -> dict:
+    """The table equivalent of a literal URL, or ``{}`` for a reference."""
+    url = url.strip()
+    if not url or is_secret_ref(url):
+        return {}
+    try:
+        conn = DatabaseConnection.from_url(url)
+    except (ValueError, ArgumentError):
+        return {}
+    out = dict(
+        host=conn.host,
+        port=conn.port,
+        database=conn.database,
+        driver=conn.driver,
+        options=dict(conn.options),
+    )
+    if conn.user is not None:
+        out["user"] = conn.user
+    if conn.password is not None:
+        out["password"] = conn.password
+    return out
+
+
+def _url_connection(name: str, spec: str) -> Optional[AnyConnection]:
+    """A whole-URL entry: deferred if it is a reference, parsed if literal."""
+    spec = spec.strip()
+    if is_secret_ref(spec):
+        return DeferredUrlConnection(as_secret(spec), str(name))
+    try:
+        return DatabaseConnection.from_url(spec)
+    except (ValueError, ArgumentError) as err:
+        log.warning(
+            "Could not parse the URL for database %r: %s", name, _parse_problem(err)
+        )
+        return None
+
+
+def _legacy_connection(settings) -> Optional[AnyConnection]:
+    """The `pg_database` fallback, which may itself be a secret reference.
+
+    A literal URL is parsed now, so a malformed one is reported at config load
+    as it always was. A reference is *not* fetched here — see
+    :class:`DeferredUrlConnection`.
+    """
     legacy = settings.get(LEGACY_URL_KEY, None)
     if legacy in (None, "None", ""):
         return None
-    resolved = reveal(as_secret(legacy))
+    if is_secret_ref(legacy):
+        return DeferredUrlConnection(as_secret(legacy), DEFAULT_DATABASE)
     try:
-        return DatabaseConnection.from_url(resolved)
+        return DatabaseConnection.from_url(legacy)
     except (ValueError, ArgumentError) as err:
-        log.warning("Could not parse %s: %s", LEGACY_URL_KEY, err)
+        log.warning("Could not parse %s: %s", LEGACY_URL_KEY, _parse_problem(err))
         return None
 
 
-def _named_connection(name, spec, base: dict) -> Optional[DatabaseConnection]:
+def _parse_problem(err: Exception) -> str:
+    """Why a URL failed to parse, without the URL.
+
+    SQLAlchemy's `ArgumentError` quotes the whole string it could not parse,
+    password included, and this text ends up in the CLI's help banner.
+    """
+    if isinstance(err, ArgumentError):
+        return "malformed connection URL"
+    return str(err)
+
+
+def _named_connection(name, spec, base: dict) -> Optional[AnyConnection]:
     """Resolve one entry of the `databases` table.
 
     Three accepted shapes, in the order they are distinguished:
 
     ``"postgresql://…"`` / ``"op://…"``
         A whole connection URL — what this key holds today, so existing
-        entries keep working. A secret reference is resolved here.
+        entries keep working. A secret reference is kept unresolved until the
+        database is used, so one unreachable reference cannot take the rest
+        of the environment offline.
 
     ``"rockd"``
         Just a database name. Everything else — host, port, credentials,
@@ -358,13 +590,10 @@ def _named_connection(name, spec, base: dict) -> Optional[DatabaseConnection]:
     if not isinstance(spec, str) or not spec.strip():
         log.warning("Ignoring database %r: expected a name, URL or table.", name)
         return None
+    spec = spec.strip()
 
     if is_secret_ref(spec) or "://" in spec:
-        try:
-            return DatabaseConnection.from_url(reveal(as_secret(spec)))
-        except (ValueError, ArgumentError) as err:
-            log.warning("Could not parse the URL for database %r: %s", name, err)
-            return None
+        return _url_connection(name, spec)
 
     # A bare database name on the environment's default server.
     if not base:
@@ -379,13 +608,22 @@ def _named_connection(name, spec, base: dict) -> Optional[DatabaseConnection]:
     return DatabaseConnection.parse(merge_tables(base, {"database": spec}))
 
 
-def connections_for(settings) -> Dict[str, DatabaseConnection]:
-    """Every database configured for the active environment, by name."""
+def connections_for(settings) -> Dict[str, AnyConnection]:
+    """Every database configured for the active environment, by name.
+
+    Composes without fetching: no secret is resolved by building this map,
+    whatever shape the entries take.
+    """
     base = _base_table(settings)
-    out: Dict[str, DatabaseConnection] = {}
+    out: Dict[str, AnyConnection] = {}
 
     default = None
-    if base:
+    declared = settings.get(DATABASE_KEY, None)
+    if isinstance(declared, str) and declared.strip():
+        # `database = "postgresql://…"` or a reference to one: the whole URL
+        # is the default connection. Its parts still seed `base` above.
+        default = _url_connection(DEFAULT_DATABASE, declared)
+    elif base:
         try:
             default = DatabaseConnection.parse(base)
         except ValueError as err:

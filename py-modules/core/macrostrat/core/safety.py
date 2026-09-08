@@ -39,6 +39,7 @@ re-authorize against, so the gate fails closed and says so.
 """
 
 import sys
+from enum import Enum
 from functools import wraps
 from typing import Optional
 
@@ -46,13 +47,14 @@ from click.exceptions import ClickException
 
 from macrostrat.utils import ApplicationError, get_logger
 
-from .environment import EnvironmentPolicy, WriteGate, WriteScope
+from .environment import EnvironmentPolicy, WriteGate, WriteScope, format_duration
+from .utils import active_environment, renew_active_env
 
 log = get_logger(__name__)
 
 
-class WriteRefused(ApplicationError, ClickException):
-    """A write was not authorized. Raised instead of proceeding.
+class Refusal(ApplicationError, ClickException):
+    """Something was not authorized. Raised instead of proceeding.
 
     Also a `ClickException` so that Click renders it as an error and exits 1,
     rather than letting it escape as a traceback. That matters more here than
@@ -74,6 +76,14 @@ class WriteRefused(ApplicationError, ClickException):
         if self.details:
             return f"{self.message}\n{self.details}"
         return self.message
+
+
+class WriteRefused(Refusal):
+    """A write was not authorized. Raised instead of proceeding."""
+
+
+class StaleEnvironment(Refusal):
+    """A lapsed environment was not confirmed for use."""
 
 
 def is_interactive() -> bool:
@@ -112,6 +122,86 @@ def _resolve_policy(settings) -> EnvironmentPolicy:
     return policy
 
 
+def require_environment(*, settings=None, action: Optional[str] = None) -> None:
+    """Confirm a *lapsed* environment before it is used, or raise.
+
+    A remembered environment (`macrostrat env <name>`) is kept past its TTL
+    rather than dropped — dropping it left the CLI with *no* environment, where
+    libpq subprocesses quietly fell back to localhost and everything else
+    crashed. Instead the pointer stays, and this asks before the first
+    consequential use in an invocation:
+
+    - fresh, explicit (`--env`) or absent environment → nothing happens;
+    - lapsed, interactive → one `y/N` prompt; yes renews the TTL (a remembered
+      environment) or approves it for this command (a shell session);
+    - lapsed, non-interactive → :class:`StaleEnvironment`, naming the fix.
+
+    Called from the CLI's top-level callback for every command that could touch
+    an environment, and again from :func:`require_write_access` so a write is
+    covered even outside the CLI. Idempotent within an invocation.
+    """
+    state = active_environment()
+    if state is None or not state.needs_approval:
+        return None
+
+    policy = _resolve_policy(settings)
+    env = state.name
+    klass = policy.env_class.value
+    lapsed_for = format_duration(-state.remaining) if state.remaining else "a while"
+    what = f" before {action}" if action else ""
+
+    if not is_interactive():
+        raise StaleEnvironment(
+            f"The {state.source} environment {env} ({klass}) lapsed {lapsed_for} ago",
+            details=(
+                f"There is no terminal to confirm it on{what}. Pass --env {env} "
+                f"to use it for this command, or run `macrostrat env {env}` to "
+                "activate it again."
+            ),
+        )
+
+    if state.source == "remembered":
+        grant = format_duration(policy.ttl)
+        answer = _prompt(
+            f"Remembered environment {env} ({klass}) lapsed {lapsed_for} ago. "
+            f"Keep using it for another {grant}? [y/N] "
+        )
+    else:
+        answer = _prompt(
+            f"Shell environment {env} ({klass}) lapsed {lapsed_for} ago. "
+            f"Use it for this command? [y/N] "
+        )
+    if answer.lower() not in ("y", "yes"):
+        raise StaleEnvironment(
+            f"Declined to keep using {env}",
+            details=f"Run `macrostrat env <name>` to choose an environment.",
+        )
+
+    if state.source == "remembered":
+        renew_active_env(policy.ttl)
+        log.info("Environment %s renewed for %s.", env, grant)
+    else:
+        state.approved = True
+    return None
+
+
+def require_read_access(*, settings=None, action: Optional[str] = None) -> None:
+    """Confirm a *read* against the active environment, or raise.
+
+    Most environments do not gate reads and this returns at once. A production
+    environment can declare ``confirm = { read = "prompt" }`` so that even
+    opening a connection is a deliberate act; ``reauthorize`` re-fetches the
+    reader credential. Passing never escalates the connection.
+    """
+    return _require_access(
+        WriteScope.Read,
+        settings=settings,
+        action=action or "read",
+        escalate_connection=False,
+        role=DatabaseRoleName.Reader,
+    )
+
+
 def require_write_access(
     scope,
     *,
@@ -137,11 +227,48 @@ def require_write_access(
     database — a storage-only operation, say — so that authorizing it does not
     silently acquire database write capability as a side effect.
     """
+    return _require_access(
+        scope,
+        settings=settings,
+        assume_yes=assume_yes,
+        action=action,
+        escalate_connection=escalate_connection,
+        role=DatabaseRoleName.Writer,
+    )
+
+
+class DatabaseRoleName(str, Enum):
+    """Which credential an ``reauthorize`` level re-fetches."""
+
+    Reader = "reader"
+    Writer = "writer"
+
+
+def _require_access(
+    scope,
+    *,
+    settings=None,
+    assume_yes: bool = False,
+    action: Optional[str] = None,
+    escalate_connection: bool = True,
+    role: "DatabaseRoleName" = None,
+) -> None:
     scope = WriteScope(scope)
+    if role is None:
+        role = DatabaseRoleName.Writer
     policy = _resolve_policy(settings)
     gate = policy.gate_for(scope)
     env = policy.name or "<no environment>"
-    what = action or f"{scope.value} write"
+    if action is not None:
+        what = action
+    elif scope == WriteScope.Read:
+        what = "read"
+    else:
+        what = f"{scope.value} write"
+
+    # A lapsed environment is questioned before the write is, so that the gate
+    # prompt that follows is unambiguously about *this* environment.
+    require_environment(settings=settings, action=what)
 
     inferred = ""
     if policy.inferred:
@@ -172,11 +299,14 @@ def require_write_access(
             )
             return _authorized()
         if not is_interactive():
+            # A read is confirmed where the connection opens, not by a command
+            # with a --yes flag; only offer the flag where it exists.
+            bypass = "" if scope == WriteScope.Read else ", or pass --yes"
             raise WriteRefused(
                 f"Refusing {what} in {env} ({policy.env_class.value})",
                 details=(
                     "This gate needs confirmation and there is no terminal to "
-                    f"ask on. Re-run it interactively, or pass --yes.{inferred}"
+                    f"ask on. Re-run it interactively{bypass}.{inferred}"
                 ),
             )
         answer = _prompt(f"{what.capitalize()} in {env}. Proceed? [y/N] ")
@@ -207,13 +337,18 @@ def require_write_access(
         )
 
     if gate == WriteGate.Escalate:
-        _require_fresh_writer_credential(settings, env)
+        _require_fresh_credential(settings, env, role)
 
     return _authorized()
 
 
 def _require_fresh_writer_credential(settings, env: str) -> None:
-    """Re-fetch the writer credential, uncached, for this invocation.
+    """Re-fetch the writer credential. Kept for callers of the old name."""
+    return _require_fresh_credential(settings, env, DatabaseRoleName.Writer)
+
+
+def _require_fresh_credential(settings, env: str, role: "DatabaseRoleName") -> None:
+    """Re-fetch the credential for *role*, uncached, for this invocation.
 
     This is what makes `escalate` different in kind from `typed` rather than
     merely stricter: resolution goes through the secret manager's own approval
@@ -235,30 +370,36 @@ def _require_fresh_writer_credential(settings, env: str) -> None:
             details="An escalate gate needs a writer credential to re-authorize.",
         )
 
+    db_role = DatabaseRole(role.value)
+    key = "write_password" if db_role == DatabaseRole.Writer else "read_password"
     try:
-        credential = conn.credential_for(DatabaseRole.Writer)
+        credential = conn.credential_for(db_role)
     except Exception as err:
         raise WriteRefused(
-            f"Cannot escalate in {env}: no writer credential",
+            f"Cannot reauthorize in {env}: no {role.value} credential",
             details=str(err),
         ) from None
 
     if not isinstance(credential, Secret):
         raise WriteRefused(
-            f"Cannot escalate in {env}: the writer credential is a literal",
+            f"Cannot reauthorize in {env}: the {role.value} credential is a literal",
             details=(
-                "An escalate gate re-fetches the credential so the secret "
+                "The reauthorize level re-fetches the credential so the secret "
                 "manager can require human approval. A password stored "
                 "directly in macrostrat.toml cannot be re-authorized, so this "
-                "gate fails closed. Move it to a reference "
-                '(writer = "op://...") or lower the gate for this environment.'
+                f"level fails closed. Move it to a reference ({key} = "
+                '"op://...") or lower the level for this environment.'
             ),
         )
 
     # Drop any cached value so this fetch genuinely reaches the backend.
     credential.forget()
     credential.get()
-    log.info("Writer credential for %s re-authorized for this invocation.", env)
+    log.info(
+        "%s credential for %s re-authorized for this invocation.",
+        role.value.capitalize(),
+        env,
+    )
 
 
 def writes(scope, *, action: Optional[str] = None):

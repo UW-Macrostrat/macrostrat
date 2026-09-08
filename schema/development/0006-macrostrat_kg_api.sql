@@ -380,3 +380,25 @@ LEFT JOIN entities e
 ON e.source_text = st.id
   AND e.paper_id = st.paper_id
   AND e.model_run = mr.id;
+
+
+GRANT SELECT ON TABLE macrostrat_api.kg_entities TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_tree TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_context_entities TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_user;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+GRANT UPDATE(name) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+GRANT UPDATE(description) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+GRANT UPDATE(color) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
+GRANT SELECT ON TABLE macrostrat_api.kg_extraction_feedback_type TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.kg_matches TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.kg_model_run TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_model_run TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.kg_publication_entities TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_source_text_casted TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_macrostrat_terms TO web_anon;

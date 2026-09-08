@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from os import environ, unsetenv
 from pathlib import Path
 from sys import argv
@@ -28,15 +29,17 @@ def env_text():
     return f"environment [bold cyan]{environ.get('MACROSTRAT_ENV')}[/]"
 
 
-#: App-state keys holding the remembered environment and, for a non-local one,
-#: when it lapses.
+#: App-state keys holding the remembered environment, when it lapses, and
+#: which config file it was set against.
 ACTIVE_ENV_KEY = "active_env"
 ACTIVE_ENV_EXPIRES_KEY = "active_env_expires"
+ACTIVE_ENV_CONFIG_KEY = "active_env_config"
 
-#: How long a *non-local* environment stays active after `macrostrat env <name>`.
-#: Short on purpose: the point is that forgetting to switch back cannot hurt you
-#: tomorrow. `local` never expires.
-NON_LOCAL_TTL = timedelta(minutes=15)
+#: Environment variables carrying a per-shell environment (`macrostrat env
+#: --shell`). The second is optional and makes a shell session lapse the same
+#: way a remembered one does.
+ENV_VAR = "MACROSTRAT_ENV"
+ENV_EXPIRES_VAR = "MACROSTRAT_ENV_EXPIRES"
 
 
 def extract_env_from_argv(args=None) -> Optional[str]:
@@ -63,18 +66,103 @@ def extract_env_from_argv(args=None) -> Optional[str]:
     return None
 
 
-def active_env_expiry() -> Optional[datetime]:
-    """When the remembered environment lapses, or None if it does not."""
-    raw = get_app_state(ACTIVE_ENV_EXPIRES_KEY)
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_timestamp(raw) -> Optional[datetime]:
+    """An aware UTC datetime from a stored value, or `datetime.min` if corrupt.
+
+    A corrupt timestamp means *already lapsed*, never *never lapses*: failing
+    closed here is what keeps a damaged state file from granting a permanent
+    environment.
+    """
     if raw is None:
         return None
     if isinstance(raw, datetime):
-        return raw
+        value = raw
+    else:
+        try:
+            value = datetime.fromisoformat(str(raw))
+        except ValueError:
+            return datetime.min.replace(tzinfo=timezone.utc)
+    if value.tzinfo is None:
+        # Timestamps written before expiries were stored aware were local time.
+        value = value.astimezone()
+    return value.astimezone(timezone.utc)
+
+
+@dataclass
+class ActiveEnvironment:
+    """How this invocation came to have an environment, and whether it is fresh.
+
+    Resolved once, while config loads, and consulted later by whatever decides
+    that the environment is about to be *used* — so that a lapsed pointer is
+    kept and questioned rather than silently dropped.
+    """
+
+    name: str
+    #: ``explicit`` (`--env`), ``shell`` (an exported variable), or
+    #: ``remembered`` (`macrostrat env <name>`).
+    source: str
+    #: When it lapses, or None if it does not.
+    expires: Optional[datetime] = None
+    #: The config file a remembered environment was set against.
+    config_file: Optional[Path] = None
+    #: Set once the operator has agreed to keep using a lapsed environment for
+    #: this invocation, so they are asked at most once.
+    approved: bool = False
+
+    @property
+    def remaining(self) -> Optional[timedelta]:
+        if self.expires is None:
+            return None
+        return self.expires - _now()
+
+    @property
+    def lapsed(self) -> bool:
+        remaining = self.remaining
+        return remaining is not None and remaining <= timedelta(0)
+
+    @property
+    def needs_approval(self) -> bool:
+        return self.lapsed and not self.approved
+
+
+_ACTIVE: Optional[ActiveEnvironment] = None
+
+
+def active_environment() -> Optional[ActiveEnvironment]:
+    """The environment this invocation resolved, or None if there is none."""
+    return _ACTIVE
+
+
+def _set_active(state: Optional[ActiveEnvironment]) -> None:
+    global _ACTIVE
+    _ACTIVE = state
+
+
+def environments_in(config_file) -> list:
+    """The selectable environments in a config file.
+
+    `default` is Dynaconf's shared base layer rather than an environment, so it
+    is excluded by name. It used to be skipped by *position*, which silently
+    dropped the first real environment from any file that did not happen to
+    lead with `[default]`.
+    """
+    if config_file is None:
+        return []
     try:
-        return datetime.fromisoformat(str(raw))
-    except ValueError:
-        # Unparseable expiry: treat as already lapsed rather than as absent.
-        return datetime.min
+        with open(config_file, "r") as f:
+            cfg = toml.load(f)
+    except (OSError, ValueError, TypeError):
+        return []
+    return [k for k in cfg.keys() if k != "default"]
+
+
+def active_env_expiry() -> Optional[datetime]:
+    """When the remembered environment lapses, or None if it does not."""
+    return _parse_timestamp(get_app_state(ACTIVE_ENV_EXPIRES_KEY))
 
 
 def active_env_remaining() -> Optional[timedelta]:
@@ -82,67 +170,154 @@ def active_env_remaining() -> Optional[timedelta]:
     expires = active_env_expiry()
     if expires is None:
         return None
-    return expires - datetime.now()
+    return expires - _now()
 
 
-def set_active_env(env: Optional[str], *, expires_in: Optional[timedelta] = None):
-    """Remember *env*, with an expiry unless it is exempt.
-
-    `local`-class environments are remembered indefinitely, as before. Anything
-    else gets a TTL, so that `macrostrat env staging` does not silently still
-    be in force in a different terminal next week — the sticky-global-state
-    problem this whole area starts from.
-    """
-    if env is None:
-        set_app_state(ACTIVE_ENV_KEY, None, wipe_others=True)
-        return None
-    set_app_state(ACTIVE_ENV_KEY, env, wipe_others=True)
-    if expires_in is None:
-        return None
-    expires = datetime.now() + expires_in
-    set_app_state(ACTIVE_ENV_EXPIRES_KEY, expires.isoformat())
-    return expires
-
-
-def normalize_macrostrat_env():
-    """The active environment for this invocation, or None.
-
-    Order: an explicit `MACROSTRAT_ENV` (which `--env` has already been folded
-    into) always wins and is never subject to expiry — it is per-invocation by
-    construction. Only a *remembered* environment can lapse.
-    """
-    if "MACROSTRAT_ENV" in environ:
-        log.info("active environment: %s", env_text())
-        # Check environment value
-        env = environ["MACROSTRAT_ENV"]
-        if env in ("", "none", "None"):
-            unsetenv("MACROSTRAT_ENV")
-            return None
-        return env
-
+def remembered_environment() -> Optional[ActiveEnvironment]:
+    """The pointer in app state as written, whether or not it applies here."""
     if not get_app_state_file().exists():
         return None
-
     env = get_app_state(ACTIVE_ENV_KEY)
     if env is None:
         return None
+    config = get_app_state(ACTIVE_ENV_CONFIG_KEY)
+    return ActiveEnvironment(
+        name=str(env),
+        source="remembered",
+        expires=active_env_expiry(),
+        config_file=Path(config) if config else None,
+    )
 
-    remaining = active_env_remaining()
-    if remaining is not None and remaining <= timedelta(0):
-        log.warning(
-            "The remembered environment %r has lapsed and is being ignored. "
-            "Pass --env %s to use it for this command, or run "
-            "`macrostrat env %s` to activate it again.",
-            env,
-            env,
-            env,
-        )
+
+def set_active_env(
+    env: Optional[str],
+    *,
+    expires_in: Optional[timedelta] = None,
+    config_file: Optional[Path] = None,
+):
+    """Remember *env*, with an expiry unless it is exempt, for *config_file*.
+
+    The pointer is scoped to the config file it was set against: app state is
+    per user while the config file is found per directory, and applying a
+    pointer set for one file to another is how a remembered `development` met a
+    config that had never heard of it.
+    """
+    if env is None:
         set_app_state(ACTIVE_ENV_KEY, None, wipe_others=True)
+        _set_active(None)
+        return None
+    set_app_state(ACTIVE_ENV_KEY, env, wipe_others=True)
+    if config_file is not None:
+        set_app_state(ACTIVE_ENV_CONFIG_KEY, str(Path(config_file).resolve()))
+    expires = None
+    if expires_in is not None:
+        expires = _now() + expires_in
+        set_app_state(ACTIVE_ENV_EXPIRES_KEY, expires.isoformat())
+    _set_active(
+        ActiveEnvironment(
+            name=env, source="remembered", expires=expires, config_file=config_file
+        )
+    )
+    return expires
+
+
+def renew_active_env(expires_in: Optional[timedelta]):
+    """Re-stamp the remembered environment's expiry from now.
+
+    The operator has just agreed to keep using it, so this is the same act as
+    `macrostrat env <name>` — a fresh, bounded grant.
+    """
+    state = _ACTIVE
+    if state is None:
+        return None
+    expires = None
+    if expires_in is not None:
+        expires = _now() + expires_in
+    if state.source == "remembered":
+        if expires is None:
+            set_app_state(ACTIVE_ENV_EXPIRES_KEY, None)
+        else:
+            set_app_state(ACTIVE_ENV_EXPIRES_KEY, expires.isoformat())
+    state.expires = expires
+    state.approved = True
+    return expires
+
+
+def _same_file(a: Optional[Path], b: Optional[Path]) -> bool:
+    if a is None or b is None:
+        return True
+    try:
+        return Path(a).resolve() == Path(b).resolve()
+    except OSError:
+        return str(a) == str(b)
+
+
+def normalize_macrostrat_env(config_file: Optional[Path] = None) -> Optional[str]:
+    """The active environment for this invocation, or None.
+
+    Order: an explicit `MACROSTRAT_ENV` (which `--env` has already been folded
+    into) always wins. It lapses only if a `MACROSTRAT_ENV_EXPIRES` from
+    `macrostrat env --shell` says so. A *remembered* environment applies only
+    if it was set against this config file and names an environment the file
+    has; a lapsed one is **kept**, and whoever is about to use it asks first
+    (see `macrostrat.core.safety.require_environment`).
+
+    Deliberately writes nothing: this runs while config loads, for every
+    invocation including `--help`, and a load must not edit state.
+    """
+    _set_active(None)
+
+    if ENV_VAR in environ:
+        env = environ[ENV_VAR]
+        if env in ("", "none", "None"):
+            unsetenv(ENV_VAR)
+            environ.pop(ENV_VAR, None)
+            return None
+        expires = _parse_timestamp(environ.get(ENV_EXPIRES_VAR) or None)
+        source = "shell" if expires is not None else "explicit"
+        _set_active(ActiveEnvironment(name=env, source=source, expires=expires))
+        log.info("active environment: %s", env_text())
+        return env
+
+    state = remembered_environment()
+    if state is None:
         return None
 
-    environ["MACROSTRAT_ENV"] = env
+    if config_file is None:
+        config_file = find_macrostrat_config()
+
+    if not _same_file(state.config_file, config_file):
+        log.info(
+            "The remembered environment %r was set for %s and does not apply "
+            "to %s; ignoring it here.",
+            state.name,
+            state.config_file,
+            config_file,
+        )
+        return None
+
+    if config_file is not None and state.name not in environments_in(config_file):
+        log.warning(
+            "The remembered environment %r is not defined in %s; ignoring it. "
+            "Run `macrostrat env <name>` to pick one of its environments, or "
+            "`macrostrat env --unset` to forget it.",
+            state.name,
+            config_file,
+        )
+        return None
+
+    if state.lapsed:
+        log.debug(
+            "The remembered environment %r has lapsed; it will be confirmed "
+            "before it is used.",
+            state.name,
+        )
+
+    state.config_file = config_file
+    _set_active(state)
+    environ[ENV_VAR] = state.name
     log.info("active environment: %s", env_text())
-    return env
+    return state.name
 
 
 def find_macrostrat_config() -> Optional[Path]:

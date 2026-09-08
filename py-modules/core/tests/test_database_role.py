@@ -89,8 +89,8 @@ class TestSplitCredentials:
     TABLE = {
         "host": "h",
         "database": "d",
-        "reader": "stub://reader",
-        "writer": "stub://writer",
+        "read_password": "stub://reader",
+        "write_password": "stub://writer",
     }
 
     def test_reads_use_the_reader_credential(self, monkeypatch, stub_resolver):
@@ -218,3 +218,59 @@ class TestTheGateGrantsWriteCapability:
             escalate_connection=False,
         )
         assert db_module.current_database_role() == DatabaseRole.Reader
+
+
+class TestReadConfirmation:
+    """`confirm = { read = … }` asks before the first reader connection."""
+
+    def _settings(self, monkeypatch, level, stub_resolver):
+        from macrostrat.core.environment import EnvironmentPolicy
+
+        policy = EnvironmentPolicy.resolve(
+            "production", env_class="production", confirm={"read": level}
+        )
+        conn = DatabaseConnection.parse(
+            {"host": "h", "database": "d", "password": "stub://shared"}
+        )
+        s = _Settings(conn)
+        s.policy = policy
+        s.database_connection = lambda name="macrostrat": conn
+        monkeypatch.setattr(db_module, "PG_DATABASE", None)
+        monkeypatch.setattr(db_module, "settings", s)
+        return s
+
+    def test_ungated_reads_ask_nothing(self, monkeypatch, stub_resolver):
+        self._settings(monkeypatch, "none", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        db_module._confirm_read_if_gated()  # no exception
+
+    def test_a_gated_read_is_refused_without_a_terminal(
+        self, monkeypatch, stub_resolver
+    ):
+        self._settings(monkeypatch, "prompt", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        with raises(WriteRefused):
+            db_module._confirm_read_if_gated()
+
+    def test_a_gated_read_passes_when_confirmed(self, monkeypatch, stub_resolver):
+        self._settings(monkeypatch, "prompt", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: True)
+        monkeypatch.setattr(safety, "_prompt", lambda message: "y")
+        db_module._confirm_read_if_gated()
+        # Confirming a read never escalates the connection.
+        assert db_module.current_database_role() == DatabaseRole.Reader
+
+    def test_reauthorize_refetches_the_reader_credential(
+        self, monkeypatch, stub_resolver
+    ):
+        self._settings(monkeypatch, "reauthorize", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: True)
+        monkeypatch.setattr(safety, "_prompt", lambda message: "production")
+        db_module._confirm_read_if_gated()
+        assert db_module.current_database_role() == DatabaseRole.Reader
+
+    def test_writers_are_not_asked_again(self, monkeypatch, stub_resolver):
+        self._settings(monkeypatch, "prompt", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        db_module.use_writer_connection()
+        db_module._confirm_read_if_gated()  # no exception

@@ -8,6 +8,7 @@ from macrostrat.core.environment import (
     EnvironmentPolicy,
     WriteGate,
     WriteScope,
+    parse_gate,
     policy_from_settings,
 )
 
@@ -96,6 +97,59 @@ class TestGates:
         """Junk must never silently *widen* access."""
         p = EnvironmentPolicy.resolve("prod", env_class="production", write_gate=bad)
         assert p.gate_for(WriteScope.Data) == WriteGate.Escalate
+
+    def test_reads_are_ungated_by_default_in_every_class(self):
+        for env_class in EnvironmentClass:
+            p = EnvironmentPolicy.resolve("x", env_class=env_class.value)
+            assert p.gate_for(WriteScope.Read) == WriteGate.NoGate
+
+    def test_confirm_table_sets_each_kind_of_access(self):
+        p = EnvironmentPolicy.resolve(
+            "prod",
+            env_class="production",
+            confirm={
+                "read": "prompt",
+                "data": "environment-name",
+                "schema": "reauthorize",
+            },
+        )
+        assert p.gate_for(WriteScope.Read) == WriteGate.Confirm
+        assert p.gate_for(WriteScope.Data) == WriteGate.Typed
+        assert p.gate_for(WriteScope.Schema) == WriteGate.Escalate
+
+    def test_confirm_scalar_applies_to_both_writes_but_not_reads(self):
+        p = EnvironmentPolicy.resolve("dev", env_class="development", confirm="none")
+        assert p.gate_for(WriteScope.Data) == WriteGate.NoGate
+        assert p.gate_for(WriteScope.Schema) == WriteGate.NoGate
+        assert p.gate_for(WriteScope.Read) == WriteGate.NoGate
+        p = EnvironmentPolicy.resolve("local", env_class="local", confirm=True)
+        assert p.gate_for(WriteScope.Data) == WriteGate.Confirm
+        assert p.gate_for(WriteScope.Read) == WriteGate.NoGate
+
+    @mark.parametrize(
+        "word,expected",
+        [
+            ("none", WriteGate.NoGate),
+            (False, WriteGate.NoGate),
+            ("prompt", WriteGate.Confirm),
+            ("confirm", WriteGate.Confirm),
+            (True, WriteGate.Confirm),
+            ("environment-name", WriteGate.Typed),
+            ("typed", WriteGate.Typed),
+            ("reauthorize", WriteGate.Escalate),
+            ("escalate", WriteGate.Escalate),
+        ],
+    )
+    def test_level_spellings_old_and_new(self, word, expected):
+        assert parse_gate(word) == expected
+
+    def test_the_level_words_are_plain_english(self):
+        assert [g.value for g in WriteGate] == [
+            "none",
+            "prompt",
+            "environment-name",
+            "reauthorize",
+        ]
 
     def test_gate_severity_is_ordered(self):
         order = [

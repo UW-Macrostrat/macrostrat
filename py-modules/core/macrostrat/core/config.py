@@ -1,17 +1,25 @@
 from enum import Enum
 from os import environ, getenv
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
-from toml import load as load_toml
 
 from macrostrat.utils import get_logger
 
-from .connections import DEFAULT_DATABASE, DatabaseRole, connection_for, connections_for
-from .environment import DEFAULT_ENV, policy_from_settings
+from .config_loader import config_version, load_settings_v2
+from .connections import (
+    DEFAULT_DATABASE,
+    DatabaseRole,
+    MissingCredential,
+    connection_for,
+    connections_for,
+)
+from .environment import policy_from_settings
+from .exc import ConfigError, UnknownEnvironment
 from .resolvers import cast_sources, setup_source_roots_environment
 from .secrets import as_secret, is_secret_ref, reveal
 from .storage import (
@@ -22,6 +30,7 @@ from .storage import (
 )
 from .utils import (
     convert_to_string,
+    environments_in,
     find_macrostrat_config,
     normalize_macrostrat_env,
     path_list_resolver,
@@ -35,13 +44,6 @@ class BackendType(str, Enum):
     DockerCompose = "docker-compose"
 
 
-def get_default_environment():
-    cfg = find_macrostrat_config()
-    if cfg is None:
-        return None
-    return _all_environments(cfg)[0]
-
-
 class MacrostratConfig(Dynaconf):
     """Macrostrat config manager that reads from a TOML file"""
 
@@ -49,15 +51,21 @@ class MacrostratConfig(Dynaconf):
     srcroot: Path
 
     def __init__(self):
-
         cfg = find_macrostrat_config()
         settings_files = []
         should_load_environments = False
 
         if cfg is not None:
             settings_files.append(cfg)
-            env = normalize_macrostrat_env()
+            env = normalize_macrostrat_env(cfg)
             if env is not None:
+                # A remembered environment has already been checked against
+                # this file; an explicit one has not. Dynaconf would accept any
+                # name and yield an empty environment, so refuse here, with
+                # the list of names that would have worked.
+                available = environments_in(cfg)
+                if env not in available:
+                    raise UnknownEnvironment(env, available, cfg)
                 should_load_environments = True
 
         env_kwargs = dict()
@@ -155,42 +163,48 @@ class MacrostratConfig(Dynaconf):
 
 
 def _all_environments(config_file: Path):
-    """The selectable environments in a config file.
-
-    `default` is Dynaconf's shared base layer rather than an environment, so it
-    is excluded by name. It used to be skipped by *position*, which silently
-    dropped the first real environment from any file that did not happen to
-    lead with `[default]`.
-    """
-    with open(config_file, "r") as f:
-        cfg = load_toml(f)
-        return [k for k in cfg.keys() if k != DEFAULT_ENV]
+    """The selectable environments in a config file. See `environments_in`."""
+    return environments_in(config_file)
 
 
-settings = MacrostratConfig()
+# Two loaders share this module. A file that declares `config_version = 2`
+# (or a process with MACROSTRAT_CONFIG_VERSION=2) is read by the schema-
+# validated loader in `config_loader`; everything else takes the Dynaconf path
+# below, unchanged. Both produce a `settings` object with the same surface, so
+# nothing after this block needs to know which one it got.
+_config_file = find_macrostrat_config()
+CONFIG_VERSION = config_version(_config_file)
+IS_V2 = CONFIG_VERSION >= 2
 
-settings.validators.register(
-    # `must_exist` is causing huge problems
-    Validator("COMPOSE_ROOT", cast=Path),
-    Validator(
-        "env_files", cast=path_list_resolver(settings, require_file=True), default=None
-    ),
-    Validator(
-        "script_dirs",
-        cast=path_list_resolver(settings, require_directory=True),
-        default=None,
-    ),
-    Validator("pg_database", cast=convert_to_string, default=None),
-    # Backend information. We could potentially infer this from other environment variables
-    Validator("backend", default="kubernetes", cast=BackendType),
-    Validator("sources", cast=cast_sources, default=None),
-    # Settings to control the location of arbitrary named databases
-    Validator("databases", default={}),
-    Validator("log_modules", cast=list, default=["macrostrat"]),
-    Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
-)
+if IS_V2:
+    settings = load_settings_v2(_config_file, normalize_macrostrat_env(_config_file))
+else:
+    settings = MacrostratConfig()
 
-macrostrat_env = getattr(settings, "env", "default")
+    settings.validators.register(
+        # `must_exist` is causing huge problems
+        Validator("COMPOSE_ROOT", cast=Path),
+        Validator(
+            "env_files",
+            cast=path_list_resolver(settings, require_file=True),
+            default=None,
+        ),
+        Validator(
+            "script_dirs",
+            cast=path_list_resolver(settings, require_directory=True),
+            default=None,
+        ),
+        Validator("pg_database", cast=convert_to_string, default=None),
+        # Backend information. We could potentially infer this from other environment variables
+        Validator("backend", default="kubernetes", cast=BackendType),
+        Validator("sources", cast=cast_sources, default=None),
+        # Settings to control the location of arbitrary named databases
+        Validator("databases", default={}),
+        Validator("log_modules", cast=list, default=["macrostrat"]),
+        Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
+    )
+
+macrostrat_env = getattr(settings, "env", None) or "default"
 
 if env_files := getattr(settings, "env_files", None):
     for env in env_files:
@@ -201,7 +215,8 @@ if env_files := getattr(settings, "env_files", None):
         load_dotenv(env)
 
 # Validate settings
-settings.validators.validate()
+if not IS_V2:
+    settings.validators.validate()
 
 
 # Settings for storage, if provided.
@@ -210,9 +225,9 @@ settings.validators.validate()
 # gets no ambient STORAGE_* variables: resolving them here would fetch on every
 # invocation and hand the pair to every subprocess. Reach them through
 # settings.storage_endpoint(...).credentials() instead.
-if storage := getattr(settings, "storage", None):
-    access_key = storage.get("access_key", None)
-    secret_key = storage.get("secret_key", None)
+if storage := settings.get("storage", None):
+    access_key = settings.get("storage.access_key", None)
+    secret_key = settings.get("storage.secret_key", None)
     if is_secret_ref(access_key) or is_secret_ref(secret_key):
         log.info(
             "Storage credentials for this environment name secrets; deferring "
@@ -225,58 +240,107 @@ if storage := getattr(settings, "storage", None):
         environ["STORAGE_ACCESS_KEY"] = access_key
         environ["STORAGE_SECRET_KEY"] = secret_key
 
-# A database connection string for PostgreSQL
-PG_DATABASE = getattr(settings, "pg_database", None)
-url = None
-# Not sure why this happens
-if PG_DATABASE == "None":
-    PG_DATABASE = None
-# environ.get("MACROSTRAT_PG_DATABASE", None)
 
-# A `pg_database` that *names* a secret rather than containing one cannot take
-# the eager path below: resolving it here would put a password-manager prompt in
-# front of every `macrostrat` invocation, and would export the credential into
-# the environment of every subprocess — which is the leak this indirection
-# exists to close. Such an environment gets no ambient PG* variables at all;
-# callers reach the credential through `settings.database_url(role=...)`, and
-# commands that genuinely need PG* for a subprocess ask for it explicitly.
-#
-# Adopting a secret reference is therefore also how an environment opts out of
-# ambient credentials. Configs holding literals are untouched.
-if PG_DATABASE is not None and is_secret_ref(PG_DATABASE):
-    log.info(
-        "pg_database for this environment names a secret (%s); deferring "
-        "resolution and skipping the PG* environment export.",
-        PG_DATABASE.split("://")[0] + "://…",
-    )
-    PG_DATABASE = None
-elif PG_DATABASE is not None:
+def _ambient_database_url(settings, name: str = DEFAULT_DATABASE) -> Optional[str]:
+    """The URL of database *name* exported into the process environment, or None.
+
+    A literal config — a `pg_database` URL, or a `[<env>.database]` table whose
+    login is written in the file — keeps the ambient PG* / POSTGRES_* variables
+    it has always had: the local compose stack and the legacy commands read
+    them. It is composed through the connection registry so both shapes count.
+
+    A credential that *names* a secret cannot take this path: resolving it here
+    would put a password-manager prompt in front of every `macrostrat`
+    invocation and hand the credential to every subprocess — the leak this
+    indirection exists to close. Such an environment gets no ambient PG*
+    variables at all; callers reach the credential through
+    `settings.database_url(role=...)`, and commands that genuinely need PG* for
+    a subprocess build it for that subprocess (see `db psql`). Adopting a
+    reference is therefore also how an environment opts out of ambient
+    credentials.
+
+    The writer login is exported, matching what the single-URL form has always
+    carried. A literal table with distinct read and write logins is a remote
+    environment that should be on references anyway.
+    """
+    conn = settings.database_connection(name)
+    if conn is None:
+        return None
+    if conn.requires_resolution(DatabaseRole.Writer):
+        log.info(
+            "The credential for database %r names a secret (%s); deferring "
+            "resolution and skipping its environment export.",
+            name,
+            conn.location(DatabaseRole.Writer),
+        )
+        return None
+    try:
+        return exported_database_url(conn)
+    except MissingCredential:
+        # A table with no password at all: nothing to export, and `url()`
+        # will say so clearly when something asks.
+        return None
+
+
+def exported_database_url(conn, role=DatabaseRole.Writer) -> str:
+    """*conn*'s URL as a plain string fit for another process's environment.
+
+    Resolves the credential. The registry stamps
+    `application_name=macrostrat-cli/...` on every URL it composes; that
+    attribution is right for this process and wrong for the services that read
+    an exported variable, so it is dropped unless the config asked for one.
+    """
+    url = conn.url(role)
+    configured = getattr(conn, "options", None) or {}
+    if "application_name" not in configured:
+        query = {k: v for k, v in url.query.items() if k != "application_name"}
+        url = url.set(query=query)
+    return url.render_as_string(hide_password=False)
+
+
+def export_database_environment(pg_database: str, env=environ) -> None:
+    """Set the libpq / compose variables for the default database on *env*.
+
+    Shared by the import-time path (a literal config) and the command-time
+    path (`export_compose_environment`, for a vaulted one).
+    """
+    url = make_url(pg_database)
+
+    env["PGHOST"] = url.host
+    env["PGPORT"] = str(url.port)
+
+    for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
+        env[v] = url.password
+
+    for v in ("PGUSER", "POSTGRES_USER"):
+        env[v] = url.username
+
+    for v in ("PGDATABASE", "POSTGRES_DB"):
+        env[v] = url.database
+
+    # Used for local running of Macrostrat
+    env["MACROSTRAT_DB_PORT"] = str(url.port)
+
+    env["MACROSTRAT_DATABASE_URL"] = pg_database
+
+
+# A database connection string for PostgreSQL, when the config holds it in
+# plaintext. None for a vaulted credential — see `_ambient_database_url`.
+PG_DATABASE = _ambient_database_url(settings)
+url = None
+if PG_DATABASE is not None:
     # On mac and windows, we need to use the docker host `host.docker.internal` or `host.lima.internal`, etc.
-    docker_localhost = getattr(settings, "docker_localhost", "localhost")
+    docker_localhost = getattr(settings, "docker_localhost", None) or "localhost"
     PG_DATABASE_DOCKER = PG_DATABASE.replace("localhost", docker_localhost)
 
-    # add this to the settings.databases mapping
-    settings.databases["macrostrat"] = PG_DATABASE
+    # add this to the settings.databases mapping (the v2 registry already
+    # answers `databases["macrostrat"]`, and its mapping is not for writing)
+    if not IS_V2:
+        settings.databases["macrostrat"] = PG_DATABASE
 
     # Set environment variables
     url = make_url(PG_DATABASE)
-
-    environ["PGHOST"] = url.host
-    environ["PGPORT"] = str(url.port)
-
-    for v in ("PGPASSWORD", "POSTGRES_PASSWORD"):
-        environ[v] = url.password
-
-    for v in ("PGUSER", "POSTGRES_USER"):
-        environ[v] = url.username
-
-    for v in ("PGDATABASE", "POSTGRES_DB"):
-        environ[v] = url.database
-
-    # Used for local running of Macrostrat
-    environ["MACROSTRAT_DB_PORT"] = str(url.port)
-
-    environ["MACROSTRAT_DATABASE_URL"] = PG_DATABASE
+    export_database_environment(PG_DATABASE)
 
 mysql_database = getattr(settings, "mysql_database", None)
 if mysql_database is not None:
@@ -284,7 +348,16 @@ if mysql_database is not None:
     # TODO: handle this more intelligently
 
 
-if elevation_database := getattr(settings, "elevation_database", None):
+# Legacy shim: the API and the compose stack read the elevation database from
+# ELEVATION_DATABASE_URL. The top-level `elevation_database` key is honoured as
+# before; failing that, an `elevation` entry in `[<env>.databases]` is exported
+# under the same rule as PG* — a literal exports, a reference does not. Goes
+# away when the compose commands build their own environment (see the
+# Configuration model note).
+elevation_database = getattr(settings, "elevation_database", None)
+if not elevation_database:
+    elevation_database = _ambient_database_url(settings, "elevation")
+if elevation_database:
     environ["ELEVATION_DATABASE_URL"] = elevation_database
 
 

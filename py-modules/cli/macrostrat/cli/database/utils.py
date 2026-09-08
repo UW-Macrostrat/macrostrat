@@ -25,7 +25,7 @@ def engine_for_db_name(name: str | None):
 def docker_internal_url(url: URL | str) -> URL:
     url = make_url(url)
     if url.host == "localhost":
-        docker_localhost = getattr(settings, "docker_localhost", "localhost")
+        docker_localhost = getattr(settings, "docker_localhost", None) or "localhost"
         url = url.set(host=docker_localhost)
     return url
 

@@ -32,27 +32,69 @@ macrostrat --env staging db tables
 # 2. A shell session. Dies when the shell does.
 eval "$(macrostrat env --shell staging)"
 
-# 3. Remembered. `local` indefinitely; anything else for 15 minutes.
+# 3. Remembered. `local` indefinitely; anything else for its class's TTL.
 macrostrat env local
-macrostrat env staging        # → "Activated environment staging (staging) for 15 min, until 14:32"
-macrostrat env                # → "staging (lapses in 12 min)"
+macrostrat env staging        # → "Activated environment staging (staging) for 1 h, until 15:32"
+macrostrat env                # → "staging (staging) (remembered, lapses in 48 min)"
+macrostrat env --unset        # forget it
 ```
 
-A remembered non-`local` environment **expires**, and a lapsed one is ignored
-and forgotten:
+A remembered non-`local` environment **lapses** after a time-to-live that
+depends on its class — 8 h for `development`, 1 h for `staging`, 15 min for
+`production` — or on `active_ttl` in its section (`"2h"`, `"30m"`, `"never"`).
+A lapsed environment is **kept, and you are asked before the next command that
+would use it**:
 
 ```
-The remembered environment 'staging' has lapsed and is being ignored.
-Pass --env staging to use it for this command, or run `macrostrat env staging`
-to activate it again.
+Remembered environment staging (staging) lapsed 12 min ago. Keep using it for another 1 h? [y/N]
 ```
+
+Answering yes renews it for another TTL, the same as running `macrostrat env
+staging` again. Without a terminal — an agent, a cron job — a lapsed
+environment is refused rather than used:
+
+```
+The remembered environment staging (staging) lapsed 12 min ago
+There is no terminal to confirm it on. Pass --env staging to use it for this
+command, or run `macrostrat env staging` to activate it again.
+```
+
+`macrostrat env`, `macrostrat config …` and `--help` never ask: they inspect or
+change the environment rather than use it. `--shell` exports an expiry
+alongside the name, so a shell session lapses the same way and is confirmed per
+command.
 
 This is deliberate. A persisted pointer at a remote database that outlives the
 task will otherwise still be in force in a different terminal, in a script, or
 next week — and nothing in your working tree tells you which database you are
-about to write to. `local` is exempt because local work is disposable.
+about to write to. `local` is exempt because local work is disposable. The
+earlier behaviour — a lapsed pointer was silently dropped — left the CLI with
+*no* environment, where `psql`-based commands quietly fell back to localhost
+and everything else failed with an obscure database error.
+
+**The pointer is scoped to the config file it was set against.** `macrostrat`
+finds `macrostrat.toml` by walking up from the working directory, so two
+projects can have different files; a pointer set in one is ignored, with a
+notice, in the other. A pointer naming an environment the file does not define
+is likewise ignored. An explicit `--env` naming an unknown environment is an
+error that lists the environments the file does define.
+
+`macrostrat config environments` shows every environment with its class
+(marking those still *inferred* as production), its gates and its TTL.
 
 ## Environment classes
+
+> **One scale, two uses.** The class also decides which schema layers apply:
+> the development-only definitions (`schema/_dev_definitions`, `schema/development`)
+> in `local` and `development`, the local seed data in `local` only. Schema
+> selection never keys on an environment's *name*, so `local-ingestion` gets
+> what its declared class says.
+>
+> **Vocabulary.** The levels are written `none`, `prompt`, `environment-name`
+> and `reauthorize`. Older files and docs used `confirm`, `typed` and
+> `escalate`; those spellings are still read. In a version-2 file the levels
+> live under `confirm = { read = …, data = …, schema = … }`; version 1 keeps
+> `[<env>.write_gate]` with `data` and `schema` only.
 
 Every environment declares **how expensive it should be to write to it**:
 
@@ -101,11 +143,14 @@ schema = "escalate"     # stricter than staging's default for DDL
 
 ### Which commands are gated
 
-`db restore`, `db load-csv`, `maps sources delete`, `topo reset`, `topo clean`,
-`topo rebuild`, `topo remove` (data); `schema apply`, `topo init` (schema);
-`schema migrate` **only with `--apply`**, since without it the command is a dry
-run. Read-only commands — `db dump`, `db tables`, `db credentials` — are never
-gated.
+`db restore`, `db load-csv`, `maps sources delete`, `maps change-slug`,
+`maps update-status`, `maps staging reingest-points` / `bulk-reingest-points` /
+`bulk-ingest` / `s3-delete`, `auth create-token`, `auth revoke-token`,
+`topo reset`, `topo clean`, `topo rebuild`, `topo remove` (data);
+`schema apply`, `topo init` (schema); `schema migrate` **only with `--apply`**,
+since without it the command is a dry run. `maps change-slug --dry-run` is
+likewise ungated. Read-only commands — `db dump`, `db tables`,
+`db credentials` — are never gated.
 
 Each gated command takes `--yes`/`-y`, which satisfies a `confirm` gate and
 nothing stronger.
@@ -137,11 +182,38 @@ A credential may be written literally, or **name a secret** in a manager:
 
 ```toml
 [production.database]
-host     = "db.production.svc.macrostrat.org"
-database = "macrostrat"
-reader   = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer   = "op://Macrostrat Prod/macrostrat-db/admin/password"
+host           = "db.production.svc.macrostrat.org"
+database       = "macrostrat"
+read_user      = "macrostrat_reader"
+read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_user     = "op://Macrostrat Prod/macrostrat-db/admin/username"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 ```
+
+### Logins
+
+Each role has a login: `read_user` + `read_password`, `write_user` +
+`write_password`. `user` and `password` stand in for whichever role does not
+declare its own, so an environment with one login writes just those two:
+
+```toml
+[development.database]
+host     = "db.development.svc.macrostrat.org"
+database = "macrostrat"
+user     = "macrostrat-admin"
+password = "op://Macrostrat Dev/macrostrat-db/password"
+```
+
+**Any of the four may be a literal or a reference.** A username is topology
+when it is a role name like `macrostrat_reader`, and a secret when it is the
+generated login a password manager stores beside its password — 1Password
+items carry both as `…/username` and `…/password`, and either can be named. A
+username held by reference is fetched only when that role's URL is composed,
+never to render an error message. When nothing declares a user at all the
+login is `macrostrat`.
+
+The earlier spellings `reader` / `writer` (passwords) and `reader_user` /
+`writer_user` are still read, with a warning naming the new key.
 
 Supported reference schemes:
 
@@ -163,6 +235,12 @@ the literal it is.
 > import and handing it to every subprocess — the leak this indirection exists
 > to close. Adopting a reference is therefore also how an environment opts out
 > of ambient credentials. Environments holding literals are unaffected.
+>
+> The one exception is the local compose stack, which needs its values in
+> plaintext to start. `up`, `restart` and `compose` resolve what the stack
+> reads — the database login, `ELEVATION_DATABASE_URL`, `SECRET_KEY`,
+> `STORAGE_*` — for that invocation only, and only the variables a literal
+> config has not already exported. No other command does this.
 
 ### Reader by default
 
@@ -187,9 +265,17 @@ closed and replaced when the gate passes.
 
 This has no effect on an environment configured with a literal `pg_database`
 URL: there is one credential, and the role is ignored. It also has no effect
-where `reader` and `writer` resolve to the same secret. It matters only once an
+where the read and write passwords resolve to the same secret. It matters only once an
 environment has a genuinely distinct, restricted reader role — so it can be
 adopted well before one exists.
+
+#### `psql`
+
+`macrostrat db psql` is an interactive shell and can run any statement, so it
+follows the same rule: it connects with the read login, and `--write` passes
+the `schema` gate before connecting with the write login. The credential is
+resolved for that one invocation and reaches `psql` through the container's
+environment, never through `argv`.
 
 ### The token-signing key is the most sensitive value here
 
@@ -220,10 +306,10 @@ port = 5432
 sslmode = "require"
 
 [production.database]
-host     = "db.production.svc.macrostrat.org"
-database = "macrostrat"
-reader   = "op://Macrostrat Prod/macrostrat-db/reader/password"
-writer   = "op://Macrostrat Prod/macrostrat-db/admin/password"
+host           = "db.production.svc.macrostrat.org"
+database       = "macrostrat"
+read_password  = "op://Macrostrat Prod/macrostrat-db/reader/password"
+write_password = "op://Macrostrat Prod/macrostrat-db/admin/password"
 
 [production.databases]
 rockd     = "rockd"                                            # same server
@@ -237,8 +323,17 @@ inheriting host, port, credentials and options. A **table** states only its
 differences. A **URL** is what this key has always held. A malformed entry is
 skipped with a warning rather than taking the environment offline.
 
-`[default.database]` is inherited, so a shared port, TLS mode or reader
-reference is written once rather than once per tier.
+`database` defaults to `macrostrat`, so a `[<env>.database]` table that names
+only a host means the Macrostrat database on that host.
+
+A URL that is a **secret reference** (`elevation = "op://…/url"`) is kept
+unresolved until that database is used. Building the registry fetches nothing,
+so one reference that cannot resolve — the wrong 1Password account, no `op` on
+PATH, a cloud session without the variable — fails when *that* database is
+asked for, not the moment anything asks for the default one.
+
+`[default.database]` is inherited, so a shared port, TLS mode or read login is
+written once rather than once per tier.
 
 Object storage works the same way:
 
@@ -318,9 +413,66 @@ Then the structured `[<env>.database]` form, which is where a remote
 environment should end up: it keeps the credential redactable, keeps topology
 reviewable in a diff, and separates reader from writer.
 
-If the environment declares separate `reader` and `writer` references, reads
-use the reader and only an authorized write reaches for the writer — see
+If the environment declares separate read and write logins, reads use the read
+login and only an authorized write reaches for the write login — see
 [Reader by default](#reader-by-default).
+
+## Configuration version 2 (opt-in)
+
+A file that starts with `config_version = 2` is read by a schema-validated
+loader instead of Dynaconf. Nothing else changes: the same commands, the same
+`settings` object, the same environment rules above. Adopting it is a
+per-file decision, and a file without the key keeps the original loader.
+`macrostrat.v2.example.toml` is a complete example.
+
+What the new loader does differently:
+
+- **Every key is checked against a schema.** `macrostrat config schema` prints
+  it as JSON Schema; each key carries a description. A key the schema does not
+  know is reported as a warning, so a typo cannot silently do nothing.
+- **Removed keys are errors that name the replacement.** `pg_database` becomes
+  `database = "postgresql://…"` or a `[<env>.database]` table; the per-database
+  keys (`rockd_database`, `sgp_database`, `elevation_database`, …) become
+  entries in `[<env>.databases]`; the top-level `secret_key` becomes
+  `token_signing_key`; the old `reader` / `writer` / `dbname` spellings inside a
+  database table are refused. `mysql_database` is retired.
+- **`env_class` is required** on every environment. There is no inference to
+  production; a missing class is a load error naming the fix.
+- **`confirm` replaces `write_gate`** and gains a `read` kind, so a production
+  environment can ask before even opening a connection:
+  `confirm = { read = "prompt", data = "environment-name", schema = "reauthorize" }`.
+  A single level (`confirm = "prompt"`) applies to both kinds of write. The
+  prompt needs a terminal, so a gated read is unavailable to an agent by
+  construction. Level words are validated at load.
+- **The whole `[default]` section is inherited**, and top-level keys count as
+  defaults too. Tables merge recursively, lists replace.
+- **`MACROSTRAT_*` environment variables override settings deliberately:**
+  `MACROSTRAT_BASE_URL`, `MACROSTRAT_DATABASE__PORT` (two underscores nest).
+  The variables the CLI uses for itself — `MACROSTRAT_ENV`, `MACROSTRAT_CONFIG`,
+  `MACROSTRAT_ROOT`, and friends — are never read as settings.
+- **`database` may be a URL, a reference to one, or a table.** A bare-name
+  entry in `[<env>.databases]` inherits from whichever the default is.
+- **`op_account`** points `op` at one 1Password account. Without it, `op` picks
+  its own default, which on a machine signed in to two accounts may be the
+  wrong one.
+- **`item = "op://<vault>/<item>"`** in a database or storage table is sugar
+  for the item's `username` / `password` (or `access_key` / `secret_key`)
+  fields. Independently of the sugar, every `op://` reference is now served
+  from one `op item get` per item, so several fields of one item cost one
+  fetch and one approval.
+
+Compatibility: the new `settings` object still answers the legacy reads.
+`settings.pg_database`, `settings.get("rockd_database")` and
+`settings.databases["test"]` return composed URLs when the login is literal
+(and `None`, or the reference as written, when it is vaulted, because
+composing it would fetch the credential). `settings.get("secret_key")` reads
+`token_signing_key`. Dotted `get()` and attribute access on its results work
+as before. The ambient-variable rules above apply unchanged.
+
+Migrating a file: add `config_version = 2`, add `env_class` to every
+environment, rename the keys the loader refuses (it lists them), and run
+`macrostrat config environments`. The loader reports every problem in one
+pass.
 
 ## Retired commands
 

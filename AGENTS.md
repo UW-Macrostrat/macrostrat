@@ -69,18 +69,28 @@ anything against a non-local environment. In short:
   (`local` / `development` / `staging` / `production`), which selects a gate on
   `data` and `schema` writes. **An environment that declares no class is
   treated as `production`.**
-- Mutating commands are gated. `staging` and `production` gates **cannot be
-  satisfied without an interactive terminal** — there is no flag or environment
-  variable that bypasses them, by design. Do not try to work around a refusal;
-  it is the intended behaviour.
-- `macrostrat env <name>` expires after 15 minutes for any non-`local`
-  environment. Use `--env` for a single command.
+- Mutating commands are gated. The levels are `none`, `prompt`,
+  `environment-name` and `reauthorize`; `staging` and `production` defaults
+  **cannot be satisfied without an interactive terminal** — there is no flag or
+  environment variable that bypasses them, by design. An environment may also
+  ask before *reads* (`confirm = { read = "prompt" }`). Do not try to work
+  around a refusal; it is the intended behaviour.
+- `macrostrat env <name>` lapses after a per-class TTL (8 h development, 1 h
+  staging, 15 min production; `active_ttl` overrides). A lapsed environment is
+  kept and confirmed interactively before use; without a terminal it is
+  refused. Use `--env` for a single command. The pointer applies only to the
+  config file it was set against.
 - Credentials may be literals or references (`op://`, `env://`, `file://`,
   `keychain://`). An environment using references gets **no ambient `PG*` /
   `STORAGE_*` / `SECRET_KEY`** variables — reach credentials through
   `settings.database_url(role=...)` / `settings.storage_endpoint(...)`.
 - Commands that print config redact by default; `--reveal` is refused without a
   terminal. Do not add a command that prints a credential unredacted.
+- A `macrostrat.toml` beginning with `config_version = 2` is read by the
+  schema-validated loader in `macrostrat.core.config_loader` (model in
+  `config_model`); `macrostrat config schema` prints its schema. Files without
+  the key use Dynaconf. Both yield the same `settings` surface; do not add a
+  consumer that depends on which loader produced it.
 
 ## Running things
 

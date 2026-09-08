@@ -16,8 +16,14 @@ pulled out; the dependency chain preserves today's exact application order.
 """
 
 from pathlib import Path
+from typing import Optional, Union
 
 from macrostrat.core.config import settings
+from macrostrat.core.environment import (
+    EnvironmentClass,
+    classes_up_to,
+    declared_policy_for,
+)
 from macrostrat.map_topology.config import TopologySchema
 from macrostrat.usage_stats import build_schema_config
 from macrostrat.utils import get_logger
@@ -27,8 +33,12 @@ from .discovery import discover_chunks
 
 log = get_logger(__name__)
 
-# Environments (defs.py vocabulary) in which the dev-only layers apply.
-_DEV_ENVS = frozenset({"development", "local"})
+# Environment classes in which the development-only layers apply. The same
+# scale the write gates use (`env_class` in macrostrat.toml): a laptop and the
+# development cluster get the dev definitions and seed data, staging and
+# production do not.
+_DEV_ENVS = classes_up_to(EnvironmentClass.Development)
+_LOCAL_ONLY = classes_up_to(EnvironmentClass.Local)
 
 # Foundational files (roles, globals, public schema), applied before everything.
 # This is the one chunk that runs as the connector (superuser): it creates roles,
@@ -104,7 +114,7 @@ def all_chunks() -> list[SchemaDefinition]:
             name="local",
             depends_on=["development"],
             provides=[schema_dir / "local"],
-            environments=frozenset({"local"}),
+            environments=_LOCAL_ONLY,
             owner=_APP_OWNER,
         ),
         TopologySchema,
@@ -143,6 +153,36 @@ def _raster_layers_chunks() -> list[SchemaDefinition]:
     ]
 
 
-def chunks_for_environment(env: str) -> list[SchemaDefinition]:
-    """The chunks that apply in the given environment."""
-    return [c for c in all_chunks() if c.applies_to(env)]
+def environment_class(env: Union[str, EnvironmentClass, None]) -> EnvironmentClass:
+    """The class of a config environment, by name.
+
+    ``None`` means the active environment. A name the config defines resolves
+    to its declared ``env_class``; a bare class name (``"development"``) that
+    is not also an environment is taken as the class itself, which is what
+    tests and one-off builds pass. Anything else fails closed to production,
+    as the policy resolver does.
+    """
+    if isinstance(env, EnvironmentClass):
+        return env
+    if env is None or env == settings.env:
+        policy = getattr(settings, "policy", None)
+        if policy is not None:
+            return policy.env_class
+        env = settings.env
+    if env not in settings.all_environments():
+        try:
+            return EnvironmentClass(str(env).strip().lower())
+        except ValueError:
+            pass
+    return declared_policy_for(settings.config_file, env).env_class
+
+
+def chunks_for_class(env_class: EnvironmentClass) -> list[SchemaDefinition]:
+    """The chunks that apply in environments of *env_class*."""
+    env_class = EnvironmentClass(env_class)
+    return [c for c in all_chunks() if c.applies_to(env_class)]
+
+
+def chunks_for_environment(env: Optional[str]) -> list[SchemaDefinition]:
+    """The chunks that apply in the named config environment."""
+    return chunks_for_class(environment_class(env))

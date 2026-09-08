@@ -34,27 +34,6 @@ def is_unsafe_statement(s: str) -> bool:
     return True
 
 
-env_schema_dirs = {
-    "local": ["production", "development"],
-    "development": ["production"],
-    "staging": ["production"],
-    "production": ["production"],
-}
-
-
-def schema_dirs_for_environment(env: str):
-    schema_dir = settings.srcroot / "schema"
-
-    # Always apply the core schema
-    yield schema_dir / "core"
-
-    if env in ["development", "local"]:
-        yield schema_dir / "development"
-
-    if env in ["local"]:
-        yield schema_dir / "local"
-
-
 def apply_schema_for_environment(
     db: Database,
     env: str,

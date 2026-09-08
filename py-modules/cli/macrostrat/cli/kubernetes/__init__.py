@@ -38,15 +38,9 @@ def _kubectl(settings, args, **kwargs):
     if namespace is None:
         raise Exception("No Kubernetes namespace specified.")
 
-    proxy = getattr(settings, "kube_proxy", None)
-    env = environ
-    if proxy:
-        env = {
-            **env,
-            "HTTPS_PROXY": proxy,
-            "HTTP_PROXY": proxy,
-        }
-    return run(["kubectl", *args], env=env, **kwargs)
+    # A proxy or VPN to reach the cluster is set up outside the CLI; kubectl
+    # inherits whatever the shell has.
+    return run(["kubectl", *args], **kwargs)
 
 
 def get_secret(settings, secret_name: Optional[str], *, secret_key: str = None):

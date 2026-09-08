@@ -1,4 +1,5 @@
 import asyncio
+from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
@@ -11,7 +12,11 @@ from sqlalchemy import make_url, text
 from typer import Argument, Option
 
 from macrostrat.core import app
-from macrostrat.core.database import get_database
+from macrostrat.core.database import (
+    NoDatabaseConfigured,
+    current_database_role,
+    get_database,
+)
 from macrostrat.database import Database, reset_sequence
 from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
@@ -20,7 +25,7 @@ from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
 from ...core.environment import WriteScope
-from ...core.safety import writes
+from ...core.safety import require_write_access, writes
 from ...core.secrets import (
     REDACTED,
     is_sensitive_name,
@@ -135,40 +140,59 @@ db_app = db_subsystem.control_command()
 )
 def psql(
     ctx: typer.Context,
+    write: bool = Option(
+        False,
+        "--write",
+        help="Connect with the write login. Passes the schema write gate first.",
+    ),
 ):
-    """Explore a database using [cyan]psql[/cyan]"""
-    from macrostrat.core.config import PG_DATABASE_DOCKER
+    """Explore a database using [cyan]psql[/cyan]
 
-    # Clumsy way to get the correct host for Docker
-    url = make_url(PG_DATABASE_DOCKER)
+    Connects with the read login unless [cyan]--write[/cyan] is given. Every
+    other argument is passed through to psql.
+    """
+    settings = app.settings
 
-    # Set default arguments
-    env_flags = [
-        "-e",
-        "PGDATABASE",
-        "-e",
-        "PGUSER",
-        "-e",
-        "PGPASSWORD",
-        "-e",
-        f"PGHOST={url.host}",
-        "-e",
-        "PGPORT",
-    ]
+    if write:
+        # An interactive shell can run any statement, so it is gated as the
+        # widest scope. Passing the gate escalates this invocation's role.
+        require_write_access(WriteScope.Schema, action="psql --write")
 
-    flags = [
-        "-i",
-        "--rm",
-        "--network",
-        "host",
-        *env_flags,
-    ]
+    conn = settings.database_connection()
+    if conn is None:
+        raise NoDatabaseConfigured()
+    # Resolves the credential now, for this role only. The URL never becomes a
+    # string: libpq reads the parts from the environment below.
+    url = conn.url(current_database_role())
+
+    # On mac and windows the container reaches the host by another name.
+    docker_localhost = settings.get("docker_localhost", "localhost")
+    host = (url.host or "localhost").replace("localhost", docker_localhost)
+
+    # Handed to `docker` through its own environment and forwarded by name
+    # (`-e PGPASSWORD`, no value), so the password is in neither argv nor
+    # `docker inspect` of anything that outlives this process.
+    pg_env = {
+        "PGHOST": host,
+        "PGPORT": str(url.port or 5432),
+        "PGUSER": url.username,
+        "PGPASSWORD": url.password,
+        "PGDATABASE": url.database,
+        "PGAPPNAME": url.query.get("application_name"),
+    }
+    pg_env = {k: v for k, v in pg_env.items() if v is not None}
+    env = dict(environ)
+    env.update(pg_env)
+
+    flags = ["-i", "--rm", "--network", "host"]
+    for name in pg_env:
+        flags += ["-e", name]
     if stdin.isatty():
         flags.append("-t")
 
-    db_container = app.settings.get("pg_database_container", "postgres:15")
+    db_container = settings.get("pg_database_container", "postgres:15")
 
-    run("docker", "run", *flags, db_container, "psql", *ctx.args)
+    run("docker", "run", *flags, db_container, "psql", *ctx.args, env=env)
 
 
 @db_app.command(
