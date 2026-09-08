@@ -407,9 +407,6 @@ main.add_typer(auth_cli, name="auth", rich_help_panel="Subsystems")
 def _run(
     ctx: typer.Context,
     command: str = Argument(help="Command to run", default=None),
-    database: str = Option(
-        None, "--database", "-d", help="Named database to point a pipeline at"
-    ),
 ):
     """Run a command or a data pipeline in the Macrostrat command-line context.
 
@@ -425,13 +422,12 @@ def _run(
       MACROSTRAT_DATABASE_URL  for a child that has no Macrostrat in it
 
         macrostrat run Maps/NGS sources
-        macrostrat run -d test Maps/NGS sources   # against a named database
     """
 
     bindir = Path(settings.srcroot) / "bin"
 
     if command is not None and Path(command).exists():
-        return _run_pipeline(Path(command), ctx.args, database)
+        return _run_pipeline(Path(command), ctx.args)
 
     if command is None:
         # List available commands
@@ -693,15 +689,13 @@ for entry_point in discovered_plugins:
 # main = setup_exception_handling(main)
 
 
-def _run_pipeline(path: Path, args: list[str], database: str | None = None):
+def _run_pipeline(path: Path, args: list[str]):
     """Execute a pipeline with the active environment resolved into its own.
 
-    `database` names an entry in the environment's `databases` registry, which is
-    how a pipeline is pointed at a throwaway copy without changing anything
-    persistent -- the environment stays put and only the target moves.
+    TODO: this is overfitted to a transient state of the `data-integration` module
+    and should likely be removed.
     """
     from subprocess import run as run_process
-
     from macrostrat.core.database import database_url_for
 
     child = dict(environ)
@@ -713,7 +707,7 @@ def _run_pipeline(path: Path, args: list[str], database: str | None = None):
     if app.settings.env is not None:
         child["MACROSTRAT_ENV"] = app.settings.env
     try:
-        child["MACROSTRAT_DATABASE_URL"] = database_url_for(database or "macrostrat")
+        child["MACROSTRAT_DATABASE_URL"] = database_url_for("macrostrat")
     except KeyError as err:
         # Not fatal. A pipeline may read from somewhere else entirely, and refusing
         # here would break the runner for the case it exists to support.
