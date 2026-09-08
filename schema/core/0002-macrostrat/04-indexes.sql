@@ -556,3 +556,25 @@ CREATE INDEX units_sections_new_col_id_idx ON macrostrat.units_sections USING bt
 CREATE INDEX units_sections_new_section_id_idx ON macrostrat.units_sections USING btree (section_id);
 
 CREATE INDEX units_sections_new_unit_id_idx ON macrostrat.units_sections USING btree (unit_id);
+
+/* Source-identity uniqueness for `orig_id`.
+
+   Scoped by the parents already present on the row, so no `source` column is needed:
+   `cols` by `project_id` (the columns-side equivalent of `maps.source_id`), `sections` by
+   `col_id`, and `units` by both `col_id` and `section_id`.
+
+   `units` includes `section_id` because a source that identifies its sections may number
+   its units within them — that source's sections are the context its unit identifiers
+   resolve in. Including it accommodates both that case and a source whose unit ids are
+   unique across the whole column, without asking a pipeline to compose a synthetic
+   column-unique value. The reconciler, not this index, decides identity; the index is the
+   backstop against the same source row being written twice.
+
+   NULLs are distinct in a unique index, so these constrain only the rows that actually
+   carry a source identifier and leave every existing row alone. */
+
+CREATE UNIQUE INDEX cols_project_orig_id_key ON macrostrat.cols USING btree (project_id, orig_id);
+
+CREATE UNIQUE INDEX sections_col_orig_id_key ON macrostrat.sections USING btree (col_id, orig_id);
+
+CREATE UNIQUE INDEX units_col_section_orig_id_key ON macrostrat.units USING btree (col_id, section_id, orig_id);
