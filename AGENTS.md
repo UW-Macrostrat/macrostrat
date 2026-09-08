@@ -69,10 +69,12 @@ anything against a non-local environment. In short:
   (`local` / `development` / `staging` / `production`), which selects a gate on
   `data` and `schema` writes. **An environment that declares no class is
   treated as `production`.**
-- Mutating commands are gated. `staging` and `production` gates **cannot be
-  satisfied without an interactive terminal** — there is no flag or environment
-  variable that bypasses them, by design. Do not try to work around a refusal;
-  it is the intended behaviour.
+- Mutating commands are gated. The levels are `none`, `prompt`,
+  `environment-name` and `reauthorize`; `staging` and `production` defaults
+  **cannot be satisfied without an interactive terminal** — there is no flag or
+  environment variable that bypasses them, by design. An environment may also
+  ask before *reads* (`confirm = { read = "prompt" }`). Do not try to work
+  around a refusal; it is the intended behaviour.
 - `macrostrat env <name>` lapses after a per-class TTL (8 h development, 1 h
   staging, 15 min production; `active_ttl` overrides). A lapsed environment is
   kept and confirmed interactively before use; without a terminal it is

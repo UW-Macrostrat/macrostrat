@@ -91,7 +91,8 @@ def discover_chunks(
 ) -> list[SchemaDefinition]:
     """Build ``SchemaDefinition``s for every subsystem found directly under ``root``.
 
-    ``environments`` (a frozenset, or ``None`` for "all environments") and ``owner``
+    ``environments`` (a frozenset of environment *classes*, or ``None`` for
+    "everywhere") and ``owner``
     (the applying role, or ``None`` for the connector) are applied to every subsystem
     discovered here — the caller chooses both by *where* it is loading from, rather
     than the SQL declaring them (ownership is a property of who applies a chunk, not

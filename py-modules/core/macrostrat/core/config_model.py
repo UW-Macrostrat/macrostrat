@@ -54,9 +54,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
-from .environment import EnvironmentClass
+from .environment import EnvironmentClass, WriteGate, WriteScope, parse_gate
 
 #: Config keys this CLI no longer reads, each with what replaces it. The loader
 #: raises for any of these rather than ignoring them: a key that silently stops
@@ -73,6 +80,9 @@ REMOVED_KEYS: Dict[str, str] = {
     "proxy_command": "nothing; unused",
     "docker_base_url": "nothing; unused",
     "secret_key": "token_signing_key (the storage table keeps its own secret_key)",
+    "write_gate": 'confirm = { read = "…", data = "…", schema = "…" }',
+    "kube_proxy": "nothing; reach the cluster (proxy, VPN) outside the CLI",
+    "setup": "nothing; shell hooks are not run by the CLI",
 }
 
 #: Removed spellings inside a database table.
@@ -325,9 +335,19 @@ class EnvironmentSettings(BaseModel):
             "active. Required for every environment."
         ),
     )
-    write_gate: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Per-scope gate overrides: data / schema → none | confirm | typed | escalate.",
+    confirm: Optional[Union[bool, str, Dict[str, Union[bool, str]]]] = Field(
+        None,
+        description=(
+            "What a person must do before the CLI touches this environment's "
+            "database, per kind of access: `read` (opening a connection at "
+            "all), `data` (row changes), `schema` (DDL). Levels: `none`, "
+            "`prompt` (y/N; `--yes` satisfies it), `environment-name` (type "
+            "the environment's name; needs a terminal), `reauthorize` (type "
+            "the name and the credential is fetched fresh from the secret "
+            "manager). A single level instead of a table applies to both kinds "
+            "of write; reads are only asked for when named. Overrides the "
+            "defaults `env_class` provides."
+        ),
     )
     active_ttl: Optional[Union[str, int]] = Field(
         None,
@@ -408,7 +428,6 @@ class EnvironmentSettings(BaseModel):
     kube_namespace: Optional[str] = Field(
         None, description="Kubernetes namespace. Enables the `kube` commands."
     )
-    kube_proxy: Optional[str] = Field(None, description="SOCKS proxy for kubectl.")
 
     # -- CLI behaviour ----------------------------------------------------------
     env_files: List[Path] = Field(
@@ -432,6 +451,36 @@ class EnvironmentSettings(BaseModel):
     usage_stats_client_salt: Optional[str] = Field(
         None, description="Salt for hashing client identifiers in usage stats."
     )
+
+    @field_validator("confirm")
+    @classmethod
+    def _check_confirm(cls, value):
+        if value is None:
+            return value
+        levels = ", ".join(g.value for g in WriteGate)
+        if hasattr(value, "items"):
+            for scope, level in value.items():
+                try:
+                    WriteScope(str(scope))
+                except ValueError:
+                    raise ValueError(
+                        f"confirm.{scope}: not a kind of access; use "
+                        + ", ".join(s.value for s in WriteScope)
+                    ) from None
+                try:
+                    parse_gate(level)
+                except ValueError:
+                    raise ValueError(
+                        f"confirm.{scope} = {level!r}: not a level; use {levels}"
+                    ) from None
+            return value
+        try:
+            parse_gate(value)
+        except ValueError:
+            raise ValueError(
+                f"confirm = {value!r}: not a level; use {levels}"
+            ) from None
+        return value
 
     @model_validator(mode="before")
     @classmethod

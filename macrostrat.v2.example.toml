@@ -104,6 +104,14 @@ base_url = "https://macrostrat.org"
 token_signing_key = "op://Macrostrat production/api-v3/token signing key"
 active_ttl = "15m"
 
+# What a person must do before each kind of access. `env_class` supplies the
+# defaults (production: writes reauthorize, reads free); this asks before reads
+# too. Levels: none | prompt | environment-name | reauthorize.
+[production.confirm]
+read = "prompt"
+data = "reauthorize"
+schema = "reauthorize"
+
 [production.database]
 host = "db.production.svc.macrostrat.org"
 read_user = "macrostrat_reader"
@@ -124,6 +132,7 @@ tileserver_stats = "tileserver_stats"
 #                               → entries in [<env>.databases]
 #   mysql_database, mysql_pod   → retired
 #   secret_key (top level)      → token_signing_key
+#   write_gate                  → confirm = { read = …, data = …, schema = … }
 #   reader / writer / reader_user / writer_user / dbname / query / username
 #                               → read_password / write_password / read_user /
 #                                 write_user / database / options / user

@@ -11,6 +11,7 @@ from macrostrat.utils import get_logger
 
 from ..config import PG_DATABASE, settings
 from ..connections import DatabaseRole
+from ..environment import WriteGate, WriteScope
 from ..exc import MacrostratError
 
 log = get_logger(__name__)
@@ -109,6 +110,25 @@ class NoDatabaseConfigured(MacrostratError, ClickException):
         return f"{self.message}\n{self.details}"
 
 
+def _confirm_read_if_gated() -> None:
+    """Ask before the first read connection, where the environment says to.
+
+    Almost every environment leaves reads ungated and this costs a dictionary
+    lookup. A production environment declaring ``confirm = { read = … }``
+    makes even opening a connection deliberate — and, since the prompt needs a
+    terminal, unavailable to an agent. Writers have already passed a write
+    gate, so only the reader role is asked.
+    """
+    if db_role_ctx.get() != DatabaseRole.Reader:
+        return
+    policy = getattr(settings, "policy", None)
+    if policy is None or policy.gate_for(WriteScope.Read) == WriteGate.NoGate:
+        return
+    from ..safety import require_read_access
+
+    require_read_access(settings=settings)
+
+
 def get_database():
     from macrostrat.database import Database
 
@@ -117,6 +137,7 @@ def get_database():
         url = _default_database_url()
         if url is None:
             raise NoDatabaseConfigured()
+        _confirm_read_if_gated()
         db = Database(url)
         db_ctx.set(db)
     return db

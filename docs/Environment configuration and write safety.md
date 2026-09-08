@@ -84,6 +84,18 @@ error that lists the environments the file does define.
 
 ## Environment classes
 
+> **One scale, two uses.** The class also decides which schema layers apply:
+> the development-only definitions (`schema/_dev_definitions`, `schema/development`)
+> in `local` and `development`, the local seed data in `local` only. Schema
+> selection never keys on an environment's *name*, so `local-ingestion` gets
+> what its declared class says.
+>
+> **Vocabulary.** The levels are written `none`, `prompt`, `environment-name`
+> and `reauthorize`. Older files and docs used `confirm`, `typed` and
+> `escalate`; those spellings are still read. In a version-2 file the levels
+> live under `confirm = { read = …, data = …, schema = … }`; version 1 keeps
+> `[<env>.write_gate]` with `data` and `schema` only.
+
 Every environment declares **how expensive it should be to write to it**:
 
 ```toml
@@ -426,6 +438,12 @@ What the new loader does differently:
   database table are refused. `mysql_database` is retired.
 - **`env_class` is required** on every environment. There is no inference to
   production; a missing class is a load error naming the fix.
+- **`confirm` replaces `write_gate`** and gains a `read` kind, so a production
+  environment can ask before even opening a connection:
+  `confirm = { read = "prompt", data = "environment-name", schema = "reauthorize" }`.
+  A single level (`confirm = "prompt"`) applies to both kinds of write. The
+  prompt needs a terminal, so a gated read is unavailable to an agent by
+  construction. Level words are validated at load.
 - **The whole `[default]` section is inherited**, and top-level keys count as
   defaults too. Tables merge recursively, lists replace.
 - **`MACROSTRAT_*` environment variables override settings deliberately:**

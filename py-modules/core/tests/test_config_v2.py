@@ -72,8 +72,9 @@ env_class = "production"
 database = "stub://prod-url"
 token_signing_key = "stub://prod-key"
 
-[production.write_gate]
-data = "typed"
+[production.confirm]
+read = "prompt"
+data = "environment-name"
 
 [nameless]
 base_url = "https://nameless.example.org"
@@ -203,6 +204,31 @@ class TestValidation:
 
     def test_env_class_is_not_required_when_no_environment_is_selected(self):
         assert validate_environment({"base_url": "https://x"}, None).env_class is None
+
+    def test_write_gate_is_a_removed_key(self):
+        with raises(ConfigError) as info:
+            validate_environment(
+                {"env_class": "local", "write_gate": {"data": "typed"}}, "local"
+            )
+        assert "confirm" in str(info.value.details)
+
+    def test_confirm_levels_are_validated(self):
+        with raises(ConfigError) as info:
+            validate_environment(
+                {"env_class": "local", "confirm": {"data": "sometimes"}}, "local"
+            )
+        assert "reauthorize" in str(info.value.details)
+        with raises(ConfigError) as info:
+            validate_environment(
+                {"env_class": "local", "confirm": {"services": "prompt"}}, "local"
+            )
+        assert "kind of access" in str(info.value.details)
+        assert (
+            validate_environment(
+                {"env_class": "local", "confirm": False}, "local"
+            ).confirm
+            is False
+        )
 
     def test_unknown_env_class_is_an_error(self):
         with raises(ConfigError):
@@ -435,5 +461,6 @@ class TestProductionShape:
         assert isinstance(s.database_connection(), DeferredUrlConnection)
         assert s.pg_database is None
         assert stub_resolver.calls == []
-        assert s.policy.gate_for("data").value == "typed"
-        assert s.policy.gate_for("schema").value == "escalate"
+        assert s.policy.gate_for("read").value == "prompt"
+        assert s.policy.gate_for("data").value == "environment-name"
+        assert s.policy.gate_for("schema").value == "reauthorize"

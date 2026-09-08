@@ -25,8 +25,10 @@ be performed with manually created migration files. To create a manual migration
 - Subsystems ~ named **chunks** of schema (`SchemaDefinition`) with declared `depends_on` edges. A chunk provides a
   `.sql` directory, a single file, or a function. `core` is decomposed into `public → macrostrat → core` (remainder);
   finer subsystems can be split out over time.
-- Environments ~ different database instances (e.g., development, staging, production) that may be at different schema
-  versions.
+- Environments ~ different database instances that may be at different schema versions. Each has an
+  **environment class** in `macrostrat.toml` (`env_class`: `local`, `development`, `staging`, `production`), the same
+  scale the CLI's write confirmations use. Schema layers apply by class, never by environment name:
+  `_dev_definitions/` and `development/` in `local` and `development`, `local/` in `local` only.
 - Migrations ~ files that describe changes to the database schema. Not all changes must be made with manual migrations
 
 # Building the schema
@@ -63,11 +65,13 @@ frontmatter header (see `schema_management/discovery.py`). A subsystem is either
 ```
 
 `@subsystem` (name; defaults to the directory/file name) and `@depends-on`
-(comma/space list) define the chunk and its graph edges. **Which environments a
-subsystem applies to is *not* declared in SQL** — it's assigned externally by the
-loader, based on where the chunk is loaded from (the way `core/` vs `development/`
-already works). `maps` (`_definitions/maps/`) is the first subsystem migrated to this
-convention.
+(comma/space list) define the chunk and its graph edges. **Which environment
+classes a subsystem applies to is *not* declared in SQL** — it's assigned
+externally by the loader, based on where the chunk is loaded from (`_definitions/`
+everywhere, `_dev_definitions/` in `local` and `development`). `maps`
+(`_definitions/maps/`) is the first subsystem migrated to this convention.
+`macrostrat schema graph [--env NAME]` shows the chunks and classes for an
+environment.
 
 ## Direction (in progress)
 
