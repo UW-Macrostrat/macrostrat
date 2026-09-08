@@ -28,6 +28,12 @@ common_columns = {
     "source_id": "integer",
     "orig_id": "integer",
     "omit": "boolean",
+    # Which layer of the source dataset a feature came from. Not specific to any
+    # one source: a GeMS package, a `.gdb` with several feature classes, any
+    # multi-layer arrival collapses several layers into one staging table, and
+    # the distinction is rarely recoverable from the other columns. NULL where a
+    # source had only one layer per kind.
+    "source_layer": "text",
 }
 
 POLYGON_COLUMNS = {
