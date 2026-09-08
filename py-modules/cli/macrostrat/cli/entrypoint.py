@@ -444,7 +444,7 @@ def _run(
 # Add subsystems if they are available.
 # This organization is a bit awkward, and we may change it eventually.
 try:
-    from macrostrat.map_integration import cli as map_app
+    from macrostrat.map_integration.cli import cli as map_app
 
     from .commands.export import export_map
 
