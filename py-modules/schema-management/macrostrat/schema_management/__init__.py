@@ -439,20 +439,23 @@ def graph(
     """Show schema chunks, their dependencies, and application order"""
     from rich.table import Table
 
-    from .chunks import all_chunks, chunks_for_environment
+    from .chunks import all_chunks, chunks_for_environment, environment_class
     from .composer import order_chunks
 
     environment = env or settings.env
+    klass = environment_class(environment)
 
     selected = chunks_for_environment(environment)
     ordered = order_chunks(selected)
 
-    table = Table(title=f"Schema chunks — [bold cyan]{environment}[/]")
+    table = Table(
+        title=f"Schema chunks — [bold cyan]{environment}[/] [dim]({klass.value})[/]"
+    )
     table.add_column("#", justify="right", style="dim")
     table.add_column("Chunk", style="bold cyan")
     table.add_column("Depends on")
     table.add_column("Provides")
-    table.add_column("Environments")
+    table.add_column("Classes")
 
     for i, chunk in enumerate(ordered, start=1):
         deps = ", ".join(chunk.depends_on) or "[dim]—[/]"
@@ -460,7 +463,7 @@ def graph(
             "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
         )
         envs = (
-            ", ".join(sorted(chunk.environments))
+            ", ".join(c.value for c in sorted(chunk.environments, key=lambda c: c.rank))
             if chunk.environments is not None
             else "[dim]all[/]"
         )
@@ -471,4 +474,7 @@ def graph(
     selected_names = {c.name for c in selected}
     excluded = [c.name for c in all_chunks() if c.name not in selected_names]
     if excluded:
-        print(f"[dim]Not applied in [bold]{environment}[/]: {', '.join(excluded)}[/]")
+        print(
+            f"[dim]Not applied in [bold]{environment}[/] ({klass.value}): "
+            f"{', '.join(excluded)}[/]"
+        )

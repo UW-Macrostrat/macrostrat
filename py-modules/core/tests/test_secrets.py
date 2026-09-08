@@ -343,3 +343,133 @@ class TestUrlPasswordRedaction:
         """`host:5432` after an @ must not be masked."""
         out = redact_url_passwords("postgresql://user@host:5432/db")
         assert "5432" in out and REDACTED not in out
+
+
+class TestOnePasswordResolver:
+    """One `op item get` per item; exact reference matching; `op read` fallback."""
+
+    ITEM = {
+        "id": "abc",
+        "vault": {"name": "Vault"},
+        "fields": [
+            {
+                "id": "username",
+                "label": "username",
+                "value": "admin",
+                "reference": "op://Vault/abc/username",
+            },
+            {
+                "id": "password",
+                "label": "password",
+                "value": "hunter2",
+                "reference": "op://Vault/abc/password",
+            },
+            {
+                "id": "x1",
+                "label": "secret key",
+                "section": {"id": "s1", "label": "Secret data"},
+                "value": "s3cr3t",
+                "reference": "op://Vault/abc/Secret data/secret key",
+            },
+            {
+                "id": "x2",
+                "label": "dup",
+                "section": {"id": "s1", "label": "Secret data"},
+                "value": "one",
+                "reference": "op://Vault/abc/Secret data/dup",
+            },
+            {
+                "id": "x3",
+                "label": "dup",
+                "section": {"id": "s2", "label": "Other"},
+                "value": "two",
+                "reference": "op://Vault/abc/Other/dup",
+            },
+        ],
+    }
+
+    @fixture
+    def op(self, monkeypatch):
+        """A fake `op` recording each subprocess call."""
+        import json
+        from subprocess import CompletedProcess
+
+        from macrostrat.core import secrets
+
+        calls = []
+
+        def fake_run(args):
+            calls.append(list(args))
+            if args[:2] == ["item", "get"]:
+                if args[2] != "abc":
+                    return CompletedProcess(args, 1, "", '[ERROR] "abc" isn\'t an item')
+                return CompletedProcess(args, 0, json.dumps(self.ITEM), "")
+            if args[0] == "read":
+                ref = args[-1]
+                if ref.endswith("/otp"):
+                    return CompletedProcess(args, 0, "123456", "")
+                return CompletedProcess(args, 1, "", f"[ERROR] could not read {ref}")
+            raise AssertionError(args)
+
+        monkeypatch.setattr(secrets, "_run_op", fake_run)
+        monkeypatch.setattr(secrets, "which", lambda name: "/usr/bin/op")
+        secrets.configure_onepassword(None)
+        forget_all_secrets()
+        try:
+            yield calls
+        finally:
+            secrets.configure_onepassword(None)
+            forget_all_secrets()
+
+    def test_two_fields_of_one_item_cost_one_fetch(self, op):
+        user = Secret("op://Vault/abc/username").get()
+        password = Secret("op://Vault/abc/password").get()
+        assert (user, password) == ("admin", "hunter2")
+        assert len(op) == 1
+        assert op[0][:2] == ["item", "get"]
+
+    def test_section_qualified_reference(self, op):
+        assert Secret("op://Vault/abc/Secret data/secret key").get() == "s3cr3t"
+
+    def test_ambiguous_label_without_a_section_falls_back_to_op_read(self, op):
+        with raises(SecretResolutionError):
+            Secret("op://Vault/abc/dup").get()
+        assert op[-1][0] == "read"
+
+    def test_section_disambiguates(self, op):
+        assert Secret("op://Vault/abc/Other/dup").get() == "two"
+
+    def test_unknown_field_falls_back_to_op_read(self, op):
+        assert Secret("op://Vault/abc/otp").get() == "123456"
+        assert [c[0] for c in op] == ["item", "read"]
+
+    def test_item_lookup_failure_names_the_item_not_a_value(self, op):
+        with raises(SecretResolutionError) as info:
+            Secret("op://Vault/nope/password").get()
+        assert "op://Vault/nope" in str(info.value)
+
+    def test_reference_without_a_field_is_rejected(self, op):
+        with raises(SecretResolutionError) as info:
+            Secret("op://Vault/abc").get()
+        assert "does not name a field" in str(info.value)
+        assert op == []
+
+    def test_account_is_passed_when_configured(self, op):
+        from macrostrat.core import secrets
+
+        secrets.configure_onepassword("work.1password.com")
+        # `_run_op` is faked above the account injection, so check the seam.
+        assert secrets._OP_ACCOUNT == "work.1password.com"
+
+    def test_forget_reaches_the_backend_again(self, op):
+        secret = Secret("op://Vault/abc/password")
+        secret.get()
+        secret.forget()
+        secret.get()
+        assert [c[:2] for c in op] == [["item", "get"], ["item", "get"]]
+
+    def test_uncached_secret_refetches_the_item(self, op):
+        secret = Secret("op://Vault/abc/password", cache=False)
+        secret.get()
+        secret.get()
+        assert len(op) == 2

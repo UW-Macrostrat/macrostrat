@@ -98,3 +98,42 @@ def test_cli_no_config():
         plain_output = strip_ansi(result.output)
         assert "Macrostrat control interface" in plain_output
         assert "Active environment: None" in plain_output
+
+
+v2_cfg_file = __here__ / "macrostrat.v2.test.toml"
+
+
+def test_cli_config_version_2():
+    """A file declaring config_version = 2 is read by the schema loader.
+
+    The same `settings` surface comes back — the legacy `pg_database` reading,
+    the ambient PG* export for a literal login — so nothing downstream notices.
+    """
+    from os import environ
+
+    import macrostrat.core.config as cfg
+
+    try:
+        with override_environment(
+            MACROSTRAT_CONFIG=str(v2_cfg_file.resolve()),
+            MACROSTRAT_ENV="local",
+            MACROSTRAT_CONFIG_VERSION="",
+            NO_COLOR="1",
+        ):
+            importlib.reload(cfg)
+            settings = cfg.settings
+            assert cfg.IS_V2
+            assert type(settings).__name__ == "MacrostratSettings"
+            assert settings.env == "local"
+            assert settings.config_file == v2_cfg_file.resolve()
+            assert settings.pg_database == (
+                "postgresql://user:password@localhost:5432/macrostrat"
+            )
+            assert settings.databases["test"].endswith("/macrostrat_test")
+            assert settings.get("pg_database_container") == "imresamu/postgis:15-3.4"
+            assert settings.policy.env_class.value == "local"
+            # A literal login still exports the ambient variables.
+            assert environ.get("PGPASSWORD") == "password"
+            assert environ.get("SECRET_KEY") == "test-signing-key"
+    finally:
+        importlib.reload(cfg)

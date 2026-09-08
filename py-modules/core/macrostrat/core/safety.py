@@ -39,6 +39,7 @@ re-authorize against, so the gate fails closed and says so.
 """
 
 import sys
+from enum import Enum
 from functools import wraps
 from typing import Optional
 
@@ -184,6 +185,23 @@ def require_environment(*, settings=None, action: Optional[str] = None) -> None:
     return None
 
 
+def require_read_access(*, settings=None, action: Optional[str] = None) -> None:
+    """Confirm a *read* against the active environment, or raise.
+
+    Most environments do not gate reads and this returns at once. A production
+    environment can declare ``confirm = { read = "prompt" }`` so that even
+    opening a connection is a deliberate act; ``reauthorize`` re-fetches the
+    reader credential. Passing never escalates the connection.
+    """
+    return _require_access(
+        WriteScope.Read,
+        settings=settings,
+        action=action or "read",
+        escalate_connection=False,
+        role=DatabaseRoleName.Reader,
+    )
+
+
 def require_write_access(
     scope,
     *,
@@ -209,11 +227,44 @@ def require_write_access(
     database — a storage-only operation, say — so that authorizing it does not
     silently acquire database write capability as a side effect.
     """
+    return _require_access(
+        scope,
+        settings=settings,
+        assume_yes=assume_yes,
+        action=action,
+        escalate_connection=escalate_connection,
+        role=DatabaseRoleName.Writer,
+    )
+
+
+class DatabaseRoleName(str, Enum):
+    """Which credential an ``reauthorize`` level re-fetches."""
+
+    Reader = "reader"
+    Writer = "writer"
+
+
+def _require_access(
+    scope,
+    *,
+    settings=None,
+    assume_yes: bool = False,
+    action: Optional[str] = None,
+    escalate_connection: bool = True,
+    role: "DatabaseRoleName" = None,
+) -> None:
     scope = WriteScope(scope)
+    if role is None:
+        role = DatabaseRoleName.Writer
     policy = _resolve_policy(settings)
     gate = policy.gate_for(scope)
     env = policy.name or "<no environment>"
-    what = action or f"{scope.value} write"
+    if action is not None:
+        what = action
+    elif scope == WriteScope.Read:
+        what = "read"
+    else:
+        what = f"{scope.value} write"
 
     # A lapsed environment is questioned before the write is, so that the gate
     # prompt that follows is unambiguously about *this* environment.
@@ -248,11 +299,14 @@ def require_write_access(
             )
             return _authorized()
         if not is_interactive():
+            # A read is confirmed where the connection opens, not by a command
+            # with a --yes flag; only offer the flag where it exists.
+            bypass = "" if scope == WriteScope.Read else ", or pass --yes"
             raise WriteRefused(
                 f"Refusing {what} in {env} ({policy.env_class.value})",
                 details=(
                     "This gate needs confirmation and there is no terminal to "
-                    f"ask on. Re-run it interactively, or pass --yes.{inferred}"
+                    f"ask on. Re-run it interactively{bypass}.{inferred}"
                 ),
             )
         answer = _prompt(f"{what.capitalize()} in {env}. Proceed? [y/N] ")
@@ -283,13 +337,18 @@ def require_write_access(
         )
 
     if gate == WriteGate.Escalate:
-        _require_fresh_writer_credential(settings, env)
+        _require_fresh_credential(settings, env, role)
 
     return _authorized()
 
 
 def _require_fresh_writer_credential(settings, env: str) -> None:
-    """Re-fetch the writer credential, uncached, for this invocation.
+    """Re-fetch the writer credential. Kept for callers of the old name."""
+    return _require_fresh_credential(settings, env, DatabaseRoleName.Writer)
+
+
+def _require_fresh_credential(settings, env: str, role: "DatabaseRoleName") -> None:
+    """Re-fetch the credential for *role*, uncached, for this invocation.
 
     This is what makes `escalate` different in kind from `typed` rather than
     merely stricter: resolution goes through the secret manager's own approval
@@ -311,31 +370,36 @@ def _require_fresh_writer_credential(settings, env: str) -> None:
             details="An escalate gate needs a writer credential to re-authorize.",
         )
 
+    db_role = DatabaseRole(role.value)
+    key = "write_password" if db_role == DatabaseRole.Writer else "read_password"
     try:
-        credential = conn.credential_for(DatabaseRole.Writer)
+        credential = conn.credential_for(db_role)
     except Exception as err:
         raise WriteRefused(
-            f"Cannot escalate in {env}: no writer credential",
+            f"Cannot reauthorize in {env}: no {role.value} credential",
             details=str(err),
         ) from None
 
     if not isinstance(credential, Secret):
         raise WriteRefused(
-            f"Cannot escalate in {env}: the writer credential is a literal",
+            f"Cannot reauthorize in {env}: the {role.value} credential is a literal",
             details=(
-                "An escalate gate re-fetches the credential so the secret "
+                "The reauthorize level re-fetches the credential so the secret "
                 "manager can require human approval. A password stored "
                 "directly in macrostrat.toml cannot be re-authorized, so this "
-                "gate fails closed. Move it to a reference "
-                '(write_password = "op://...") or lower the gate for this '
-                "environment."
+                f"level fails closed. Move it to a reference ({key} = "
+                '"op://...") or lower the level for this environment.'
             ),
         )
 
     # Drop any cached value so this fetch genuinely reaches the backend.
     credential.forget()
     credential.get()
-    log.info("Writer credential for %s re-authorized for this invocation.", env)
+    log.info(
+        "%s credential for %s re-authorized for this invocation.",
+        role.value.capitalize(),
+        env,
+    )
 
 
 def writes(scope, *, action: Optional[str] = None):

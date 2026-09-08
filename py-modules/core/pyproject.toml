@@ -10,6 +10,7 @@ dependencies = [
     # 4.6.1: template_database no longer leaves the source database unusable
     # after cloning it — this package clones a Database it keeps using.
     "macrostrat.database>=4.6.1,<5",
+    "pydantic>=2.5,<3",
     "python-dotenv>=1.0.0,<2",
     "sqlalchemy>=2.0.28,<3",
     "toml>=0.10.2,<0.11",

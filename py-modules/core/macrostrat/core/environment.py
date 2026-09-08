@@ -39,8 +39,13 @@ log = get_logger(__name__)
 #: which is a Python keyword and would only ever be reachable via ``getattr``.
 ENV_CLASS_KEY = "env_class"
 
-#: TOML key holding per-scope gate overrides.
+#: TOML key holding per-scope gate overrides (config version 1).
 WRITE_GATE_KEY = "write_gate"
+
+#: TOML key holding per-scope confirmation levels (config version 2): a table
+#: ``{ read = …, data = …, schema = … }``, or one level applied to both kinds
+#: of write.
+CONFIRM_KEY = "confirm"
 
 #: TOML key overriding how long `macrostrat env <name>` keeps this environment
 #: active. A duration (``"15m"``, ``"8h"``, ``"2h30m"``, a bare number of
@@ -56,16 +61,49 @@ LOCAL_ENV = "local"
 
 
 class EnvironmentClass(str, Enum):
-    """How expensive it should be to write to an environment."""
+    """Where an environment sits on the scale from a laptop to production.
+
+    One vocabulary for two things: how expensive a write should be (the
+    default confirmation levels below), and which schema layers apply — the
+    development-only definitions run in ``local`` and ``development``, the
+    local seed data in ``local`` only. See :func:`classes_up_to`.
+    """
 
     Local = "local"
     Development = "development"
     Staging = "staging"
     Production = "production"
 
+    @property
+    def rank(self) -> int:
+        """Position on the scale: local 0 … production 3."""
+        return _CLASS_ORDER.index(self)
+
+
+_CLASS_ORDER = (
+    EnvironmentClass.Local,
+    EnvironmentClass.Development,
+    EnvironmentClass.Staging,
+    EnvironmentClass.Production,
+)
+
+
+def classes_up_to(top: EnvironmentClass) -> frozenset:
+    """Every class from ``local`` up to and including *top*.
+
+    ``classes_up_to(Development)`` is ``{local, development}`` — the set a
+    development-only schema layer applies in.
+    """
+    top = EnvironmentClass(top)
+    return frozenset(c for c in _CLASS_ORDER if c.rank <= top.rank)
+
 
 class WriteScope(str, Enum):
-    """The kind of change a command makes.
+    """The kind of database access a command needs.
+
+    ``Read`` is here so that an environment can ask before *any* connection is
+    opened — a production database where even looking should be deliberate.
+    It is ungated by default in every class.
 
     There is deliberately no ``services`` scope. The original plan had one for
     ``up`` / ``down`` / ``restart``, but those manage the **local** compose
@@ -76,24 +114,35 @@ class WriteScope(str, Enum):
     if deploy commands ever land.
     """
 
+    #: Opening a connection at all.
+    Read = "read"
     #: Row-level changes: ingestion, restores, deletions.
     Data = "data"
     #: DDL: schema application, migrations, topology table drops.
     Schema = "schema"
 
 
+#: The two kinds of write, in the order they appear in tables.
+WRITE_SCOPES = (WriteScope.Data, WriteScope.Schema)
+
+
 class WriteGate(str, Enum):
-    """What a caller must do to obtain write capability."""
+    """What a person must do before the access proceeds.
+
+    The levels form a ladder; each includes the ones below it. The values are
+    the words a config file uses; :func:`parse_gate` also accepts the earlier
+    spellings (``confirm``, ``typed``, ``escalate``) and TOML booleans.
+    """
 
     #: Proceed.
     NoGate = "none"
-    #: ``y/N`` prompt; refuse when non-interactive unless explicitly allowed.
-    Confirm = "confirm"
-    #: Type the environment name. Always refuses when non-interactive.
-    Typed = "typed"
-    #: ``Typed``, plus the write credential must be fetched fresh from the
-    #: secret manager for this invocation. No cached credential, no bypass.
-    Escalate = "escalate"
+    #: A ``y/N`` prompt; refused when non-interactive unless ``--yes`` is given.
+    Confirm = "prompt"
+    #: Type the environment's name. Always refused when non-interactive.
+    Typed = "environment-name"
+    #: Type the name, and the credential is fetched fresh from the secret
+    #: manager for this invocation, so its approval prompt is in the path.
+    Escalate = "reauthorize"
 
     @property
     def severity(self) -> int:
@@ -108,23 +157,60 @@ _GATE_SEVERITY = {
     WriteGate.Escalate: 3,
 }
 
+#: Every spelling a config may use for a level. The current words first; the
+#: version-1 words and plain booleans after, so an older file keeps working.
+GATE_SPELLINGS: Mapping[str, WriteGate] = {
+    "none": WriteGate.NoGate,
+    "false": WriteGate.NoGate,
+    "off": WriteGate.NoGate,
+    "no": WriteGate.NoGate,
+    "prompt": WriteGate.Confirm,
+    "confirm": WriteGate.Confirm,
+    "true": WriteGate.Confirm,
+    "yes": WriteGate.Confirm,
+    "environment-name": WriteGate.Typed,
+    "environment_name": WriteGate.Typed,
+    "typed": WriteGate.Typed,
+    "reauthorize": WriteGate.Escalate,
+    "escalate": WriteGate.Escalate,
+}
+
+
+def parse_gate(value: Any) -> WriteGate:
+    """A level from a config value: a word above, or a TOML boolean."""
+    if isinstance(value, WriteGate):
+        return value
+    if isinstance(value, bool):
+        return WriteGate.Confirm if value else WriteGate.NoGate
+    key = str(value).strip().lower()
+    if key not in GATE_SPELLINGS:
+        raise ValueError(
+            f"{value!r} is not a confirmation level; use one of "
+            + ", ".join(g.value for g in WriteGate)
+        )
+    return GATE_SPELLINGS[key]
+
 
 #: Default gate per (class, scope). An environment declaring only a class gets
 #: the row for that class.
 DEFAULT_GATES: Mapping[EnvironmentClass, Mapping[WriteScope, WriteGate]] = {
     EnvironmentClass.Local: {
+        WriteScope.Read: WriteGate.NoGate,
         WriteScope.Data: WriteGate.NoGate,
         WriteScope.Schema: WriteGate.NoGate,
     },
     EnvironmentClass.Development: {
+        WriteScope.Read: WriteGate.NoGate,
         WriteScope.Data: WriteGate.Confirm,
         WriteScope.Schema: WriteGate.Confirm,
     },
     EnvironmentClass.Staging: {
+        WriteScope.Read: WriteGate.NoGate,
         WriteScope.Data: WriteGate.Typed,
         WriteScope.Schema: WriteGate.Typed,
     },
     EnvironmentClass.Production: {
+        WriteScope.Read: WriteGate.NoGate,
         WriteScope.Data: WriteGate.Escalate,
         WriteScope.Schema: WriteGate.Escalate,
     },
@@ -246,16 +332,19 @@ class EnvironmentPolicy(BaseModel):
         env_class: Any = None,
         write_gate: Optional[Mapping[str, Any]] = None,
         active_ttl: Any = None,
+        confirm: Any = None,
     ) -> "EnvironmentPolicy":
         """Build a policy from an environment's declared values.
 
-        Pure: no settings object, no I/O. ``env_class``, ``write_gate`` and
-        ``active_ttl`` are whatever the config file held, including ``None``
-        and junk.
+        Pure: no settings object, no I/O. ``env_class``, ``write_gate``,
+        ``confirm`` and ``active_ttl`` are whatever the config file held,
+        including ``None`` and junk. ``confirm`` (version 2) and ``write_gate``
+        (version 1) both override the class defaults; a file has one of them.
         """
         resolved, inferred, reason = _resolve_class(name, env_class)
         gates = dict(DEFAULT_GATES[resolved])
         gates.update(_parse_gate_overrides(name, write_gate))
+        gates.update(_parse_confirm(name, confirm))
         return cls(
             name=name,
             env_class=resolved,
@@ -346,17 +435,39 @@ def _resolve_class(name: Optional[str], declared: Any) -> tuple:
     )
 
 
+def _parse_confirm(name: Optional[str], confirm: Any) -> dict:
+    """Parse ``confirm``: a table per scope, or one level for both writes.
+
+    A scalar applies to ``data`` and ``schema`` only. Reads are never gated by
+    implication; an environment that wants to ask before reads says so.
+    """
+    if confirm is None:
+        return {}
+    if not hasattr(confirm, "items"):
+        try:
+            level = parse_gate(confirm)
+        except ValueError as err:
+            log.warning(
+                "Environment %r: %s = %r ignored (%s).", name, CONFIRM_KEY, confirm, err
+            )
+            return {}
+        return {scope: level for scope in WRITE_SCOPES}
+    return _parse_gate_overrides(name, confirm, key=CONFIRM_KEY)
+
+
 def _parse_gate_overrides(
-    name: Optional[str], write_gate: Optional[Mapping[str, Any]]
+    name: Optional[str],
+    write_gate: Optional[Mapping[str, Any]],
+    key: str = WRITE_GATE_KEY,
 ) -> dict:
-    """Parse a ``[env.write_gate]`` table, ignoring what we can't understand."""
+    """Parse a per-scope table, ignoring what we can't understand."""
     if not write_gate:
         return {}
     if not hasattr(write_gate, "items"):
         log.warning(
             "Environment %r has a %s that is not a table (%r); ignoring it.",
             name,
-            WRITE_GATE_KEY,
+            key,
             write_gate,
         )
         return {}
@@ -364,15 +475,13 @@ def _parse_gate_overrides(
     out = {}
     for scope, gate in write_gate.items():
         try:
-            out[WriteScope(str(scope).strip().lower())] = WriteGate(
-                str(gate).strip().lower()
-            )
+            out[WriteScope(str(scope).strip().lower())] = parse_gate(gate)
         except ValueError:
             log.warning(
-                "Environment %r declares an unrecognized gate %s.%s = %r; "
+                "Environment %r declares an unrecognized level %s.%s = %r; "
                 "ignoring it and keeping the class default.",
                 name,
-                WRITE_GATE_KEY,
+                key,
                 scope,
                 gate,
             )
@@ -390,6 +499,7 @@ def policy_from_settings(settings) -> EnvironmentPolicy:
         env_class=settings.get(ENV_CLASS_KEY, None),
         write_gate=settings.get(WRITE_GATE_KEY, None),
         active_ttl=settings.get(ACTIVE_TTL_KEY, None),
+        confirm=settings.get(CONFIRM_KEY, None),
     )
 
 
@@ -422,4 +532,5 @@ def declared_policy_for(config_file, env_name: Optional[str]) -> EnvironmentPoli
         env_class=table.get(ENV_CLASS_KEY, None),
         write_gate=table.get(WRITE_GATE_KEY, None),
         active_ttl=table.get(ACTIVE_TTL_KEY, None),
+        confirm=table.get(CONFIRM_KEY, None),
     )

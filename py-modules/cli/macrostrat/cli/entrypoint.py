@@ -298,14 +298,29 @@ def edit_cfg():
     run([editor, str(settings.config_file)])
 
 
+@cfg_app.command(name="schema")
+def config_schema():
+    """Print the JSON Schema of a config environment (config_version = 2)
+
+    The schema is the reference for every key the new loader reads. Point an
+    editor at it for completion, or read it to see what a key means.
+    """
+    from json import dumps
+
+    from macrostrat.core.config_model import config_json_schema
+
+    typer.echo(dumps(config_json_schema(), indent=2))
+
+
 @cfg_app.command(name="environments")
 def environments():
-    """List the environments in the config file, with class, gates and TTL.
+    """List the environments in the config file, with class, confirmations and TTL.
 
     One look answers the questions that otherwise surface one refusal at a
     time: which environments are still *inferred* as production because they
-    declare no `env_class`, what each write scope will demand, and how long
-    `macrostrat env <name>` keeps each one active.
+    declare no `env_class`, what each kind of access will ask of you (`read`,
+    `data`, `schema`), and how long `macrostrat env <name>` keeps each one
+    active.
     """
     from rich.table import Table
 
@@ -313,6 +328,7 @@ def environments():
     table = Table(title=str(app.settings.config_file), title_justify="left")
     table.add_column("environment")
     table.add_column("class")
+    table.add_column("read")
     table.add_column("data")
     table.add_column("schema")
     table.add_column("active for")
@@ -327,6 +343,7 @@ def environments():
         table.add_row(
             label,
             klass,
+            policy.gate_for(WriteScope.Read).value,
             policy.gate_for(WriteScope.Data).value,
             policy.gate_for(WriteScope.Schema).value,
             format_duration(policy.ttl),
