@@ -13,7 +13,9 @@ from macrostrat.app_frame import CommandBase
 from macrostrat.core import app as macrostrat_app
 from macrostrat.core.config import settings
 from macrostrat.core.database import engine_for_db_name, get_database
+from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
+from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database.transfer import pg_dump_to_file
 from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
@@ -180,10 +182,14 @@ def review(edit=False):
 
 
 @schema_app.command(rich_help_panel="Automated migrations")
+@writes(WriteScope.Schema, action="schema application")
 def apply(
     plan_file: Path | None = Argument(None),
     safe: bool = Option(True, "--safe/--unsafe"),
     archive: bool = Option(False, "--archive/--no-archive"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Apply migration plan to database"""
     db = get_database()
@@ -258,8 +264,17 @@ def migrate(
     apply: bool = Option(False, "--apply/--no-apply"),
     force: bool = Option(False, "--force/--no-force"),
     data: bool = Option(False, "--data/--no-data"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
 ):
     """Run all pending migrations"""
+    # Gated imperatively rather than by decorator: without --apply this is a
+    # dry run, and a dry run should not require write authorization.
+    if apply:
+        require_write_access(
+            WriteScope.Schema, assume_yes=yes, action="schema migration"
+        )
     load_migrations()
     run_migrations(apply=apply, name=name, force=force, data_changes=data)
 
@@ -349,8 +364,10 @@ def provision(
     counter.print_report()
 
 
-def _report(label: str, applied: int, failed: int):
+def _report(label: str, applied: int, failed: int, skipped: int = 0):
     msg = f"[dim]{applied} {label} applied"
+    if skipped:
+        msg += f" ({skipped} already present)"
     if failed:
         msg += f" ([yellow]{failed} failed[/])"
     print(msg)
@@ -366,17 +383,17 @@ def sync(
         True, "--data/--no-data", help="Re-apply idempotent seed data (INSERT/UPDATE)"
     ),
     permissions: bool = Option(
-        True, "--permissions/--no-permissions", help="Re-apply grants"
+        True, "--permissions/--no-permissions", help="Re-apply roles and grants"
     ),
     target: str = TARGET_OPTION,
     no_dependents: bool = NO_DEPENDENTS_OPTION,
 ):
-    """Re-apply the re-runnable schema content: views, procedures, seed data, grants.
+    """Re-apply the re-runnable schema content: views, procedures, seed data, permissions.
 
-    Everything a schema diff can't manage on its own — code objects, idempotent
-    seed rows, and permissions — so that [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/].
-    Select a subset with [cyan]--no-views[/] etc., and restrict to a subsystem with
-    [cyan]--target[/].
+    Everything a schema diff can't manage on its own — code objects, idempotent seed
+    rows, and the roles and grants that make up permissions — so that
+    [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/]. Select a subset with
+    [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
     """
     from .composer import selected_chunks
     from .grants import rebuild_grants
@@ -387,7 +404,9 @@ def sync(
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
-    # Dependencies first (functions before views/seed that use them); grants last.
+    # Dependencies first (functions before views/seed that use them); permissions
+    # last — roles and grants are swept together, in the order the schema declares
+    # them, so each grant follows the role it names.
     failures = []
     if procedures:
         r = rebuild_procedures(db, chunks)
@@ -404,7 +423,7 @@ def sync(
     if permissions:
         r = rebuild_grants(db, chunks)
         failures += r.failed
-        _report("grants", r.applied, len(r.failed))
+        _report("permission statements", r.applied, len(r.failed), len(r.skipped))
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
 
@@ -435,20 +454,23 @@ def graph(
     """Show schema chunks, their dependencies, and application order"""
     from rich.table import Table
 
-    from .chunks import all_chunks, chunks_for_environment
+    from .chunks import all_chunks, chunks_for_environment, environment_class
     from .composer import order_chunks
 
     environment = env or settings.env
+    klass = environment_class(environment)
 
     selected = chunks_for_environment(environment)
     ordered = order_chunks(selected)
 
-    table = Table(title=f"Schema chunks — [bold cyan]{environment}[/]")
+    table = Table(
+        title=f"Schema chunks — [bold cyan]{environment}[/] [dim]({klass.value})[/]"
+    )
     table.add_column("#", justify="right", style="dim")
     table.add_column("Chunk", style="bold cyan")
     table.add_column("Depends on")
     table.add_column("Provides")
-    table.add_column("Environments")
+    table.add_column("Classes")
 
     for i, chunk in enumerate(ordered, start=1):
         deps = ", ".join(chunk.depends_on) or "[dim]—[/]"
@@ -456,7 +478,7 @@ def graph(
             "\n".join(_describe_provider(p) for p in chunk.provides) or "[dim]—[/]"
         )
         envs = (
-            ", ".join(sorted(chunk.environments))
+            ", ".join(c.value for c in sorted(chunk.environments, key=lambda c: c.rank))
             if chunk.environments is not None
             else "[dim]all[/]"
         )
@@ -467,4 +489,7 @@ def graph(
     selected_names = {c.name for c in selected}
     excluded = [c.name for c in all_chunks() if c.name not in selected_names]
     if excluded:
-        print(f"[dim]Not applied in [bold]{environment}[/]: {', '.join(excluded)}[/]")
+        print(
+            f"[dim]Not applied in [bold]{environment}[/] ({klass.value}): "
+            f"{', '.join(excluded)}[/]"
+        )

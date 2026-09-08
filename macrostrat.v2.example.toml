@@ -1,0 +1,138 @@
+# macrostrat.toml, configuration version 2.
+#
+# The top-level `config_version = 2` selects the schema-validated loader. It
+# checks every key against `macrostrat config schema`, refuses keys the CLI no
+# longer reads (naming the replacement), requires `env_class` on every
+# environment, and layers the whole [default] section under each one.
+#
+# Everything the CLI exposes is unchanged: the same commands, the same
+# `settings` surface. A file without `config_version` keeps using the original
+# loader, so adopting this is a per-file decision.
+
+config_version = 2
+
+# ---------------------------------------------------------------------------
+# Shared by every environment. Top-level keys and [default] mean the same.
+# ---------------------------------------------------------------------------
+[default]
+pg_database_container = "imresamu/postgis:15-3.4"
+mapbox_token = "pk.your-token"
+log_modules = ["macrostrat", "sqlalchemy.engine"]
+
+# 1Password account for op:// references, when the machine is signed in to
+# more than one. `OP_ACCOUNT` in the environment also works.
+op_account = "your-team.1password.com"
+
+[default.database]
+port = 5432
+# database = "macrostrat"     ← the default; state it only to change it
+
+[default.storage]
+endpoint = "https://storage.example.org"
+
+# ---------------------------------------------------------------------------
+# A laptop. Literal credentials: the compose stack needs them in plaintext,
+# and nothing here protects anything worth a vault.
+# ---------------------------------------------------------------------------
+[local]
+env_class = "local"
+backend = "docker-compose"
+base_url = "https://macrostrat.local"
+compose_root = "./local-root"
+token_signing_key = "a-random-local-string"
+env_files = ["./macrostrat-auth.env"]
+
+[local.database]
+host = "localhost"
+port = 5433
+user = "macrostrat-admin"
+password = "a-local-password"
+
+[local.databases]
+rockd = "rockd"                                     # same server, by name
+test = "macrostrat_test"
+tileserver_stats = "tileserver_stats"
+mapboard = "postgresql://mapboard_admin:pw@localhost:54398/mapboard"
+elevation = "op://Macrostrat admin/elevation/database URL"   # a vaulted URL
+
+[local.storage]
+endpoint = "localhost:9000"
+access_key = "macrostrat-user"
+secret_key = "macrostrat-pass"
+
+[local.storage.buckets]
+map-staging = "map-datafiles"
+
+# ---------------------------------------------------------------------------
+# A remote tier: topology in plaintext, credentials in the vault.
+# ---------------------------------------------------------------------------
+[development]
+env_class = "development"
+base_url = "https://dev.macrostrat.org"
+token_signing_key = "op://Macrostrat development/api-v3/token signing key"
+kube_namespace = "macrostrat-dev"
+
+[development.database]
+host = "db.development.svc.macrostrat.org"
+# One item, both fields: sugar for user = "…/username", password = "…/password".
+item = "op://Macrostrat development/macrostrat-db"
+
+[development.databases]
+rockd = "rockd"
+sgp = { host = "db.sgp.svc.macrostrat.org", database = "sgp" }
+
+[development.storage]
+access_key = "op://Macrostrat development/object storage/access_key"
+secret_key = "op://Macrostrat development/object storage/secret_key"
+
+[development.storage.admin]
+type = "ceph-object-storage"
+item = "op://Macrostrat development/Storage admin credentials"
+
+[development.storage.buckets]
+map-staging = "map-ingest-dev"
+
+[development.storage.endpoints]
+access-logs = "access-logs"                          # a bucket on the default endpoint
+
+# ---------------------------------------------------------------------------
+# Production: distinct read and write logins, the strictest gates by default.
+# ---------------------------------------------------------------------------
+[production]
+env_class = "production"
+base_url = "https://macrostrat.org"
+token_signing_key = "op://Macrostrat production/api-v3/token signing key"
+active_ttl = "15m"
+
+# What a person must do before each kind of access. `env_class` supplies the
+# defaults (production: writes reauthorize, reads free); this asks before reads
+# too. Levels: none | prompt | environment-name | reauthorize.
+[production.confirm]
+read = "prompt"
+data = "reauthorize"
+schema = "reauthorize"
+
+[production.database]
+host = "db.production.svc.macrostrat.org"
+read_user = "macrostrat_reader"
+read_password = "op://Macrostrat production/macrostrat-db/reader/password"
+write_user = "op://Macrostrat production/macrostrat-db/admin/username"
+write_password = "op://Macrostrat production/macrostrat-db/admin/password"
+
+[production.database.options]
+sslmode = "require"
+
+[production.databases]
+rockd = "rockd"
+tileserver_stats = "tileserver_stats"
+
+# Keys this loader refuses, with what replaces them:
+#   pg_database                 → database = "postgresql://…" or [<env>.database]
+#   rockd_database, sgp_database, elevation_database, mapboard_database
+#                               → entries in [<env>.databases]
+#   mysql_database, mysql_pod   → retired
+#   secret_key (top level)      → token_signing_key
+#   write_gate                  → confirm = { read = …, data = …, schema = … }
+#   reader / writer / reader_user / writer_user / dbname / query / username
+#                               → read_password / write_password / read_user /
+#                                 write_user / database / options / user

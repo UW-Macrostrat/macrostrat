@@ -79,6 +79,48 @@ migration-applied one converge on the same `APPLIED` state.
   rather than a `%`-format string.
 - Similarly, a literal `:` in SQL (e.g. in a regex like `(?:www\.)`) trips
   SQLAlchemy's bind-parameter parsing and must be escaped as `\:`.
+- **Don't guard against "already exists".** Schema application tolerates errors,
+  so state objects declaratively and let a duplicate raise, get noted, and be
+  stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more
+  than they buy. Classify such an error by SQLSTATE off the wrapped driver
+  exception (`err.orig`), reading psycopg 3's `sqlstate` **or** psycopg 2's
+  `pgcode` — both drivers are installed.
+- **Never wrap an error-tolerating sweep in `db.transaction`.** `run_sql` gives
+  each statement its own transaction *only* when the session isn't already in
+  one; inside `db.transaction` a failed statement rolls back the caller's
+  transaction instead, and the fixture's own rollback then fails.
+
+## Environments and write safety
+
+Read **`docs/Environment configuration and write safety.md`** before running
+anything against a non-local environment. In short:
+
+- Every environment in `macrostrat.toml` declares an `env_class`
+  (`local` / `development` / `staging` / `production`), which selects a gate on
+  `data` and `schema` writes. **An environment that declares no class is
+  treated as `production`.**
+- Mutating commands are gated. The levels are `none`, `prompt`,
+  `environment-name` and `reauthorize`; `staging` and `production` defaults
+  **cannot be satisfied without an interactive terminal** — there is no flag or
+  environment variable that bypasses them, by design. An environment may also
+  ask before *reads* (`confirm = { read = "prompt" }`). Do not try to work
+  around a refusal; it is the intended behaviour.
+- `macrostrat env <name>` lapses after a per-class TTL (8 h development, 1 h
+  staging, 15 min production; `active_ttl` overrides). A lapsed environment is
+  kept and confirmed interactively before use; without a terminal it is
+  refused. Use `--env` for a single command. The pointer applies only to the
+  config file it was set against.
+- Credentials may be literals or references (`op://`, `env://`, `file://`,
+  `keychain://`). An environment using references gets **no ambient `PG*` /
+  `STORAGE_*` / `SECRET_KEY`** variables — reach credentials through
+  `settings.database_url(role=...)` / `settings.storage_endpoint(...)`.
+- Commands that print config redact by default; `--reveal` is refused without a
+  terminal. Do not add a command that prints a credential unredacted.
+- A `macrostrat.toml` beginning with `config_version = 2` is read by the
+  schema-validated loader in `macrostrat.core.config_loader` (model in
+  `config_model`); `macrostrat config schema` prints its schema. Files without
+  the key use Dynaconf. Both yield the same `settings` surface; do not add a
+  consumer that depends on which loader produced it.
 
 ## Running things
 
@@ -89,13 +131,25 @@ migration-applied one converge on the same `APPLIED` state.
   and restart before any schema depending on them can be applied.
 - Tests: `macrostrat test all` (pulls config from the local DB, avoiding cert
   issues).
+- **Use the shared testing cluster.** Build on the session-scoped `schema_harness`
+  / `empty_db` fixtures (a rollback transaction for writes, as `test_audit_triggers`
+  does) rather than standing up a `temporary_database_cluster` per module — a new
+  cluster costs CI minutes. Spin one up only when a test genuinely needs its own
+  (e.g. the unoptimized drift build).
 
 ## Python
 
 - The workspace is `uv`-managed; py-modules are editable path dependencies wired
   in `py-modules/cli/pyproject.toml` and the root `pyproject.toml`.
-- Format with `black` and `isort` (profile `black`, line length 88), configured
-  in the root `pyproject.toml`.
+- Format with **ruff**: `make format` runs `ruff format .` then
+  `ruff check --fix .`. Configured in the root `pyproject.toml`
+  (`line-length = 88`, `lint.select = ["I"]` for import sorting,
+  `lint.isort.known-first-party = ["macrostrat"]`, and
+  `extend-exclude = ["__archive*", "submodules"]`). CI runs `make format` on
+  every pull request and commits the result, so formatting with anything else
+  produces churn. The `[tool.black]` / `[tool.isort]` blocks left in
+  `py-modules/core/pyproject.toml` are vestigial — black and isort are not
+  installed as dev dependencies and disagree with ruff on import grouping.
 - CLI subsystems are Typer apps registered through the
   `macrostrat.subsystems` entry-point group, plus explicit `add_typer` calls in
   `py-modules/cli/macrostrat/cli/entrypoint.py`.

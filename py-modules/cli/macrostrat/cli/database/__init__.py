@@ -1,4 +1,5 @@
 import asyncio
+from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
 from typing import Any, Callable, Iterable
@@ -11,7 +12,11 @@ from sqlalchemy import make_url, text
 from typer import Argument, Option
 
 from macrostrat.core import app
-from macrostrat.core.database import get_database
+from macrostrat.core.database import (
+    NoDatabaseConfigured,
+    current_database_role,
+    get_database,
+)
 from macrostrat.database import Database, reset_sequence
 from macrostrat.database.query import get_sql_files
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
@@ -19,6 +24,14 @@ from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
+from ...core.environment import WriteScope
+from ...core.safety import require_write_access, writes
+from ...core.secrets import (
+    REDACTED,
+    is_sensitive_name,
+    redact_text,
+    refuse_non_interactive_reveal,
+)
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
 
@@ -127,40 +140,59 @@ db_app = db_subsystem.control_command()
 )
 def psql(
     ctx: typer.Context,
+    write: bool = Option(
+        False,
+        "--write",
+        help="Connect with the write login. Passes the schema write gate first.",
+    ),
 ):
-    """Explore a database using [cyan]psql[/cyan]"""
-    from macrostrat.core.config import PG_DATABASE_DOCKER
+    """Explore a database using [cyan]psql[/cyan]
 
-    # Clumsy way to get the correct host for Docker
-    url = make_url(PG_DATABASE_DOCKER)
+    Connects with the read login unless [cyan]--write[/cyan] is given. Every
+    other argument is passed through to psql.
+    """
+    settings = app.settings
 
-    # Set default arguments
-    env_flags = [
-        "-e",
-        "PGDATABASE",
-        "-e",
-        "PGUSER",
-        "-e",
-        "PGPASSWORD",
-        "-e",
-        f"PGHOST={url.host}",
-        "-e",
-        "PGPORT",
-    ]
+    if write:
+        # An interactive shell can run any statement, so it is gated as the
+        # widest scope. Passing the gate escalates this invocation's role.
+        require_write_access(WriteScope.Schema, action="psql --write")
 
-    flags = [
-        "-i",
-        "--rm",
-        "--network",
-        "host",
-        *env_flags,
-    ]
+    conn = settings.database_connection()
+    if conn is None:
+        raise NoDatabaseConfigured()
+    # Resolves the credential now, for this role only. The URL never becomes a
+    # string: libpq reads the parts from the environment below.
+    url = conn.url(current_database_role())
+
+    # On mac and windows the container reaches the host by another name.
+    docker_localhost = settings.get("docker_localhost", "localhost")
+    host = (url.host or "localhost").replace("localhost", docker_localhost)
+
+    # Handed to `docker` through its own environment and forwarded by name
+    # (`-e PGPASSWORD`, no value), so the password is in neither argv nor
+    # `docker inspect` of anything that outlives this process.
+    pg_env = {
+        "PGHOST": host,
+        "PGPORT": str(url.port or 5432),
+        "PGUSER": url.username,
+        "PGPASSWORD": url.password,
+        "PGDATABASE": url.database,
+        "PGAPPNAME": url.query.get("application_name"),
+    }
+    pg_env = {k: v for k, v in pg_env.items() if v is not None}
+    env = dict(environ)
+    env.update(pg_env)
+
+    flags = ["-i", "--rm", "--network", "host"]
+    for name in pg_env:
+        flags += ["-e", name]
     if stdin.isatty():
         flags.append("-t")
 
-    db_container = app.settings.get("pg_database_container", "postgres:15")
+    db_container = settings.get("pg_database_container", "postgres:15")
 
-    run("docker", "run", *flags, db_container, "psql", *ctx.args)
+    run("docker", "run", *flags, db_container, "psql", *ctx.args, env=env)
 
 
 @db_app.command(
@@ -228,6 +260,7 @@ def _reset_sequence(
 
 
 @db_app.command()
+@writes(WriteScope.Data, action="database restore")
 def restore(
     dumpfile: Path,
     database: str = Argument(None),
@@ -239,6 +272,9 @@ def restore(
         "--version",
         "-v",
         help="Postgres version or docker container to restore with",
+    ),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
 ):
     """Load a database using [cyan]pg_restore[/]"""
@@ -364,7 +400,11 @@ def update_permissions():
 
 db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions)
 
-db_app.command(name="load-csv", rich_help_panel="Helpers")(load_csv)
+# Gated at registration rather than at the definition, so `load_csv` stays
+# importable and callable as a library function without a policy check.
+db_app.command(name="load-csv", rich_help_panel="Helpers")(
+    writes(WriteScope.Data, action="CSV load")(load_csv)
+)
 db_app.command(name="load-geo", rich_help_panel="Helpers")(load_geo)
 
 
@@ -384,16 +424,33 @@ def refresh_postgrest():
 
 
 @db_app.command(name="credentials", rich_help_panel="Helpers")
-def connection_details():
-    """Show PostgreSQL connection credentials"""
+def connection_details(
+    reveal: bool = Option(
+        False, "--reveal", help="Show the password and full URL in plain text"
+    ),
+):
+    """Show PostgreSQL connection credentials
+
+    The password and URL are redacted unless --reveal is passed. This command
+    used to print a live connection URL, password included, so running it once
+    from an agent or a CI job put a working credential into a transcript.
+    """
+    if reveal:
+        refuse_non_interactive_reveal("database credentials")
+
     db = get_db()
     url = raw_database_url(db.engine.url)
     for key in keys:
-        print(
-            field_title(key.capitalize()),
-            f"[dim bold green]{getattr(db.engine.url, key)}",
-        )
-    print(field_title("URL"), f"[dim white]{url}")
+        value = getattr(db.engine.url, key)
+        if not reveal and is_sensitive_name(key):
+            value = REDACTED
+        print(field_title(key.capitalize()), f"[dim bold green]{value}")
+    # SQLAlchemy's URL.__str__ masks the password; render_as_string(False) is
+    # the only thing that discloses it.
+    shown = url if reveal else str(db.engine.url)
+    print(
+        field_title("URL"), f"[dim white]{redact_text(shown) if not reveal else shown}"
+    )
 
 
 def field_title(name):

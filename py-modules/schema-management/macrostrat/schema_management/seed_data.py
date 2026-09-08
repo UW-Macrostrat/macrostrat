@@ -11,6 +11,7 @@ These statements are expected to be idempotent (e.g. ``INSERT … ON CONFLICT``)
 since re-applying it may duplicate rows or fail.
 """
 
+import re
 from typing import Iterator
 
 import sqlparse
@@ -26,14 +27,28 @@ log = get_logger(__name__)
 # so `WITH … INSERT`/`WITH … UPDATE` are caught while `WITH … SELECT` is not.
 _SEED_TYPES = {"INSERT", "UPDATE", "DELETE", "MERGE"}
 
+# `SELECT setval(…)` writes — it realigns a sequence with the rows a seed INSERT
+# just wrote — but `sqlparse` types it as a SELECT, so it slips past `_SEED_TYPES`
+# and a re-seeded table is left handing out keys that already exist. Matched on
+# the call rather than the statement type; `setval` has no read-only reading.
+_SETVAL_RE = re.compile(r"\bsetval\s*\(", re.IGNORECASE)
+
 
 def data_statements_in(sql_text: str) -> Iterator[str]:
-    """Yield the data-writing (INSERT/UPDATE/DELETE/MERGE) statements in a block of SQL."""
+    """Yield the data-writing statements in a block of SQL.
+
+    That is INSERT/UPDATE/DELETE/MERGE (including their `WITH …` forms), plus
+    the `SELECT setval(…)` calls that go with a seed insert.
+    """
     for statement in sqlparse.parse(sql_text):
-        if statement.get_type() in _SEED_TYPES:
-            bare = sqlparse.format(str(statement), strip_comments=True).strip()
-            if bare:
-                yield bare
+        kind = statement.get_type()
+        bare = sqlparse.format(str(statement), strip_comments=True).strip()
+        if not bare:
+            continue
+        if kind in _SEED_TYPES:
+            yield bare
+        elif kind == "SELECT" and _SETVAL_RE.search(bare):
+            yield bare
 
 
 def iter_seed_statements(chunks) -> Iterator[str]:

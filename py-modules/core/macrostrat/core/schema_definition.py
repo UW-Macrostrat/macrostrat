@@ -8,6 +8,8 @@ from typing import Callable, Optional, Union
 
 from macrostrat.database import Database
 
+from .environment import EnvironmentClass
+
 # A provider that applies its own statements to the database.
 DBCallable = Callable[[Database], None]
 
@@ -28,8 +30,10 @@ class SchemaDefinition:
     name: str
     depends_on: list[str] = field(default_factory=list)
     provides: list[Provider] = field(default_factory=list)
-    # Environments in which this chunk applies. ``None`` means all environments.
-    environments: Optional[frozenset[str]] = None
+    # Environment *classes* in which this chunk applies (``local``,
+    # ``development``, ``staging``, ``production``). ``None`` means everywhere.
+    # Class names given as strings are accepted and normalised.
+    environments: Optional[frozenset[EnvironmentClass]] = None
     database: str = "macrostrat"
     # Role that applies this chunk (via session ``SET ROLE``), so the chunk's
     # objects are *born owned* by it — replacing per-object ``ALTER … OWNER TO``.
@@ -37,8 +41,22 @@ class SchemaDefinition:
     # (extensions, roles, the ``public`` schema) that an application role can't do.
     owner: Optional[str] = None
 
-    def applies_to(self, env: str) -> bool:
-        return self.environments is None or env in self.environments
+    def __post_init__(self):
+        if self.environments is not None:
+            self.environments = frozenset(
+                EnvironmentClass(e) for e in self.environments
+            )
+
+    def applies_to(self, env_class) -> bool:
+        """Whether this chunk applies in an environment of *env_class*.
+
+        Takes a class, or a class name. Callers holding an environment *name*
+        resolve its class first (``schema_management.chunks.environment_class``);
+        a name like ``local-ingestion`` says nothing about where it sits.
+        """
+        if self.environments is None:
+            return True
+        return EnvironmentClass(env_class) in self.environments
 
     def apply(
         self, db: Database, *, transform_statement=None, statement_filter=None

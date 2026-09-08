@@ -122,6 +122,9 @@ CREATE TABLE macrostrat_kg.all_runs (
 CREATE TABLE macrostrat_kg.entity (
     name text NOT NULL,
     corrected_name text,
+    strat_name_id integer,
+    lith_id integer,
+    lith_att_id integer,
     start_index integer NOT NULL,
     end_index integer NOT NULL,
     run_id integer NOT NULL,
@@ -493,3 +496,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO xdd_writer;
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO xdd_writer;
+
+GRANT SELECT ON TABLE macrostrat_kg.macrostrat_terms TO web_user;

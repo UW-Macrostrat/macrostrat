@@ -1,0 +1,19 @@
+config_version = 2
+
+[default]
+pg_database_container = "imresamu/postgis:15-3.4"
+
+[default.database]
+port = 5432
+
+[local]
+env_class = "local"
+token_signing_key = "test-signing-key"
+
+[local.database]
+host = "localhost"
+user = "user"
+password = "password"
+
+[local.databases]
+test = "macrostrat_test"

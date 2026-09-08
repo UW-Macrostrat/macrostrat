@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from os import environ
 from pathlib import Path
 
@@ -8,8 +9,21 @@ from typer import Argument, Option, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
 from macrostrat.core import app
+from macrostrat.core.environment import (
+    WriteScope,
+    declared_policy_for,
+    format_duration,
+)
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.utils import env_text, set_app_state
+from macrostrat.core.secrets import redact_mapping, refuse_non_interactive_reveal
+from macrostrat.core.utils import (
+    ENV_EXPIRES_VAR,
+    ENV_VAR,
+    active_environment,
+    env_text,
+    remembered_environment,
+    set_active_env,
+)
 from macrostrat.schema_management import schema_app
 from macrostrat.usage_stats import app as usage_stats_app
 from macrostrat.utils import get_logger
@@ -67,8 +81,10 @@ help_text = f"""[bold]Macrostrat[/] control interface
 
 app.info_messages.append(f"Active environment: [bold cyan]{_env_text}[/]")
 
-if not settings.pg_database:
-    app.warnings.append("No database URL found in settings")
+# Asks the connection registry, which composes without fetching: a structured
+# `[<env>.database]` table and a vaulted URL both count as configured.
+if settings.database_connection() is None:
+    app.warnings.append("No database configured for this environment")
 reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
 if reinstall_warning is not None:
     if len(reinstall_warning) < 2:
@@ -150,37 +166,114 @@ for sub in subsystem_commands:
 
 
 @main.command(name="env")
-def set_env(env: str = Argument(None), unset: bool = False):
-    """Set the active environment"""
-    try:
-        current_env = app.settings.env
-    except AttributeError:
-        current_env = None
-    if env is None:
-        if current_env is None:
-            raise MacrostratError("No environment set")
-        print(current_env)
-        return
+def set_env(
+    env: str = Argument(None),
+    unset: bool = Option(False, "--unset", help="Forget the remembered environment"),
+    shell: bool = Option(
+        False,
+        "--shell",
+        help="Print export lines instead of remembering the environment. "
+        'Use as: eval "$(macrostrat env --shell staging)"',
+    ),
+):
+    """Set the active environment
+
+    A `local`-class environment is remembered indefinitely. Anything else is
+    remembered for its class's time-to-live (8 h development, 1 h staging,
+    15 min production; `active_ttl` in the environment's section overrides it).
+    A lapsed environment is kept, and you are asked before the next command
+    that would use it — a persisted pointer at a remote database that outlives
+    the task is the sticky-global-state problem this guards against.
+
+    The pointer applies only to the config file it was set against, so a
+    directory with a different `macrostrat.toml` is unaffected.
+
+    For a session that ends when the terminal does, use `--shell`.
+    """
     if unset:
-        set_app_state("active_env", None, wipe_others=True)
+        set_active_env(None)
+        print("Forgot the remembered environment.")
         return
+
+    if env is None:
+        _report_active_environment()
+        return
+
     environments = app.settings.all_environments()
     if env not in environments:
         raise MacrostratError(
             f"Environment [item]{env}[/item] is not valid",
             details=_available_environments(environments),
         )
-    should_wipe = current_env != env
-    set_app_state("active_env", env, wipe_others=should_wipe)
-    environ["MACROSTRAT_ENV"] = env
-    print(f"Activated {env_text()}")
+
+    policy = declared_policy_for(app.settings.config_file, env)
+
+    if shell:
+        # Nothing is persisted: the environment lives in the shell that
+        # evaluates this and dies with it. The expiry makes it lapse the same
+        # way a remembered one does, so an exported variable is not a way
+        # around the TTL.
+        print(f"export {ENV_VAR}={env}")
+        if policy.ttl is not None:
+            expires = datetime.now(timezone.utc) + policy.ttl
+            print(f"export {ENV_EXPIRES_VAR}={expires.isoformat()}")
+        return
+
+    expires = set_active_env(
+        env, expires_in=policy.ttl, config_file=app.settings.config_file
+    )
+    environ[ENV_VAR] = env
+
+    if expires is None:
+        print(f"Activated {env_text()}")
+    else:
+        print(
+            f"Activated {env_text()} [bold yellow]({policy.env_class.value})[/] "
+            f"[dim]for {format_duration(policy.ttl)}, "
+            f"until {expires.astimezone():%H:%M}[/dim]"
+        )
+        print(
+            "[dim]Use --env for a single command, or "
+            f'eval "$(macrostrat env --shell {env})" for a shell session.[/dim]'
+        )
 
 
-def _available_environments(environments):
-    res = "Available environments:\n"
-    for k in environments:
-        res += f"- [item]{k}[/item]\n"
-    return res
+def _report_active_environment():
+    """`macrostrat env` with no argument: what is active, from where, how fresh."""
+    state = active_environment()
+    if state is None:
+        remembered = remembered_environment()
+        if remembered is not None:
+            where = remembered.config_file or "another config file"
+            print(
+                f"No environment applies here. The remembered environment "
+                f"[bold cyan]{remembered.name}[/] was set for [dim]{where}[/dim]."
+            )
+            return
+        print(
+            "No environment set. Run [bold]macrostrat env <name>[/] to activate "
+            "one; [bold]macrostrat config environments[/] lists them."
+        )
+        return
+
+    policy = declared_policy_for(app.settings.config_file, state.name)
+    line = f"[bold cyan]{state.name}[/] [bold yellow]({policy.env_class.value})[/]"
+    if state.source == "explicit":
+        line += " [dim](--env, this command only)[/dim]"
+    elif state.expires is None:
+        line += " [dim](does not lapse)[/dim]"
+    elif state.lapsed:
+        ago = format_duration(-state.remaining)
+        line += (
+            f" [yellow]lapsed {ago} ago[/yellow] [dim]— you will be asked before "
+            "it is used; `macrostrat env "
+            f"{state.name}` re-activates it[/dim]"
+        )
+    else:
+        left = format_duration(state.remaining)
+        via = "shell session" if state.source == "shell" else "remembered"
+        line += f" [dim]({via}, lapses in {left})[/dim]"
+    print(line)
 
 
 cfg_app = Typer(name="config", short_help="Manage configuration")
@@ -205,11 +298,68 @@ def edit_cfg():
     run([editor, str(settings.config_file)])
 
 
+@cfg_app.command(name="schema")
+def config_schema():
+    """Print the JSON Schema of a config environment (config_version = 2)
+
+    The schema is the reference for every key the new loader reads. Point an
+    editor at it for completion, or read it to see what a key means.
+    """
+    from json import dumps
+
+    from macrostrat.core.config_model import config_json_schema
+
+    typer.echo(dumps(config_json_schema(), indent=2))
+
+
 @cfg_app.command(name="environments")
 def environments():
-    """Get all available environments."""
-    envs = app.settings.all_environments()
-    app.console.print(_available_environments(envs))
+    """List the environments in the config file, with class, confirmations and TTL.
+
+    One look answers the questions that otherwise surface one refusal at a
+    time: which environments are still *inferred* as production because they
+    declare no `env_class`, what each kind of access will ask of you (`read`,
+    `data`, `schema`), and how long `macrostrat env <name>` keeps each one
+    active.
+    """
+    from rich.table import Table
+
+    active = active_environment()
+    table = Table(title=str(app.settings.config_file), title_justify="left")
+    table.add_column("environment")
+    table.add_column("class")
+    table.add_column("read")
+    table.add_column("data")
+    table.add_column("schema")
+    table.add_column("active for")
+    for name in app.settings.all_environments():
+        policy = declared_policy_for(app.settings.config_file, name)
+        label = f"[bold cyan]{name}[/]"
+        if active is not None and active.name == name:
+            label += " [green]●[/]"
+        klass = policy.env_class.value
+        if policy.inferred and not policy.is_local:
+            klass = f"[yellow]{klass}[/] [dim](inferred)[/dim]"
+        table.add_row(
+            label,
+            klass,
+            policy.gate_for(WriteScope.Read).value,
+            policy.gate_for(WriteScope.Data).value,
+            policy.gate_for(WriteScope.Schema).value,
+            format_duration(policy.ttl),
+        )
+    app.console.print(table)
+    inferred = [
+        n
+        for n in app.settings.all_environments()
+        if (p := declared_policy_for(app.settings.config_file, n)).inferred
+        and not p.is_local
+    ]
+    if inferred:
+        app.console.print(
+            '[dim]"inferred" means the section declares no env_class = "…", so it '
+            "is gated as production. Declare one to say what it really is.[/dim]"
+        )
 
 
 main.add_typer(cfg_app)
@@ -417,18 +567,6 @@ if sgp_url := getattr(settings, "sgp_database", None):
 
     main.add_typer(sgp, rich_help_panel="Integrations")
 
-# Mariadb CLI
-if mariadb_url := getattr(settings, "mysql_database", None):
-    from .database.mariadb import app as mariadb_app
-
-    main.add_typer(
-        mariadb_app,
-        name="mariadb",
-        rich_help_panel="Legacy",
-        short_help="Manage the MariaDB database",
-        deprecated=True,
-    )
-
 # Knowledge graph CLI
 from .subsystems.xdd import cli as kg_cli
 
@@ -466,9 +604,22 @@ def inspect():
 
 # Print the environment variables
 @self_app.command()
-def printenv():
-    """Print the environment variables"""
-    for k, v in environ.items():
+def printenv(
+    reveal: bool = Option(
+        False, "--reveal", help="Show credential values in plain text"
+    ),
+):
+    """Print the environment variables
+
+    Values whose name looks like a credential — and any value containing a
+    secret resolved in this process — are redacted unless --reveal is passed.
+    This command used to print PGPASSWORD and SECRET_KEY verbatim.
+    """
+    if reveal:
+        refuse_non_interactive_reveal("environment variables")
+
+    items = environ.items() if reveal else redact_mapping(environ).items()
+    for k, v in items:
         print(f"[bold cyan]{k}[/]: {v}")
 
 

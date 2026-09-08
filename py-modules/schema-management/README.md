@@ -30,19 +30,33 @@ builds them.
   classes (`macrostrat schema migrate`) handle transitions the diff can't express — renames,
   backfills, data-dependent changes — gated by pre/postconditions.
 - **`macrostrat schema sync`** re-applies everything a schema diff *can't* manage on its own —
-  **views**, **procedures/functions**, idempotent **seed data**, and **grants** — so that
-  **`provision` ≡ `diff` + `sync`** (same schema *and* seed data either way). These are idempotent
-  and often interleaved with other DDL. Select a subset with `--no-views` / `--no-procedures` /
-  `--no-data` / `--no-permissions`, and restrict to a subsystem with the shared
-  `--target` / `--no-dependents` option block (see below). Per category:
+  **views**, **procedures/functions**, idempotent **seed data**, and **permissions** (roles and
+  grants) — so that **`provision` ≡ `diff` + `sync`** (same schema *and* seed data either way).
+  These are idempotent and often interleaved with other DDL. Select a subset with `--no-views` /
+  `--no-procedures` / `--no-data` / `--no-permissions`, and restrict to a subsystem with the
+  shared `--target` / `--no-dependents` option block (see below). Per category:
     - *views* (`views.py`) — `CREATE OR REPLACE` by default; drop-and-recreate (restoring grants)
       only on a signature change (SQLSTATE 42P16), via the `macrostrat.database` `on_error` hook.
     - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; signature changes
       are left to the diff.
-    - *seed* (`seed.py`) — re-run the data-writing statements (`INSERT`/`UPDATE`/`DELETE`/`MERGE`,
-      including `WITH … INSERT`), detected by `sqlparse` statement type. These must be idempotent;
-      an `INSERT` without `ON CONFLICT` is warned about.
-    - *grants* (`grants.py`) — re-run every `GRANT` / `REVOKE` / `ALTER DEFAULT PRIVILEGES`.
+    - *seed* (`seed_data.py`) — re-run the data-writing statements (`INSERT`/`UPDATE`/`DELETE`/
+      `MERGE`, including `WITH … INSERT`), detected by `sqlparse` statement type, plus the
+      `SELECT setval(…)` calls that realign a sequence with freshly seeded rows (`sqlparse`
+      types those as `SELECT`, so they need matching on the call). These must be idempotent; an
+      `INSERT` without `ON CONFLICT` is warned about. Reference tables whose *columns* also need
+      to converge — not just their keys — should use `ON CONFLICT … DO UPDATE` rather than
+      `DO NOTHING`; `macrostrat_auth.role` is the worked example.
+      **Known gap:** a `DO $$ … $$` block is typed `UNKNOWN` by `sqlparse` and is swept by no
+      category, so DML hidden inside one is still invisible to `sync`.
+    - *permissions* (`grants.py`) — re-run every `CREATE ROLE`/`USER`/`GROUP`, `GRANT`,
+      `REVOKE` and `ALTER DEFAULT PRIVILEGES`, **in declared order**. Roles are **cluster**
+      objects, so `migra` cannot see them at all: on a diff-built database they never exist
+      and every grant naming one fails. They are swept here rather than in a pass of their
+      own because `0000-roles.sql` interleaves the two — each `GRANT` follows the role it
+      names — so file order is already the correct order. A role that already exists raises
+      `42710`, counted as skipped and stepped over rather than pre-checked; an existing
+      role's attributes are not reconciled, that being a live credential rather than a
+      rebuild.
 
   Structure (tables, columns, constraints, views, functions, triggers) otherwise stays
   diff-managed (migra sequences view/table drop-recreate); `sync` re-asserts the re-runnable

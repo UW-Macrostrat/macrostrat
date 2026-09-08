@@ -1,9 +1,9 @@
 from os import environ
 from pathlib import Path
-from sys import argv, exit
+from sys import exit
+from typing import Any
 
 from click.utils import get_app_dir
-from dynaconf import Dynaconf
 from rich.console import Console
 from typer import Context, Option
 
@@ -11,21 +11,35 @@ from macrostrat.app_frame import Application, ControlCommand, DockerComposeManag
 from macrostrat.utils import get_logger
 
 from .console import console_theme
-from .exc import MacrostratError
-from .utils import env_text, get_app_state, get_app_state_file, set_app_state
+from .exc import ConfigError, MacrostratError, UnknownEnvironment
+from .utils import (
+    ENV_EXPIRES_VAR,
+    ENV_VAR,
+    extract_env_from_argv,
+    get_app_state,
+    get_app_state_file,
+    set_app_state,
+)
 
 log = get_logger(__name__)
+
+
+#: Top-level command groups that inspect or change the environment rather than
+#: use it. A lapsed environment is not questioned on the way into these — the
+#: point of `macrostrat env` is to fix exactly that situation.
+ENVIRONMENT_NEUTRAL_COMMANDS = frozenset({"env", "config", "self", "install", "uv"})
 
 
 def load_settings(console: Console):
     try:
         from .config import settings
-    except AttributeError as err:
-        set_app_state("active_env", None, wipe_others=True)
-        raise MacrostratError(
-            f"Could not load settings for {env_text()}",
-            details="Removing environment configuration",
-        )
+    except (UnknownEnvironment, ConfigError) as err:
+        # Raised during config load, before Click is running, so nothing else
+        # will render it. Say what was wrong and stop.
+        console.print(f"[bold red]Error:[/] {err.message}")
+        if err.details:
+            console.print(err.details)
+        exit(1)
     except Exception as err:
         # Fake it till we make it with error handling
         console.print_exception(show_locals=False)
@@ -52,29 +66,48 @@ class MacrostratControlCommand(ControlCommand):
         self,
         ctx: Context,
         verbose: bool = Option(False, "--verbose", help="Enable verbose output"),
-        # This sets the env var too late to be used in config, but it does show the argument in the help text
+        # Declared only so `--env` appears in the help text. It is already gone
+        # from argv by now — `extract_env_from_argv` consumed it before config
+        # loaded — so this parameter is always None and assigning from it here
+        # would be a second, later-losing source of truth.
         env: str = Option(None, "--env", "-e", help="Set the active environment"),
     ):
         """:app_name: command-line interface"""
-        if env is not None:
-            environ["MACROSTRAT_ENV"] = env
         super().callback(ctx, verbose=verbose)
+        # A remembered environment that has lapsed is kept, and questioned
+        # here — once, before any command that could use it. Click has already
+        # handled --help by this point, and a bare `macrostrat` invokes no
+        # subcommand, so neither ever prompts.
+        if ctx.invoked_subcommand not in ENVIRONMENT_NEUTRAL_COMMANDS | {None}:
+            from .safety import require_environment
+
+            require_environment(settings=self.app.settings)
+
+        # The compose stack needs its credentials in plaintext at start time.
+        # A vaulted config withholds them from the ambient environment, so
+        # they are resolved here, for the compose commands only, once the
+        # environment has been confirmed above.
+        from .compose_env import COMPOSE_COMMANDS, export_compose_environment
+
+        if (
+            ctx.invoked_subcommand in COMPOSE_COMMANDS
+            and self.app.settings.backend == "docker-compose"
+        ):
+            export_compose_environment(self.app.settings)
 
 
 class Macrostrat(Application):
-    settings: Dynaconf
+    settings: Any
     console: Console
     state: StateManager
 
     def __init__(self):
-
-        # Check sys args for --env or -e, and use that to set the environment
-        # TODO: this is pretty hacky.
-        for i, arg in enumerate(argv):
-            if arg in ("--env", "-e") and i + 1 < len(argv):
-                environ["MACROSTRAT_ENV"] = argv[i + 1]
-                argv.pop(i + 1)
-                argv.pop(i)  # Remove the arg and its value so Typer doesn't see it
+        # `--env` has to be read before Typer parses anything, because config
+        # is loaded while this object is constructed. One parser, in utils.
+        if (env := extract_env_from_argv()) is not None:
+            environ[ENV_VAR] = env
+            # Explicit beats a shell session's expiry: --env is per-invocation.
+            environ.pop(ENV_EXPIRES_VAR, None)
 
         self.console = Console(theme=console_theme)
         self.settings = load_settings(self.console)
