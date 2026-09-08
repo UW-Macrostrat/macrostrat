@@ -8,15 +8,16 @@ from macrostrat.database import on_conflict
 from .age_model import build_age_model
 from .columns import (
     Column,
-    assign_section_ids,
     get_column_data,
+    get_sections,
     reconcile_column_group,
     reconcile_columns,
+    reconcile_sections,
 )
 from .database import ProjectIdentifier, get_or_create_project
 from .metadata import get_metadata
 from .refs import get_reference_data, reconcile_references, resolve_column_references
-from .units import PositionAxisType, get_units, write_units
+from .units import PositionAxisType, write_units
 
 
 def ingest_columns_from_file(
@@ -52,10 +53,12 @@ def ingest_columns_from_file(
     if meta.axis_type == "age":
         position = PositionAxisType.ORDINAL
 
-    units = get_units(db, data_file, position=position, fill_values=meta.fill_values)
+    sections = get_sections(
+        db, data_file, position=position, fill_values=meta.fill_values
+    )
 
     for col in columns:
-        col.units = units.get(col.local_id, [])
+        col.sections = sections.get(col.local_id, [])
         if len(col.units) == 0:
             print(f"Warning: No units found for column {col.local_id}")
 
@@ -74,7 +77,7 @@ def ingest_columns(
 ):
     """Write columns, their sections, their units and their age models.
 
-    Takes `Column` objects with `units` already populated, which is the seam a
+    Takes `Column` objects with `sections` already populated, which is the seam a
     caller needs when its data did not come from a workbook. The spreadsheet is one
     source of columns, not the only one: GBDB yields ~29,000 columns from a
     relational staging schema, and routing those through an .xlsx to reach this
@@ -116,8 +119,9 @@ def ingest_columns(
             if not col.units:
                 continue
             print(f"Ingesting column: {col.name}, ID: {col.id}")
-            assign_section_ids(db, col.id, col.units)
-            write_units(db, col.units)
+            # Sections first, so every unit is written against a section that exists.
+            reconcile_sections(db, col.id, col.sections)
+            write_units(db, col.sections)
             build_age_model(db, col.units)
 
         db.session.commit()

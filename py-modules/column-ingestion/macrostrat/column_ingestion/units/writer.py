@@ -16,7 +16,7 @@ Natural keys
 
 | table | key |
 | --- | --- |
-| `units` | `(col_id, section_id, strat_name, position_bottom, position_top)` |
+| `units` | `(col_id, section scope, orig_id)`, or `(col_id, section scope, strat_name, position_bottom, position_top)` |
 | `units_sections` | `(unit_id, col_id, section_id)` |
 | `unit_liths` | `(unit_id, lith_id, dom)` |
 | `unit_liths_atts` | `(unit_lith_id, lith_att_id)` |
@@ -24,10 +24,25 @@ Natural keys
 The unit key deliberately **excludes `fo`/`lo`**, which the legacy importer included.
 Those are computed outputs now (see `age_model`), so they cannot also identify a row.
 
+`macrostrat.units.orig_id` — the identifier a unit carries in the dataset it came from —
+is preferred over position, because position cannot survive re-ingest: it is derived from
+thickness, so an upstream correction reads as a different unit, and the row is deleted and
+re-inserted, cascading away its `unit_liths`, `unit_liths_atts`, `unit_environs`,
+`unit_notes`, `unit_strat_names` and `unit_boundaries`. Avoiding that churn is the whole
+purpose here; see `unit_identity` for the one rule.
+
+`section_id` is owned rather than keyed whenever the unit's section carries no identifier
+of its own (`columns.sections`), so a section renumbering is absorbed instead of
+replacing every unit. Nothing downstream needs section ids to be stable: `unit_boundaries`
+identity is the pair of units a surface separates (`age_model.reconciliation._identity`).
+
 `section_id` and `strat_name` are never NULL or empty in `macrostrat.units`.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from macrostrat.utils import get_logger
 
@@ -36,8 +51,16 @@ from ..intervals import UNMODELED_INTERVAL
 from ..reconciliation import ReconciliationPlan, reconcile
 from .parse import Unit
 
+if TYPE_CHECKING:
+    from ..columns.sections import Section
+
 log = get_logger(__name__)
 
+#: The **fallback** key, for units carrying no `orig_id`: unchanged from before
+#: `orig_id` existed, `section_id` included. Widening it to the column was measured and
+#: rejected — dropping `section_id` takes colliding groups in `macrostrat.units` from 34
+#: (93 rows) to 696 (1,956 rows), because 842 columns restart `position_bottom` /
+#: `position_top` per section rather than measuring them continuously up the column.
 UNIT_KEY_COLUMNS = (
     "col_id",
     "section_id",
@@ -53,7 +76,13 @@ UNIT_KEY_COLUMNS = (
 #: — this writer cannot tell whether it is looking at such a column. They are still
 #: supplied on INSERT, because they are NOT NULL and a new row has to carry something;
 #: see `_desired_unit_row` for the caveat on where that value comes from.
-UNIT_COLUMNS = ("max_thick", "min_thick", "outcrop", "color")
+#: `section_id` is here as well as in `UNIT_KEY_COLUMNS`, which looks contradictory and
+#: is not. A unit matched by `orig_id` may have moved to a different section, and the new
+#: `section_id` has to be written. A unit matched by the fallback key cannot have moved,
+#: because `section_id` is part of that key — so for those rows the update is a provable
+#: no-op. Keeping one `owned_columns` tuple for both paths is simpler than splitting the
+#: reconcile in two.
+UNIT_COLUMNS = ("section_id", "max_thick", "min_thick", "outcrop", "color")
 
 _POSITION_SCALE = 3  # numeric(7,3)
 _THICKNESS_SCALE = 2  # numeric(7,2)
@@ -73,10 +102,50 @@ _KEY_NORMALIZERS = {
 }
 
 
+def _identifier(value) -> str | None:
+    """An identifier, or `None` for anything that is not one.
+
+    A CSV-sourced pipeline yields `''` rather than NULL, and an empty string is not an
+    identity — if it were treated as one, every unidentified row would collapse onto a
+    single key.
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
 def unit_identity(row: dict) -> tuple:
-    """Natural key of a unit, at the precision the database stores."""
-    return tuple(
-        _KEY_NORMALIZERS.get(c, lambda v: v)(row.get(c)) for c in UNIT_KEY_COLUMNS
+    """Natural key of a unit: the source's identifier, in the scope the source declares.
+
+    Two substitutions rather than a hierarchy of cases.
+
+    **Scope** is the section when it has an identifier of its own — `section_orig_id`
+    on the row — and the column when it does not. A
+    source that gives its sections identifiers has thereby declared them the context its
+    unit identifiers resolve in; where our sections are our own construction (GBDB's
+    gap-bound packages are derived) a unit may move between them as an artifact, so they
+    must not participate in identity.
+
+    **Identifier** is the unit's `orig_id` where it has one, and its position where it
+    does not. Position needs a scope even when that scope is only our own `section_id`,
+    because 842 columns restart `position_bottom` / `position_top` per section.
+
+    The two shapes differ in arity, and the leading tag keeps them disjoint regardless.
+    """
+    scope = _identifier(row.get("section_orig_id"))
+    unit_orig_id = _identifier(row.get("orig_id"))
+
+    if unit_orig_id is not None:
+        return ("orig_id", row.get("col_id"), scope, unit_orig_id)
+
+    return (
+        "position",
+        row.get("col_id"),
+        scope if scope is not None else row.get("section_id"),
+    ) + tuple(
+        _KEY_NORMALIZERS.get(c, lambda v: v)(row.get(c))
+        for c in ("strat_name", "position_bottom", "position_top")
     )
 
 
@@ -92,6 +161,7 @@ def _desired_unit_row(unit: Unit) -> dict:
         "strat_name": unit.name or "default",
         "position_bottom": unit.b_pos,
         "position_top": unit.t_pos,
+        "orig_id": unit.orig_id,
         "max_thick": thickness,
         "min_thick": thickness,
         "outcrop": "surface",
@@ -112,61 +182,87 @@ def _fetch(db, sql: str, params: dict) -> list[dict]:
     return [dict(row._mapping) for row in db.run_query(sql, params)]
 
 
-def _existing_units(db, col_id: int, section_id: int) -> list[dict]:
-    """A section's existing units, with membership taken from `units_sections`.
+def _existing_units(db, col_id: int) -> list[dict]:
+    """A **column's** existing units, with membership taken from `units_sections`.
 
     Neither `units.col_id` nor `units.section_id` is authoritative — see
     `age_model.eodp.eodp_units`. Reading them here would scope the reconciliation to the
     wrong set of units, and the natural key would then compare against a `col_id` the
     section itself does not agree with.
+
+    Scoped to the column rather than to one section, which the `orig_id` key requires: a
+    unit that moved between sections is not in its new section's existing set, so a
+    section-scoped fetch would see it as new and delete the original — the section-remap
+    cascade this writer exists to avoid. Fallback-keyed rows are unaffected by the wider
+    scope because `section_id` is part of their key, so it still discriminates them.
     """
     return _fetch(
         db,
         """
-        SELECT u.id, us.col_id, us.section_id, u.strat_name,
+        SELECT u.id, us.col_id, us.section_id, u.strat_name, u.orig_id,
                u.position_bottom, u.position_top,
                u.max_thick, u.min_thick, u.outcrop, u.color, u.fo, u.lo
         FROM macrostrat.units u
         JOIN macrostrat.units_sections us ON us.unit_id = u.id
-        WHERE us.col_id = :col_id AND us.section_id = :section_id
+        WHERE us.col_id = :col_id
         ORDER BY u.id
         """,
-        dict(col_id=col_id, section_id=section_id),
+        dict(col_id=col_id),
     )
 
 
-def reconcile_units(db, units: list[Unit]) -> ReconciliationPlan:
-    """Bring `macrostrat.units` in line with `units` for one (column, section).
+def reconcile_units(db, sections: list[Section]) -> ReconciliationPlan:
+    """Bring `macrostrat.units` in line with the units of `sections`, one whole column.
 
     Sets `unit.id` on every unit — matched or inserted — so callers can go on to write
-    dependent rows and build an age model.
+    dependent rows and build an age model. `reconcile_sections` must already have run,
+    since units are written against their section's id.
+
+    Takes the column's sections rather than a flat list of units because the scope of a
+    unit's identity is a property of its section — whether it has an identifier, see
+    `unit_identity` — not something a unit carries. And a column at a time rather than
+    a section, so that a unit which changed sections is matched rather than replaced.
+    The caller must therefore pass **every** section the column should end up with: a
+    unit present in the database and absent here is surplus and is deleted, which is
+    the point of reconciling, but it means a partial set silently prunes the remainder.
     """
+    units = [unit for section in sections for unit in section.units]
     if not units:
         return ReconciliationPlan()
 
-    col_ids = {u.col_id for u in units}
-    section_ids = {u.section_id for u in units}
-    if len(col_ids) != 1 or len(section_ids) != 1:
+    col_ids = {s.col_id for s in sections}
+    if len(col_ids) != 1:
         raise ValueError(
-            "reconcile_units handles one (col_id, section_id) at a time; "
-            f"got cols={sorted(col_ids)} sections={sorted(section_ids)}"
+            f"reconcile_units handles one col_id at a time; got {sorted(col_ids)}"
         )
-    col_id, section_id = col_ids.pop(), section_ids.pop()
+    col_id = col_ids.pop()
 
     desired = [_desired_unit_row(u) for u in units]
+
+    # The section's identifier is a key component but not a column on `macrostrat.units`,
+    # so it cannot ride on the desired rows — those are inserted verbatim. Both sides
+    # resolve it from the section by `section_id`, which keeps `unit_identity` a plain
+    # function of a row. An unidentified section contributes `None`, i.e. column scope.
+    scope_of = {s.id: s.orig_id for s in sections}
+
+    def key(row: dict) -> tuple:
+        return unit_identity(
+            {**row, "section_orig_id": scope_of.get(row.get("section_id"))}
+        )
+
     plan, ids = reconcile(
         db,
         get_macrostrat_table(db, "units"),
-        existing=_existing_units(db, col_id, section_id),
+        existing=_existing_units(db, col_id),
         desired=desired,
-        key=unit_identity,
+        key=key,
         owned_columns=UNIT_COLUMNS,
         scales=UNIT_SCALES,
     )
     for unit, unit_id in zip(units, ids):
         unit.id = unit_id
 
-    log.info("units for col %s section %s: %s", col_id, section_id, plan)
+    log.info("units for col %s: %s", col_id, plan)
     return plan
 
 
@@ -374,24 +470,25 @@ def reconcile_unit_notes(db, units: list[Unit]) -> ReconciliationPlan:
     return plan
 
 
-def write_units(db, units: list[Unit]) -> list[Unit]:
-    """Reconcile a set of units and their dependent rows.
+def write_units(db, sections: list[Section]) -> list[Unit]:
+    """Reconcile the units of `sections` and their dependent rows.
 
-    Units are reconciled per `(col_id, section_id)`, since that pair is the scope of the
-    natural key, and may span several sections of a column — multiple sections per column
-    is the normal case. The dependent tables are keyed on `unit_id` and so are handled
+    Units are reconciled per column, which is the scope of the `orig_id` key — see
+    `reconcile_units` — so a unit that moved between sections of its column is matched
+    rather than replaced. The dependent tables are keyed on `unit_id` and so are handled
     across the whole set at once.
 
     Returns the units with `id` set.
     """
+    units = [unit for section in sections for unit in section.units]
     if not units:
         return units
 
-    by_section: dict[tuple, list[Unit]] = defaultdict(list)
-    for unit in units:
-        by_section[(unit.col_id, unit.section_id)].append(unit)
-    for section_units in by_section.values():
-        reconcile_units(db, section_units)
+    by_column: dict[int, list[Section]] = defaultdict(list)
+    for section in sections:
+        by_column[section.col_id].append(section)
+    for column_sections in by_column.values():
+        reconcile_units(db, column_sections)
 
     reconcile_units_sections(db, units)
     reconcile_unit_liths(db, units)

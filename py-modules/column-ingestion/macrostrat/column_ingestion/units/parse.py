@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 import polars as pl
 
 from macrostrat.utils import get_logger
 
 from ..boundary_status import BoundaryStatus
+from ..boundary_type import BoundaryType
 from ..environs import Environ, EnvironsProcessor
 from ..intervals import (
     Interval,
@@ -22,12 +22,10 @@ from ..lithologies import LithAbundance, Lithology, LithsProcessor
 class Unit:
     id: int = -1
     col_id: int = -1
-    #: Database `sections.id`, assigned once the section has been reconciled.
+    #: Database `sections.id`, assigned by `columns.sections.reconcile_sections` once the
+    #: section exists. Membership itself is `Section.units`: a unit carries no section
+    #: label of its own, and does not know its section until the section has an id.
     section_id: int = -1
-    #: The workbook's own section identifier, which groups units into sections before any
-    #: database id exists. Kept apart from `section_id` so the mapping from workbook
-    #: section to database section stays explicit rather than being overwritten in place.
-    section_key: Any = None
     b_pos: float | None = None
     t_pos: float | None = None
     lithology: set[Lithology] = field(default_factory=set)
@@ -38,6 +36,20 @@ class Unit:
     comments: str | None = None
     name: str | None = None
     color: str | None = None
+    #: The kind of surface at this unit's base, in the vocabulary of
+    #: `unit_boundaries.boundary_type`; `None` where the source says nothing. A
+    #: non-conformable base is what opens a new section in `columns.sections.split_at_gaps`,
+    #: and inside a section it is warned about, since a section is meant to be conformable.
+    b_surface_type: BoundaryType | None = None
+    #: The identifier this unit carries in the dataset it came from, written to
+    #: `macrostrat.units.orig_id` and preferred over the positional natural key when
+    #: reconciling — see `units.writer.unit_identity`. `None` for workbook units, which
+    #: have no source identifier and fall back to position.
+    #:
+    #: Unique within whatever scope the source declares — the section when the unit's
+    #: `Section` carries its own `orig_id`, the column otherwise. Nothing to compose by
+    #: hand.
+    orig_id: str | None = None
 
     # Relative age positioning
     b_age: RelativeAge | None = None
@@ -71,74 +83,6 @@ class PositionAxisType(str, Enum):
     HEIGHT = "height"
     DEPTH = "depth"
     ORDINAL = "ordinal"
-
-
-def get_units(db, data_file, **kwargs) -> {str: list[Unit]}:
-    df = pl.read_excel(data_file, sheet_name="units")
-    return get_units_from_df(db, df, **kwargs)
-
-
-def get_units_from_df(
-    db, df, *, position: PositionAxisType = PositionAxisType.HEIGHT, fill_values=False
-) -> {str: list[Unit]}:
-    # Rename some columns
-    df, warnings = rename_aliases(
-        df,
-        {
-            "pos": "position",
-            "position": "b_pos",
-            "bottom_position": "b_pos",
-            "height": "b_pos",
-            "column": "col_id",
-            "column_id": "col_id",
-            "unit_name": "name",
-            # The workbook calls it `unit_description`; `unit_notes` composes it with
-            # `comments` rather than storing either verbatim.
-            "unit_description": "description",
-        },
-    )
-
-    for warning in warnings:
-        log.warning(warning)
-
-    # Ensure that either b_pos or t_pos is present
-    if "b_pos" not in df.columns and "t_pos" not in df.columns:
-        raise ValueError("Either b_pos or t_pos must be present in the data frame.")
-
-    # Create the columns that don't exist
-    for col in ["b_pos", "t_pos"]:
-        if col not in df.columns:
-            newcol = pl.lit(None).alias(col)
-        else:
-            newcol = pl.col(col).cast(pl.Float64, strict=False)
-        df = df.with_columns(newcol)
-
-    # Split into groups by column_id
-    groups = df.group_by(["col_id"])
-
-    res = {}
-
-    for (col_id,), group in groups:
-        print(f"Column ID: {col_id}")
-        # Set section_id to 1 if not present, or if all values are null
-        if "section_id" not in group.columns or group["section_id"].is_null().all():
-            group = group.with_columns(pl.lit(1).alias("section_id"))
-
-        units = prepare_column_units(
-            db, group, position=position, fill_values=fill_values
-        )
-        res[str(col_id)] = units
-    return res
-
-
-def prepare_column_units(db, df, **kwargs) -> list[Unit]:
-    # Group by section_id
-    sections = df.group_by(["section_id"])
-    units = []
-    for (section_id,), group in sections:
-        print(f"Section ID: {section_id}")
-        units.extend(prepare_section_units(db, group, **kwargs))
-    return units
 
 
 def prepare_section_units(
@@ -232,7 +176,6 @@ def prepare_section_units(
         liths |= liths_processor(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
 
         unit = Unit(
-            section_key=row.get("section_id"),
             environment=environs_processor(row.get("environment")),
             comments=row.get("comments"),
             b_pos=row["b_pos"],
