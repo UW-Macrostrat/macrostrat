@@ -22,6 +22,12 @@ class Column:
     lng: float | None = None
     geom: str | None = None
     rgeom: str | None = None
+    #: The identifier this column carries in the dataset it came from, written to
+    #: `macrostrat.cols.orig_id` and preferred over `(project_id, col_group_id, col_name)`
+    #: when reconciling — see `columns.writer.column_identity`. `None` for workbook
+    #: columns. Distinct from `local_id`, which is a workbook-local label used to attach
+    #: units and references during one run and is not stored.
+    orig_id: str | None = None
     #: Workbook-local `ref_id`s this column cites, resolved to `refs.id` by `refs`.
     ref_ids: list[str] = field(default_factory=list)
     units: list[Unit] = field(default_factory=list)

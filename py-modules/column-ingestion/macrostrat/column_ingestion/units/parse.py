@@ -38,6 +38,27 @@ class Unit:
     comments: str | None = None
     name: str | None = None
     color: str | None = None
+    #: The identifier this unit carries in the dataset it came from, written to
+    #: `macrostrat.units.orig_id` and preferred over the positional natural key when
+    #: reconciling — see `units.writer.unit_identity`. `None` for workbook units, which
+    #: have no source identifier and fall back to position.
+    #:
+    #: Unique within whatever scope the source declares — the section when
+    #: `section_orig_id` is set, the column otherwise. Nothing to compose by hand.
+    orig_id: str | None = None
+    #: The source's own identifier for the **section** this unit belongs to, where the
+    #: source has sections as real objects. Written to `macrostrat.sections.orig_id`.
+    #:
+    #: Setting it does two things at once: it makes section ids durable instead of
+    #: ordinal, and it declares the section to be the context this unit's `orig_id`
+    #: resolves in — so units are then pinned to their section rather than free to move
+    #: between them.
+    #:
+    #: `None` where our sections are our own construction rather than the source's — GBDB
+    #: is the case in point: its gap-bound packages are derived by `sql/01`, so GBDB has no
+    #: identifier for them, and its units are identified column-wide. Distinct from
+    #: `section_key`, which groups units within one run and may renumber between runs.
+    section_orig_id: str | None = None
 
     # Relative age positioning
     b_age: RelativeAge | None = None

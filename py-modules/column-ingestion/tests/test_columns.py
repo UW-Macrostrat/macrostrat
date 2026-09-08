@@ -50,6 +50,23 @@ def test_section_labels_sort_numerically_not_textually():
     assert list(groups) == ["2", "9", "10"]
 
 
+def test_a_source_section_identifier_drives_the_grouping():
+    """A source that identifies its sections is saying how to divide the column, not
+    just what to call the pieces — so the identifier has to group as well as identify.
+
+    Grouping on `section_key` while taking identity from `section_orig_id` would let the
+    two disagree: units carrying no `section_key` would collapse into one group, which
+    would then be stamped with a source identifier belonging to only some of them.
+    """
+    a, b = unit(None), unit(None)
+    a.section_orig_id, b.section_orig_id = "S-2", "S-1"
+
+    groups = group_units_by_section([a, b])
+
+    assert list(groups) == ["S-1", "S-2"]
+    assert groups["S-1"] == [b] and groups["S-2"] == [a]
+
+
 def test_section_bounds_take_the_oldest_bottom_and_youngest_top():
     """`fo` is the interval with the greatest age_bottom among the section's units,
     `lo` the one with the least age_top — the rule the legacy importer established."""

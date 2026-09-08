@@ -12,17 +12,23 @@ the constraint (see `Investigations/Column ingestion architecture.md`).
 
 Identity
 --------
-`macrostrat.sections` has only `id`, `col_id`, `fo`, `fo_h`, `lo`, `lo_h` — **no column
-in which to record the workbook's own section label**. So a section cannot be matched by
-an external identifier; it is matched by *ordinal position within its column*. The
-reconciler pairs rows positionally inside a key group, so keying on `(col_id,)` alone and
-presenting both sides in order does exactly that: existing sections ordered by `id`
-against the workbook's sections ordered by label.
+`macrostrat.sections` now carries `orig_id`, so a section **can** be matched by an
+external identifier — when the source has one. Two regimes, and which applies depends on
+the dataset rather than on a setting:
 
-The consequence to be aware of: **reordering or inserting sections in the middle of a
-workbook remaps the ones after it.** Units move with them, so nothing is corrupted, but
-ids shift. Giving `sections` a column to carry the workbook label would fix it properly
-and is the obvious remedy if this becomes a real problem.
+- **`Unit.section_orig_id` set** — the source has sections as real objects. Sections key
+  on `(col_id, orig_id)`, and their ids are durable across re-ingest.
+- **Not set** — our sections are our own construction (GBDB's gap-bound packages are
+  derived, so GBDB has no identifier for them). Identity falls back to *ordinal position
+  within the column*: the reconciler pairs rows positionally inside a key group, so
+  keying on `(col_id,)` and presenting both sides in order matches existing sections
+  ordered by `id` against ours ordered by label.
+
+The consequence of the ordinal regime, unchanged: **inserting a section mid-column remaps
+the ones after it.** Nothing is corrupted — units move with them, and `units.section_id`
+is an owned column rather than part of a unit's key precisely so that this is absorbed —
+but ids shift, and a shifted id means a section id held elsewhere now names different
+rock. Supplying `section_orig_id` is what removes that hazard.
 """
 
 from macrostrat.utils import get_logger
@@ -36,17 +42,65 @@ log = get_logger(__name__)
 #: The age model owns these; the section writer only supplies a starting value.
 SECTION_COLUMNS = ("fo", "lo")
 
+#: Ordinal identity, for sections the source does not identify: pairing happens
+#: positionally inside the single `col_id` group.
+SECTION_ORDINAL_KEY = ("col_id",)
+
+
+def section_identity(row: dict) -> tuple:
+    """Natural key of a section: its source identifier where it has one, else ordinal.
+
+    The leading discriminant keeps the two regimes from colliding, but note that unlike
+    the column and unit keys these two are **not** freely mixable within one column: the
+    ordinal branch is positional, so a column holding both identified and unidentified
+    sections would pair the unidentified ones against whatever ordinal slots are left.
+    That does not arise in practice, because whether a source identifies its sections is
+    a property of the dataset, not of the individual section.
+    """
+    orig_id = row.get("orig_id")
+    if orig_id is not None and str(orig_id).strip() != "":
+        return ("orig_id", row.get("col_id"), str(orig_id).strip())
+    return ("ordinal", row.get("col_id"))
+
+
+def _identifier(value) -> str | None:
+    """An identifier, or `None` for anything that is not one (including `''`)."""
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def section_grouping_key(unit):
+    """What a unit is grouped into a section by.
+
+    The source's own section identifier where there is one, and the caller's
+    `section_key` otherwise. One value drives both the grouping and the resulting
+    section's identity, which is the whole distinction: **a source that identifies its
+    sections is telling us how to divide the column, not just what to call the pieces.**
+    Deriving sections ourselves — GBDB splits on non-conformable contacts — is what
+    happens when the source says nothing.
+
+    Keeping these as one value rather than two is not a detail. Grouping by one attribute
+    while taking identity from another lets the two disagree, and a source-identified
+    section would then be assembled from the wrong units.
+    """
+    orig_id = getattr(unit, "section_orig_id", None)
+    if orig_id is not None and str(orig_id).strip() != "":
+        return str(orig_id).strip()
+    return unit.section_key
+
 
 def group_units_by_section(units: list) -> dict:
-    """Group units by their workbook section label, preserving a stable order.
+    """Group units into sections, preserving a stable order.
 
-    Labels are sorted so the mapping onto existing sections is deterministic. A workbook
-    that omits `section_id` entirely leaves every unit with the same label, which
-    collapses to a single section.
+    Keys are sorted so the mapping onto existing sections is deterministic. A caller that
+    supplies neither a source identifier nor a `section_key` leaves every unit with the
+    same key, which collapses to a single section.
     """
     groups: dict = {}
     for unit in units:
-        groups.setdefault(unit.section_key, []).append(unit)
+        groups.setdefault(section_grouping_key(unit), []).append(unit)
     return {key: groups[key] for key in sorted(groups, key=_sort_key)}
 
 
@@ -88,13 +142,16 @@ def reconcile_sections(db, col_id: int, units: list) -> tuple[dict, Reconciliati
     desired = []
     for section_units in groups.values():
         fo, lo = section_bounds(section_units)
-        desired.append({"col_id": col_id, "fo": fo, "lo": lo})
+        # A group's units agree on their source identifier by construction — it is what
+        # they were grouped by. `None` leaves the section on ordinal identity.
+        orig_id = _identifier(getattr(section_units[0], "section_orig_id", None))
+        desired.append({"col_id": col_id, "fo": fo, "lo": lo, "orig_id": orig_id})
 
     existing = [
         dict(row._mapping)
         for row in db.run_query(
             """
-            SELECT id, col_id, fo, lo FROM macrostrat.sections
+            SELECT id, col_id, fo, lo, orig_id FROM macrostrat.sections
             WHERE col_id = :col_id ORDER BY id
             """,
             dict(col_id=col_id),
@@ -106,8 +163,7 @@ def reconcile_sections(db, col_id: int, units: list) -> tuple[dict, Reconciliati
         get_macrostrat_table(db, "sections"),
         existing=existing,
         desired=desired,
-        # Ordinal identity: pairing happens positionally inside the single col_id group.
-        key=("col_id",),
+        key=section_identity,
         owned_columns=SECTION_COLUMNS,
     )
 
@@ -121,5 +177,5 @@ def assign_section_ids(db, col_id: int, units: list) -> dict:
     mapping, _ = reconcile_sections(db, col_id, units)
     for unit in units:
         unit.col_id = col_id
-        unit.section_id = mapping[unit.section_key]
+        unit.section_id = mapping[section_grouping_key(unit)]
     return mapping

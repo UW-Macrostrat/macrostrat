@@ -12,11 +12,12 @@ Natural keys
 | table | key |
 | --- | --- |
 | `col_groups` | `(project_id, col_group)` |
-| `cols` | `(project_id, col_group_id, col_name)` |
+| `cols` | `(project_id, orig_id)` where present, else `(project_id, col_group_id, col_name)` |
 
 Measured across the corpus, `(project_id, col_group_id, col_name)` leaves 39 rows in
 colliding groups, against 146 for `(project_id, col_name)`; adding `col_type` gains
-nothing further.
+nothing further. It remains the fallback for workbook columns, which carry no source
+identifier — see `column_identity` for why an ingested dataset cannot rely on it.
 """
 
 from datetime import datetime, timezone
@@ -34,9 +35,39 @@ COL_GROUP_KEY = ("project_id", "col_group")
 COL_GROUP_COLUMNS = ("col_group_long",)
 
 COL_KEY = ("project_id", "col_group_id", "col_name")
+
+
+def column_identity(row: dict) -> tuple:
+    """Natural key of a column, preferring `orig_id` over the name.
+
+    `macrostrat.cols.orig_id` is the identifier the column carries in the dataset it came
+    from, and it takes precedence because `col_name` is not dependable as identity for an
+    ingested dataset: 11,548 of GBDB's 29,328 sections share a name with another section
+    (`Guanyinqiao` names 53 of them). Duplicates within a key group are matched
+    positionally, so without `orig_id` a column's identity is "the Nth Guanyinqiao by
+    insertion order" — stable only while the desired set is byte-identical, and so broken
+    by a new export or merely by a different `--limit`.
+
+    The leading discriminant keeps the two keys in one namespace without colliding, so a
+    project may hold both ingested and hand-authored columns.
+    """
+    orig_id = row.get("orig_id")
+    if orig_id is not None and str(orig_id).strip() != "":
+        return ("orig_id", row.get("project_id"), str(orig_id).strip())
+    return ("name",) + tuple(row.get(c) for c in COL_KEY)
+
+
+#: Columns on `cols` this writer owns and may overwrite on a matched row.
+#:
 #: `created` is deliberately absent: it records when the row was first written and is set
-#: on INSERT only.
+#: on INSERT only. `orig_id` is absent for the same reason — it is identity, so a matched
+#: row keeps whatever it has rather than having it rewritten.
+#:
+#: `col_name` *is* here, so that a column matched by `orig_id` picks up an upstream
+#: rename. For a name-matched row the update is a provable no-op, since the name is its
+#: key.
 COL_COLUMNS = (
+    "col_name",
     "status_code",
     "col_type",
     "col_position",
@@ -110,6 +141,7 @@ def _desired_column_row(db, col: Column, ordinal: int) -> dict:
         "project_id": col.project_id,
         "col_group_id": col.group_id,
         "col_name": col.name,
+        "orig_id": col.orig_id,
         "status_code": col.status_code,
         "col_type": col.col_type,
         "col_position": "",
@@ -143,12 +175,18 @@ def reconcile_columns(
             + "\n  ".join(problems)
         )
 
+    # Scoped to one column group, not to the project, because anything in `existing`
+    # that no longer corresponds to a desired row is deleted — a project-wide fetch would
+    # prune every other group. The consequence is that a column which changed group is not
+    # found here and is inserted, which the `(project_id, orig_id)` unique index then
+    # rejects. That is a loud failure rather than a silent duplicate, and this ingest path
+    # gives a project a single "Default" group, so it is not reachable today.
     existing = [
         dict(row._mapping)
         for row in db.run_query(
             """
-            SELECT id, project_id, col_group_id, col_name, status_code, col_type,
-                   col_position, col, lat, lng, col_area, wkt
+            SELECT id, project_id, col_group_id, col_name, orig_id, status_code,
+                   col_type, col_position, col, lat, lng, col_area, wkt
             FROM macrostrat.cols
             WHERE project_id = :project_id AND col_group_id = :col_group_id
             ORDER BY id
@@ -169,7 +207,7 @@ def reconcile_columns(
         get_macrostrat_table(db, "cols"),
         existing=existing,
         desired=desired,
-        key=COL_KEY,
+        key=column_identity,
         owned_columns=COL_COLUMNS,
         scales=COL_SCALES,
     )

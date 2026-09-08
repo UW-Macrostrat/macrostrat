@@ -13,6 +13,7 @@ from .sections import (
     group_units_by_section,
     reconcile_sections,
     section_bounds,
+    section_grouping_key,
 )
 from .writer import reconcile_column_group, reconcile_columns
 
@@ -28,4 +29,5 @@ __all__ = [
     "reconcile_sections",
     "resolve_geometry",
     "section_bounds",
+    "section_grouping_key",
 ]
