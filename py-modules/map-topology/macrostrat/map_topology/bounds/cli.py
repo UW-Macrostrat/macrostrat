@@ -95,6 +95,7 @@ def build_cmd(
         raise typer.Exit(1)
     db = get_database()
     targets = get_map_list(db) if all_maps else _resolve(maps)
+
     failures = 0
     for m in targets:
         res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run)
@@ -166,8 +167,7 @@ def move(
     for index, o in enumerate(ops, start=1):
         if o.position != index:
             db.run_query(
-                "UPDATE map_bounds.boundary_op SET position = :position"
-                " WHERE id = :id",
+                "UPDATE map_bounds.boundary_op SET position = :position WHERE id = :id",
                 dict(id=o.id, position=index),
             )
     db.session.commit()

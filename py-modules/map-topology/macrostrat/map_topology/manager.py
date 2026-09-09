@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass
+from fnmatch import fnmatch
 from pathlib import Path
 
 from mapboard.topology_manager import TopologyManager
@@ -131,9 +132,19 @@ def get_map_list(db, filter_by: list[str] = None):
 
 
 def filter_maps(all_maps, map_ids: list[str]):
+    """Select maps by source id or slug.
+
+    A slug containing `*` or `?` is matched as a glob, so a set of maps can be
+    named rather than listed -- `ngs-*` for a compilation's 114 members. Quote it
+    in a shell, which would otherwise try to expand it against filenames.
+    """
     ids, slugs = split_ids_and_slugs(map_ids)
+    patterns = [s for s in slugs if "*" in s or "?" in s]
+    exact = set(slugs) - set(patterns)
     for m in all_maps:
-        if m.map_id in ids or m.slug in slugs:
+        if m.map_id in ids or m.slug in exact:
+            yield m
+        elif m.slug and any(fnmatch(m.slug, p) for p in patterns):
             yield m
 
 
