@@ -116,17 +116,37 @@ def reconcile_column_group(
     return ids[0]
 
 
+#: `cols.col` is `numeric(6,2)`, so it cannot hold an absolute value of 10^4 or more.
+COL_NUMBER_LIMIT = 10_000
+
+#: What `cols.col` gets when no number fits. Already the most common value in the table
+#: (`col` is not unique — 5,663 rows share 1,844 distinct values, and `0.00` is among
+#: them), so it reads as "no column number" rather than as a claim.
+COL_NUMBER_NONE = 0.0
+
+
 def _column_number(col: Column, fallback: int) -> float:
     """`cols.col` is a NOT NULL numeric column number.
 
     Use the workbook's own identifier when it is numeric — that is what an operator means
-    by a column number — and otherwise fall back to an ordinal so the value is at least
-    stable within a run.
+    by a column number — and otherwise an ordinal, so the value is at least stable within
+    a run.
+
+    **Either can be too large to store.** `col` is `numeric(6,2)`, and a dataset big enough
+    or with high enough identifiers overflows it: 19,373 of GBDB's 28,978 columns have a
+    section id of 10,000 or more, and its ordinals reach 28,978, so neither is
+    representable. That is not an error in the data — `col` is a display number, not
+    identity (`orig_id` is), and it is not unique in the table today — so an unrepresentable
+    number becomes `0` rather than failing the insert or silently truncating.
     """
-    try:
-        return float(col.local_id)
-    except (TypeError, ValueError):
-        return float(fallback)
+    for candidate in (col.local_id, fallback):
+        try:
+            value = float(candidate)
+        except (TypeError, ValueError):
+            continue
+        if abs(value) < COL_NUMBER_LIMIT:
+            return value
+    return COL_NUMBER_NONE
 
 
 def _desired_column_row(db, col: Column, ordinal: int) -> dict:

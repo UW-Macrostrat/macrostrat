@@ -193,14 +193,14 @@ class AgeModel:
         """Fit an unconstrained surface to the model"""
         pass
 
-    @property
-    def _linear_interpolator(self):
-        from scipy.interpolate import make_interp_spline
+    def _knots(self):
+        """`(x, y)` for the interpolator: constrained positions and their ages.
 
-        # Coincident axis positions are possible — a zero-thickness unit puts two
-        # surfaces at the same coordinate — and a spline cannot represent a step.
-        # Collapse them, keeping the last (oldest) age so the model stays
-        # monotonic below the collapsed point. Surfaces are already sorted.
+        Coincident axis positions are possible — a zero-thickness unit puts two
+        surfaces at the same coordinate — and a spline cannot represent a step.
+        Collapse them, keeping the last (oldest) age so the model stays
+        monotonic below the collapsed point. Surfaces are already sorted.
+        """
         x, y = [], []
         for surface in self.constrained_surfaces:
             position = self.axis_position(surface)
@@ -209,10 +209,38 @@ class AgeModel:
                 continue
             x.append(position)
             y.append(surface.model_age)
+        return x, y
+
+    @property
+    def _linear_interpolator(self):
+        from scipy.interpolate import make_interp_spline
+
+        x, y = self._knots()
         # A one-degree b-spline is a piecewise linear interpolator
-        # Natural boundary conditions arbitrarily extend the domain
-        # in either direction
         return make_interp_spline(x, y, k=1, bc_type=None)
+
+    def _model_age(self, position: float) -> float:
+        """The model's age at `position`, **without extrapolating past the constraints**.
+
+        Natural boundary conditions extend the end segments indefinitely, and that is not a
+        harmless default: a pair of constraints close together in position and far apart in
+        age defines a near-vertical segment, and extending it a few hundred metres leaves
+        geological time altogether. GBDB has 9,957 such pairs — a formation bracketed
+        2500-0 Ma across a 0.1 m unit is the common shape — and extrapolating one of them
+        to a section base 14.8 km below produced an age of 371,002,500 Ma. In the other
+        direction it goes negative, which is what `No interval found for age -625000.0`
+        was.
+
+        Clamping the position to the constrained span replaces that with constant
+        extension: a surface outside the span takes the age of the nearest constraint. That
+        asserts less than an extrapolation does — "no older than the lowest thing we dated"
+        rather than an invented number — and it keeps the model monotonic, which is the
+        invariant that matters. It cannot be more wrong than the extrapolation it replaces.
+        """
+        x, _ = self._knots()
+        if x:
+            position = min(max(position, x[0]), x[-1])
+        return self._linear_interpolator(position)
 
     def _containing_interval(self, age: float):
         interval = containing_interval(self._match_intervals, age)
@@ -224,9 +252,9 @@ class AgeModel:
 
         for surface in self.surfaces:
             position = self.axis_position(surface)
-            model_age = self._linear_interpolator(position)
+            model_age = self._model_age(position)
             if surface.relative_age is None:
-                interpolated_age = self._linear_interpolator(position)
+                interpolated_age = self._model_age(position)
                 interval = self._containing_interval(interpolated_age)
                 proportion = interval.relative_position(interpolated_age)
 
