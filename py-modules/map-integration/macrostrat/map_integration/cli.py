@@ -32,7 +32,7 @@ from macrostrat.map_utils import StorageConfig, delete_map
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
-from .commands.fix_geometries import fix_geometries
+from .commands.fix_geometries import fix_geometries_command
 from .commands.ingest import ingest_map
 from .commands.prepare_fields import prepare_fields
 from .commands.set_srid import apply_srid
@@ -94,7 +94,7 @@ def create_tables(
         console.print(f"[green]created[/] {name}")
 
 
-cli.add_command(fix_geometries, name="fix-geometries")
+cli.add_command(fix_geometries_command, name="fix-geometries")
 cli.add_command(apply_srid, name="apply-srid")
 
 _pipeline = IngestionCLI(
@@ -189,7 +189,7 @@ def delete_sources(
                 dict(slug=s),
             ).scalar()
             if source_id is not None:
-                _delete_map_data(source_id)
+                _delete_map_data(db, source_id)
 
         delete_map(db, s, storage=storage)
 

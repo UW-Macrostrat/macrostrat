@@ -23,7 +23,7 @@ from ..utils import IngestionCLI
 from ..utils.map_info import MapInfo, has_map_schema_data
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
-from .insert import copy_to_maps
+from .insert import copy_to_maps, copy_to_maps_command
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
@@ -50,7 +50,9 @@ def pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
     *Legend lookup is ignored because it hangs currently*
     """
     try:
-        copy_to_maps(source, delete_existing=delete_existing, scale=scale)
+        copy_to_maps(
+            get_database(), source, delete_existing=delete_existing, scale=scale
+        )
     except ValueError as e:
         print(e)
         if not delete_existing:
@@ -71,7 +73,7 @@ cli.add_command(
 )
 
 
-cli.add_command(copy_to_maps, name="insert", rich_help_panel="Map")
+cli.add_command(copy_to_maps_command, name="insert", rich_help_panel="Map")
 
 
 @cli.command(name="legend", rich_help_panel="Map")
