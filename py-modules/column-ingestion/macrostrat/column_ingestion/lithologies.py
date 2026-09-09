@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -50,16 +51,31 @@ class LithsProcessor:
     liths = []
     atts = []
 
-    # Synonyms are held in code for now and are planned to move into the
-    # database.
-    lith_synonyms = {
+    # The synonyms every dataset gets. Held in code for now and planned to move into the
+    # database; a dataset with its own vocabulary passes `lith_synonyms` /
+    # `lith_attribute_synonyms` to the constructor instead of editing these.
+    default_lith_synonyms = {
         "volcanic": ["volcanics", "lava"],
         "metavolcanic": ["metavolcanics"],
         "igneous": ["granitic"],
         "evaporite": ["gypsum-anhydrite"],
     }
 
-    lith_attribute_synonyms = {
+    #: Source terms that mean an **attribute plus a lithology**, rewritten before parsing.
+    #:
+    #: `lith_synonyms` cannot express these. It substitutes inside `find_lith`, which then
+    #: searches the result for a lithology only — so `porphyry -> porphyritic plutonic`
+    #: yields nothing, because `_find_target` accumulates words from the start and neither
+    #: `porphyritic` nor `porphyritic plutonic` is a lith name. Rewriting the text *before*
+    #: the attribute/lithology loop lets the normal machinery read the attribute and then
+    #: the rock, which is the whole point: `porphyry` is a porphyritic plutonic rock, not a
+    #: rock Macrostrat is missing a name for.
+    #:
+    #: Applied on word boundaries and anywhere in the term, so a qualifier survives:
+    #: `andesitic porphyry` becomes `andesitic porphyritic plutonic`.
+    default_lith_rewrites: dict[str, str] = {}
+
+    default_lith_attribute_synonyms = {
         "cross-bedded": ["cross-stratified", "cross bedded", "cross laminated"],
         "regularly bedded": ["bedded"],
         # `fine` and `coarse` are `grains`-type attributes; the hyphenated
@@ -68,9 +84,49 @@ class LithsProcessor:
         "coarse": ["coarse-grained", "coarse grained"],
     }
 
-    def __init__(self, db):
+    def __init__(
+        self,
+        db,
+        *,
+        lith_synonyms: dict[str, list[str]] | None = None,
+        lith_attribute_synonyms: dict[str, list[str]] | None = None,
+        lith_rewrites: dict[str, str] | None = None,
+    ):
+        """A processor for one dataset's lithology text.
+
+        `lith_synonyms` and `lith_attribute_synonyms` are a dataset's own vocabulary,
+        merged over the defaults as `{canonical: [source term, ...]}` — the same shape as
+        the class defaults. A dataset that writes `glutenite` where Macrostrat says
+        `conglomerate` supplies that here and the term then resolves like any other,
+        attributes and all, rather than being special-cased at the call site.
+
+        Merged per key, so a dataset adds terms to a canonical name the defaults already
+        carry instead of replacing its list.
+        """
         self.liths = get_all_liths(db)
         self.atts = get_all_lith_attributes(db)
+        self.lith_synonyms = _merge_synonyms(
+            self.default_lith_synonyms, lith_synonyms
+        )
+        self.lith_attribute_synonyms = _merge_synonyms(
+            self.default_lith_attribute_synonyms, lith_attribute_synonyms
+        )
+        # Flattened and ordered once. `_replace_synonyms` runs on every word-step of
+        # every match, so building this per call made the whole processor measurably
+        # slower as soon as a loaded crosswalk pushed the list past a handful of entries.
+        self._lith_synonym_order = _synonym_order(self.lith_synonyms)
+        self._lith_attribute_synonym_order = _synonym_order(
+            self.lith_attribute_synonyms
+        )
+        self.lith_rewrites = {**self.default_lith_rewrites, **(lith_rewrites or {})}
+        # Longest source first, so a longer phrase is not pre-empted by a shorter one
+        # inside it, and compiled once — this runs on every entity of every unit.
+        self._rewrites = [
+            (re.compile(rf"\b{re.escape(source)}\b"), target)
+            for source, target in sorted(
+                self.lith_rewrites.items(), key=lambda kv: len(kv[0]), reverse=True
+            )
+        ]
 
     def __call__(self, lith_text: str | None, type=None) -> set[Lithology]:
         return self.process_text(lith_text, type)
@@ -108,9 +164,19 @@ class LithsProcessor:
 
         for entity in candidate_entities:
             # Start searching for attributes first, then lithologies
-            remaining_text = entity
+            remaining_text = self.apply_rewrites(entity)
             log.debug(f"Entity: {remaining_text}")
             while len(remaining_text) > 0:
+                # Every pass must consume at least one word, or the loop does not end.
+                #
+                # It is possible for a pass to consume nothing *and* leave the text
+                # changed, because a synonym can be longer than the term it replaces.
+                # `thin bedded-massive` is the case that found this: `bedded-massive`
+                # expands to `regularly bedded-massive` through the `bedded` synonym,
+                # matches neither an attribute nor a lithology, and the word-advance below
+                # then strips `regularly` back off — returning the text to exactly where it
+                # started, forever. Counting words is what makes the exit unconditional.
+                words_before = len(remaining_text.split())
                 att = None
                 lith, remaining_text1 = self.find_lith(remaining_text)
                 if lith is not None:
@@ -143,9 +209,26 @@ class LithsProcessor:
                         atts = set()  # reset attributes after applying to a lithology
                     liths.add(lith)
 
+                if len(remaining_text.split()) >= words_before:
+                    # No progress. Drop a word so the loop is guaranteed to terminate;
+                    # see the note at the top of the loop.
+                    remaining_text = " ".join(remaining_text.split()[1:])
+
             # Once we've consumed all text in this entity, we can move to the next entity
 
         return liths
+
+    def apply_rewrites(self, text: str) -> str:
+        """Rewrite source terms that mean an attribute plus a lithology.
+
+        See `default_lith_rewrites`. Each source is replaced at most once so a rewrite
+        whose target contains its own source cannot loop.
+        """
+        for pattern, target in self._rewrites:
+            text, count = pattern.subn(target, text)
+            if count:
+                log.debug("Rewrote to: %s", text)
+        return text
 
     def match_lith(self, name) -> Lithology | None:
         return _match_target(name, self.liths)
@@ -160,7 +243,7 @@ class LithsProcessor:
         This allows us to match multi-word attributes like "cross-bedded" or "brownish gray
         """
         if use_synonyms:
-            text = _replace_synonyms(text, self.lith_attribute_synonyms)
+            text = _replace_synonyms(text, self._lith_attribute_synonym_order)
         res, remaining_text = _find_target(text, self.atts)
         if res is not None:
             res = LithAtt(
@@ -175,7 +258,7 @@ class LithsProcessor:
         This allows us to match multi-word lithologies like "mixed carbonate-siliciclastic".
         """
         if use_synonyms:
-            text = _replace_synonyms(text, self.lith_synonyms)
+            text = _replace_synonyms(text, self._lith_synonym_order)
         res, remaining_text = _find_target(text, self.liths)
         if res is not None:
             res = Lithology(
@@ -184,12 +267,40 @@ class LithsProcessor:
         return res, remaining_text
 
 
-def _replace_synonyms(text, synonyms_dict):
-    for key, synonyms in synonyms_dict.items():
-        for synonym in synonyms:
-            if text.startswith(synonym):
-                # Replace the synonym with the key, but keep the rest of the text after the synonym
-                return key + text[len(synonym) :]
+def _merge_synonyms(
+    defaults: dict[str, list[str]], extra: dict[str, list[str]] | None
+) -> dict[str, list[str]]:
+    """Defaults plus a dataset's own, merged per canonical name rather than replaced."""
+    merged = {key: list(values) for key, values in defaults.items()}
+    for key, values in (extra or {}).items():
+        merged.setdefault(key, [])
+        merged[key] += [v for v in values if v not in merged[key]]
+    return merged
+
+
+def _synonym_order(synonyms_dict: dict[str, list[str]]) -> list[tuple[str, str]]:
+    """`[(synonym, canonical), ...]`, longest synonym first.
+
+    Longest first so a longer term is never shadowed by a shorter one that happens to be
+    its prefix. Without the ordering the result would depend on dict order, which is
+    tolerable for a handful of hand-written entries and not for a loaded crosswalk.
+    """
+    return sorted(
+        (
+            (synonym, key)
+            for key, synonyms in synonyms_dict.items()
+            for synonym in synonyms
+        ),
+        key=lambda pair: len(pair[0]),
+        reverse=True,
+    )
+
+
+def _replace_synonyms(text, synonym_order: list[tuple[str, str]]):
+    for synonym, key in synonym_order:
+        if text.startswith(synonym):
+            # Replace the synonym with the key, keeping the rest of the text after it
+            return key + text[len(synonym) :]
     return text
 
 
