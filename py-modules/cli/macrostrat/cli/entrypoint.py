@@ -408,36 +408,50 @@ def _run(
     ctx: typer.Context,
     command: str = Argument(help="Command to run", default=None),
 ):
-    """Run a command or a data pipeline in the Macrostrat command-line context.
+    """Run a data pipeline, or a script from `bin/`, with the environment resolved.
 
-    A `command` that names an existing path is run as a **pipeline**: a directory
-    with a Makefile goes through `make` (extra arguments become the target), a file
-    through `uv run python`. Anything else is looked up in `srcroot/bin`.
+    A **pipeline** is a directory holding a Typer app named `cli.py` or a Makefile,
+    in a workbook such as `data-integration`. Name one by its directory, from
+    anywhere inside the workbook, or give a path from anywhere at all:
 
-    A pipeline is *executed, not imported*, so it may live in its own virtualenv
-    with dependencies Macrostrat will never carry, or not be Python at all. It
-    receives the resolved environment:
+        macrostrat run                       list the pipelines here
+        macrostrat run ngs sources --apply   Maps/NGS/cli.py sources --apply
+        macrostrat --env test run Stratigraphy/GBDB ingest
 
-      MACROSTRAT_ENV           for a child that resolves config itself
-      MACROSTRAT_DATABASE_URL  for a child that has no Macrostrat in it
-
-        macrostrat run Maps/NGS sources
+    It is *executed, not imported*, in its own virtualenv, and receives the
+    resolved environment as MACROSTRAT_ENV and MACROSTRAT_DATABASE_URL. Anything
+    that is neither a pipeline nor a path is looked up in `srcroot/bin`.
     """
+    from . import pipelines
 
     bindir = Path(settings.srcroot) / "bin"
 
-    if command is not None and Path(command).exists():
-        return _run_pipeline(Path(command), ctx.args)
-
     if command is None:
-        # List available commands
-        print("Available commands:")
-        for f in bindir.iterdir():
+        root = pipelines.workbook_root()
+        if root is not None:
+            pipelines.list_pipelines(root)
+        print("[bold]Scripts in bin/[/bold]")
+        for f in sorted(bindir.iterdir()):
             if f.is_file() and f.name != "macrostrat":
-                print(f.name)
+                print(f"  {f.name}")
         return
 
+    target = pipelines.resolve(command)
+    if target is not None:
+        raise typer.Exit(pipelines.run_pipeline(target, ctx.args))
+
     cmd = bindir / command
+    if not cmd.is_file():
+        root = pipelines.workbook_root()
+        where = (
+            f"the pipelines in {root.name}"
+            if root
+            else "any workbook (no .dvc above here)"
+        )
+        raise MacrostratError(
+            f"[item]{command}[/item] is not a pipeline, a path, or a script in bin/",
+            details=f"Looked in {where} and {bindir}. `macrostrat run` alone lists both.",
+        )
     run(str(cmd), *ctx.args)
 
 
@@ -687,43 +701,3 @@ for entry_point in discovered_plugins:
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
 
 # main = setup_exception_handling(main)
-
-
-def _run_pipeline(path: Path, args: list[str]):
-    """Execute a pipeline with the active environment resolved into its own.
-
-    TODO: this is overfitted to a transient state of the `data-integration` module
-    and should likely be removed.
-    """
-    from subprocess import run as run_process
-    from macrostrat.core.database import database_url_for
-
-    child = dict(environ)
-    # The launcher exports its own VIRTUAL_ENV; leaving it set makes `uv` ignore it
-    # with a warning and would shadow a pipeline's interpreter in tools that honour
-    # it. Running a pipeline in *its* environment is the point.
-    for var in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
-        child.pop(var, None)
-    if app.settings.env is not None:
-        child["MACROSTRAT_ENV"] = app.settings.env
-    try:
-        child["MACROSTRAT_DATABASE_URL"] = database_url_for("macrostrat")
-    except KeyError as err:
-        # Not fatal. A pipeline may read from somewhere else entirely, and refusing
-        # here would break the runner for the case it exists to support.
-        print(f"[yellow]{err}[/yellow]")
-
-    if path.is_dir():
-        if not (path / "Makefile").exists():
-            raise MacrostratError(
-                f"[item]{path}[/item] has no Makefile",
-                details="Point at a script instead, or add one.",
-            )
-        cmd = ["make", "-C", str(path), *args]
-        cwd = None
-    else:
-        cmd = ["uv", "run", "python", path.name, *args]
-        cwd = path.parent
-
-    print(f"[dim]{' '.join(cmd)}[/dim] in {env_text()}")
-    raise typer.Exit(run_process(cmd, env=child, cwd=cwd).returncode)
