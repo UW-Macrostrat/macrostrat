@@ -22,6 +22,12 @@ JOIN map_bounds.map_area a
   ON a.source_id = s.source_id
 WHERE s.scale IS NOT NULL
   AND ml.source_id IS NOT NULL
+  /* The scale layers are *surface* layers -- `medium` means "the surface at
+     medium scale", not "every medium-scale map". A map depicting a different
+     slice of the record is a real map with a real boundary and a place of its
+     own, but not in a surface stack. NULL is unspecified and read as surface,
+     which is what every map served before `geolayer` existed is. */
+  AND coalesce(s.geolayer, 'surface') = 'surface'
   /* A map that belongs to a real compilation is placed *through* it, not beside
      it: its standing in the layer descends from the compilation's, which is
      exactly what the flattened path expresses. Membership of a served layer does

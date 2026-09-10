@@ -20,6 +20,34 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
+/** Which slice of the geologic record a map depicts.
+
+  An open lookup rather than an enum on purpose: the four values below are NGS's
+  seed vocabulary, and a geolayer is really any set of elements that mosaic in
+  time -- eventually a temporal selection predicate rather than four buckets. New
+  values must not need a migration.
+
+  NULL means unspecified, and is read as `surface`: every map Macrostrat served
+  before this column existed is a surface map, so the default preserves their
+  behaviour without asserting anything about them.
+*/
+CREATE TABLE maps.geolayer (
+  id          text PRIMARY KEY,
+  description text NOT NULL
+);
+
+INSERT INTO maps.geolayer (id, description) VALUES
+  ('surface', 'What is present at Earth''s surface.'),
+  ('quaternary',
+   'Quaternary geology, in many cases inclusive of units spanning the beginning '
+   'of the Quaternary.'),
+  ('pre-quaternary',
+   'Geology older than the Quaternary, including geology beneath Quaternary '
+   'deposits.'),
+  ('precambrian',
+   'Precambrian geology, typically where it is buried beneath younger cover.')
+ON CONFLICT (id) DO NOTHING;
+
 SET default_tablespace = '';
 
 CREATE TABLE maps.sources (
@@ -53,10 +81,33 @@ CREATE TABLE maps.sources (
   ingested_by text,
   keywords text[],
   language text,
-  description character varying
+  description character varying,
+  superseded_by integer REFERENCES maps.sources(source_id),
+  geolayer text REFERENCES maps.geolayer(id),
+  CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
 );
 
+CREATE INDEX sources_superseded_by_idx ON maps.sources USING btree (superseded_by);
+
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
+
+COMMENT ON COLUMN maps.sources.geolayer IS
+  'Which slice of the geologic record this map depicts. NULL means unspecified '
+  'and is read as `surface`. Load-bearing for assembly: the scale layers '
+  '(`tiny`/`small`/`medium`/`large`) are *surface* layers, so a map depicting '
+  'something else -- Precambrian basement, Quaternary cover -- is a real map '
+  'with a real boundary that has no place in a surface stack, and '
+  'set-map-priority.sql declines to place it in one.';
+
+COMMENT ON COLUMN maps.sources.superseded_by IS
+  'The map that replaces this one, where a better product covers the same '
+  'ground -- SGMC by NGS, our Alaska compilation by NGS''s. `WHERE '
+  'superseded_by IS NULL` is the set of maps that should still be used. '
+  'Functional by nature (a map has at most one successor), which is why it is a '
+  'column rather than a relation table; where no single map replaces an old one '
+  'the successor is a compilation, which is a map. Distinct from status_code: a '
+  'superseded map is not obsolete, it remains a real unit of work, citable and '
+  'browsable, and only stops contributing to assembly.';
 
 COMMENT ON COLUMN maps.sources.ref_compilation IS
   'Published compilation or programme this map was produced under -- NGS, SGMC, '

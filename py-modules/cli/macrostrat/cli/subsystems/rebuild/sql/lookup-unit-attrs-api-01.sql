@@ -88,8 +88,19 @@ INSERT
 INTO macrostrat.lookup_unit_attrs_api_new (unit_id, lith)
 -- We keep this in text format for now for parallelism with v1, but we should consider
 -- changing this to JSONB in the future
+--
+-- `FILTER` and `coalesce` so a unit with no lithologies gets `[]` rather than `[null]`.
+-- This block is the only one here that INSERTs — it creates the rows the others update —
+-- so it needs the LEFT JOIN, and an unmatched unit therefore reaches `json_agg` as a
+-- single NULL, which it renders as a one-element array containing null. That is never
+-- NULL, so the `SET ... = '[]' WHERE ... IS NULL` cleanup the environ, econ and measure
+-- blocks each carry cannot catch it. A consumer iterating `lith` and reading `.name` gets
+-- a null-dereference on those units, and there are 21,203 of them — most from a source
+-- that simply does not state a lithology for every unit (21,068 GBDB, 133 road_river, 2
+-- others). Predates any one dataset; GBDB only made it common. (`atts` above already
+-- guards the same way, with `array_remove(array_agg(...), NULL)`.)
 SELECT u.id unit_id,
-       json_agg(lith)::text::bytea lith
+       coalesce(json_agg(lith) FILTER (WHERE lith IS NOT NULL), '[]'::json)::text::bytea lith
 FROM units u
 LEFT JOIN a ON u.id = a.unit_id
 GROUP BY u.id;
