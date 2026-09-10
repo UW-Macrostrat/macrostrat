@@ -1,13 +1,19 @@
-import sys
 import time
 
-from psycopg2.extensions import AsIs
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import LegacyCommandBase, get_database
+from macrostrat.core.exc import MacrostratError
+
+from ..database import get_database
 from ..utils import MapInfo
 from .utils import get_match_count
+
+#: Legend fields to match lithologies against, in the order they are tried.
+MATCH_FIELDS = ["lith", "strat_name", "name", "descrip", "comments"]
+
+#: Scale tables, smallest first -- a source lives in exactly one.
+SCALES = ["tiny", "small", "medium", "large"]
 
 
 def match_liths(map: MapInfo):
@@ -17,7 +23,7 @@ def match_liths(map: MapInfo):
     Uses all available fields of matching, including lith, name, strat_name, descrip, and comments.
     """
     db = get_database()
-    Liths().run(map.id)
+    run_lith_match(db, map.id)
 
     counts = get_lith_count(db, map.id)
     mlc = counts["map_liths"]
@@ -37,135 +43,110 @@ def get_lith_count(db, source_id: int):
     return {"map_liths": map_liths_count, "legend_liths": lith_count}
 
 
-class Liths(LegacyCommandBase):
-    """
-    macrostrat match liths <source_id>:
-        Match a given map source to Macrostrat lithologies.
-        Populates the table maps.legend_liths.
-        Uses all available fields of matching, including lith, name, strat_name, descrip, and comments.
+def run_lith_match(db, source_id: int):
+    """Rebuild `maps.legend_liths` for one source from its legend text."""
+    start = time.time()
 
-    Usage:
-      macrostrat match liths <source_id>
-      macrostrat match liths -h | --help
-    Options:
-      -h --help                         Show this screen.
-      --version                         Show version.
-    Examples:
-      macrostrat match liths 123
-    Help:
-      For help using this tool, please open an issue on the Github repository:
-      https://github.com/UW-Macrostrat/macrostrat-cli
-    """
+    exists = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE source_id = :source_id",
+        {"source_id": source_id},
+    ).first()
+    if exists is None:
+        raise MacrostratError(f"Source {source_id} was not found in maps.sources")
 
-    source_id = None
-    table = None
-    field = None
+    scale = find_scale_table(db, source_id)
 
-    def do_work(self, field):
-        try:
-            self.pg["cursor"].execute(
-                """
-                INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
-                SELECT legend_id, liths.id, %(basis)s
-                FROM maps.legend, macrostrat.liths
-                WHERE source_id = %(source_id)s
-                 AND (
-                    legend.%(field)s ~* concat('\y', liths.lith, '\y')
-                    OR
-                    legend.%(field)s ~* concat('\y', liths.lith, 's', '\y')
-                )
-            """,
-                {"source_id": self.source_id, "basis": field, "field": AsIs(field)},
-            )
-            self.pg["connection"].commit()
-        except:
-            pass
+    clear_matches(db, source_id)
+    print("        + Done cleaning up")
 
-    def run(self, source_id):
-        if source_id == "--help" or source_id == "-h":
-            print(Liths.__doc__)
-            sys.exit()
+    for field in matchable_fields(db, source_id, scale):
+        match_field(db, source_id, field)
 
-        start = time.time()
-        Liths.source_id = source_id
-        # Validate params!
-        # Valid source_id
-        self.pg["cursor"].execute(
-            """
-            SELECT source_id
-            FROM maps.sources
-            WHERE source_id = %(source_id)s
-        """,
-            {"source_id": source_id},
+    print(f"        + Matched in {time.time() - start:.1f}s")
+
+
+def find_scale_table(db, source_id: int) -> str:
+    """The scale table this source's polygons are in."""
+    for scale in SCALES:
+        found = db.run_query(
+            "SELECT map_id FROM {scale_table} WHERE source_id = :source_id LIMIT 1",
+            {"scale_table": Identifier("maps", scale), "source_id": source_id},
+        ).first()
+        if found is not None:
+            return scale
+
+    raise MacrostratError(
+        f"Source {source_id} is not present in any scale table",
+        details=(
+            "Copy it into the maps schema with `macrostrat maps process insert`"
+            " and try again."
+        ),
+    )
+
+
+def clear_matches(db, source_id: int):
+    """Drop this source's automatic matches, keeping anything matched by hand."""
+    db.run_sql(
+        """
+        DELETE FROM maps.legend_liths
+        WHERE legend_id IN (
+          SELECT legend_id FROM maps.legend WHERE source_id = :source_id
         )
-        result = self.pg["cursor"].fetchone()
-        if result is None:
-            print("Invalid source_id. %s was not found in maps.sources" % (source_id,))
-            sys.exit(1)
-
-        # Find scale table
-        scale = ""
-        for scale_table in ["tiny", "small", "medium", "large"]:
-            self.pg["cursor"].execute(
-                """
-            SELECT map_id
-            FROM maps.%(table)s
-            WHERE source_id = %(source_id)s
-            LIMIT 1
+        AND basis_col NOT LIKE 'manual%'
         """,
-                {"table": AsIs(scale_table), "source_id": source_id},
-            )
-            if self.pg["cursor"].fetchone() is not None:
-                scale = scale_table
-                break
+        {"source_id": source_id},
+    )
 
-        if len(scale) == 0:
-            print(
-                "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
-            )
-            sys.exit(1)
 
-        # Clean up
-        self.pg["cursor"].execute(
-            """
-          DELETE FROM maps.legend_liths
-          WHERE legend_id IN (
-            SELECT legend_id
-            FROM maps.legend
-            WHERE source_id = %(source_id)s
-          )
-          AND basis_col NOT LIKE 'manual%%'
-        """,
-            {"source_id": source_id},
-        )
-        self.pg["connection"].commit()
-
-        print("        + Done cleaning up")
-
-        # Fields in burwell to match on
-        fields = ["lith", "strat_name", "name", "descrip", "comments"]
-
-        # Filter null fields
-        self.pg["cursor"].execute(
-            """
+def matchable_fields(db, source_id: int, scale: str) -> list[str]:
+    """The subset of `MATCH_FIELDS` this source actually populates."""
+    counts = db.run_query(
+        """
         SELECT
             count(distinct lith)::int AS lith,
             count(distinct strat_name)::int AS strat_name,
             count(distinct name)::int AS name,
             count(distinct descrip)::int AS descrip,
             count(distinct comments)::int AS comments
-        FROM maps.%(scale)s where source_id = %(source_id)s;
+        FROM {scale_table} WHERE source_id = :source_id
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+        {"scale_table": Identifier("maps", scale), "source_id": source_id},
+    ).one()
+
+    fields = []
+    for field in MATCH_FIELDS:
+        if counts._mapping[field] == 0:
+            print(f"        + Excluding {field} because it is null")
+        else:
+            fields.append(field)
+    return fields
+
+
+def match_field(db, source_id: int, field: str):
+    r"""Match one legend field against `macrostrat.liths`.
+
+    `\y` is a word boundary, so `lith` matches the word and not a substring of a
+    longer one; the second branch is the plural.
+
+    A failure here is reported and the remaining fields still run. The version-1
+    command wrapped this in a bare `except: pass`, which made a field that could
+    not match indistinguishable from one with nothing to match -- and there is a
+    real difference worth seeing.
+    """
+    try:
+        db.run_sql(
+            r"""
+            INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
+            SELECT legend_id, liths.id, :basis
+            FROM maps.legend, macrostrat.liths
+            WHERE source_id = :source_id
+             AND (
+                legend.{field} ~* concat('\y', liths.lith, '\y')
+                OR
+                legend.{field} ~* concat('\y', liths.lith, 's', '\y')
+            )
+            """,
+            {"source_id": source_id, "basis": field, "field": Identifier(field)},
         )
-        result = self.pg["cursor"].fetchone()
-
-        for key, val in result._asdict().items():
-            if val == 0:
-                field_name = key
-                fields = [d for d in fields if d != key]
-                print("        + Excluding %s because it is null" % (field_name,))
-
-        # Insert a new task for each matching field into the queue
-        for field in fields:
-            Liths.do_work(self, field)
+    except Exception as err:  # noqa: BLE001 -- reported per field, see above
+        print(f"        [yellow]+ {field} failed[/]: {str(err).splitlines()[0]}")

@@ -28,6 +28,11 @@ WHERE s.scale IS NOT NULL
      own, but not in a surface stack. NULL is unspecified and read as surface,
      which is what every map served before `geolayer` existed is. */
   AND coalesce(s.geolayer, 'surface') = 'surface'
+  /* A superseded map is not a candidate at all. This is exclusion rather than
+     ranking on purpose: a strictly poorer product placed at low priority still
+     shows through wherever its replacement happens not to cover, which is the
+     one place it is most likely to be wrong. */
+  AND s.superseded_by IS NULL
   /* A map that belongs to a real compilation is placed *through* it, not beside
      it: its standing in the layer descends from the compilation's, which is
      exactly what the flattened path expresses. Membership of a served layer does
@@ -61,6 +66,25 @@ WHERE map_bounds.is_served_layer(cm.compilation_id)
     SELECT 1 FROM map_bounds.compilation_member other
     WHERE other.member_id = cm.member_id
       AND NOT map_bounds.is_served_layer(other.compilation_id)
+  );
+
+
+/** Retire the layer placement of any map that has stopped qualifying for one.
+
+  The guards on the INSERT above only decide what gets *added*; a map placed
+  before it was superseded, or before `geolayer` said it depicts something other
+  than the surface, keeps that placement until it is taken away. Both conditions
+  are the same statement -- this map does not belong in a surface stack -- so
+  they are withdrawn together, and only from served layers: an authored
+  compilation's own membership is nobody's to rewrite.
+*/
+DELETE FROM map_bounds.compilation_member cm
+USING maps.sources s
+WHERE s.source_id = cm.member_id
+  AND map_bounds.is_served_layer(cm.compilation_id)
+  AND (
+    s.superseded_by IS NOT NULL
+    OR coalesce(s.geolayer, 'surface') <> 'surface'
   );
 
 

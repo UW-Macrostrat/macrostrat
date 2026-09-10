@@ -256,23 +256,58 @@ QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
 
 
+def _order_by_age(ids, interval_ages) -> tuple[Optional[int], Optional[int]]:
+    """Order matched intervals into (b_interval, t_interval) by their real ages.
+
+    Which of two intervals is the base and which the top is a fact about the
+    timescale, not about word order. Reading it off the sentence gets
+    "Holocene and Pleistocene" backwards, and there is no convention to lean on:
+    NGS writes ranges both oldest-first and youngest-first.
+
+    Without ages to compare, the pair is left as found -- the caller has already
+    matched textual qualifiers (`early`/`late`), which is the best available
+    guess and the historical behaviour.
+    """
+    unique = list(dict.fromkeys(i for i in ids if i is not None))
+    if not unique:
+        return pd.NA, pd.NA
+    if len(unique) == 1:
+        return unique[0], unique[0]
+    if not interval_ages:
+        return unique[0], unique[1]
+
+    known = [i for i in unique if i in interval_ages]
+    if len(known) < 2:
+        return unique[0], unique[1]
+
+    # `age_bottom` is the older bound, `age_top` the younger, both in Ma.
+    base = max(known, key=lambda i: interval_ages[i][0])
+    top = min(known, key=lambda i: interval_ages[i][1])
+    return base, top
+
+
 # ages are all in one column so we need to parse and map to our t/b intervals
 def lookup_and_validate_age(
-    name: str, interval_lookup: dict[str, int]
+    name: str,
+    interval_lookup: dict[str, int],
+    interval_ages: dict[int, tuple[float, float]] = None,
 ) -> tuple[Optional[int], Optional[int]]:
     """
-    Return (b_interval, t_interval) for the first interval(s) found.
+    Return (b_interval, t_interval) for the interval(s) named in `name`.
     If only one valid interval is found, duplicate it into both slots.
+
+    Pass `interval_ages` (interval id -> `(age_bottom, age_top)`) to have a matched
+    pair ordered by age instead of by the order they appear in the text; see
+    `_order_by_age`.
     """
     s = str(name).lower().replace("–", "-").strip()
-    if "-" in s:
-        left, right = [p.strip() for p in s.split("-", 1)]
-        if left in interval_lookup and right in interval_lookup:
-            return interval_lookup[left], interval_lookup[right]
-        elif left in interval_lookup and right not in interval_lookup:
-            return interval_lookup[left], interval_lookup[left]
-        elif left not in interval_lookup and right in interval_lookup:
-            return interval_lookup[right], interval_lookup[right]
+    for separator in (" to ", " and/or ", " and ", " or ", "-"):
+        if separator not in s:
+            continue
+        left, right = [p.strip() for p in s.split(separator, 1)]
+        matched = [interval_lookup.get(left), interval_lookup.get(right)]
+        if any(m is not None for m in matched):
+            return _order_by_age(matched, interval_ages)
 
     tokens = re.findall(r"\b\w+\b", s)
 
@@ -290,13 +325,13 @@ def lookup_and_validate_age(
             phrase_one = f"{qual} {tokens[i + 3]}"
             phrase_two = f"{next_qual} {tokens[i + 3]}"
             if phrase_one in interval_lookup and phrase_two in interval_lookup:
-                # this is true if word is early or middle
-                return (
+                pair = (
                     (interval_lookup[phrase_one], interval_lookup[phrase_two])
                     if QUALIFIER_ORDER.get(qual, -1)
                     < QUALIFIER_ORDER.get(next_qual, -1)
                     else (interval_lookup[phrase_two], interval_lookup[phrase_one])
                 )
+                return _order_by_age(pair, interval_ages)
             elif phrase_one in interval_lookup:
                 return interval_lookup[phrase_one], interval_lookup[phrase_one]
             elif phrase_two in interval_lookup:
@@ -330,6 +365,10 @@ def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     interval_lookup = {
         row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
     }
+    interval_ages = {
+        row["id"]: (row["age_bottom"], row["age_top"])
+        for _, row in interval_df.iterrows()
+    }
 
     # map age fields to b/t intervals
     # must have a match in the macrotrat.intervals dictionary in order to return a valid interval
@@ -338,7 +377,7 @@ def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
         .str.lower()
         .apply(
             lambda n: pd.Series(
-                lookup_and_validate_age(n, interval_lookup),
+                lookup_and_validate_age(n, interval_lookup, interval_ages),
                 index=["b_interval", "t_interval"],
             )
         )
@@ -352,7 +391,7 @@ def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
             .str.lower()
             .apply(
                 lambda n: pd.Series(
-                    lookup_and_validate_age(n, interval_lookup),
+                    lookup_and_validate_age(n, interval_lookup, interval_ages),
                     index=["b_interval", "t_interval"],
                 )
             )

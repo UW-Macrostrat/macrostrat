@@ -169,7 +169,10 @@ def get_age_interval_df(db) -> pd.DataFrame:
     Returns:
     pd.DataFrame. A pandas series with interval_name strings.
     """
-    query = "SELECT id, interval_name FROM macrostrat.intervals"
+    # The bounding ages come along so a caller can order two matched intervals
+    # by age rather than by the order they happen to appear in a sentence -- see
+    # `gems_utils.lookup_and_validate_age`.
+    query = "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
     with db.engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df

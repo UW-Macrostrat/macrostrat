@@ -1,5 +1,14 @@
 -- Delete existing records
 DELETE FROM
+  maps.map_legend
+WHERE
+  legend_id IN (
+    SELECT legend_id
+    FROM maps.legend
+    WHERE source_id = :source_id
+  );
+
+DELETE FROM
   maps.legend
 WHERE
   source_id = :source_id;

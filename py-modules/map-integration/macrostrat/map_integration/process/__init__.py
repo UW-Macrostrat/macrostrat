@@ -15,6 +15,11 @@ Map processing pipeline (v2)
 
 """
 
+from typing import Annotated, Optional
+
+from rich import print
+from typer import Option
+
 from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database, sql_file
@@ -28,7 +33,7 @@ from ..utils.map_info import (
 )
 from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
-from .insert import copy_to_maps, copy_to_maps_command
+from .insert import copy_to_maps, run_insert
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
@@ -128,12 +133,53 @@ def web_geom(maps: MapSelector, legacy: bool = False):
 
 
 @cli.command(name="extract-strat-names", rich_help_panel="Sources")
-def extract_strat_names(maps: MapSelector):
+def extract_strat_names(
+    maps: MapSelector,
+    field: str = Option(
+        None,
+        help="The field to extract from. Defaults to a concatenation of all text fields.",
+    ),
+    use_sources: bool = Option(False, help="Operate in the sources schema"),
+):
     """Extract stratigraphic name candidates for the selected map sources."""
-    for_each_map(maps, extract_strat_name_candidates)
+    for_each_map(
+        maps, extract_strat_name_candidates, field=field, use_sources=use_sources
+    )
 
 
-cli.add_command(copy_to_maps_command, name="insert", rich_help_panel="Map")
+@cli.command(name="insert", rich_help_panel="Map")
+def insert(
+    maps: MapSelector,
+    delete_existing: bool = False,
+    scale: str = None,
+    staging_prefix: Annotated[
+        Optional[str],
+        Option(
+            "--staging-prefix",
+            help="Name the sources.<prefix>_* staging tables (default: the slug)",
+        ),
+    ] = None,
+    allow_unattributed: Annotated[
+        bool,
+        Option(
+            "--allow-unattributed",
+            help="Insert even though lith/t_interval/b_interval are entirely null",
+        ),
+    ] = False,
+):
+    """Copy staged data to the maps schema for the selected map sources.
+
+    A compilation whose members share one staging table passes it once:
+    `insert 'ngs-*' --staging-prefix ngs` covers all 114.
+    """
+    for_each_map(
+        maps,
+        run_insert,
+        delete_existing=delete_existing,
+        scale=scale,
+        staging_prefix=staging_prefix,
+        allow_unattributed=allow_unattributed,
+    )
 
 
 @cli.command(name="legend", rich_help_panel="Map")

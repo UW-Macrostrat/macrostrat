@@ -124,7 +124,15 @@ def get_map_info(db: Database, identifier: str | int) -> MapInfo:
         query += " WHERE slug = %(slug)s"
         params["slug"] = map_slug
 
-    res = db.run_query(query, params).one()
+    res = db.run_query(query, params).one_or_none()
+    if res is None:
+        # `.one()` here raised a bare `NoResultFound` that named neither the
+        # identifier nor the fact that a glob had been handed to a command
+        # taking a single map -- which is the likeliest way to get here.
+        hint = ""
+        if any(ch in str(identifier) for ch in "*?"):
+            hint = " -- this command takes one map, not a pattern"
+        raise MacrostratError(f"No map found matching {identifier!r}{hint}")
 
     return MapInfo(id=res.source_id, slug=res.slug, url=res.url, name=res.name)
 

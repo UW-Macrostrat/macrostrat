@@ -1,14 +1,17 @@
 import datetime
-import sys
 import time
 
-from psycopg2.extensions import AsIs
 from psycopg2.sql import Identifier
 from rich import print
 
-from ..database import LegacyCommandBase, get_database
+from macrostrat.core.exc import MacrostratError
+
+from ..database import get_database
 from ..utils import MapInfo
 from .utils import get_match_count
+
+#: Scale tables, smallest first -- a source lives in exactly one.
+SCALES = ["tiny", "small", "medium", "large"]
 
 
 def match_units(map: MapInfo):
@@ -19,16 +22,18 @@ def match_units(map: MapInfo):
     """
     db = get_database()
     source_id = map.id
-    Units().run(source_id)
+    Units(db).run(source_id)
 
     count = get_match_count(db, source_id, Identifier("maps", "map_units"))
     print(f"Matched [bold cyan]{count}[/] units")
 
 
-class Units(LegacyCommandBase):
-    source_id = None
-    table = None
-    field = None
+class Units:
+    def __init__(self, db):
+        self.db = db
+        self.source_id = None
+        self.table = None
+        self.field = None
 
     def query_down(self, strictNameMatch, strictSpace, strictTime):
         match_type = self.field
@@ -42,39 +47,39 @@ class Units(LegacyCommandBase):
         if not strictTime:
             match_type += "_ftime"
 
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM maps.%(table)s m
+                FROM {scale_table} m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
                 JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
                 JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = %(source_id)s
-                AND basis_col = %(match_type)s
+                WHERE m.source_id = :source_id
+                AND basis_col = :match_type
                 AND m.map_id NOT IN (
                   SELECT x.map_id
                   FROM maps.map_units x
-                  JOIN maps.%(table)s z
+                  JOIN {scale_table} z
                   ON x.map_id = z.map_id
-                  WHERE z.source_id = %(source_id)s
+                  WHERE z.source_id = :source_id
                 )
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
                 CASE
                     WHEN rank = 'Bed'
-                      THEN '{}'
+                      THEN '{{}}'
                     WHEN rank = 'Mbr'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{}') FROM macrostrat.lookup_strat_names WHERE rank = 'Bed' AND mbr_id = lsn.strat_name_id)
+                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank = 'Bed' AND mbr_id = lsn.strat_name_id)
                     WHEN rank = 'Fm'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr') AND fm_id = lsn.strat_name_id)
+                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr') AND fm_id = lsn.strat_name_id)
                     WHEN rank = 'Gp'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm') AND gp_id = lsn.strat_name_id)
+                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm') AND gp_id = lsn.strat_name_id)
                     WHEN rank = 'SGp'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm', 'Gp') AND sgp_id = lsn.strat_name_id)
+                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm', 'Gp') AND sgp_id = lsn.strat_name_id)
                   END AS down
               FROM macrostrat.lookup_strat_names lsn
             ),
@@ -107,7 +112,7 @@ class Units(LegacyCommandBase):
             JOIN macrostrat.lookup_strat_names ON flattened.down_names = lookup_strat_names.strat_name_id
             WHERE cols.status_code='active'
             )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
+            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
             FROM a
             JOIN b ON a.strat_name_id = b.match_strat_name_id
             WHERE ST_Intersects(a.geom, b.geom)
@@ -119,14 +124,11 @@ class Units(LegacyCommandBase):
             + """));
         """,
             {
-                "table": AsIs(self.table),
+                "scale_table": Identifier("maps", self.table),
                 "source_id": self.source_id,
-                "field": AsIs(self.field),
                 "match_type": match_type,
             },
         )
-
-        self.pg["connection"].commit()
 
         # print '        - Done with %s (up)' % (match_type, )
 
@@ -142,29 +144,29 @@ class Units(LegacyCommandBase):
         if not strictTime:
             match_type += "_ftime"
 
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
           INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM maps.%(table)s m
+                FROM {scale_table} m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
                 JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
                 JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = %(source_id)s
-                AND basis_col = %(match_type)s
+                WHERE m.source_id = :source_id
+                AND basis_col = :match_type
                 AND m.map_id NOT IN (
                   SELECT x.map_id
                   FROM maps.map_units x
-                  JOIN maps.%(table)s z
+                  JOIN {scale_table} z
                   ON x.map_id = z.map_id
-                  WHERE z.source_id = %(source_id)s
+                  WHERE z.source_id = :source_id
                 )
             ),
             shaped AS (
               SELECT strat_name_id, strat_name, rank,
-              (SELECT COALESCE(array_agg(u), '{}')
+              (SELECT COALESCE(array_agg(u), '{{}}')
                 FROM unnest(
                 CASE
                   WHEN rank = 'Bed'
@@ -176,7 +178,7 @@ class Units(LegacyCommandBase):
                   WHEN rank = 'Gp'
                     THEN array[sgp_id]
                   WHEN rank = 'SGp'
-                    THEN '{}'
+                    THEN '{{}}'
                 END
                 ) AS u WHERE u != 0
               ) AS up
@@ -211,7 +213,7 @@ class Units(LegacyCommandBase):
             JOIN macrostrat.lookup_strat_names ON flattened.up_names = lookup_strat_names.strat_name_id
             WHERE cols.status_code='active'
             )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
+            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
             FROM a
             JOIN b ON a.strat_name_id = b.match_strat_name_id
             WHERE ST_Intersects(a.geom, b.geom)
@@ -223,14 +225,11 @@ class Units(LegacyCommandBase):
             + """));
         """,
             {
-                "table": AsIs(self.table),
+                "scale_table": Identifier("maps", self.table),
                 "source_id": self.source_id,
-                "field": AsIs(self.field),
                 "match_type": match_type,
             },
         )
-
-        self.pg["connection"].commit()
 
         # print '        - Done with %s (down)' % (match_type, )
 
@@ -246,24 +245,24 @@ class Units(LegacyCommandBase):
         if not strictTime:
             match_type += "_ftime"
 
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             INSERT INTO maps.map_units (map_id, unit_id, basis_col)
             WITH a AS (
                 SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM maps.%(table)s m
+                FROM {scale_table} m
                 JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
                 JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
                 JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = %(source_id)s
-                AND basis_col = %(match_type)s
+                WHERE m.source_id = :source_id
+                AND basis_col = :match_type
                 AND m.map_id NOT IN (
                   SELECT x.map_id
                   FROM maps.map_units x
-                  JOIN maps.%(table)s z
+                  JOIN {scale_table} z
                   ON x.map_id = z.map_id
-                  WHERE z.source_id = %(source_id)s
+                  WHERE z.source_id = :source_id
                 )
             ),
                 b AS (
@@ -280,7 +279,7 @@ class Units(LegacyCommandBase):
                   JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
                   WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a) AND cols.status_code='active'
                 )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, %(match_type)s
+            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
             FROM a
             JOIN b ON a.strat_name_id = b.strat_name_id
             WHERE ST_Intersects(a.geom, b.geom)
@@ -292,14 +291,11 @@ class Units(LegacyCommandBase):
             + """));
         """,
             {
-                "table": AsIs(self.table),
+                "scale_table": Identifier("maps", self.table),
                 "source_id": self.source_id,
-                "field": AsIs(self.field),
                 "match_type": match_type,
             },
         )
-
-        self.pg["connection"].commit()
 
         # print '        - Done with %s' % (match_type, )
 
@@ -408,51 +404,51 @@ class Units(LegacyCommandBase):
         )
 
     def run(self, source_id):
-        if source_id == "--help" or source_id == "-h":
-            print(Units.__doc__)
-            sys.exit()
-
         start = time.time()
-        Units.source_id = source_id
+        self.source_id = source_id
         # Validate params!
         # Valid source_id
-        self.pg["cursor"].execute(
+        result = self.db.run_query(
             """
             SELECT source_id
             FROM maps.sources
-            WHERE source_id = %(source_id)s
+            WHERE source_id = :source_id
         """,
             {"source_id": source_id},
-        )
-        result = self.pg["cursor"].fetchone()
+        ).first()
         if result is None:
-            print("Invalid source_id. %s was not found in maps.sources" % (source_id,))
-            sys.exit(1)
+            raise MacrostratError(f"Source {source_id} was not found in maps.sources")
 
         # Find scale table
         scale = ""
         for scale_table in ["tiny", "small", "medium", "large"]:
-            self.pg["cursor"].execute(
+            found = self.db.run_query(
                 """
             SELECT map_id
-            FROM maps.%(table)s
-            WHERE source_id = %(source_id)s
+            FROM {scale_table}
+            WHERE source_id = :source_id
             LIMIT 1
         """,
-                {"table": AsIs(scale_table), "source_id": source_id},
-            )
-            if self.pg["cursor"].fetchone() is not None:
+                {
+                    "scale_table": Identifier("maps", scale_table),
+                    "source_id": source_id,
+                },
+            ).first()
+            if found is not None:
                 scale = scale_table
                 break
 
         if len(scale) == 0:
-            print(
-                "Provided source_id not found in maps.small, maps.medium, or maps.large. Please insert it and try again."
+            raise MacrostratError(
+                f"Source {source_id} is not present in any scale table",
+                details=(
+                    "Copy it into the maps schema with"
+                    " `macrostrat maps process insert` and try again."
+                ),
             )
-            sys.exit(1)
 
         # Validate that this source intersects *any* Macrostrat units in space or time
-        self.pg["cursor"].execute(
+        n_intersecting = self.db.run_query(
             """
             SELECT count(units.id)
             FROM maps.sources
@@ -464,53 +460,57 @@ class Units(LegacyCommandBase):
                 JOIN macrostrat.cols ON macrostrat.cols.id = units_sections.col_id
                 WHERE macrostrat.cols.status_code='active'
             ) units ON ST_Intersects(poly_geom, rgeom)
-            WHERE source_id = %(source_id)s
+            WHERE source_id = :source_id
         """,
             {"source_id": source_id},
-        )
+        ).scalar()
 
-        if self.pg["cursor"].fetchone()[0] > 0:
+        if n_intersecting > 0:
             # skip this
             # TODO cleanup this jank assignment
-            Units.table = scale
+            self.table = scale
 
             print("      Starting unit match at ", str(datetime.datetime.now()))
 
             # Clean up
-            self.pg["cursor"].execute(
+            self.db.run_sql(
                 """
               DELETE FROM maps.map_units
               WHERE map_id IN (
                 SELECT map_id
-                FROM maps.%(table)s
-                WHERE source_id = %(source_id)s
+                FROM {scale_table}
+                WHERE source_id = :source_id
               )
-              AND basis_col NOT LIKE 'manual%%'
+              AND basis_col NOT LIKE 'manual%'
             """,
-                {"table": AsIs(scale), "source_id": source_id},
+                {
+                    "scale_table": Identifier("maps", scale),
+                    "source_id": source_id,
+                },
             )
 
-            self.pg["connection"].commit()
             print("        + Done cleaning up")
 
             # Fields in burwell to match on
             fields = ["strat_name", "name", "descrip", "comments"]
 
             # Filter null fields
-            self.pg["cursor"].execute(
+            result = self.db.run_query(
                 """
             SELECT
                 count(distinct strat_name)::int AS strat_name,
                 count(distinct name)::int AS name,
                 count(distinct descrip)::int AS descrip,
                 count(distinct comments)::int AS comments
-            FROM maps.%(scale)s where source_id = %(source_id)s;
+            FROM {scale_table} where source_id = :source_id
             """,
-                {"scale": AsIs(scale), "source_id": source_id},
-            )
-            result = self.pg["cursor"].fetchone()
+                {
+                    "scale_table": Identifier("maps", scale),
+                    "source_id": source_id,
+                },
+            ).one()
 
-            for key, val in result._asdict().items():
+            for key, val in result._mapping.items():
                 if val == 0:
                     field_name = key
                     fields = [d for d in fields if d != key]
@@ -519,6 +519,6 @@ class Units(LegacyCommandBase):
             # Insert a new task for each matching field into the queue
             print("Processing fields", fields)
             for field in fields:
-                Units.do_work(self, field)
+                self.do_work(field)
         else:
             print("Skipping unit matching - source does not intersect any columns")

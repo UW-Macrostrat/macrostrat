@@ -1,10 +1,11 @@
 import random
-import sys
 
 import spectra
-from psycopg2.extensions import AsIs
+from psycopg2.sql import Identifier
 
-from ..database import LegacyCommandBase
+from macrostrat.core.exc import MacrostratError
+
+from ..database import get_database
 from ..utils import MapInfo
 
 
@@ -12,10 +13,10 @@ def legend_lookup(source: MapInfo):
     """
     Refresh the appropriate lookup tables for a given map source
     """
-    LegendLookup().run(source.id)
+    LegendLookup(get_database()).run(source.id)
 
 
-class LegendLookup(LegacyCommandBase):
+class LegendLookup:
     scaleIsIn = {
         "tiny": ["tiny", "small"],
         "small": ["small", "medium"],
@@ -23,38 +24,39 @@ class LegendLookup(LegacyCommandBase):
         "large": ["large"],
     }
 
+    def __init__(self, db):
+        self.db = db
+
     def run(self, source_id):
-        self.pg["cursor"].execute(
+        row = self.db.run_query(
             """
             SELECT scale
             FROM maps.sources
-            WHERE source_id = %(source_id)s
+            WHERE source_id = :source_id
         """,
             {"source_id": source_id},
-        )
-        scale = self.pg["cursor"].fetchone()
+        ).first()
 
         print("Starting to process source %s" % (source_id,))
 
-        if scale is None:
-            print("Source ID %s was not found in maps.sources" % (source_id,))
-            sys.exit(1)
+        # Raised rather than `sys.exit(1)`: these steps run over a selector now,
+        # and exiting the process would abandon every map after this one.
+        if row is None:
+            raise MacrostratError(f"Source {source_id} was not found in maps.sources")
+        if row.scale is None:
+            raise MacrostratError(f"Source {source_id} is missing a scale")
 
-        if scale[0] is None:
-            print("Source ID %s is missing a scale" % (source_id,))
-            sys.exit(1)
+        scale = row.scale
 
-        scale = scale[0]
-
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             -- Find unique match types for units
            WITH unit_bases AS (
              SELECT legend_id, array_agg(distinct basis_col) bases
              FROM maps.map_units
-             JOIN maps.%(scale)s q ON map_units.map_id = q.map_id
+             JOIN {scale_table} q ON map_units.map_id = q.map_id
              JOIN maps.map_legend ON map_legend.map_id = q.map_id
-             WHERE source_id = %(source_id)s
+             WHERE source_id = :source_id
              GROUP BY legend_id
              ORDER BY legend_id
            ),
@@ -63,10 +65,10 @@ class LegendLookup(LegacyCommandBase):
            units AS (
              SELECT map_legend.legend_id, array_agg(DISTINCT unit_id) AS unit_ids
              FROM maps.map_units
-             JOIN maps.%(scale)s q ON map_units.map_id = q.map_id
+             JOIN {scale_table} q ON map_units.map_id = q.map_id
              JOIN maps.map_legend ON map_legend.map_id = q.map_id
              JOIN unit_bases ON unit_bases.legend_id = map_legend.legend_id
-             WHERE source_id = %(source_id)s AND map_units.basis_col = ANY(
+             WHERE source_id = :source_id AND map_units.basis_col = ANY(
                CASE
                  WHEN 'manual' = ANY(bases)
                    THEN array['manual']
@@ -156,21 +158,23 @@ class LegendLookup(LegacyCommandBase):
            FROM units
            WHERE units.legend_id = legend.legend_id;
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+            {
+                "scale_table": Identifier("maps", scale),
+                "source_id": source_id,
+            },
         )
-        self.pg["connection"].commit()
 
         print("Ran first command")
 
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             -- Find unique match types of strat_names
             WITH strat_name_bases AS (
               SELECT legend_id, array_agg(distinct basis_col) bases
               FROM maps.map_strat_names
-              JOIN maps.%(scale)s q ON map_strat_names.map_id = q.map_id
+              JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
               JOIN maps.map_legend ON map_legend.map_id = q.map_id
-              WHERE source_id = %(source_id)s
+              WHERE source_id = :source_id
               GROUP BY legend_id
               ORDER BY legend_id
             ),
@@ -179,10 +183,10 @@ class LegendLookup(LegacyCommandBase):
             strat_names AS (
               SELECT map_legend.legend_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
               FROM maps.map_strat_names
-              JOIN maps.%(scale)s q ON map_strat_names.map_id = q.map_id
+              JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
               JOIN maps.map_legend ON map_legend.map_id = q.map_id
               JOIN strat_name_bases ON strat_name_bases.legend_id = map_legend.legend_id
-              WHERE source_id = %(source_id)s AND map_strat_names.basis_col = ANY(
+              WHERE source_id = :source_id AND map_strat_names.basis_col = ANY(
                 CASE
                   WHEN 'manual' = ANY(bases)
                     THEN array['manual']
@@ -284,20 +288,22 @@ class LegendLookup(LegacyCommandBase):
             FROM strat_names
             WHERE strat_names.legend_id = legend.legend_id;
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+            {
+                "scale_table": Identifier("maps", scale),
+                "source_id": source_id,
+            },
         )
-        self.pg["connection"].commit()
 
         print("Ran second command")
 
         # Update specific liths
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             WITH lith_bases AS (
               SELECT array_agg(distinct basis_col) bases, q.legend_id
               FROM maps.legend_liths
               JOIN maps.legend q ON legend_liths.legend_id = q.legend_id
-              WHERE source_id = %(source_id)s
+              WHERE source_id = :source_id
               GROUP BY q.legend_id
               ORDER BY q.legend_id
             ),
@@ -312,7 +318,7 @@ class LegendLookup(LegacyCommandBase):
                    FROM maps.legend_liths
                    JOIN maps.legend ON legend_liths.legend_id = legend.legend_id
                    JOIN lith_bases ON lith_bases.legend_id = legend.legend_id
-                   WHERE source_id = %(source_id)s
+                   WHERE source_id = :source_id
                     AND legend_liths.basis_col =
                         CASE
                             WHEN 'lith' = ANY(bases)
@@ -335,14 +341,16 @@ class LegendLookup(LegacyCommandBase):
             FROM liths
             WHERE liths.legend_id = legend.legend_id;
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+            {
+                "scale_table": Identifier("maps", scale),
+                "source_id": source_id,
+            },
         )
-        self.pg["connection"].commit()
 
         print("Ran third command")
 
         # Update all liths
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             UPDATE maps.legend
             SET
@@ -358,19 +366,18 @@ class LegendLookup(LegacyCommandBase):
                 FROM maps.legend_liths
                 JOIN maps.legend ON legend_liths.legend_id = legend.legend_id
                 JOIN macrostrat.liths ON liths.id = legend_liths.lith_id
-                WHERE legend.source_id = %(source_id)s
+                WHERE legend.source_id = :source_id
                 GROUP BY legend.legend_id
             ) sub
             WHERE legend.legend_id = sub.legend_id;
         """,
             {"source_id": source_id},
         )
-        self.pg["connection"].commit()
 
         print("Ran fourth command")
 
         # Update concept_ids and strat_name_children
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             WITH more_strat_names AS (
                 SELECT
@@ -439,7 +446,7 @@ class LegendLookup(LegacyCommandBase):
                         LEFT JOIN macrostrat.lookup_strat_names lookup_sgp ON lookup_sgp.strat_name_id = ids.sgp_id
                         GROUP BY ids.strat_name_id
                     ) applicable_concepts ON applicable_concepts.strat_name_id = lsn.strat_name_id
-                    WHERE legend.source_id = %(source_id)s
+                    WHERE legend.source_id = :source_id
                     GROUP BY map_legend.legend_id, legend.strat_name_ids
                 ) sub
              )
@@ -447,27 +454,29 @@ class LegendLookup(LegacyCommandBase):
             SET concept_ids =
             CASE
                 WHEN array_length(legend.unit_ids, 1) = 0 OR legend.unit_ids is null
-                    THEN COALESCE(more_strat_names.concept_ids, '{}')
+                    THEN COALESCE(more_strat_names.concept_ids, '{{}}')
                 ELSE
                     (
-                        SELECT array((SELECT DISTINCT unnest(array_cat(COALESCE(more_strat_names.concept_ids, '{}'), array_agg(DISTINCT lsn.concept_id)))))
+                        SELECT array((SELECT DISTINCT unnest(array_cat(COALESCE(more_strat_names.concept_ids, '{{}}'), array_agg(DISTINCT lsn.concept_id)))))
                         FROM macrostrat.unit_strat_names usn
                         JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = usn.strat_name_id
                         WHERE usn.unit_id = ANY(legend.unit_ids)
                     )
                 END,
-                strat_name_children = COALESCE(more_strat_names.strat_name_children, '{}')
+                strat_name_children = COALESCE(more_strat_names.strat_name_children, '{{}}')
             FROM more_strat_names
             WHERE more_strat_names.legend_id = legend.legend_id;
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+            {
+                "scale_table": Identifier("maps", scale),
+                "source_id": source_id,
+            },
         )
-        self.pg["connection"].commit()
 
         print("Ran fifth command")
 
         # Update best_age_top and best_age_bottom and color
-        self.pg["cursor"].execute(
+        self.db.run_sql(
             """
             WITH ages AS (
                 SELECT
@@ -487,7 +496,7 @@ class LegendLookup(LegacyCommandBase):
                FROM maps.legend
                LEFT JOIN macrostrat.intervals ti ON ti.id = t_interval
                LEFT JOIN macrostrat.intervals tb ON tb.id = b_interval
-               WHERE legend.source_id = %(source_id)s
+               WHERE legend.source_id = :source_id
             )
 
             UPDATE maps.legend
@@ -508,27 +517,28 @@ class LegendLookup(LegacyCommandBase):
             FROM ages
             WHERE ages.legend_id = legend.legend_id;
         """,
-            {"scale": AsIs(scale), "source_id": source_id},
+            {
+                "scale_table": Identifier("maps", scale),
+                "source_id": source_id,
+            },
         )
-        self.pg["connection"].commit()
 
         print("Ran sixth command")
 
         # Shift colors where needed
-        self.pg["cursor"].execute(
+        colors = self.db.run_query(
             """
             SELECT color, c, legend_ids, best_age_bottom, best_age_top
             FROM (
                 select color, count(*) c, array_agg(legend_id) AS legend_ids, best_age_bottom, best_age_top
                 FROM maps.legend
-                WHERE source_id = %(source_id)s
+                WHERE source_id = :source_id
                 GROUP BY color, best_age_bottom, best_age_top
             ) sub
             WHERE c > 1;
         """,
             {"source_id": source_id},
-        )
-        colors = self.pg["cursor"].fetchall()
+        ).all()
 
         print("Ran seventh command")
 
@@ -575,27 +585,25 @@ class LegendLookup(LegacyCommandBase):
                     elif loops > len(variants):
                         used_variants = []
 
-                self.pg["cursor"].execute(
+                self.db.run_sql(
                     """
                     UPDATE maps.legend
-                    SET color = %(color)s
-                    WHERE legend_id = %(legend_id)s
+                    SET color = :color
+                    WHERE legend_id = :legend_id
                 """,
                     {"color": new_color, "legend_id": legend_id},
                 )
 
-            self.pg["connection"].commit()
-
         print("Ran eighth command")
 
         # Now go back and homogenize similar units
-        self.pg["cursor"].execute(
+        similar_units = self.db.run_query(
             """
             WITH first AS (
                 SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval, count(distinct legend_id), array_agg(distinct legend_id) AS legend_ids, array_agg(distinct color) AS colors
                 FROM maps.legend
                 JOIN maps.sources on legend.source_id = legend.source_id
-                WHERE scale = ANY(%(scales)s)
+                WHERE scale = ANY(:scales)
                 GROUP BY legend.name, b_interval, t_interval
             )
             SELECT legend_ids, colors
@@ -603,8 +611,7 @@ class LegendLookup(LegacyCommandBase):
             WHERE array_length(legend_ids, 1) > 1;
         """,
             {"scales": LegendLookup.scaleIsIn[scale]},
-        )
-        similar_units = self.pg["cursor"].fetchall()
+        ).all()
 
         print("Ran ninth command")
 
@@ -615,14 +622,13 @@ class LegendLookup(LegacyCommandBase):
 
             print(unit.legend_ids)
 
-            self.pg["cursor"].execute(
+            self.db.run_sql(
                 """
                 UPDATE maps.legend
-                SET color = %(color)s
-                WHERE legend_id = ANY(%(legend_id)s)
+                SET color = :color
+                WHERE legend_id = ANY(:legend_id)
             """,
                 {"color": color, "legend_id": unit.legend_ids},
             )
-            self.pg["connection"].commit()
 
         print("Done")

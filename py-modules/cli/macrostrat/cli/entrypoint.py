@@ -416,7 +416,7 @@ def _run(
 
         macrostrat run                       list the pipelines here
         macrostrat run ngs sources --apply   Maps/NGS/cli.py sources --apply
-        macrostrat --env test run Stratigraphy/GBDB ingest
+        macrostrat --env development run Stratigraphy/GBDB ingest
 
     It is *executed, not imported*, in its own virtualenv, and receives the
     resolved environment as MACROSTRAT_ENV and MACROSTRAT_DATABASE_URL. Anything

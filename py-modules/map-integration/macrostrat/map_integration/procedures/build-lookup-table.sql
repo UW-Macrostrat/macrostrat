@@ -1,4 +1,4 @@
-INSERT INTO lookup_%(scale)s (
+INSERT INTO {lookup_table} (
   map_id,
   legend_id,
   unit_ids,
@@ -17,8 +17,8 @@ INSERT INTO lookup_%(scale)s (
   WITH unit_bases AS (
     SELECT array_agg(distinct basis_col) bases, q.map_id
     FROM maps.map_units
-    JOIN maps.%(scale)s q ON map_units.map_id = q.map_id
-    WHERE source_id = %(source_id)s
+    JOIN {scale_table} q ON map_units.map_id = q.map_id
+    WHERE source_id = :source_id
     GROUP BY q.map_id
     ORDER BY q.map_id
   ),
@@ -26,11 +26,11 @@ INSERT INTO lookup_%(scale)s (
   -- Find and aggregate best unit_ids for each map_id
   unit_ids AS (
     SELECT q.map_id, array_agg(DISTINCT unit_id) AS unit_ids
-    FROM maps.%(scale)s q
+    FROM {scale_table} q
     JOIN maps.map_units ON q.map_id = map_units.map_id
     JOIN unit_bases ON unit_bases.map_id = q.map_id
 
-    WHERE source_id = %(source_id)s AND map_units.basis_col = ANY(
+    WHERE source_id = :source_id AND map_units.basis_col = ANY(
       CASE
         WHEN 'manual' = ANY(bases)
           THEN array['manual']
@@ -120,8 +120,8 @@ INSERT INTO lookup_%(scale)s (
   strat_name_bases AS (
     SELECT array_agg(distinct basis_col) bases, q.map_id
     FROM maps.map_strat_names
-    JOIN maps.%(scale)s q ON map_strat_names.map_id = q.map_id
-    WHERE source_id = %(source_id)s
+    JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
+    WHERE source_id = :source_id
     GROUP BY q.map_id
     ORDER BY q.map_id
   ),
@@ -129,10 +129,10 @@ INSERT INTO lookup_%(scale)s (
   -- Find and aggregate best strat_name_ids for each map_id
   strat_name_ids AS (
     SELECT q.map_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
-    FROM maps.%(scale)s q
+    FROM {scale_table} q
     JOIN maps.map_strat_names ON q.map_id = map_strat_names.map_id
     JOIN strat_name_bases ON strat_name_bases.map_id = q.map_id
-    WHERE source_id = %(source_id)s AND map_strat_names.basis_col = ANY(
+    WHERE source_id = :source_id AND map_strat_names.basis_col = ANY(
       CASE
         WHEN 'manual' = ANY(bases)
           THEN array['manual']
@@ -234,7 +234,7 @@ INSERT INTO lookup_%(scale)s (
         SELECT array_agg(distinct basis_col) bases, q.legend_id
         FROM maps.legend_liths
         JOIN maps.legend q ON legend_liths.legend_id = q.legend_id
-        WHERE source_id = %(source_id)s
+        WHERE source_id = :source_id
         GROUP BY q.legend_id
         ORDER BY q.legend_id
   ),
@@ -270,7 +270,7 @@ INSERT INTO lookup_%(scale)s (
         FROM maps.legend_liths
         JOIN maps.legend ON legend_liths.legend_id = legend.legend_id
         JOIN lith_bases ON lith_bases.legend_id = legend.legend_id
-        WHERE source_id = %(source_id)s
+        WHERE source_id = :source_id
           AND legend_liths.basis_col =
               CASE
                   WHEN 'lith' = ANY(bases)
@@ -285,7 +285,7 @@ INSERT INTO lookup_%(scale)s (
               END
     ) sub
     JOIN maps.map_legend ON map_legend.legend_id = sub.legend_id
-    JOIN maps.%(scale)s q ON q.map_id = map_legend.map_id
+    JOIN {scale_table} q ON q.map_id = map_legend.map_id
     JOIN macrostrat.liths ON sub.lith_id = liths.id
     GROUP BY q.map_id
   ),
@@ -307,10 +307,10 @@ INSERT INTO lookup_%(scale)s (
         SELECT
           q.map_id,
           array_agg(DISTINCT lsn.concept_id) AS concept_ids
-        FROM maps.%(scale)s q
+        FROM {scale_table} q
         JOIN strat_name_ids sni ON sni.map_id = q.map_id
         JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(sni.strat_name_ids)
-        WHERE source_id = %(source_id)s
+        WHERE source_id = :source_id
         GROUP BY q.map_id
     ) sub
     JOIN strat_name_ids sni ON sni.map_id = sub.map_id
@@ -321,21 +321,21 @@ INSERT INTO lookup_%(scale)s (
     SELECT
       q.map_id,
       q.name,
-      COALESCE(unit_ids.unit_ids, '{}') unit_ids,
-      COALESCE(strat_name_ids.strat_name_ids, '{}') strat_name_ids,
-      COALESCE(more_strat_names.concept_ids, '{}') concept_ids,
-      COALESCE(more_strat_names.strat_name_children, '{}') strat_name_children,
-      COALESCE(lith_ids.lith_ids, '{}') lith_ids,
-      COALESCE(lith_ids.lith_types, '{}') lith_types,
-      COALESCE(lith_ids.lith_classes, '{}') lith_classes,
+      COALESCE(unit_ids.unit_ids, '{{}}') unit_ids,
+      COALESCE(strat_name_ids.strat_name_ids, '{{}}') strat_name_ids,
+      COALESCE(more_strat_names.concept_ids, '{{}}') concept_ids,
+      COALESCE(more_strat_names.strat_name_children, '{{}}') strat_name_children,
+      COALESCE(lith_ids.lith_ids, '{{}}') lith_ids,
+      COALESCE(lith_ids.lith_types, '{{}}') lith_types,
+      COALESCE(lith_ids.lith_classes, '{{}}') lith_classes,
       t_interval,
       b_interval
-    FROM maps.%(scale)s q
+    FROM {scale_table} q
     LEFT JOIN unit_ids ON q.map_id = unit_ids.map_id
     LEFT JOIN strat_name_ids ON q.map_id = strat_name_ids.map_id
     LEFT JOIN more_strat_names ON more_strat_names.map_id = q.map_id
     LEFT JOIN lith_ids ON q.map_id = lith_ids.map_id
-    WHERE source_id = %(source_id)s
+    WHERE source_id = :source_id
   ),
 
   -- Get the macrostrat ages for each map_id, if possible (i.e. if it has unit_id matches)
