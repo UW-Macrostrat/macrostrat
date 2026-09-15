@@ -1,6 +1,6 @@
 # We have to specify a new-ish version of Debian
 # to make sure we don't use an out of date image
-FROM node:20-bullseye
+FROM node:24-bookworm
 
 RUN apt-get -y update && \
     apt-get -y install redis-tools postgresql-client && \
