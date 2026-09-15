@@ -54,7 +54,7 @@
     "mapshaper": "^0.3.20",
     "memory-cache": "^0.2.0",
     "pg": "^8.15.6",
-    "pg-native": "^3.4.5",
+    "pg-native": "3.9.0",
     "tilestrata": "^2.0.1",
     "topojson": "^1.6.19",
     "tsx": "^4.21.0",
