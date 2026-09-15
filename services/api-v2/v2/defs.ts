@@ -84,6 +84,7 @@ export default {
         "col_area",
         "project_id",
         "project_name",
+        "status_code",
         "max_thick",
         "max_min_thick",
         "min_min_thick",

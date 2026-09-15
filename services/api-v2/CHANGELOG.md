@@ -1,5 +1,10 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.10] - 2026-09-10
+
+- Fall back to `cols.coordinate` for `/columns` geometry when a column has no `col_areas` polygon
+- Add `status` (the column's `status_code`) to the `/columns` response
+
 ## [2.3.9] - 2026-08-17
 
 - Allow selection of `unit_id` without `project_id` in `/units` route

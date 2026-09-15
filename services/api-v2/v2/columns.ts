@@ -163,20 +163,28 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
     "cols.id",
     "col_groups.col_group",
     "col_groups.id",
+    "cols.status_code",
   );
 
-  // Handle geometry - adds col_areas.col_area to GROUP BY
+  // Handle geometry - adds the geometry columns to GROUP BY.
+  //
+  // A column's footprint is normally a polygon in `col_areas`, but point-located
+  // columns (`col_type = 'section'` — measured stratigraphy, located by a single
+  // lat/lng) have no `col_areas` row at all. The join to `col_areas` is a LEFT
+  // JOIN, so those previously emitted features with `geometry: null`. Fall back
+  // to `cols.coordinate`, which every such column has, so they are renderable.
   const needsGeometry =
     req.query.format && acceptedFormats.geo[req.query.format];
   if (needsGeometry) {
     if (req.query.shape) {
       geo =
-        ", ST_AsGeoJSON(ST_Intersection(col_areas.col_area, ST_MakeValid(:shape))) geojson";
+        ", ST_AsGeoJSON(ST_Intersection(coalesce(col_areas.col_area, cols.coordinate), ST_MakeValid(:shape))) geojson";
       params["shape"] = req.query.shape;
     } else {
-      geo = ", ST_AsGeoJSON(col_areas.col_area) geojson";
+      geo =
+        ", ST_AsGeoJSON(coalesce(col_areas.col_area, cols.coordinate)) geojson";
     }
-    groupByClauses.push("col_areas.col_area");
+    groupByClauses.push("col_areas.col_area", "cols.coordinate");
   }
 
   const joins = [
@@ -206,6 +214,7 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
         round(cols.col_area::numeric, 1) AS col_area,
         cols.project_id,
         col_type,
+        cols.status_code::text AS status_code,
         string_agg(col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
