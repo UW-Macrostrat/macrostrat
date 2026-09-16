@@ -68,3 +68,73 @@ SELECT parent.id, member.id, coalesce(cm.priority, 0)
 FROM map_bounds.compilation_member cm
 JOIN map_bounds.map_layer parent ON parent.source_id = cm.compilation_id
 JOIN map_bounds.map_layer member ON member.source_id = cm.member_id;
+
+
+/* Placed here, not in `set-map-priority`, because it reads two tables this file
+   rebuilds: `map_priority`, for where a map participates, and (through
+   `is_composite_layer`) `map_layer_composition`. Run a statement earlier and it
+   sees the previous sync's answer, or on a fresh database no answer at all. */
+/** Register each map's footprint in the base layer it actually participates in.
+
+  `map_area.map_layer` is what `__edge_relation` keys on, so it decides where a
+  map's footprint acts as a *barrier* during the dissolve. That is a different
+  question from where the map ranks, which is `map_priority`'s job, and the two
+  agreed only for as long as layer membership was a function of scale.
+
+  Compilations broke that. A member participates in whatever layer its
+  compilation is served at, whatever its own scale: `ngs-oklahoma` is 1:250,000
+  and therefore `large`, but it reaches medium, carto-medium and carto-large
+  through `ngs-bedrock` and has no placement in `large` at all. Keyed on scale it
+  registered its boundary in `large` -- a layer it is not in -- and was invisible
+  as a barrier in all three layers where it is. 23 maps were in that state.
+
+  The cost is not a misranking, it is a hole. `joinable_face_edges` crosses any
+  edge that is not a barrier *regardless of identity* -- identity only rescues an
+  edge that is one -- so the walk runs straight through an unregistered footprint
+  and merges the maps on either side. One face ended up holding 35,645 primitive
+  faces spanning 42 different maps' territory, taking its name from whichever map
+  the merged geometry's `ST_PointOnSurface` happened to fall in.
+
+  The *base* layer is the right choice and keeps this a single column: every
+  composite layer containing a map lists its base layer in `constraining_layers`,
+  so one registration covers all of them. True of every participation pattern in
+  the corpus -- {4,7}->4, {3,6,7}->3, {2,5,6}->2, {1,5}->1.
+
+  `is_composite_layer` is the test, not the lowest id. Production ids happen to
+  run base-first (1-4 base, 5-7 carto) so `min()` gives the same answer there and
+  the wrong one wherever a composite layer was created first -- which the
+  submodule's own fixtures do, so `test_composite_layers` catches it.
+
+  Scale is deliberately not the key. It is the `maps.polygons` partition key, so
+  moving a map between layers by editing it would move its polygons between
+  partitions, and it is a real property of the work: `ngs-connecticut` is
+  1:125,000 whatever layer happens to serve it.
+
+  The update is deliberately unconditional -- no `IS DISTINCT FROM` guard. It is
+  doing double duty: `update_line_edge_relation` fires on *any* update of a
+  `map_area` holding a topogeometry, and deletes and re-inserts that map's
+  `__edge_relation` rows. So this statement is also what keeps the barrier
+  registry populated, and skipping the rows whose layer is unchanged empties it
+  for every map that did not move. On a database being built from scratch that
+  leaves no barriers at all, the dissolve merges everything it can reach, and a
+  composite layer collapses to a single face -- which is what
+  `test_composite_layers` sees.
+
+  Scale remains the fallback, for a map with no placement to read. That is not
+  only the ~95 ingested maps that are in no layer -- where a stale registration
+  can at worst add a barrier, over-fragmenting a dissolve without misattributing
+  it, which is what they do today -- but any database whose layers have no
+  compilation behind them yet. The submodule's fixtures seed `map_layer` without
+  a `source_id`, so there is no placement to read at all there, and without the
+  fallback every map loses its layer.
+*/
+UPDATE map_bounds.map_area ma
+SET map_layer = coalesce(base.map_layer, map_bounds.layer_id(s.scale))
+FROM maps.sources s
+LEFT JOIN (
+  SELECT source_id, min(map_layer) AS map_layer
+  FROM map_bounds.map_priority
+  WHERE NOT map_bounds.is_composite_layer(map_layer)
+  GROUP BY source_id
+) base ON base.source_id = s.source_id
+WHERE ma.source_id = s.source_id;

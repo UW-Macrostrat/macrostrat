@@ -86,11 +86,3 @@ WHERE s.source_id = cm.member_id
     s.superseded_by IS NOT NULL
     OR coalesce(s.geolayer, 'surface') <> 'surface'
   );
-
-
-/** Temporary: associate maps directly with layers (means maps can only be in one layer) **/
-UPDATE map_bounds.map_area
-SET map_layer = map_bounds.layer_id(s.scale)
-FROM maps.sources s
-WHERE map_bounds.map_area.source_id = s.source_id
-  AND s.scale IS NOT NULL;

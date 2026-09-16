@@ -602,8 +602,12 @@ class LegendLookup:
             WITH first AS (
                 SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval, count(distinct legend_id), array_agg(distinct legend_id) AS legend_ids, array_agg(distinct color) AS colors
                 FROM maps.legend
-                JOIN maps.sources on legend.source_id = legend.source_id
-                WHERE scale = ANY(:scales)
+                -- `legend.source_id = legend.source_id` compared a column to
+                -- itself, which is a cross join: every legend row against every
+                -- source, 112 million rows, and `scale` then filtered `sources`
+                -- rather than restricting the legend rows considered.
+                JOIN maps.sources ON legend.source_id = sources.source_id
+                WHERE sources.scale = ANY(:scales)
                 GROUP BY legend.name, b_interval, t_interval
             )
             SELECT legend_ids, colors
