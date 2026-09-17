@@ -53,6 +53,38 @@ module.exports = function (req, res, next, cb) {
         WHERE p.id = pt.child_id
       ) AS p ON true
       GROUP BY pt.parent_id
+    ),
+    /* The columns each project counts: its own, plus its members' for a
+       composite. Resolved on its own so the aggregates below group by a bare
+       project id. Grouping the aggregate directly by the composite's \`members\`
+       jsonb and \`children\` array made Postgres sort every
+       project x column x unit_section row on that wide key — half a million
+       rows spilling ~136 MB to disk, and about a second of the request. */
+    project_cols AS (
+      SELECT
+        p.id AS project_id,
+        cols.id AS col_id,
+        cols.status_code,
+        cols.col_area
+      FROM macrostrat.projects p
+      LEFT JOIN composite_tree ct
+        ON ct.parent_id = p.id
+      LEFT JOIN macrostrat.cols ON p.id = cols.project_id
+            OR (p.is_composite AND cols.project_id = ANY(ct.children))
+      WHERE ${whereStatement}
+    ),
+    project_stats AS (
+      SELECT
+        pc.project_id,
+        count(DISTINCT units_sections.col_id)::integer AS t_cols,
+        count(DISTINCT pc.col_id) FILTER ( WHERE pc.status_code = 'active' )::integer AS active_cols,
+        count(DISTINCT pc.col_id) FILTER ( WHERE pc.status_code = 'in process' )::integer AS in_process_cols,
+        count(DISTINCT pc.col_id) FILTER ( WHERE pc.status_code = 'obsolete' )::integer AS obsolete_cols,
+        count(DISTINCT units_sections.unit_id)::integer AS t_units,
+        coalesce(round(sum(DISTINCT pc.col_area) FILTER ( WHERE pc.status_code = 'active')), 0) AS area
+      FROM project_cols pc
+      LEFT JOIN macrostrat.units_sections ON units_sections.col_id = pc.col_id
+      GROUP BY pc.project_id
     )
     SELECT
         p.id AS project_id,
@@ -61,27 +93,18 @@ module.exports = function (req, res, next, cb) {
         p.descrip,
         p.timescale_id,
         ct.members,
-        count(DISTINCT units_sections.col_id)::integer AS t_cols,
-        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'active' )::integer AS active_cols,
-        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'in process' )::integer AS in_process_cols,
-        count(DISTINCT cols.id) FILTER ( WHERE cols.status_code = 'obsolete' )::integer AS obsolete_cols,
-        count(DISTINCT units_sections.unit_id)::integer AS t_units,
-        coalesce(round(sum(DISTINCT cols.col_area) FILTER ( WHERE cols.status_code = 'active')), 0) AS area
+        ps.t_cols,
+        ps.active_cols,
+        ps.in_process_cols,
+        ps.obsolete_cols,
+        ps.t_units,
+        ps.area
     FROM macrostrat.projects p
     LEFT JOIN composite_tree ct
       ON ct.parent_id = p.id
-    LEFT JOIN macrostrat.cols ON p.id = cols.project_id
-          OR (p.is_composite AND cols.project_id = ANY(ct.children))
-    LEFT JOIN macrostrat.units_sections ON units_sections.col_id = cols.id
+    LEFT JOIN project_stats ps
+      ON ps.project_id = p.id
     WHERE ${whereStatement}
-    GROUP BY
-      p.id,
-      p.project,
-      p.descrip,
-      p.timescale_id,
-      p.slug,
-      ct.children,
-      ct.members
     `;
   }
 

@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [2.3.11] - 2026-09-17
+
+- Speed up `/defs/projects` for composite projects (~1000 ms to ~200 ms) by aggregating column counts per project id instead of grouping by the composite `members` jsonb
+
 ## [2.3.10] - 2026-09-10
 
 - Fall back to `cols.coordinate` for `/columns` geometry when a column has no `col_areas` polygon
