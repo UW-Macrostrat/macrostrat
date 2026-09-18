@@ -11,8 +11,10 @@
 DO $$
 DECLARE
   r record;
-  excluded text[] := ARRAY['pg_catalog','information_schema','public','topology','sources','tiger','tiger_data'];
-  legacy   text[] := ARRAY['macrostrat_admin','xdd_writer'];
+  excluded text[] := ARRAY['pg_catalog','information_schema','public','topology',
+                           'sources','tiger','tiger_data','temp','text_vectors',
+                           'macrostratbak2'];
+  legacy   text[] := ARRAY['macrostrat_admin','macrostrat-admin','xdd_writer','xdd-writer'];
 BEGIN
   -- Relations: the command keyword depends on relkind (foreign tables and matviews
   -- need their own ALTER form; ALTER TABLE covers tables, views, and sequences).

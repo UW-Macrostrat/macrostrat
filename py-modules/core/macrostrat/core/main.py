@@ -143,7 +143,16 @@ class Macrostrat(Application):
             self,
             root_dir=root_dir,
             compose_files=compose_files,
-            restart_commands={"gateway": "caddy reload --config /etc/caddy/Caddyfile"},
+            restart_commands={
+                "gateway": "caddy reload --config /etc/caddy/Caddyfile",
+                # Varnish resolves its backends' hostnames once, when the VCL is
+                # loaded. A recreated tileserver_core therefore leaves the cache
+                # dialing a stale container IP, and every core-backed tile route
+                # 503s until varnish itself is restarted. Reloading the VCL
+                # re-resolves the backends (and picks up edits to
+                # configs/tileserver-cache.vcl) without dropping cached objects.
+                "tileserver_cache": "varnishreload",
+            },
         )
 
         if env_file.exists(follow_symlinks=True):

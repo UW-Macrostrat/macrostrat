@@ -1,6 +1,7 @@
--- See the note in `units.sql`: `maps.lines` is partitioned by LIST (scale) too,
--- so the scale of the requested source is resolved in a subquery to prune the
--- partitions that cannot contain it.
+-- See `units.sql`: `map_bounds.lines_of` decides which lines the map shows and
+-- prunes the partition. `lines_oriented` is a property of the ingested lines, so
+-- it comes from the source that holds them, which for a mosaic member is not the
+-- map asked for.
 SELECT
   l.line_id,
   l.source_id,
@@ -8,15 +9,10 @@ SELECT
   coalesce(l.name, '') AS name,
   coalesce(l.direction, '') AS direction,
   coalesce(l.type, '') AS "type",
-  s.lines_oriented oriented,
+  cs.lines_oriented AS oriented,
   tile_layers.tile_geom(l.geom, :envelope) AS geom
-FROM maps.lines l
-JOIN maps.sources s ON l.source_id = s.source_id
-WHERE s.slug = :slug
-  AND l.scale = (
-    SELECT s1.scale::maps.map_scale
-    FROM maps.sources s1
-    WHERE s1.slug = :slug
-      AND s1.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
-  )
-  AND ST_Intersects(l.geom, ST_Transform(:envelope, 4326))
+FROM map_bounds.lines_of(
+  map_bounds.compilation_id(:slug),
+  ST_Transform(:envelope, 4326)
+) l
+JOIN maps.sources cs ON cs.source_id = l.source_id

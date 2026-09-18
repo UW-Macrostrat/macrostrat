@@ -111,17 +111,16 @@ BEGIN
     linesize := ARRAY['medium', 'large'];
   END IF;
 
-  -- Units
+  -- Units. Which polygons a map shows is `map_bounds.polygons_of`'s question:
+  -- an ordinary map's own, a mosaic member's parent's inside its footprint (an
+  -- SGMC state map holds none itself). It prunes the partition by the content's
+  -- scale, so `mapsize` is only needed for the lines below.
   WITH mvt_features AS (
     SELECT
       map_id,
       source_id,
       geom
-    FROM
-      tile_layers.map_units
-    WHERE source_id = _source_id
-      AND scale = mapsize
-      AND ST_Intersects(geom, projected_bbox)
+    FROM map_bounds.polygons_of(_source_id, projected_bbox)
   ), expanded AS (
     SELECT
       z.map_id,
@@ -138,17 +137,13 @@ BEGIN
   INTO bedrock
   FROM expanded;
 
-  -- LINES
+  -- LINES, likewise through `lines_of`.
   WITH mvt_features AS (
     SELECT
       line_id,
       source_id,
       geom
-    FROM
-      tile_layers.map_lines
-    WHERE source_id = _source_id
-      AND scale = mapsize
-      AND ST_Intersects(geom, projected_bbox)
+    FROM map_bounds.lines_of(_source_id, projected_bbox)
   ),
        expanded AS (
          SELECT

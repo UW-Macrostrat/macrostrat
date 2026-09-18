@@ -7,9 +7,10 @@ walking a set of chunks for matching statements, a best-effort apply driver with
 a report, and the reusable ``--target`` / ``--no-dependents`` CLI option block.
 """
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterator, Optional
+from typing import Callable, Iterator, NamedTuple, Optional
 
 from typer import Option
 
@@ -17,12 +18,26 @@ from macrostrat.core.schema_definition import sql_files
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
+from .composer import set_applying_role
+
 log = get_logger(__name__)
+
+
+class ChunkStatement(NamedTuple):
+    """A statement together with the role its chunk is applied as.
+
+    A rebuild re-applies the same SQL the declarative build does, so it must run
+    it as the same role: an object it recreates is then born with the owner
+    ``build_schema`` would have given it, rather than the connector's.
+    """
+
+    owner: Optional[str]
+    sql: str
 
 
 def iter_chunk_statements(
     chunks, extract: Callable[[str], Iterator[str]]
-) -> Iterator[str]:
+) -> Iterator[ChunkStatement]:
     """Yield statements from the file-backed providers of ``chunks`` (in order).
 
     ``extract`` pulls the statements of interest out of one SQL file's text.
@@ -33,7 +48,39 @@ def iter_chunk_statements(
             if not isinstance(provider, Path):
                 continue
             for f in sql_files(provider):
-                yield from extract(f.read_text())
+                for statement in extract(f.read_text()):
+                    yield ChunkStatement(chunk.owner, statement)
+
+
+# Distinct from ``None``, which is a real owner (the connector), so the first
+# statement of a sweep always establishes a role rather than inheriting one.
+_UNSET = object()
+
+
+@contextmanager
+def role_switcher(db: Database):
+    """Yield ``use(owner)``, which applies subsequent statements as ``owner``.
+
+    The role is re-established only when it changes, and always reset on exit —
+    ``SET ROLE`` is session-level, so a sweep must not leave the session
+    masquerading as an application role (the same contract as ``build_schema``).
+    """
+    current = _UNSET
+
+    def use(owner: Optional[str]) -> None:
+        nonlocal current
+        if owner != current:
+            set_applying_role(db, owner)
+            current = owner
+
+    try:
+        yield use
+    finally:
+        # These sweeps are best-effort, so the reset must not turn a recorded
+        # failure into a raise. A `SET ROLE` is itself rolled back with the
+        # transaction, so the one case this swallows — an aborted transaction —
+        # is also the one where the role is already gone.
+        db.run_sql("RESET ROLE", raise_errors=False)
 
 
 @dataclass
@@ -51,12 +98,15 @@ class RebuildReport:
 
 def apply_statements(
     db: Database,
-    statements: Iterator[str],
+    statements: Iterator[ChunkStatement],
     *,
     transform: Optional[Callable[[str], str]] = None,
     tolerate: Optional[Callable[[Exception], bool]] = None,
 ) -> RebuildReport:
     """Best-effort: run each statement, recording (not raising on) failures.
+
+    Each statement runs as its chunk's owner, so the sweep reproduces the
+    declarative build's ownership rather than the connector's.
 
     ``transform`` optionally rewrites a statement before it runs (e.g. ``CREATE`` →
     ``CREATE OR REPLACE``). A statement that fails — e.g. a grant on an object
@@ -67,17 +117,19 @@ def apply_statements(
     and left out of the failure report.
     """
     report = RebuildReport()
-    for statement in statements:
-        report.total += 1
-        sql = transform(statement) if transform is not None else statement
-        try:
-            db.run_sql(sql, raise_errors=True)
-        except Exception as err:  # noqa: BLE001 — best-effort; record and continue
-            if tolerate is not None and tolerate(err):
-                report.skipped.append(statement)
-                continue
-            log.warning("statement failed (%s): %s", err, str(sql)[:100])
-            report.failed.append(statement)
+    with role_switcher(db) as use_role:
+        for owner, statement in statements:
+            use_role(owner)
+            report.total += 1
+            sql = transform(statement) if transform is not None else statement
+            try:
+                db.run_sql(sql, raise_errors=True)
+            except Exception as err:  # noqa: BLE001 — best-effort, so record
+                if tolerate is not None and tolerate(err):
+                    report.skipped.append(statement)
+                    continue
+                log.warning("statement failed (%s): %s", err, str(sql)[:100])
+                report.failed.append(statement)
     return report
 
 

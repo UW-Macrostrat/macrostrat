@@ -22,8 +22,12 @@ from macrostrat.core import SchemaDefinition
 from macrostrat.database import Database
 
 
-def _set_applying_role(db: Database, owner: Optional[str]) -> None:
+def set_applying_role(db: Database, owner: Optional[str]) -> None:
     """Establish the role that applies the next chunk.
+
+    Shared with the ``sync`` rebuild passes (``rebuild.role_switcher``), which
+    re-apply the same chunk content and must use the same role, so an object they
+    recreate is born with the owner the declarative build would have given it.
 
     Re-established at the *top of every chunk* (not once for the whole build) so a
     mid-chunk failure can't silently carry a role forward into the next chunk.
@@ -134,7 +138,7 @@ def build_schema(
 
     try:
         for chunk in ordered:
-            _set_applying_role(db, chunk.owner)
+            set_applying_role(db, chunk.owner)
             chunk.apply(
                 db,
                 transform_statement=transform_statement,

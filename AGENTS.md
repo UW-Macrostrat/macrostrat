@@ -79,6 +79,13 @@ migration-applied one converge on the same `APPLIED` state.
   rather than a `%`-format string.
 - Similarly, a literal `:` in SQL (e.g. in a regex like `(?:www\.)`) trips
   SQLAlchemy's bind-parameter parsing and must be escaped as `\:`.
+- **`OVERLAPS` is a reserved keyword** (the SQL period-overlap operator), so a
+  CTE or alias cannot be named `overlaps` without quoting. The parse error names
+  the CTE and gives no reason.
+- **A bind parameter cannot be followed by a `::` cast.** SQLAlchemy's parameter
+  regex refuses a name followed by `:`, so `:lng::float` is left in the statement
+  as literal text and Postgres fails with `syntax error at or near ":"`. Write
+  `CAST(:lng AS float)`. A cast on a *column* (`ma.area_km::float`) is fine.
 - **Don't guard against "already exists".** Schema application tolerates errors,
   so state objects declaratively and let a duplicate raise, get noted, and be
   stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more

@@ -12,13 +12,9 @@ DELETE FROM maps.polygons WHERE source_id = :compilation_id;
 
 UPDATE maps.sources SET is_finalized = false WHERE source_id = :compilation_id;
 
-/* Back to virtual: no polygons, so no provenance to record. `content` tracks
-   `holds_polygons` exactly, and letting it drift is how a later run mistakes a
-   virtual compilation for one holding a cache. */
-UPDATE map_bounds.compilation SET content = NULL, member_hash = NULL
+/* Back to virtual: no polygons, so no cache to record. */
+UPDATE map_bounds.compilation SET is_derived = false, member_hash = NULL
 WHERE source_id = :compilation_id;
-
-UPDATE map_bounds.compilation SET member_hash = NULL WHERE source_id = :compilation_id;
 
 /* Materializing changes who owns the territory while no boundary moves, so
    nothing else notices. `mark-stale-identity` catches faces whose owner stops

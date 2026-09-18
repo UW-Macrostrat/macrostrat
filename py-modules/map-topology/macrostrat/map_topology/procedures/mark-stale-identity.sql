@@ -48,7 +48,7 @@ resolved AS (
 ),
 face_owner AS (
   /* The primitive faces each dissolved face claims, with the map it is attributed
-     to. Restricted to maps that hold polygons, because a unit face's `map_id`
+     to. Restricted to maps that have content, because a unit face's `map_id`
      names a compilation and `sync-unit-faces` owns those. */
   SELECT r.element_id AS face_id, f.map_layer, f.map_id
   FROM map_bounds_topology.map_face f
@@ -59,7 +59,7 @@ face_owner AS (
   JOIN layers l ON l.map_layer = f.map_layer
   WHERE f.map_id IS NOT NULL
     AND f.topo IS NOT NULL
-    AND map_bounds.holds_polygons(f.map_id)
+    AND map_bounds.has_content(f.map_id)
 )
 INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
 /* FULL JOIN because either side can be the one that is missing: a face attributed

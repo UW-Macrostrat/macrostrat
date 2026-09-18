@@ -18,10 +18,12 @@ JOIN map_bounds.map_priority mc
  AND mc.map_layer = _map_layer
 -- The center of the area must be within each candidate map
 WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
-  -- A virtual compilation has a boundary but no polygons, so it is never an
-  -- answer: the flattening descends through it to whichever member holds the
-  -- geometry, and this keeps the compilation itself out of the running.
-  AND map_bounds.holds_polygons(mc.source_id)
+  -- A virtual compilation has a boundary but no content, so it is never an
+  -- answer: the flattening descends through it to whichever member has the
+  -- geometry, and this keeps the compilation itself out of the running. A
+  -- mosaic member placed in the layer *is* an answer: it holds no polygons but
+  -- stands for its parent's inside its footprint.
+  AND map_bounds.has_content(mc.source_id)
 ORDER BY
   mc.priority_path DESC,
   ma.area_km -- smaller areas first
@@ -45,7 +47,7 @@ JOIN map_bounds.map_priority mc
  AND mc.map_layer = $2
 WHERE element_id = $1
   AND element_type = 3
-  AND map_bounds.holds_polygons(mc.source_id)
+  AND map_bounds.has_content(mc.source_id)
 ORDER BY
   mc.priority_path DESC,
   f.area_km -- smaller areas first
@@ -55,7 +57,7 @@ $$ LANGUAGE SQL IMMUTABLE;
 /** The set-oriented form of `identity_for_face`, for a whole layer at once.
 
   Must agree with `identity_for_face` exactly -- same candidate set, same ordering,
-  same `holds_polygons` exclusion -- because the dissolve uses whichever is
+  same `has_content` exclusion -- because the dissolve uses whichever is
   available and the two must not disagree about which map owns a face. `DISTINCT ON`
   is the bulk equivalent of that function's `LIMIT 1`.
 
@@ -75,7 +77,7 @@ JOIN map_bounds.map_priority mc
   ON mc.source_id = f.source_id
  AND mc.map_layer = _map_layer
 WHERE r.element_type = 3
-  AND map_bounds.holds_polygons(mc.source_id)
+  AND map_bounds.has_content(mc.source_id)
 ORDER BY r.element_id, mc.priority_path DESC, f.area_km;
 $$ LANGUAGE SQL STABLE;
 

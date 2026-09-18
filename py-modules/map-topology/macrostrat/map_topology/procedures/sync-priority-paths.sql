@@ -2,11 +2,13 @@
 
   One recursion, because there is one edge table. A served layer is just a
   compilation with a `map_layer` row, so the walk starts at each of those and
-  descends `compilation_member` until it reaches a map that holds its own
-  polygons. A *virtual* compilation is descended through, so a face resolves to
-  whoever actually has the geometry; a *materialized* one is a leaf, which is
-  also what keeps a compilation's constituents out of the topology without a
-  filter of their own.
+  descends `compilation_member` until it reaches something with content. A
+  *virtual* compilation is descended through, so a face resolves to whoever
+  actually has the geometry; anything with content is a leaf -- a map, a
+  materialized compilation, or a mosaic member placed here directly, which holds
+  no polygons but stands for its parent's inside its footprint (`has_content`).
+  Stopping at content is also what keeps a mosaic's members out of the walk: the
+  mosaic itself is the leaf.
 
   Every row here is derived -- the table is rebuilt outright.
 */
@@ -37,7 +39,7 @@ WITH RECURSIVE paths AS (
   FROM paths p
   JOIN map_bounds.compilation_member cm
     ON cm.compilation_id = p.source_id
-  WHERE NOT map_bounds.holds_polygons(p.source_id)
+  WHERE NOT map_bounds.has_content(p.source_id)
 ),
 /** A map can be reachable under one layer by more than one route -- directly and
   again through a compilation, which is the state a half-migrated compilation is
@@ -45,7 +47,7 @@ WITH RECURSIVE paths AS (
 leaves AS (
   SELECT DISTINCT ON (map_layer, source_id) map_layer, source_id, path, via
   FROM paths
-  WHERE map_bounds.holds_polygons(source_id)
+  WHERE map_bounds.has_content(source_id)
   ORDER BY map_layer, source_id, path DESC
 )
 INSERT INTO map_bounds.map_priority (map_layer, source_id, priority_path, via)

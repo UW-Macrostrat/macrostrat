@@ -12,8 +12,8 @@
   polygons only 10,453 are touched by surficial; the rest are copied, as are all
   1,300 surficial polygons.
 
-  `:scale` is passed in rather than derived: `maps.polygons` is partitioned by
-  scale, and the planner prunes to one partition only when the value is constant.
+  `:scale` is the compilation's own scale, written onto the rows it gets;
+  members' polygons are read at the scale of whatever holds their content.
 
   Map ids are drawn from the sequence up front so the legend links can be written
   in the same pass -- `INSERT ... RETURNING` gives no way to correlate a new row
@@ -56,9 +56,11 @@ SELECT
     ELSE ST_Difference(p.geom, c.geometry)
   END AS geom
 FROM member m
-JOIN maps.polygons p
-  ON p.source_id = m.member_id
- AND p.scale = :scale::maps.map_scale
+/* A member's polygons are wherever its content is -- its own, or for a mosaic
+   member its parent's inside its footprint. `polygons_of` answers that and
+   prunes the partition by the content's scale, since a `large` compilation may
+   draw on `medium` content. */
+CROSS JOIN LATERAL map_bounds.polygons_of(m.member_id) p
 LEFT JOIN covered_by c ON c.member_id = m.member_id;
 
 /* A polygon wholly beneath a higher member differences away to nothing. */
@@ -87,13 +89,13 @@ ON CONFLICT (legend_id, map_id) DO NOTHING;
    to its members. */
 UPDATE maps.sources SET is_finalized = true WHERE source_id = :compilation_id;
 
-INSERT INTO map_bounds.compilation (source_id, member_hash, content)
-VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id), 'derived')
+INSERT INTO map_bounds.compilation (source_id, member_hash, is_derived)
+VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id), true)
 ON CONFLICT (source_id) DO UPDATE
   SET member_hash = EXCLUDED.member_hash,
       -- These polygons came from the members and can go back; recording that is
       -- what makes `dematerialize` safe to offer.
-      content = 'derived';
+      is_derived = true;
 
 DROP TABLE IF EXISTS _staged;
 

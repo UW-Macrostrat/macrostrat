@@ -10,18 +10,22 @@ for.
 
 Scope: **application schemas only** — the same boundary create-as-owner establishes and
 ``test_schema_ownership`` asserts. Foundational/shared ownership is deliberately left
-alone: the ``public`` and PostGIS ``topology`` schemas, extensions, and external data
-(``sources``/``tiger``) stay owned by the superuser/``postgres`` as before. (This is why
-a blunt ``REASSIGN OWNED BY macrostrat_admin`` is *not* used — it would also drag those
+alone: the ``public`` and PostGIS ``topology`` schemas, extensions, external data
+(``sources``/``tiger``), the ``temp`` scratch schema and ``text_vectors`` stay as
+they are — see ``_EXCLUDED`` for why each is out of scope. (This is why a blunt
+``REASSIGN OWNED BY macrostrat_admin`` is *not* used — it would also drag those
 foundational objects to ``macrostrat``.) The actual re-owning is in
 ``reassign_ownership.sql`` (run as a fixture so its ``format()`` placeholders survive).
 
 After re-owning, ``xdd_writer``'s write access — previously implicit via ownership — is
 restored with explicit grants matching the declarative schema.
 
-``readiness_state`` is ``alpha`` (dev only): validate against a staging clone, then
-promote to ``ga`` to reconcile staging/prod. Requires the executing role to be superuser
-or a member of the legacy roles and ``macrostrat`` (true for the dev connector).
+``readiness_state`` is ``ga``, so this reconciles staging and production as well as
+dev. It has to: with the legacy roles swept in both spellings, every environment has
+objects to converge, and the paths that used to create them connector-owned now apply
+their DDL as ``macrostrat`` — leaving this as the one step that fixes what is already
+there. Requires the executing role to be superuser or a member of the legacy roles and
+``macrostrat`` (true for every deployed connector).
 """
 
 from pathlib import Path
@@ -29,13 +33,31 @@ from pathlib import Path
 from macrostrat.database import Database
 from macrostrat.schema_management.migrations import ApplicationStatus, Migration
 
-# Roles whose ownership is collapsed into `macrostrat`.
-LEGACY_OWNERS = ("macrostrat_admin", "xdd_writer")
+# Roles whose ownership is collapsed into `macrostrat`. Each appears twice: the
+# PG Operator only creates hyphenated roles, so every legacy role has an
+# underscored twin that inherits from it. Membership makes the two interchangeable
+# for *access*, but not for ownership — an object has exactly one owner — so both
+# spellings are swept. `macrostrat_admin` is also the connector role locally, which
+# is why anything created outside `build_schema`'s `SET ROLE` lands here.
+LEGACY_OWNERS = (
+    "macrostrat_admin",
+    "macrostrat-admin",
+    "xdd_writer",
+    "xdd-writer",
+)
 
 # Schemas that are NOT create-as-owner and must be left untouched: system catalogs,
 # the shared public/topology schemas, and external data. Everything else is an
 # application schema. Kept identical to the list in reassign_ownership.sql and the
 # exclusion set in test_schema_ownership.
+#
+# `temp` is scratch space created ad hoc by `macrostrat db load-csv` / `load-geo`
+# under whatever role ran them; it holds no declared objects, so sweeping it would
+# report drift forever. `text_vectors` is the one schema deliberately owned by a
+# legacy role — the xdd subsystem grants it to `xdd-writer` outright (see
+# `cli/subsystems/xdd`) — so unifying it would revoke that by design.
+# `macrostratbak2` is the dead MariaDB-migration copy (see `_definitions/audit`):
+# nothing declares it and nothing reads it, so re-owning its ~140 objects is churn.
 _EXCLUDED = (
     "pg_catalog",
     "information_schema",
@@ -44,6 +66,9 @@ _EXCLUDED = (
     "sources",
     "tiger",
     "tiger_data",
+    "temp",
+    "text_vectors",
+    "macrostratbak2",
 )
 
 _APP_SCHEMA = "n.nspname <> ALL(:excluded) AND n.nspname NOT LIKE 'pg\\_%'"
@@ -93,8 +118,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
 class OwnershipUnificationMigration(Migration):
     name = "ownership-unification"
     subsystem = "core"
-    # Dev-only until validated against a staging clone; promote to reconcile prod.
-    readiness_state = "alpha"
+    readiness_state = "ga"
     load_sql_files = False
 
     def should_apply(self, db: Database) -> ApplicationStatus:

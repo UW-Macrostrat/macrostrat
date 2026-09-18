@@ -40,9 +40,7 @@ def _resolve(name: str) -> tuple[int, str]:
 def _is_ingested(db, source_id: int) -> bool:
     """Whether the compilation's polygons arrived with it rather than from members."""
     return bool(
-        db.run_query(
-            "SELECT map_bounds.is_ingested(:id)", dict(id=source_id)
-        ).scalar()
+        db.run_query("SELECT map_bounds.is_ingested(:id)", dict(id=source_id)).scalar()
     )
 
 
@@ -114,9 +112,13 @@ def list_compilations():
 @cli.command("create")
 def create(
     slug: Annotated[str, Argument(help="Slug for the new compilation")],
-    members: Annotated[list[str], Argument(help="Member slugs or source ids, lowest priority first")],
+    members: Annotated[
+        list[str], Argument(help="Member slugs or source ids, lowest priority first")
+    ],
     name: Annotated[Optional[str], Option(help="Display name")] = None,
-    scale: Annotated[Optional[str], Option(help="Scale band; defaults to the members'")] = None,
+    scale: Annotated[
+        Optional[str], Option(help="Scale band; defaults to the members'")
+    ] = None,
     priority: Annotated[Optional[int], Option(help="Priority within its layer")] = None,
 ):
     """Create a compilation from existing maps.
@@ -268,15 +270,17 @@ def remove(
 @cli.command("mode")
 def mode(
     compilation: Annotated[str, Argument(help="Slug or source id")],
-    assembly_mode: Annotated[str, Argument(help="disjoint | layered")],
+    assembly_mode: Annotated[str, Argument(help="topological | mosaic")],
 ):
     """Set how a compilation's members fit together.
 
-    `layered` means they overlap and priority resolves them; `disjoint` means
-    they mosaic cleanly. Not derivable -- it is an assertion about the data.
+    `topological` means they may overlap and the topology settles their extents
+    by priority; `mosaic` means they partition the territory, so a member's
+    extent is its footprint and its content is the compilation's inside it.
+    Not derivable -- it is an assertion about the data.
     """
-    if assembly_mode not in ("disjoint", "layered"):
-        print("[red]Mode must be 'disjoint' or 'layered'[/]")
+    if assembly_mode not in ("topological", "mosaic"):
+        print("[red]Mode must be 'topological' or 'mosaic'[/]")
         raise typer.Exit(1)
     db = get_database()
     source_id, slug = _resolve(compilation)
@@ -292,57 +296,12 @@ def mode(
     print(f"[green]{slug}[/] is {assembly_mode}")
 
 
-@cli.command("content")
-def content(
-    compilation: Annotated[str, Argument(help="Slug or source id")],
-    content: Annotated[str, Argument(help="ingested | derived | none")],
-):
-    """Record where a compilation's polygons came from.
-
-    `derived` -- assembled from its members; `dematerialize` can put them back.
-    `ingested` -- they arrived with the compilation, and its members record where
-    they came from. Documentary members are never noded and own no faces, so
-    declaring them costs nothing in the topology.
-    `none` -- the compilation holds no polygons at all.
-
-    `materialize` and `dematerialize` maintain this themselves; setting it by
-    hand is for a compilation whose polygons Macrostrat ingested directly.
-    """
-    if content not in ("ingested", "derived", "none"):
-        print("[red]Content must be 'ingested', 'derived' or 'none'[/]")
-        raise typer.Exit(1)
-    value = None if content == "none" else content
-
-    db = get_database()
-    source_id, slug = _resolve(compilation)
-    # `content` tracks `holds_polygons` exactly: provenance with no polygons, or
-    # polygons with no provenance, is a bug either way.
-    holds = db.run_query(
-        "SELECT map_bounds.holds_polygons(:id)", dict(id=source_id)
-    ).scalar()
-    if value is not None and not holds:
-        print(f"[red]{slug}[/] holds no polygons, so its content is [bold]none[/].")
-        raise typer.Exit(1)
-    if value is None and holds:
-        print(f"[red]{slug}[/] holds polygons; say where they came from.")
-        raise typer.Exit(1)
-
-    db.run_query(
-        """
-        INSERT INTO map_bounds.compilation (source_id, content)
-        VALUES (:source_id, :content)
-        ON CONFLICT (source_id) DO UPDATE SET content = EXCLUDED.content
-        """,
-        dict(source_id=source_id, content=value),
-    )
-    db.session.commit()
-    print(f"[green]{slug}[/] content is [bold]{content}[/]")
-
-
 @cli.command("materialize")
 def materialize(
     compilation: Annotated[str, Argument(help="Slug or source id")],
-    apply: Annotated[bool, Option("--apply/--dry-run", help="Write the polygons")] = False,
+    apply: Annotated[
+        bool, Option("--apply/--dry-run", help="Write the polygons")
+    ] = False,
 ):
     """Give a compilation polygons of its own, clipped from its members'.
 
@@ -376,11 +335,12 @@ def materialize(
             WHERE c.geometry IS NOT NULL AND ST_Intersects(p.geom, c.geometry)
           ) AS need_clipping
         FROM member m
-        JOIN maps.polygons p
-          ON p.source_id = m.member_id AND p.scale = :scale::maps.map_scale
+        -- Wherever the member's content is: its own, or its mosaic parent's
+        -- inside its footprint.
+        CROSS JOIN LATERAL map_bounds.polygons_of(m.member_id) p
         LEFT JOIN covered_by c ON c.member_id = m.member_id
         """,
-        dict(source_id=source_id, scale=scale),
+        dict(source_id=source_id),
     ).first()
 
     if not estimate or not estimate.polygons:

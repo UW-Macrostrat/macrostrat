@@ -4,13 +4,17 @@ Views are *code*, not stateful structure: they hold no data and are cheap to
 recreate. We keep them out of the diff (which would churn/cascade-drop them when
 underlying tables change) and instead re-apply them wholesale.
 
-Schema files should contain only ``CREATE VIEW`` (no hand-written ``DROP``s). Each
-view is applied with ``CREATE OR REPLACE VIEW`` — which preserves the view's grants
-and dependents. When a view's output signature changed incompatibly (SQLSTATE
-42P16), ``CREATE OR REPLACE`` can't work, so we recover via the database library's
-``on_error`` hook: snapshot the view's grants, ``DROP … CASCADE``, recreate, and
-restore the grants. Cascade-dropped dependents are recreated later in the same
-dependency-ordered pass.
+Schema files should contain only ``CREATE VIEW`` (no hand-written ``DROP``s).
+Each view is applied with ``CREATE OR REPLACE VIEW`` — which preserves the view's
+owner, grants and dependents. When a view's output signature changed
+incompatibly (SQLSTATE 42P16), ``CREATE OR REPLACE`` can't work, so we recover
+via the database library's ``on_error`` hook: snapshot the view's grants,
+``DROP … CASCADE``, recreate, and restore the grants. Cascade-dropped dependents
+are recreated later in the same dependency-ordered pass.
+
+The whole sweep runs under each chunk's declared owner (as ``build_schema``
+does), which is what keeps a recreated view's *ownership* right — unlike its
+grants, an owner can't be restored after the fact without ``ALTER … OWNER TO``.
 """
 
 import re
@@ -24,7 +28,7 @@ from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.utils import get_logger
 
-from .rebuild import iter_chunk_statements
+from .rebuild import ChunkStatement, iter_chunk_statements, role_switcher
 
 log = get_logger(__name__)
 
@@ -52,7 +56,7 @@ def view_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_view_statements(chunks) -> Iterator[str]:
+def iter_view_statements(chunks) -> Iterator[ChunkStatement]:
     """Yield ``CREATE VIEW`` statements from ``chunks``, in dependency/apply order."""
     yield from iter_chunk_statements(chunks, view_statements_in)
 
@@ -178,13 +182,15 @@ def rebuild_views(db: Database, chunks) -> ViewRebuildReport:
     report = ViewRebuildReport()
     recover = _make_recovery(report)
 
-    for statement in iter_view_statements(chunks):
-        db.run_sql(
-            statement,
-            transform_statement=_view_transform,
-            on_error=recover,
-            raise_errors=False,
-        )
-        report.total += 1
+    with role_switcher(db) as use_role:
+        for owner, statement in iter_view_statements(chunks):
+            use_role(owner)
+            db.run_sql(
+                statement,
+                transform_statement=_view_transform,
+                on_error=recover,
+                raise_errors=False,
+            )
+            report.total += 1
 
     return report

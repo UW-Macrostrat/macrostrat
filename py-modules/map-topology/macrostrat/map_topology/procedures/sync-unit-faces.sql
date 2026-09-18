@@ -8,7 +8,7 @@
   the primitive faces the unit covers, handed to `createTopoGeom`, with `geometry`
   read back off the topogeometry. Nothing marks them apart but their `map_id`,
   which names a compilation rather than a map -- and that is enough to choose
-  between levels, since `holds_polygons(map_id)` tells them apart.
+  between levels, since `has_content(map_id)` tells them apart.
 
   Both levels coexist deliberately. Polygon selection keeps resolving to where the
   polygons actually are, through the constituent faces, exactly as before; footprint
@@ -23,11 +23,11 @@ SELECT topology.clearTopoGeom(mf.topo)
 FROM map_bounds_topology.map_face mf
 WHERE mf.map_id IS NOT NULL
   AND mf.topo IS NOT NULL
-  AND NOT map_bounds.holds_polygons(mf.map_id);
+  AND NOT map_bounds.has_content(mf.map_id);
 
 DELETE FROM map_bounds_topology.map_face mf
 WHERE mf.map_id IS NOT NULL
-  AND NOT map_bounds.holds_polygons(mf.map_id);
+  AND NOT map_bounds.has_content(mf.map_id);
 
 INSERT INTO map_bounds_topology.map_face (map_layer, map_id, topo, geometry)
 SELECT

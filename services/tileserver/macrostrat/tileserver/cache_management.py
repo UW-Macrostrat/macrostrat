@@ -23,8 +23,12 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
-# TODO: this function must be protected by a secret key or other authentication
-# mechanism, lest we allow anyone to run a denial-of-service on our systems.
+# These routes are not exposed to the public. Varnish refuses `/cache/*` from
+# outside the network (the footprints tile layer excepted, since the cache UI
+# draws it), and callers reach them through api_v3's `/cache/*` proxy, which is
+# gated on an admin session. That is what closes the denial-of-service hole this
+# module used to carry a TODO about: expiring a cache is cheap to ask for and
+# expensive to serve.
 router = APIRouter()
 
 # Profiles to expire on cache invalidation (rotated paleo layer excluded)
@@ -259,7 +263,13 @@ async def _flush_l1_cache(pattern: str) -> bool:
         log.warning("Varnish is not connected")
         return None
 
-    ban_expr = f'req.url ~ "^/(?:{pattern})/"'
+    # Two things about this expression, both of which used to be wrong:
+    # the regex is unquoted (quotes become literal characters in the pattern, so
+    # the ban matches nothing while still reporting success), and it is written
+    # over `obj.*` rather than `req.url` so Varnish's ban lurker can apply it in
+    # the background instead of re-testing it on every request forever.
+    # `X-Ban-Url` is set on stored objects by the VCL for this purpose.
+    ban_expr = f"obj.http.X-Ban-Url ~ ^/(?:{pattern})/"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.request(

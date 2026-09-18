@@ -33,14 +33,24 @@ WHERE s.scale IS NOT NULL
      shows through wherever its replacement happens not to cover, which is the
      one place it is most likely to be wrong. */
   AND s.superseded_by IS NULL
-  /* A map that belongs to a real compilation is placed *through* it, not beside
-     it: its standing in the layer descends from the compilation's, which is
-     exactly what the flattened path expresses. Membership of a served layer does
-     not count -- that is the placement being written here. */
+  /* A mosaic member is never placed by scale. Its content is already in every
+     layer its mosaic is placed in, so placing it beside the mosaic would show the
+     same ground twice; and it has a footprint without being in the topology, so
+     the `map_area` join above does not screen it out. It reaches a layer only by
+     an authored edge -- which the sweep below leaves alone. */
+  AND NOT map_bounds.is_mosaic_member(s.source_id)
+  /* A map that belongs to a topological compilation is placed *through* it, not
+     beside it: its standing in the layer descends from the compilation's, which
+     is exactly what the flattened path expresses. Membership of a served layer
+     does not count -- that is the placement being written here. Nor does
+     membership of a mosaic: that records where a map's content came from, not
+     where it stands, and a mosaic member may be placed in a layer on its own
+     account (Nevada from SGMC above NGS at `large`). */
   AND NOT EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.member_id = s.source_id
       AND NOT map_bounds.is_served_layer(cm.compilation_id)
+      AND NOT map_bounds.is_mosaic(cm.compilation_id)
   )
 ON CONFLICT (compilation_id, member_id)
 DO UPDATE SET priority = EXCLUDED.priority;
@@ -59,13 +69,15 @@ WHERE map_bounds.is_served_layer(cm.compilation_id)
   );
 
 /** Retire the direct layer placement of any map that has since become a member
-  of a real compilation. */
+  of a topological compilation. Mosaic membership retires nothing: an authored
+  `large -> sgmc-nv001` edge is exactly the placement this must keep. */
 DELETE FROM map_bounds.compilation_member cm
 WHERE map_bounds.is_served_layer(cm.compilation_id)
   AND EXISTS (
     SELECT 1 FROM map_bounds.compilation_member other
     WHERE other.member_id = cm.member_id
       AND NOT map_bounds.is_served_layer(other.compilation_id)
+      AND NOT map_bounds.is_mosaic(other.compilation_id)
   );
 
 

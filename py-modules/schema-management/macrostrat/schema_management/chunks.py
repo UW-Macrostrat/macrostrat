@@ -59,7 +59,7 @@ _MAPS_BOUNDARY = "0002-maps"
 
 # Application chunks are applied as this role (create-as-owner), so their objects
 # are born owned by it and the SQL carries no ``ALTER … OWNER TO`` boilerplate.
-_APP_OWNER = "macrostrat"
+APP_OWNER = "macrostrat"
 
 
 def _core_dir() -> Path:
@@ -89,13 +89,13 @@ def all_chunks() -> list[SchemaDefinition]:
             name="macrostrat",
             depends_on=["public"],
             provides=before_maps,
-            owner=_APP_OWNER,
+            owner=APP_OWNER,
         ),
         # `maps` is discovered from schema/maps/ (depends_on macrostrat via frontmatter).
-        *discover_chunks(schema_dir / "_definitions", owner=_APP_OWNER),
+        *discover_chunks(schema_dir / "_definitions", owner=APP_OWNER),
         # "after maps" — storage, metadata, tiles, … (still flat).
         SchemaDefinition(
-            name="core", depends_on=["maps"], provides=after_maps, owner=_APP_OWNER
+            name="core", depends_on=["maps"], provides=after_maps, owner=APP_OWNER
         ),
         # Global/cross-owner grants, applied last as the connector (superuser).
         SchemaDefinition(
@@ -108,19 +108,19 @@ def all_chunks() -> list[SchemaDefinition]:
             depends_on=["permissions"],
             provides=[schema_dir / "development"],
             environments=_DEV_ENVS,
-            owner=_APP_OWNER,
+            owner=APP_OWNER,
         ),
         SchemaDefinition(
             name="local",
             depends_on=["development"],
             provides=[schema_dir / "local"],
             environments=_LOCAL_ONLY,
-            owner=_APP_OWNER,
+            owner=APP_OWNER,
         ),
         TopologySchema,
         *_raster_layers_chunks(),
         *discover_chunks(
-            schema_dir / "_dev_definitions", owner=_APP_OWNER, environments=_DEV_ENVS
+            schema_dir / "_dev_definitions", owner=APP_OWNER, environments=_DEV_ENVS
         ),
         *build_schema_config(),
     ]
@@ -148,7 +148,7 @@ def _raster_layers_chunks() -> list[SchemaDefinition]:
             name="raster-layers",
             depends_on=["public"],
             provides=schema_files(),
-            owner=_APP_OWNER,
+            owner=APP_OWNER,
         )
     ]
 

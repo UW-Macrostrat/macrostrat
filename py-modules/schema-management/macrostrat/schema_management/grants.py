@@ -26,7 +26,12 @@ import sqlparse
 
 from macrostrat.database import Database
 
-from .rebuild import RebuildReport, apply_statements, iter_chunk_statements
+from .rebuild import (
+    ChunkStatement,
+    RebuildReport,
+    apply_statements,
+    iter_chunk_statements,
+)
 
 # Statements that create a principal or (re)assign permissions. `CREATE USER` and
 # `CREATE GROUP` are documented aliases for `CREATE ROLE` — the same catalog object.
@@ -49,7 +54,7 @@ def grant_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_grant_statements(chunks) -> Iterator[str]:
+def iter_grant_statements(chunks) -> Iterator[ChunkStatement]:
     """Yield permission statements from ``chunks``, in dependency/apply order."""
     yield from iter_chunk_statements(chunks, grant_statements_in)
 

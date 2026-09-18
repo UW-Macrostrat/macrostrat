@@ -116,10 +116,7 @@ CROSS JOIN LATERAL (
       WHERE cm.compilation_id = n.source_id
     ) AS is_composite,
     map_bounds.holds_polygons(n.source_id) AS holds_polygons,
-    (
-      SELECT c.content FROM map_bounds.compilation c
-      WHERE c.source_id = n.source_id
-    ) AS content
+    map_bounds.content(n.source_id) AS content
 ) k
 JOIN map_bounds.map_layer ml ON ml.id = n.map_layer
 JOIN maps.sources s ON s.source_id = n.source_id

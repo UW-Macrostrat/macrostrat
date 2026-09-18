@@ -53,6 +53,9 @@ _ENV = "development"
 # granting ``macrostrat`` write access to the PostGIS ``topology`` metadata tables.
 _TOPOLOGY_SCHEMAS = (_topo_config["data_schema"], _topo_config["topo_schema"])
 
+# `temp` (loader scratch space), `text_vectors` (deliberately owned by `xdd-writer`)
+# and `macrostratbak2` (the dead MariaDB-migration copy) are out of scope for the
+# same reasons the migration excludes them.
 _EXCLUDED_SCHEMAS = (
     "pg_catalog",
     "information_schema",
@@ -61,6 +64,9 @@ _EXCLUDED_SCHEMAS = (
     "sources",
     "tiger",
     "tiger_data",
+    "temp",
+    "text_vectors",
+    "macrostratbak2",
     *_TOPOLOGY_SCHEMAS,
 )
 
@@ -172,10 +178,16 @@ def test_ownership_migration_reconciles_legacy_owners(rollback_schema):
     write access — the existing-database counterpart to create-as-owner on fresh builds.
     """
     db = rollback_schema
-    # Simulate a legacy database: hand objects back to the pre-unification owners.
+    # Simulate a legacy database: hand objects back to the pre-unification owners,
+    # in both spellings. A deployed cluster has each legacy role twice — the PG
+    # Operator creates only the hyphenated name, and `0000-roles.sql` the
+    # underscored one — so the build alone doesn't produce the hyphenated role.
+    db.run_sql('CREATE ROLE "macrostrat-admin" IN ROLE macrostrat;')
     db.run_sql("ALTER TABLE maps.sources OWNER TO macrostrat_admin;")
+    db.run_sql('ALTER TABLE maps.map_units OWNER TO "macrostrat-admin";')
     db.run_sql("ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;")
     assert _owner_of(db, "maps", "sources") == "macrostrat_admin"
+    assert _owner_of(db, "maps", "map_units") == "macrostrat-admin"
     assert _owner_of(db, "macrostrat_kg", "entity") == "xdd_writer"
 
     migration = _load_ownership_migration()
@@ -186,6 +198,7 @@ def test_ownership_migration_reconciles_legacy_owners(rollback_schema):
     # Ownership converged, migration now a no-op, and xdd_writer still writable.
     assert migration.should_apply(db) == ApplicationStatus.APPLIED
     assert _owner_of(db, "maps", "sources") == "macrostrat"
+    assert _owner_of(db, "maps", "map_units") == "macrostrat"
     assert _owner_of(db, "macrostrat_kg", "entity") == "macrostrat"
 
     can_write = db.run_query(

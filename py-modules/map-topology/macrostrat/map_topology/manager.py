@@ -1,14 +1,26 @@
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 
 from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.commands.clean_topology import (
+    remove_empty_topogeometries,
+)
 from rich import print
 
 __dir__ = Path(__file__).parent
 
 proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
+
+
+@contextmanager
+def _timed(label: str):
+    """Print how long a phase of the update took, so a slow run says where."""
+    t0 = time.time()
+    yield
+    print(f"[dim]{label}: {time.time() - t0:.1f} s[/dim]")
 
 
 class MacrostratTopologyManager(TopologyManager):
@@ -66,7 +78,24 @@ class MacrostratTopologyManager(TopologyManager):
         # painter's-algorithm overlay is no longer asked for. It stays in the
         # submodule for linework mode, whose `search` strategy has no meaningful
         # `faces_are_joinable` and therefore cannot dissolve a composite.
-        self.update(incremental=True, boundaries=False)
+        #
+        # Faces only, not the submodule's full `update`: a dissolve adds and
+        # removes `relation` rows over primitives that already exist, so it
+        # leaves nothing for `RemoveUnusedPrimitives` or the edge healer to
+        # find, and both walk the whole topology. What it does leave behind is
+        # the `relation` rows of the map faces it deleted -- `delete_map_faces`
+        # does not clear their topogeometries -- so only that cleanup follows.
+        n_dirty = self.db.run_query(
+            "SELECT count(*) FROM map_bounds_topology.dirty_face"
+        ).scalar()
+        if n_dirty == 0:
+            print("No dirty faces to dissolve")
+            return
+        with _timed(f"Dissolve {n_dirty} dirty faces"):
+            self.update_faces(incremental=True)
+        with _timed("Remove empty topogeometries"):
+            remove_empty_topogeometries(self.db)
+            self.db.session.commit()
 
 
 def _remove_map_topo_elements(db, map_id: int):
@@ -108,21 +137,27 @@ def get_map_list(db, filter_by: list[str] = None):
         -- line crosses an edge it should have followed.
         -- `sync-compilation-bounds` assembles it by reference instead.
         --
-        -- A compilation whose content was *ingested* is the other way round: its
-        -- boundary is authored and was parted out long before it gained members,
-        -- so it stays an ordinary map here. Excluding it would strand the parts
-        -- it already has.
+        -- A *mosaic* is the other way round: its boundary is its own, not
+        -- assembled from its members, so it is parted out like an ordinary map
+        -- when placed. Excluding it would strand the parts it already has.
         WHERE NOT (
           EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
             WHERE cm.compilation_id = a.source_id
           )
-          AND NOT map_bounds.is_ingested(a.source_id)
+          AND NOT map_bounds.is_mosaic(a.source_id)
         )
-        -- Its members, conversely, are documentary: footprints recorded for
-        -- reference, deliberately never noded. Parting them out is the whole
-        -- cost the referenced approach exists to avoid.
-        AND NOT map_bounds.is_documentary(a.source_id)
+        -- Its members have footprints but are never noded on the mosaic's
+        -- account: their extent is their footprint. One that is also placed in
+        -- a topological compilation is an ordinary map there and comes back in.
+        AND NOT (
+          map_bounds.is_mosaic_member(a.source_id)
+          AND NOT EXISTS (
+            SELECT 1 FROM map_bounds.compilation_member cm
+            WHERE cm.member_id = a.source_id
+              AND NOT map_bounds.is_mosaic(cm.compilation_id)
+          )
+        )
         ORDER BY area_km DESC
         """
     ).all()
@@ -167,39 +202,52 @@ def update_maps(
     **kwargs,
 ):
     db = mgr.database
+    start_time = time.time()
+
     # Seed a boundary for any map that lacks one. Existing boundaries -- including
     # any composed from `boundary_op` -- are left untouched.
-    db.run_sql(proc("copy-all-maps"))
+    with _timed("Seed missing boundaries"):
+        db.run_sql(proc("copy-all-maps"))
 
     # Get a list of maps ordered from large to small
     all_maps = get_map_list(db, maps)
 
-    start_time = time.time()
-    for _map in all_maps:
-        process_map(db, _map, **kwargs)
+    n_processed = 0
+    with _timed(f"Check {len(all_maps)} maps"):
+        for _map in all_maps:
+            if process_map(db, _map, **kwargs):
+                n_processed += 1
 
+    # Cleaning is whole-topology work: `RemoveUnusedPrimitives` visits every
+    # primitive and the edge healer every node, whatever changed. Only noding or
+    # re-deriving a map's parts leaves anything for either to find, so a run that
+    # touched no map's parts -- a reprioritization, say -- skips both passes.
+    clean = clean and n_processed > 0
     if clean:
-        mgr.clean_topology()
+        with _timed("Clean topology"):
+            mgr.clean_topology()
 
-    update_map_area_topogeometries(db)
+    with _timed("Assemble map_area topogeometries"):
+        update_map_area_topogeometries(db)
 
     # A compilation's boundary is the union of its members' face sets, so it can
     # only be assembled once those members have topogeometries.
-    db.run_sql(proc("sync-compilation-bounds"))
+    with _timed("Sync compilation bounds"):
+        db.run_sql(proc("sync-compilation-bounds"))
 
     # Associate maps with the layer matching their scale, then flatten the
     # composition DAG into the priority paths identity resolution orders by.
     # Both follow boundary assembly: a compilation has no `map_area` row, and so
     # no layer placement, until it has been assembled.
-    db.run_sql(proc("set-map-priority"))
-    db.run_sql(proc("sync-priority-paths"))
+    with _timed("Sync priority paths"):
+        db.run_sql(proc("set-map-priority"))
+        db.run_sql(proc("sync-priority-paths"))
 
     if clean:
-        mgr.clean_topology()
+        with _timed("Clean topology"):
+            mgr.clean_topology()
 
-    end_time = time.time()
-
-    print(f"Total time: {end_time - start_time:.3f} seconds")
+    print(f"Total time: {time.time() - start_time:.3f} seconds")
 
 
 def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
@@ -221,10 +269,13 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     ).all()
 
 
-def process_map(db, map, **kwargs):
+def process_map(db, map, **kwargs) -> bool:
     """Process an individual map by creating topogeometries for its features if needed.
     If run in "bulk" mode, processing will be run on all maps regardless of whether topogeometries
     are already present. Otherwise, processing will be run only on maps that have not changed.
+
+    Returns whether the map's parts were touched, so the caller knows if the
+    topology's primitives may have changed.
     """
     bulk = kwargs.pop("bulk", False)
     if not bulk:
@@ -239,7 +290,7 @@ def process_map(db, map, **kwargs):
         if res == 1:
             _print_map_info(map, prefix="  Skipping map ")
             print("  Boundary, parts and assembly are all current")
-            return
+            return False
 
         # Every part being solved is only a reason to skip if the parts still
         # reflect the current boundary. Otherwise a recomposed boundary looks
@@ -258,7 +309,7 @@ def process_map(db, map, **kwargs):
             if res.total > 0 and res.processed == res.total:
                 _print_map_info(map, prefix="  Skipping map ")
                 print(f"  {res.processed} topogeometries already processed")
-                return
+                return False
 
     _print_map_info(map, prefix="Processing map ")
 
@@ -268,6 +319,7 @@ def process_map(db, map, **kwargs):
     add_topogeometries(db, map.map_id)
     print()
     print()
+    return True
 
 
 def prepare_map_topo_features(

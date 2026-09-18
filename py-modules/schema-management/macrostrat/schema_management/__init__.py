@@ -192,6 +192,8 @@ def apply(
     ),
 ):
     """Apply migration plan to database"""
+    from .ownership import applied_as_app_owner
+
     db = get_database()
 
     dumpdir = settings.srcroot / "schema"
@@ -209,9 +211,16 @@ def apply(
 
     counter = StatementCounter(safe=safe)
 
-    db.run_fixtures(
-        pending_plan, statement_filter=counter.filter, console=macrostrat_app.console
-    )
+    # The plan has no chunk structure to take an owner from, so it is applied as
+    # `macrostrat` wholesale and `escalate` re-runs the statements that need the
+    # connector. Without this, everything a diff creates is born connector-owned.
+    with applied_as_app_owner(db) as escalate:
+        db.run_fixtures(
+            pending_plan,
+            statement_filter=counter.filter,
+            on_error=escalate,
+            console=macrostrat_app.console,
+        )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
 
     counter.print_report()

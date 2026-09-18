@@ -10,19 +10,18 @@ WITH tile AS (
 ),
 map_bounds AS (
   SELECT
-    map_id AS source_id,
-    lines_oriented,
-    s.scale,
-    ST_Intersection(geometry, tile.projected_bbox) AS geometry,
+    mf.map_id AS source_id,
+    ST_Intersection(mf.geometry, tile.projected_bbox) AS geometry,
     tile.mercator_bbox
   FROM map_bounds_topology.map_face mf
   JOIN tile
     ON ST_Intersects(mf.geometry, tile.projected_bbox)
-  JOIN maps.sources s
-    ON s.source_id = mf.map_id
-  WHERE map_layer = map_bounds.layer_id(tile.layer_slug)
-    AND ST_Intersects(geometry, tile.projected_bbox)
+  WHERE mf.map_layer = map_bounds.layer_id(tile.layer_slug)
 ),
+/* Which polygons fill a face is `map_bounds.polygons_of`'s question: the face's
+   owner need not hold them -- a mosaic member placed in a layer (Nevada from SGMC
+   at `large`) shows its parent's polygons inside its footprint. The function also
+   prunes the partition by the content's scale, not the owner's. */
 unit_features AS (
   SELECT
     p.map_id,
@@ -30,12 +29,8 @@ unit_features AS (
     l.*, -- legend info
     -- TODO: only run intersection if the map is partially visible
     tile_layers.tile_geom(ST_Intersection(p.geom, b.geometry), b.mercator_bbox) AS geom
-  FROM
-    maps.polygons p
-  JOIN map_bounds b
-    ON b.source_id = p.source_id
-   AND p.scale::text = b.scale::text
-   AND ST_Intersects(p.geom, b.geometry)
+  FROM map_bounds b
+  CROSS JOIN LATERAL map_bounds.polygons_of(b.source_id, b.geometry) p
   JOIN maps.map_legend
     ON p.map_id = map_legend.map_id
   JOIN tile_layers.map_legend_info AS l
@@ -44,20 +39,18 @@ unit_features AS (
 -- Lines
 line_features AS (
   SELECT
-    line_id,
+    l.line_id,
     b.source_id,
     coalesce(l.descrip, '') AS descrip,
     coalesce(l.name, '') AS name,
     coalesce(l.direction, '') AS direction,
     coalesce(l.type, '') AS "type",
-    lines_oriented oriented,
-    tile_layers.tile_geom(ST_Intersection(geom, b.geometry), b.mercator_bbox) AS geom
-  FROM
-    maps.lines l
-  JOIN map_bounds b
-    ON b.source_id = l.source_id
-   AND l.scale::text = b.scale::text
-   AND ST_Intersects(l.geom, b.geometry)
+    cs.lines_oriented AS oriented,
+    tile_layers.tile_geom(ST_Intersection(l.geom, b.geometry), b.mercator_bbox) AS geom
+  FROM map_bounds b
+  CROSS JOIN LATERAL map_bounds.lines_of(b.source_id, b.geometry) l
+  -- `lines_oriented` belongs to whoever holds the lines.
+  JOIN maps.sources cs ON cs.source_id = l.source_id
 ), units_tile AS (
   SELECT ST_AsMVT(unit_features, 'units') AS units
   FROM unit_features
