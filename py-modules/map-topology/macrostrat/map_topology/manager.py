@@ -9,6 +9,7 @@ from mapboard.topology_manager.commands.clean_topology import (
     remove_empty_topogeometries,
 )
 from rich import print
+from rich.progress import Progress
 
 __dir__ = Path(__file__).parent
 
@@ -371,8 +372,6 @@ class TopoUpdateResult:
 
 
 def _do_update(db, map_id: int) -> TopoUpdateResult:
-    t_start = time.time()
-
     batch_size = 100
     tolerance = 0.0001
 
@@ -381,15 +380,6 @@ def _do_update(db, map_id: int) -> TopoUpdateResult:
         dict(map_id=map_id, batch_size=batch_size, tolerance=tolerance),
     ).one()
     db.session.commit()
-    elapsed = time.time() - t_start
-
-    print(
-        f"  Processed {res.updated} topogeoms, {res.remaining} remaining, {elapsed:.3f} seconds"
-    )
-    if res.errors is not None and len(res.errors) > 0:
-        print("  Errors:")
-        for err in res.errors:
-            print(f"   [dim]- [red]{err}")
     return TopoUpdateResult(
         updated=res.updated,
         failed=res.failed,
@@ -416,24 +406,36 @@ def _retry_errors(db, map_id: int, tolerance: float) -> int:
 
 
 def add_topogeometries(db, map_id: int) -> TopoUpdateResult:
-    n_remaining = 1000
-    niter = 0
+    n_remaining = db.run_query(
+        """
+        SELECT count(*)
+        FROM map_bounds.map_topo
+        WHERE source_id = :map_id
+          AND topo IS NULL
+          AND topology_error IS NULL
+        """,
+        dict(map_id=map_id),
+    ).scalar()
     updated = 0
     failed = 0
     errors = []
-    while n_remaining > 0:
-        res = _do_update(
-            db,
-            map_id,
-        )
-        n_remaining = res.remaining
+    if n_remaining > 0:
+        with Progress() as progress:
+            task = progress.add_task(
+                "Updating map_topo topogeometries", total=n_remaining
+            )
+            while n_remaining > 0:
+                res = _do_update(db, map_id)
+                n_remaining = res.remaining
 
-        updated += res.updated
-        failed += res.failed
-        if res.errors is not None and len(res.errors) > 0:
-            errors.extend(res.errors)
+                updated += res.updated
+                failed += res.failed
+                progress.update(task, advance=res.updated + res.failed)
 
-        niter += 1
+                if res.errors is not None and len(res.errors) > 0:
+                    errors.extend(res.errors)
+                    for err in res.errors:
+                        progress.console.print(f"   [dim]- [red]{err}")
 
     # Re-attempt insertion failures at a snap tolerance just below the global
     # 0.0001 default. The default over-snaps some incoming geometry into
