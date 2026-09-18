@@ -4752,6 +4752,107 @@ def normalize_remove_tag(
     )
 
 
+@normalize_cli.command("apply-japan-types")
+def apply_japan_line_point_types_from_temp(
+    only: Optional[str] = Option(None, "--only", help="Process a single slug."),
+):
+    """Apply the curated temp.japan_*_types values back onto the sources tables.
+
+    Both temp tables are keyed on the original descrip, not on the destination
+    column, so unlike apply-az-types this is safe to re-run:
+
+    points: point_type      <- temp.japan_point_types.point_type
+    lines:  type, certainty <- temp.japan_line_types.line_type, .certainty
+
+    Only rows whose descrip has a non-null mapping are touched, so unreviewed
+    entries in the temp tables leave the sources tables alone.
+    """
+    db = get_database()
+
+    slugs = list(
+        db.run_query(
+            """
+            SELECT slug
+            FROM maps_metadata.ingest_process
+            WHERE slug ILIKE 'japan%'
+            ORDER BY slug
+            """
+        ).scalars()
+    )
+    if only is not None:
+        slugs = [s for s in slugs if s == only]
+        if not slugs:
+            raise ValueError(f"No Japan slug matches '{only}'")
+
+    failed: list[tuple[str, str]] = []
+    for position, slug in enumerate(slugs, start=1):
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
+        try:
+            points = TableTarget(schema="sources", table=slug + "_points")
+            lines = TableTarget(schema="sources", table=slug + "_lines")
+
+            n = db.run_query(
+                """
+                SELECT count(*)
+                FROM {table} s
+                JOIN temp.japan_point_types t ON s.descrip = t.description
+                WHERE t.point_type IS NOT NULL
+                  AND coalesce(s.omit, false) = false
+                """,
+                dict(table=points.fq_identifier),
+            ).scalar()
+            console.print(f"  points: {n} row(s) with a mapped point_type")
+            if n:
+                db.run_sql(
+                    """
+                    UPDATE {table} s
+                    SET point_type = t.point_type
+                    FROM temp.japan_point_types t
+                    WHERE s.descrip = t.description
+                      AND t.point_type IS NOT NULL
+                      AND coalesce(s.omit, false) = false
+                    """,
+                    dict(table=points.fq_identifier),
+                )
+
+            n = db.run_query(
+                """
+                SELECT count(*)
+                FROM {table} s
+                JOIN temp.japan_line_types t ON s.descrip = t.description
+                WHERE (t.line_type IS NOT NULL OR t.certainty IS NOT NULL)
+                  AND coalesce(s.omit, false) = false
+                """,
+                dict(table=lines.fq_identifier),
+            ).scalar()
+            console.print(f"  lines:  {n} row(s) with a mapped type/certainty")
+            if n:
+                db.run_sql(
+                    """
+                    UPDATE {table} s
+                    SET type = coalesce(t.line_type, s.type),
+                        certainty = coalesce(t.certainty, s.certainty)
+                    FROM temp.japan_line_types t
+                    WHERE s.descrip = t.description
+                      AND (t.line_type IS NOT NULL OR t.certainty IS NOT NULL)
+                      AND coalesce(s.omit, false) = false
+                    """,
+                    dict(table=lines.fq_identifier),
+                )
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            failed.append((slug, f"{type(e).__name__}: {e}"))
+            console.print(f"[red]Failed[/red] [bold]{slug}[/bold]: {e}")
+
+    console.print(
+        f"\n[green]Finished:[/green] {len(slugs) - len(failed)}/{len(slugs)} slug(s)"
+    )
+    for slug, message in failed:
+        console.print(f"  [red]{slug}[/red]: {message}")
+
+
 @normalize_cli.command("get_japan_descrips")
 def get_japan_descrips_points_lines():
     """Stores unique descriptions into temp table"""
@@ -4809,6 +4910,107 @@ def store_az_line_point_types_to_temp():
             dict(table=Identifier("sources", slug + "_lines")),
         )
         db.session.commit()
+
+
+@normalize_cli.command("apply-az-types")
+def apply_az_line_point_types_from_temp(
+    only: Optional[str] = Option(None, "--only", help="Process a single slug."),
+):
+    """Apply the curated temp.arizona_*_types values back onto the sources tables.
+
+    points: point_type      <- temp.arizona_point_types.point_type
+    lines:  type, certainty <- temp.arizona_line_types.line_type, .certainty
+
+    Only rows whose original value has a non-null mapping are touched, so
+    unreviewed entries in the temp tables leave the sources tables alone.
+    """
+    db = get_database()
+
+    slugs = list(
+        db.run_query(
+            """
+            SELECT slug
+            FROM maps_metadata.ingest_process
+            WHERE slug ILIKE 'arizona%'
+              AND slug NOT ILIKE 'arizona_adgm%'
+            ORDER BY slug
+            """
+        ).scalars()
+    )
+    if only is not None:
+        slugs = [s for s in slugs if s == only]
+        if not slugs:
+            raise ValueError(f"No Arizona slug matches '{only}'")
+
+    failed: list[tuple[str, str]] = []
+    for position, slug in enumerate(slugs, start=1):
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
+        try:
+            points = TableTarget(schema="sources", table=slug + "_points")
+            lines = TableTarget(schema="sources", table=slug + "_lines")
+
+            # The join reads pre-update values within a single statement, so
+            # overwriting the join column here is safe.
+            n = db.run_query(
+                """
+                SELECT count(*)
+                FROM {table} s
+                JOIN temp.arizona_point_types t ON s.point_type = t.orig_point_type
+                WHERE t.point_type IS NOT NULL
+                  AND coalesce(s.omit, false) = false
+                """,
+                dict(table=points.fq_identifier),
+            ).scalar()
+            console.print(f"  points: {n} row(s) with a mapped point_type")
+            if n:
+                db.run_sql(
+                    """
+                    UPDATE {table} s
+                    SET point_type = t.point_type
+                    FROM temp.arizona_point_types t
+                    WHERE s.point_type = t.orig_point_type
+                      AND t.point_type IS NOT NULL
+                      AND coalesce(s.omit, false) = false
+                    """,
+                    dict(table=points.fq_identifier),
+                )
+
+            n = db.run_query(
+                """
+                SELECT count(*)
+                FROM {table} s
+                JOIN temp.arizona_line_types t ON s.type = t.orig_line_type
+                WHERE (t.line_type IS NOT NULL OR t.certainty IS NOT NULL)
+                  AND coalesce(s.omit, false) = false
+                """,
+                dict(table=lines.fq_identifier),
+            ).scalar()
+            console.print(f"  lines:  {n} row(s) with a mapped type/certainty")
+            if n:
+                db.run_sql(
+                    """
+                    UPDATE {table} s
+                    SET type = coalesce(t.line_type, s.type),
+                        certainty = coalesce(t.certainty, s.certainty)
+                    FROM temp.arizona_line_types t
+                    WHERE s.type = t.orig_line_type
+                      AND (t.line_type IS NOT NULL OR t.certainty IS NOT NULL)
+                      AND coalesce(s.omit, false) = false
+                    """,
+                    dict(table=lines.fq_identifier),
+                )
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            failed.append((slug, f"{type(e).__name__}: {e}"))
+            console.print(f"[red]Failed[/red] [bold]{slug}[/bold]: {e}")
+
+    console.print(
+        f"\n[green]Finished:[/green] {len(slugs) - len(failed)}/{len(slugs)} slug(s)"
+    )
+    for slug, message in failed:
+        console.print(f"  [red]{slug}[/red]: {message}")
 
 
 @normalize_cli.command("normalize_az")
