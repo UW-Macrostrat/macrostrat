@@ -86,6 +86,26 @@ migration-applied one converge on the same `APPLIED` state.
   regex refuses a name followed by `:`, so `:lng::float` is left in the statement
   as literal text and Postgres fails with `syntax error at or near ":"`. Write
   `CAST(:lng AS float)`. A cast on a *column* (`ma.area_km::float`) is fine.
+- **Don't rewrite a spatial query without benchmarking it.** This has now gone
+  wrong twice: a query over the map topology was restructured into a shape that
+  cannot reach a spatial index, and in both cases the rewrite returned identical
+  rows, passed every test, and was only caught by someone reading it. The map
+  topology exists to make these queries cheap — `map_face` is a non-overlapping
+  coverage per layer, so a location resolves to a few faces and each face is one
+  indexed lookup against one map's polygons. Composing over something that hides
+  that access path (a view over a `STABLE` function, a set-returning function in
+  a `LATERAL`) reintroduces the full scan the coverage was built to avoid.
+  Before and after any such change, run `EXPLAIN (ANALYZE, BUFFERS)` and check
+  for a `Seq Scan` on a `maps.polygons` partition; a cost that does not vary with
+  how much the request actually covers is the tell. See
+  `Incidents/2026-09-20 Spatial queries rewritten past their indexes.md` in the
+  workbench vault.
+- **`map_bounds.polygons_of` is for one map and one envelope.** It bundles the
+  mosaic walk (`content_of`) with the polygon lookup, which is right for the
+  single-map tile query. `CROSS JOIN LATERAL`-ing it per face is not: the planner
+  re-runs the mosaic walk per output row and loses the constant envelope it needs
+  for the GiST index. Resolve `content_of` once per face, then join
+  `maps.polygons` on `source_id` + `scale` directly.
 - **Don't guard against "already exists".** Schema application tolerates errors,
   so state objects declaratively and let a duplicate raise, get noted, and be
   stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more

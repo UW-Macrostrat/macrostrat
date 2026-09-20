@@ -2,10 +2,17 @@
 
    Faces are materialised per served layer, so a compilation that is not one
    borrows the faces of the layer it sits in, filtered to the maps it resolves to.
-   By default each face is attributed to the *direct member* it is reached
-   through -- from `carto-large` a British Columbia face belongs to `medium`, even
-   though `bc_2017` is what actually owns it. `expand` attributes to that owning
-   map instead.
+
+   Ownership and attribution are two different levels, and only one of them is in
+   `map_face`. A face is always owned by the map that was solved into the layer --
+   a leaf. It is *attributed*, by default, to the compilation it is reached
+   through (`via`): from `carto-medium`, an `ngs-alabama` face reads as
+   `ngs-bedrock`. `expand` attributes it to the owning map instead.
+
+   For a map sitting directly in the layer the two coincide, which is why joining
+   faces on `via` worked for every flat member and silently dropped every map
+   under a nested compilation -- all 142 under `ngs-bedrock` and `ngs-surface`
+   vanished from the layer. Join on the owner; attribute afterwards.
 */
 WITH tile AS (
   SELECT
@@ -51,11 +58,9 @@ WITH tile AS (
   FROM root
   JOIN map_bounds_topology.map_face f ON f.map_layer = root.face_layer
   JOIN tile ON ST_Intersects(f.geometry, tile.projected_bbox)
-  -- Both levels are present in `map_face`. By default take the unit's own face,
-  -- which for a standalone map is simply its face; `expand` takes the
-  -- constituents instead.
-  JOIN resolved r
-    ON f.map_id = CASE WHEN :expand THEN r.source_id ELSE r.via END
+  -- The owner, always: `via` is an attribution level and a nested compilation
+  -- owns no faces of its own.
+  JOIN resolved r ON f.map_id = r.source_id
   LEFT JOIN maps.sources s ON s.source_id = r.source_id
   LEFT JOIN maps.sources v ON v.source_id = r.via)
   UNION ALL

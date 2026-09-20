@@ -31,6 +31,7 @@ class MacrostratTopologyManager(TopologyManager):
         db.session.commit()
         print(f"Removed {res} orphaned [cyan]map_topo[/cyan] topogeometries")
         super().clean_topology()
+        db.session.commit()
 
     def remove_maps(self, maps: list[str] = None):
         db = self.database
@@ -74,29 +75,14 @@ class MacrostratTopologyManager(TopologyManager):
         if res > 0:
             print(f"[red]Found [bold]{res}[/bold] maps without a topogeometry[/red]")
 
+        self.clean_topology()
+
         # Composite layers are solved by the ordinary face pipeline now that the
         # flattened priority paths give them identity resolution, so the
         # painter's-algorithm overlay is no longer asked for. It stays in the
         # submodule for linework mode, whose `search` strategy has no meaningful
         # `faces_are_joinable` and therefore cannot dissolve a composite.
-        #
-        # Faces only, not the submodule's full `update`: a dissolve adds and
-        # removes `relation` rows over primitives that already exist, so it
-        # leaves nothing for `RemoveUnusedPrimitives` or the edge healer to
-        # find, and both walk the whole topology. What it does leave behind is
-        # the `relation` rows of the map faces it deleted -- `delete_map_faces`
-        # does not clear their topogeometries -- so only that cleanup follows.
-        n_dirty = self.db.run_query(
-            "SELECT count(*) FROM map_bounds_topology.dirty_face"
-        ).scalar()
-        if n_dirty == 0:
-            print("No dirty faces to dissolve")
-            return
-        with _timed(f"Dissolve {n_dirty} dirty faces"):
-            self.update_faces(incremental=True)
-        with _timed("Remove empty topogeometries"):
-            remove_empty_topogeometries(self.db)
-            self.db.session.commit()
+        self.update(incremental=True, boundaries=False)
 
 
 def _remove_map_topo_elements(db, map_id: int):
@@ -392,16 +378,32 @@ def _retry_errors(db, map_id: int, tolerance: float) -> int:
     """Re-attempt this map's errored map_topo rows at the given snap tolerance,
     in batches, until a pass recovers nothing more. Returns the number of rows
     recovered. Rows that still fail keep their topology_error for inspection."""
+    retryable = db.run_query(
+        """
+        SELECT count(*)
+        FROM map_bounds.map_topo
+        WHERE source_id = :map_id
+          AND topo IS NULL
+          AND topology_error IS NOT NULL
+        """,
+        dict(map_id=map_id),
+    ).scalar()
+    if retryable == 0:
+        return 0
+
     recovered = 0
-    while True:
-        res = db.run_query(
-            proc("update-topology-fix-errors"),
-            dict(map_id=map_id, batch_size=100, tolerance=tolerance),
-        ).one()
-        db.session.commit()
-        if not res.updated:
-            break
-        recovered += res.updated
+    with Progress() as progress:
+        task = progress.add_task("Retrying errored map_topo features", total=retryable)
+        while True:
+            res = db.run_query(
+                proc("update-topology-fix-errors"),
+                dict(map_id=map_id, batch_size=100, tolerance=tolerance),
+            ).one()
+            db.session.commit()
+            if not res.updated:
+                break
+            recovered += res.updated
+            progress.update(task, advance=res.updated)
     return recovered
 
 

@@ -112,15 +112,24 @@ JOIN map_bounds.map_layer member ON member.source_id = cm.member_id;
   partitions, and it is a real property of the work: `ngs-connecticut` is
   1:125,000 whatever layer happens to serve it.
 
-  The update is deliberately unconditional -- no `IS DISTINCT FROM` guard. It is
-  doing double duty: `update_line_edge_relation` fires on *any* update of a
-  `map_area` holding a topogeometry, and deletes and re-inserts that map's
-  `__edge_relation` rows. So this statement is also what keeps the barrier
-  registry populated, and skipping the rows whose layer is unchanged empties it
-  for every map that did not move. On a database being built from scratch that
-  leaves no barriers at all, the dissolve merges everything it can reach, and a
-  composite layer collapses to a single face -- which is what
-  `test_composite_layers` sees.
+  The update does double duty, so its guard has two arms. `update_line_edge_relation`
+  fires on *any* update of a `map_area` holding a topogeometry and rebuilds that
+  map's `__edge_relation` rows, so this statement is also what populates the
+  barrier registry on a database being built from scratch. Without any barriers the
+  dissolve merges everything it can reach and a composite layer collapses to a
+  single face.
+
+  It used to be unconditional for that reason, which made every run delete and
+  re-insert the whole registry: 457 maps, 720,556 rows, about 24 s, on a run where
+  no map had moved at all (measured 2026-09-18, where 0 of 469 rows changed layer
+  and 0 were missing barrier rows). So the two duties are now stated separately --
+  a map whose layer moved, or a map holding a topogeometry with no barrier rows
+  yet. A steady-state run touches nothing; a fresh database still populates.
+
+  The trade this makes is deliberate: the unconditional rebuild also repaired
+  `__edge_relation` rows that were present but *wrong*, on every run. The second
+  arm only catches rows that are missing. `macrostrat topo rebuild` remains the
+  repair path, and `validate_edge_relations` the check.
 
   Scale remains the fallback, for a map with no placement to read. That is not
   only the ~95 ingested maps that are in no layer -- where a stale registration
@@ -139,4 +148,16 @@ LEFT JOIN (
   WHERE NOT map_bounds.is_composite_layer(map_layer)
   GROUP BY source_id
 ) base ON base.source_id = s.source_id
-WHERE ma.source_id = s.source_id;
+WHERE ma.source_id = s.source_id
+  AND (
+    -- The map moved between layers.
+    ma.map_layer IS DISTINCT FROM coalesce(base.map_layer, map_bounds.layer_id(s.scale))
+    -- Or it holds a boundary whose barrier rows were never registered, which is
+    -- what the trigger on this statement is here to do.
+    OR (
+      ma.topo IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM map_bounds_topology.__edge_relation er WHERE er.line_id = ma.id
+      )
+    )
+  );

@@ -54,6 +54,8 @@ def create_topo_context(db: Database):
             ]
         ),
         notify_triggers=False,
+        face_update_engine="plpgsql",
+        face_update_mode="move",
     )
 
 

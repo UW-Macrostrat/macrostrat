@@ -408,7 +408,12 @@ WHERE NOT EXISTS (
   Resolving a hierarchical topogeometry to a geometry costs tens of seconds, so
   the point of this view is to do it only for compilations that actually moved.
 */
-CREATE OR REPLACE VIEW map_bounds.compilation_assembly AS
+-- Dropped rather than replaced: `face_elements` moved out to
+-- `compilation_face_elements()`, and `CREATE OR REPLACE VIEW` cannot drop a
+-- column, so replacing in place fails on any database built before that split.
+-- Nothing else selects from this view, so the drop needs no CASCADE.
+DROP VIEW IF EXISTS map_bounds.compilation_assembly;
+CREATE VIEW map_bounds.compilation_assembly AS
 WITH RECURSIVE descendants AS (
   -- A mosaic is not assembled from anything: its boundary is its own (authored,
   -- or derived once from its members' footprints) and its members are never
@@ -431,13 +436,6 @@ SELECT
   d.root AS source_id,
   -- References to the members' own topogeometries, for the hierarchical layer.
   array_agg(DISTINCT ARRAY[(a.topo).id, (a.topo).layer_id]) AS elements,
-  -- The primitive faces those members cover. A *materialized* compilation needs a
-  -- level-0 topogeometry as well, because `identity_for_face` resolves there and
-  -- a compilation cannot own a face without one. Assembled by reference either
-  -- way: its boundary is already in the topology as its members' edges, and
-  -- re-noding a simplified transform of it fails where the simplified line
-  -- crosses an edge it should have followed.
-  array_agg(DISTINCT ARRAY[r.element_id, 3]) AS face_elements,
   md5(string_agg(DISTINCT
         d.member_id || '/' || (a.topo).id, ',')
       )::uuid AS current_hash,
@@ -449,12 +447,50 @@ FROM descendants d
 JOIN map_bounds.map_area a
   ON a.source_id = d.member_id
  AND a.topo IS NOT NULL
+LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
+GROUP BY d.root, c.assembly_hash;
+
+
+/** The primitive faces a compilation's members cover, as `createTopoGeom`
+  elements.
+
+  A *materialized* compilation needs a level-0 topogeometry, because
+  `identity_for_face` resolves there and a compilation cannot own a face without
+  one. Assembled by reference: its boundary is already in the topology as its
+  members' edges, and re-noding a simplified transform of it fails where the
+  simplified line crosses an edge it should have followed.
+
+  Deliberately *not* a column of `compilation_assembly`. It requires joining every
+  member's face relations, which on a real corpus is millions of rows -- 4.0M
+  across 14 compilations here, 488k in the largest -- and takes about 8 s, where
+  the rest of that view answers in 65 ms. The view is evaluated for every
+  compilation on every run to decide staleness; these elements are needed only for
+  the rare compilation actually being built, so they are resolved per call
+  instead. */
+CREATE OR REPLACE FUNCTION map_bounds.compilation_face_elements(_source_id integer)
+  RETURNS integer[][] AS $$
+WITH RECURSIVE descendants AS (
+  SELECT cm.member_id
+  FROM map_bounds.compilation_member cm
+  WHERE cm.compilation_id = _source_id
+    AND NOT map_bounds.is_mosaic(cm.compilation_id)
+  UNION
+  SELECT cm.member_id
+  FROM descendants d
+  JOIN map_bounds.compilation_member cm
+    ON cm.compilation_id = d.member_id
+  WHERE NOT map_bounds.has_content(d.member_id)
+)
+SELECT array_agg(DISTINCT ARRAY[r.element_id, 3])
+FROM descendants d
+JOIN map_bounds.map_area a
+  ON a.source_id = d.member_id
+ AND a.topo IS NOT NULL
 JOIN map_bounds_topology.relation r
   ON r.layer_id = (a.topo).layer_id
  AND r.topogeo_id = (a.topo).id
- AND r.element_type = 3
-LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
-GROUP BY d.root, c.assembly_hash;
+ AND r.element_type = 3;
+$$ LANGUAGE sql STABLE;
 
 /** Every map a compilation resolves to, with the *unit* each is presented as.
 

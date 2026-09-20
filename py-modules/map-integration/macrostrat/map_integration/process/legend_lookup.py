@@ -1,12 +1,10 @@
-import random
-
-import spectra
 from psycopg2.sql import Identifier
 
 from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database
 from ..utils import MapInfo
+from ..utils.legend_color import LegendRow, assign_colors
 
 
 def legend_lookup(source: MapInfo):
@@ -17,13 +15,6 @@ def legend_lookup(source: MapInfo):
 
 
 class LegendLookup:
-    scaleIsIn = {
-        "tiny": ["tiny", "small"],
-        "small": ["small", "medium"],
-        "medium": ["medium", "large"],
-        "large": ["large"],
-    }
-
     def __init__(self, db):
         self.db = db
 
@@ -525,114 +516,63 @@ class LegendLookup:
 
         print("Ran sixth command")
 
-        # Shift colors where needed
-        colors = self.db.run_query(
+        # Nudge same-age units apart. Variants are chosen from each legend's
+        # place and size, so two maps of the same ground agree; see
+        # utils/legend_color. One read and one write per map -- this used to
+        # be an UPDATE per legend row, followed by a name-based homogenization
+        # sweep that rewrote every other map at a compatible scale.
+        rows = self.db.run_query(
             """
-            SELECT color, c, legend_ids, best_age_bottom, best_age_top
-            FROM (
-                select color, count(*) c, array_agg(legend_id) AS legend_ids, best_age_bottom, best_age_top
-                FROM maps.legend
-                WHERE source_id = :source_id
-                GROUP BY color, best_age_bottom, best_age_top
-            ) sub
-            WHERE c > 1;
-        """,
+            SELECT
+              l.legend_id,
+              l.color,
+              l.best_age_top,
+              l.best_age_bottom,
+              ST_X(ST_Centroid(ST_Extent(p.geom))) AS cx,
+              ST_Y(ST_Centroid(ST_Extent(p.geom))) AS cy,
+              sum(ST_Area(p.geom::geography)) / 1e6 AS area_km
+            FROM maps.legend l
+            LEFT JOIN maps.map_legend ml ON ml.legend_id = l.legend_id
+            LEFT JOIN maps.polygons p
+              ON p.map_id = ml.map_id AND p.source_id = l.source_id
+            WHERE l.source_id = :source_id
+            GROUP BY l.legend_id
+            """,
             {"source_id": source_id},
         ).all()
 
-        print("Ran seventh command")
-
-        for color in colors:
-            if color.color is None:
-                continue
-            try:
-                c = spectra.html(color.color)
-            except:
-                print(color)
-                continue
-
-            variants = [
-                c.brighten(amount=3).hexcode,
-                c.darken(amount=3).hexcode,
-                c.brighten(amount=6).hexcode,
-                c.darken(amount=6).hexcode,
-                c.brighten(amount=9).hexcode,
-                c.darken(amount=9).hexcode,
-                c.saturate(amount=10).hexcode,
-                c.desaturate(amount=10).hexcode,
-                c.desaturate(amount=20).hexcode,
-                c.saturate(amount=20).hexcode,
-                c.saturate(amount=30).hexcode,
-            ]
-            used_variants = []
-
-            for idx, legend_id in enumerate(color.legend_ids):
-                # allow one to maintain its original color
-                if idx == 0:
-                    continue
-                # If we have used all the colors start over
-                if len(used_variants) == len(variants):
-                    used_variants = []
-
-                valid_choice = False
-                loops = 0
-                while not valid_choice:
-                    new_color = random.choice(variants)
-                    loops = loops + 1
-                    if new_color not in used_variants:
-                        valid_choice = True
-                        used_variants.append(new_color)
-                    elif loops > len(variants):
-                        used_variants = []
-
-                self.db.run_sql(
-                    """
-                    UPDATE maps.legend
-                    SET color = :color
-                    WHERE legend_id = :legend_id
-                """,
-                    {"color": new_color, "legend_id": legend_id},
+        changes = assign_colors(
+            [
+                LegendRow(
+                    legend_id=r.legend_id,
+                    color=r.color,
+                    best_age_top=_as_float(r.best_age_top),
+                    best_age_bottom=_as_float(r.best_age_bottom),
+                    cx=r.cx,
+                    cy=r.cy,
+                    area_km=_as_float(r.area_km),
                 )
+                for r in rows
+            ]
+        )
 
-        print("Ran eighth command")
-
-        # Now go back and homogenize similar units
-        similar_units = self.db.run_query(
-            """
-            WITH first AS (
-                SELECT DISTINCT ON (legend.name, b_interval, t_interval) legend.name, b_interval, t_interval, count(distinct legend_id), array_agg(distinct legend_id) AS legend_ids, array_agg(distinct color) AS colors
-                FROM maps.legend
-                -- `legend.source_id = legend.source_id` compared a column to
-                -- itself, which is a cross join: every legend row against every
-                -- source, 112 million rows, and `scale` then filtered `sources`
-                -- rather than restricting the legend rows considered.
-                JOIN maps.sources ON legend.source_id = sources.source_id
-                WHERE sources.scale = ANY(:scales)
-                GROUP BY legend.name, b_interval, t_interval
-            )
-            SELECT legend_ids, colors
-            FROM first
-            WHERE array_length(legend_ids, 1) > 1;
-        """,
-            {"scales": LegendLookup.scaleIsIn[scale]},
-        ).all()
-
-        print("Ran ninth command")
-
-        for idx, unit in enumerate(similar_units):
-            # print '%s of %s' % (idx, len(similar_units), )
-            # Just pick the first color
-            color = unit.colors[0]
-
-            print(unit.legend_ids)
-
+        if changes:
             self.db.run_sql(
                 """
-                UPDATE maps.legend
-                SET color = :color
-                WHERE legend_id = ANY(:legend_id)
-            """,
-                {"color": color, "legend_id": unit.legend_ids},
+                UPDATE maps.legend l
+                SET color = v.color
+                FROM unnest(CAST(:legend_ids AS integer[]), CAST(:colors AS text[]))
+                  AS v(legend_id, color)
+                WHERE l.legend_id = v.legend_id
+                """,
+                {"legend_ids": list(changes.keys()), "colors": list(changes.values())},
             )
 
+        print(f"Shifted {len(changes)} of {len(rows)} legend colors")
         print("Done")
+
+
+def _as_float(value):
+    if value is None:
+        return None
+    return float(value)

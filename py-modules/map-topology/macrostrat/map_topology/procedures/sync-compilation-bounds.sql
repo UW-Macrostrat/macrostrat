@@ -95,7 +95,7 @@ SET topo = topology.createTopoGeom(
       'map_bounds_topology',
       3,
       map_bounds_topology.boundary_layer_id(),
-      ca.face_elements
+      map_bounds.compilation_face_elements(ca.source_id)
     )
 FROM _assembly ca
 WHERE ca.source_id = ma.source_id
