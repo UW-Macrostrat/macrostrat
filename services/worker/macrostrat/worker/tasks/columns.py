@@ -22,6 +22,10 @@ from minio import Minio
 from macrostrat.database import Database
 from macrostrat.worker.app import app
 
+# Object-storage bucket the column-ingest files are pulled from. Hardcoded to
+# match the API upload location (api/routes/columns.py) so both agree.
+BUCKET = "temp-storage"
+
 
 def _database() -> Database:
     url = os.environ.get("DB_URL")
@@ -55,7 +59,7 @@ def ingest_columns_task(ref: dict) -> dict:
 
     suffix = Path(ref["filename"]).suffix or ".xlsx"
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
-        client.fget_object(ref["bucket"], ref["key"], tmp.name)
+        client.fget_object(BUCKET, ref["key"], tmp.name)
         result = ingest_columns_from_file(db, tmp.name, dry_run=dry_run)
 
     return {

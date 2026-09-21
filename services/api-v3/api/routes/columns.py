@@ -20,6 +20,11 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from api.celery_app import celery_app
 from api.routes.security import has_access
 
+# Object-storage bucket that column-ingest uploads are written to (and the worker
+# pulls from). Hardcoded — not read from S3_BUCKET — so the API and worker always
+# agree on one location.
+BUCKET = "temp-storage"
+
 router = APIRouter(
     prefix="/columns",
     tags=["columns"],
@@ -54,7 +59,7 @@ async def ingest_columns(
         secret_key=os.environ["secret_key"],
         secure=True,
     )
-    bucket = os.environ["S3_BUCKET"]
+    bucket = BUCKET
     key = f"column-ingest/{uuid4()}/{file.filename}"
     client.put_object(
         bucket_name=bucket,
