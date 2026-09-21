@@ -21,7 +21,9 @@ from .units import PositionAxisType, get_units, write_units
 def ingest_columns_from_file(
     db,
     data_file,
-):
+    *,
+    dry_run: bool = False,
+) -> dict:
     # Get sheet names
     workbook = load_workbook(
         data_file, read_only=True, data_only=True, keep_links=False
@@ -100,4 +102,28 @@ def ingest_columns_from_file(
             write_units(db, col.units)
             build_age_model(db, col.units)
 
-        db.session.commit()
+        # Capture the summary before committing/rolling back, while the ORM
+        # objects are still live (a rollback would expire them).
+        summary = {
+            "project": {
+                "id": _project.id,
+                "slug": _project.slug,
+                "name": project.name,
+            },
+            "col_group_id": col_group_id,
+            "n_columns": len(columns),
+            "n_units": sum(len(col.units) for col in columns),
+            "n_references": len(references),
+            "dry_run": dry_run,
+        }
+
+        if dry_run:
+            # Everything above ran and validated — roll it back so nothing
+            # persists. A real rollback here is the reliable way to enforce a
+            # dry run (an outer wrapper can't, since writes run on this session).
+            db.session.rollback()
+            print("Dry run — transaction rolled back; nothing was persisted.")
+        else:
+            db.session.commit()
+
+    return summary
