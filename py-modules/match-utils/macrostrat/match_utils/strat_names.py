@@ -131,7 +131,8 @@ def _clean_name(
     rank = None
     tokens = name.split()
     collected_text = []
-    for token in tokens[::-1]:
+    reversed_tokens = tokens[::-1]
+    for position, token in enumerate(reversed_tokens):
         if token.endswith("?"):
             confidence = Confidence.Low
             token = token[:-1]
@@ -144,8 +145,14 @@ def _clean_name(
         is_separator = split_hierarchy and token in stop_words
 
         if not is_separator:
+            # An article is dropped only where a separator put it there --
+            # "of *the* Endicott Group". Walking right-to-left, that means the
+            # next token we will see is the separator. Anywhere else it is part
+            # of the name: `The Forks` is a formation in the lexicon.
             if split_hierarchy and token in articles:
-                continue
+                following = reversed_tokens[position + 1 :]
+                if following and following[0] in stop_words:
+                    continue
             # If token should be ignored
             if token in _ignore_list:
                 continue
@@ -368,6 +375,10 @@ stop_words = ["of", "and", "or"]
 #: the column-ingestion spreadsheet spec uses single-letter designations for
 #: informal units -- its own examples include `Bed A` and `A Member, B Formation`
 #: -- so dropping `a` silently deletes the name it is trying to clean.
+#:
+#: And `the` is dropped only directly after a separator, for the same reason in a
+#: different shape: `The Forks` is a formation, so an article is only noise where
+#: the grammar put it there rather than the name.
 articles = ["the"]
 
 # NEED ZAPPING

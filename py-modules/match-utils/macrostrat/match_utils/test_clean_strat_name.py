@@ -139,3 +139,22 @@ def test_hierarchy_preserves_column_ingestion_spec_examples():
         )
         in res
     )
+
+
+def test_hierarchy_keeps_an_article_that_is_part_of_the_name():
+    """`The Forks` is a formation in the lexicon, so `the` is not always noise.
+
+    Dropping it unconditionally cost a real SGMC match. An article is only
+    noise where the grammar put it there -- directly after a separator, as in
+    "of *the* Endicott Group" -- so that is the only place it comes out.
+    """
+    res = clean_strat_name("The Forks Formation", split_hierarchy=True)
+    assert len(res) == 1
+    assert res[0].name == "the forks"
+    assert res[0].rank == StratRank.Formation
+
+    # ...but still dropped where a separator exposed it.
+    res = clean_strat_name(
+        "Kekiktuk Conglomerate of the Endicott Group", split_hierarchy=True
+    )
+    assert [r.name for r in res] == ["endicott", "kekiktuk"]

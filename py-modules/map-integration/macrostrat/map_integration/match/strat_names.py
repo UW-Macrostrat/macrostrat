@@ -78,7 +78,7 @@ def prepare_match_strat_names(db, source_id: int):
     db.run_sql(proc, {"source_id": source_id})
 
     # We now use the matched strat names for both this step and the
-    # extract_strat_name_candidates step, so we use the same query file
+    # retired extract-strat-names step, so we use the same query file
     create_temp_names_table = "CREATE TABLE temp_names AS \n" + sql_file(
         "matched-strat-names"
     )

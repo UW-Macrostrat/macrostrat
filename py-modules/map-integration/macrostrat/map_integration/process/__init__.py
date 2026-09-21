@@ -18,7 +18,7 @@ Map processing pipeline (v2)
 from typing import Annotated, Optional
 
 from rich import print
-from typer import Option
+from typer import Argument, Exit, Option
 
 from macrostrat.core.exc import MacrostratError
 
@@ -31,7 +31,6 @@ from ..utils.map_info import (
     has_map_schema_data,
     resolve_maps,
 )
-from .extract_strat_name_candidates import extract_strat_name_candidates
 from .geometry import create_rgeom, create_webgeom
 from .insert import copy_to_maps, run_insert
 from .legend_lookup import legend_lookup
@@ -132,21 +131,6 @@ def web_geom(maps: MapSelector, legacy: bool = False):
     for_each_map(maps, create_webgeom, legacy=legacy)
 
 
-@cli.command(name="extract-strat-names", rich_help_panel="Sources")
-def extract_strat_names(
-    maps: MapSelector,
-    field: str = Option(
-        None,
-        help="The field to extract from. Defaults to a concatenation of all text fields.",
-    ),
-    use_sources: bool = Option(False, help="Operate in the sources schema"),
-):
-    """Extract stratigraphic name candidates for the selected map sources."""
-    for_each_map(
-        maps, extract_strat_name_candidates, field=field, use_sources=use_sources
-    )
-
-
 @cli.command(name="insert", rich_help_panel="Map")
 def insert(
     maps: MapSelector,
@@ -216,6 +200,109 @@ def lookup(maps: MapSelector):
 def legend_lookup_cmd(maps: MapSelector):
     """Refresh legend lookup tables for the selected map sources."""
     for_each_map(maps, legend_lookup)
+
+
+@cli.command(name="strat-names-report", rich_help_panel="Lookup")
+def strat_names_report(
+    pattern: str = Argument(..., help="Source slug or SQL LIKE pattern, e.g. `ngs-%`"),
+    examples: int = Option(4, help="Lost/gained examples to print per source"),
+):
+    """Score the prototype matcher against what the current pipeline produced.
+
+    Read-only. Writes nothing and touches no pipeline table -- it reports what a
+    legend-grain matcher *would* find, beside `maps.legend.strat_name_ids` as it
+    stands, so the two can be compared before anything is replaced.
+
+    SGMC is the benchmark: clean legend text, 96.7% matched by the current
+    twelve-pass pipeline. Reaching that is the bar for adopting this on NGS.
+    """
+    from rich.table import Table
+
+    from ..match.strat_names_v2 import prepare, report_for_source, sources_matching
+
+    db = get_database()
+    print("[dim]Normalizing the lexicon[/]")
+    lexicon = prepare(db)
+
+    slugs = sources_matching(db, pattern)
+    if not slugs:
+        print(f"[red]No sources with legend rows match[/] {pattern}")
+        raise Exit(1)
+
+    table = Table(title=f"Prototype vs current ({pattern})")
+    for col in ("Source", "Rows", "Current", "Proposed", "Lost", "Gained", "Gaps"):
+        table.add_column(col, justify="right" if col != "Source" else "left")
+
+    totals = dict(rows=0, current=0, proposed=0, lost=0, gained=0)
+    all_gaps: set = set()
+    all_tiers: dict = {}
+    reports = []
+    for slug in slugs:
+        rep = report_for_source(db, slug, lexicon)
+        reports.append(rep)
+        totals["rows"] += rep.rows
+        totals["current"] += rep.current
+        totals["proposed"] += rep.proposed
+        totals["lost"] += len(rep.lost)
+        totals["gained"] += len(rep.gained)
+        all_gaps |= rep.lexicon_gaps
+        for tier, n in rep.by_tier.items():
+            all_tiers[tier] = all_tiers.get(tier, 0) + n
+        pct = lambda v: f"{100 * v / rep.rows:.1f}%" if rep.rows else "-"
+        table.add_row(
+            rep.slug,
+            str(rep.rows),
+            f"{rep.current} [dim]{pct(rep.current)}[/]",
+            f"{rep.proposed} [dim]{pct(rep.proposed)}[/]",
+            f"[red]{len(rep.lost)}[/]" if rep.lost else "0",
+            f"[green]{len(rep.gained)}[/]" if rep.gained else "0",
+            f"[yellow]{len(rep.lexicon_gaps)}[/]" if rep.lexicon_gaps else "0",
+        )
+
+    if len(reports) > 1:
+        pct = lambda v: f"{100 * v / totals['rows']:.1f}%" if totals["rows"] else "-"
+        table.add_section()
+        table.add_row(
+            "[bold]total[/]",
+            str(totals["rows"]),
+            f"[bold]{totals['current']}[/] [dim]{pct(totals['current'])}[/]",
+            f"[bold]{totals['proposed']}[/] [dim]{pct(totals['proposed'])}[/]",
+            f"[bold]{totals['lost']}[/]",
+            f"[bold]{totals['gained']}[/]",
+            f"[bold]{len(all_gaps)}[/]",
+        )
+    print(table)
+
+    if all_tiers:
+        order = [
+            t for t in ("strat_name", "name", "descrip", "comments") if t in all_tiers
+        ]
+        summary = "  ".join(f"{t}={all_tiers[t]}" for t in order)
+        print(f"[dim]ids by strongest field:[/] {summary}")
+
+    # Not a matching failure: a formally named unit -- the text gave it a rank --
+    # that Macrostrat's lexicon does not carry. A large number here is a signal
+    # that the source needs lexicon ingestion, not better matching.
+    if all_gaps:
+        print(
+            f"\n[yellow]{len(all_gaps)}[/] rank-bearing names with no lexicon entry"
+            " [dim](candidates for lexicon ingestion)[/]"
+        )
+        for name in sorted(all_gaps)[:examples]:
+            print(f"  [yellow]gap[/] {name}")
+
+    # Losses are the ones that matter: a match the current pipeline found and
+    # this one did not is a regression, whatever the headline rate says.
+    for rep in reports:
+        if not rep.lost and not rep.gained:
+            continue
+        print(f"\n[bold]{rep.slug}[/]")
+        for label, style, rows in (
+            ("lost", "red", rep.lost),
+            ("gained", "green", rep.gained),
+        ):
+            for text, ids in rows[:examples]:
+                print(f"  [{style}]{label}[/] {text[:66]!r} {ids[:4]}")
 
 
 @cli.command(name="finalize", rich_help_panel="Map")

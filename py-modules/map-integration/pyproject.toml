@@ -11,6 +11,7 @@ dependencies = [
     # 4.6.1: template_database no longer leaves the source database unusable
     # after cloning it — this package clones a Database it keeps using.
     "macrostrat.database>=4.6.1,<5",
+    "macrostrat.match-utils",
     "numpy>=2.0.0,<3",
     "pyproj>=3.4.0,<4",
     "rich>=13,<16.0",
@@ -63,6 +64,7 @@ default-groups = [
 ]
 
 [tool.uv.sources]
+"macrostrat.match-utils" = { path = "../match-utils", editable = true }
 "macrostrat.core" = { path = "../core", editable = true }
 "macrostrat.map_utils" = { path = "../map-utils", editable = true }
 
