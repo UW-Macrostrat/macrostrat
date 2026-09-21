@@ -220,6 +220,13 @@ from .rasters import register_raster_routes
 # libraries are still developed against local checkouts.
 register_raster_routes(app)
 
+from .elevation import register_elevation_routes
+
+# Terrain height and bathymetry at a point or along a line, read from the same
+# index. Mounted only when the installed raster libraries carry the sampling
+# primitives (`macrostrat.raster_layers` >= 0.4).
+register_elevation_routes(app)
+
 
 @app.get("/carto/rotation-models")
 async def rotation_models():
