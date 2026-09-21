@@ -96,8 +96,11 @@ COMMENT ON COLUMN maps.sources.geolayer IS
   'and is read as `surface`. Load-bearing for assembly: the scale layers '
   '(`tiny`/`small`/`medium`/`large`) are *surface* layers, so a map depicting '
   'something else -- Precambrian basement, Quaternary cover -- is a real map '
-  'with a real boundary that has no place in a surface stack, and '
-  'set-map-priority.sql declines to place it in one.';
+  'with a real boundary that has no place in a surface stack. Checked when '
+  'membership is authored -- `macrostrat compilations add` refuses it, '
+  '`compilations lint` reports one that went stale -- rather than enforced on '
+  'sync: layer membership is curated, and withdrawing a map from a layer is a '
+  'decision somebody makes, not one a sweep makes behind them.';
 
 COMMENT ON COLUMN maps.sources.superseded_by IS
   'The map that replaces this one, where a better product covers the same '
@@ -107,7 +110,9 @@ COMMENT ON COLUMN maps.sources.superseded_by IS
   'column rather than a relation table; where no single map replaces an old one '
   'the successor is a compilation, which is a map. Distinct from status_code: a '
   'superseded map is not obsolete, it remains a real unit of work, citable and '
-  'browsable, and only stops contributing to assembly.';
+  'browsable, and only stops contributing to assembly. Advisory, not enforced: '
+  'it is checked where membership is authored, and an existing edge stands until '
+  'somebody withdraws it.';
 
 COMMENT ON COLUMN maps.sources.ref_compilation IS
   'Published compilation or programme this map was produced under -- NGS, SGMC, '

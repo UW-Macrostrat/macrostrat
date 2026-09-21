@@ -62,8 +62,13 @@ class TestMapTopology:
         # A boundary is unioned from the map's own polygons, not read from
         # `rgeom` -- which is now a mirror of the boundary rather than a source
         # for it -- so a map without polygons never gets one.
-        add_polygons(db, {1001: "ST_MakeEnvelope(0, 0, 2, 2, 4326)",
-                          1002: "ST_MakeEnvelope(3, 0, 5, 2, 4326)"})
+        add_polygons(
+            db,
+            {
+                1001: "ST_MakeEnvelope(0, 0, 2, 2, 4326)",
+                1002: "ST_MakeEnvelope(3, 0, 5, 2, 4326)",
+            },
+        )
 
         update_maps(mgr, bulk=True)
 
@@ -75,6 +80,16 @@ class TestMapTopology:
 
         # Check that we have two maps in the map_area table
         assert n_map_areas(db) == 2
+
+        # Placement is authored. Nothing infers a layer from `scale` any more, so
+        # a map that is never placed is ingested, assembled, and served nowhere --
+        # which is why every test that adds a source also says where it goes.
+        #
+        # After bounds assembly, not before: a map reaches a layer only once it
+        # has a boundary, and marking faces dirty in a layer the map cannot yet
+        # hold territory in just makes work for the solver. This is the point in
+        # the sequence the retired sweep wrote placements at, for the same reason.
+        set_priority(db, "large", [(1001, 0), (1002, 0)])
 
     def test_dirty_faces(self, ctx):
         db = ctx.database
@@ -243,12 +258,14 @@ class TestMapTopology:
         )
         add_polygons(
             db,
-            {1004: "ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326)"},
+            {
+                1004: "ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326)"
+            },
             scale="medium",
         )
-
         mgr = MacrostratTopologyManager(ctx)
         update_maps(mgr, subdivide_vertices=32)
+        set_priority(db, "medium", [(1004, 0)])
         mgr.update()
 
         insp = TopologyInspector(ctx)
@@ -285,7 +302,6 @@ class TestMapTopology:
             == 0
         )
 
-
     def test_virtual_compilation(self, ctx):
         """A compilation with no polygons of its own is descended through.
 
@@ -302,11 +318,24 @@ class TestMapTopology:
             VALUES (1005, 'test_source_5', false, 'active', 'large')
             """
         )
-        # Sources 1 and 2 are now placed through the compilation, not beside it.
         db.run_query(
             """
             INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
             VALUES (1005, 1001, 1), (1005, 1002, 2)
+            """
+        )
+        # Sources 1 and 2 are now placed *through* the compilation, not beside
+        # it, so their own edges in `large` come out. The sweep used to do this
+        # on the next sync; it is an authored act now, and this is the same pair
+        # of writes `compilations add --reparent` makes.
+        set_priority(db, "large", [(1005, 0)])
+        db.run_query(
+            """
+            DELETE FROM map_bounds.compilation_member cm
+            USING map_bounds.map_layer ml
+            WHERE ml.slug = 'large'
+              AND cm.compilation_id = ml.source_id
+              AND cm.member_id IN (1001, 1002)
             """
         )
         db.session.commit()

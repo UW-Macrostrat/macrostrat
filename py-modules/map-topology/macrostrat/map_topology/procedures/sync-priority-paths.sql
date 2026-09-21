@@ -72,10 +72,11 @@ JOIN map_bounds.map_layer parent ON parent.source_id = cm.compilation_id
 JOIN map_bounds.map_layer member ON member.source_id = cm.member_id;
 
 
-/* Placed here, not in `set-map-priority`, because it reads two tables this file
-   rebuilds: `map_priority`, for where a map participates, and (through
-   `is_composite_layer`) `map_layer_composition`. Run a statement earlier and it
-   sees the previous sync's answer, or on a fresh database no answer at all. */
+/* Placed at the end of this file because it reads two tables the file rebuilds:
+   `map_priority`, for where a map participates, and (through
+   `is_composite_layer`) `map_layer_composition`. Run it any earlier -- as it was
+   when it lived in the layer-membership sweep that ran before this step -- and
+   it sees the previous sync's answer, or on a fresh database no answer at all. */
 /** Register each map's footprint in the base layer it actually participates in.
 
   `map_area.map_layer` is what `__edge_relation` keys on, so it decides where a

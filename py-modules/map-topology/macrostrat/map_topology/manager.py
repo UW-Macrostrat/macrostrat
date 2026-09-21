@@ -222,12 +222,11 @@ def update_maps(
     with _timed("Sync compilation bounds"):
         db.run_sql(proc("sync-compilation-bounds"))
 
-    # Associate maps with the layer matching their scale, then flatten the
-    # composition DAG into the priority paths identity resolution orders by.
-    # Both follow boundary assembly: a compilation has no `map_area` row, and so
-    # no layer placement, until it has been assembled.
+    # Flatten the composition DAG into the priority paths identity resolution
+    # orders by. This follows boundary assembly: `map_priority` carries only
+    # members that have content, and a compilation has no `map_area` row until it
+    # has been assembled out of its members.
     with _timed("Sync priority paths"):
-        db.run_sql(proc("set-map-priority"))
         db.run_sql(proc("sync-priority-paths"))
 
     if clean:

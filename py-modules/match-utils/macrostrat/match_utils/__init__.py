@@ -434,6 +434,10 @@ def get_all_matched_units(
         matched_rows.append(row)
         if len(matched_rows) >= n_results:
             return matched_rows
+
+    # Sort by priority
+    matched_rows = sorted(matched_rows, key=lambda r: r["priority"])
+
     return matched_rows
 
 

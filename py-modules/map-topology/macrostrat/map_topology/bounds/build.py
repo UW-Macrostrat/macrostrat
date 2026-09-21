@@ -184,8 +184,7 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
         # directly instead -- the same geometry the opening row would capture.
         if dry_run:
             seed = (
-                "SELECT geometry FROM map_bounds.map_area"
-                " WHERE source_id = :source_id"
+                "SELECT geometry FROM map_bounds.map_area WHERE source_id = :source_id"
             )
         elif ensure_opening(db, source_id) is None:
             result.error = (
@@ -227,7 +226,7 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
                 boundary_error = NULL,
                 geometry_hash = NULL
             WHERE source_id = :source_id
-            RETURNING {_AREA_KM.format(geom='geometry')} AS area_km
+            RETURNING {_AREA_KM.format(geom="geometry")} AS area_km
             """,
             params,
         ).first()
