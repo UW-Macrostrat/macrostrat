@@ -62,6 +62,14 @@ def ingest_columns_task(ref: dict) -> dict:
         client.fget_object(BUCKET, ref["key"], tmp.name)
         result = ingest_columns_from_file(db, tmp.name, dry_run=dry_run)
 
+    # On a dry run the ingest validated and rolled back (nothing persisted), so
+    # remove the uploaded object rather than leaving dry-run test files in
+    # temp-storage. A real ingest keeps the file. We only reach here if the ingest
+    # returned without raising, so a file that failed validation is left for
+    # debugging.
+    if dry_run:
+        client.remove_object(BUCKET, ref["key"])
+
     return {
         "key": ref["key"],
         "filename": ref["filename"],
