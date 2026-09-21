@@ -84,6 +84,7 @@ Required databases (version 1):
 
 - MariaDB - macrostrat
 - Postgres - burwell, alice, wof, elevation
+  - `elevation` is optional once `ELEVATION_SERVICE_URL` points at the tile server's `/elevation` service
 
 ## Running
 

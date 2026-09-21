@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [Unreleased]
+
+- `/elevation` (and so `/mobile/map_query_v2` and `/mobile/dashboard`) can be served by the tile server's COG-backed elevation service instead of the `elevation` Postgres database: set `ELEVATION_SERVICE_URL` (e.g. `https://tiles.macrostrat.org/elevation`). Response shapes are unchanged. Unset, the legacy database is used as before
+
 ## [2.3.11] - 2026-09-17
 
 - Speed up `/defs/projects` for composite projects (~1000 ms to ~200 ms) by aggregating column counts per project id instead of grouping by the composite `members` jsonb
