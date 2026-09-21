@@ -17,9 +17,13 @@ dependencies = [
 maps = [
     "macrostrat.map_utils",
 ]
+columns = [
+    "macrostrat.column-ingestion",
+]
 
 [tool.uv.sources]
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
+"macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

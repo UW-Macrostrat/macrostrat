@@ -8,9 +8,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=py-modules map-utils /app/map-utils
+COPY --from=py-modules column-ingestion /app/column-ingestion
 COPY . /app/worker
 
-RUN pip install --no-cache-dir ./map-utils ./worker[maps]
+RUN pip install --no-cache-dir ./map-utils ./column-ingestion ./worker[maps,columns]
 
-# Consume only the `maps` queue; Can add future queues down the road
-CMD ["celery", "-A", "macrostrat.worker.app", "worker", "-Q", "maps", "--loglevel=info", "--concurrency=2"]
+# Consume the maps + columns queues (one worker for both, locally).
+CMD ["celery", "-A", "macrostrat.worker.app", "worker", "-Q", "maps,columns", "--loglevel=info", "--concurrency=2"]

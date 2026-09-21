@@ -89,7 +89,7 @@ services:
       additional_contexts:
         py-modules: ../py-modules
     restart: unless-stopped
-    command: celery -A macrostrat.worker.app worker -Q maps --loglevel=info --concurrency=2
+    command: celery -A macrostrat.worker.app worker -Q maps,columns --loglevel=info --concurrency=2
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
