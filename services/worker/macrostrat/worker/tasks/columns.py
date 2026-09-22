@@ -36,10 +36,10 @@ def _database() -> Database:
 
 def _storage() -> Minio:
     return Minio(
-        os.environ["S3_ENDPOINT"],
+        os.environ["S3_HOST"],
         access_key=os.environ["S3_ACCESS_KEY"],
         secret_key=os.environ["S3_SECRET_KEY"],
-        secure=os.environ.get("S3_SECURE", "false").lower() == "true",
+        secure=True,
     )
 
 
