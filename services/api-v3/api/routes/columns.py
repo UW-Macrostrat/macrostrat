@@ -10,9 +10,40 @@ The API only *forwards* the `dry_run` flag; the worker (and the ingest function 
 calls) enforce it. See the "Column ingestion task" feature-area note.
 """
 
+
+def _format_task_error(error) -> str:
+    """Return a user-readable message from a Celery/SQLAlchemy/Postgres error."""
+    raw = str(error)
+
+    # Some Celery serializers preserve escaped newlines in the exception repr.
+    text = raw.replace("\\n", "\n")
+
+    # Only clean up database errors. Leave normal validation errors untouched.
+    if "psycopg.errors." not in text:
+        return raw
+
+    # Drop everything before the actual psycopg exception.
+    match = re.search(
+        r"(?:psycopg\.errors\.[A-Za-z0-9_]+[:)]\s*)(.*)",
+        text,
+        flags=re.DOTALL,
+    )
+    if match:
+        text = match.group(1)
+
+    # SQLAlchemy appends SQL, parameters, and documentation links.
+    for marker in (
+        "\n[SQL:",
+        "\n[parameters:",
+        "\n[Parameters:",
+        "\n(Background on this error",
+    ):
+        text = text.split(marker, 1)[0]
+
+    return text.strip()
+
 import os
 from uuid import uuid4
-
 import minio
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
@@ -86,13 +117,24 @@ async def ingest_columns(
 
 
 @router.get("/ingest/{task_id}")
-async def ingest_status(task_id: str):
-    """Report the status/result of a column-ingestion task for the web poller."""
+async def ingest_status(
+    task_id: str,
+    user_has_access: bool = Depends(has_access),
+):
+    """Report the status/result of a column-ingestion task for the web poller.
+
+    Admin-only, matching ``POST /ingest`` and the web column-editor guard: the
+    body can carry the worker's error and traceback, which must not be exposed to
+    non-admins.
+    """
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="User does not have access to ingest columns"
+        )
     result = AsyncResult(task_id, app=celery_app)
     body: dict = {"task_id": task_id, "state": result.state}
     if result.failed():
-        # result.result is the worker-side exception; expose it (admin-only route).
-        body["error"] = str(result.result)
+        body["error"] = _format_task_error(result.result)
         body["traceback"] = result.traceback
     elif result.successful():
         body["result"] = result.result
