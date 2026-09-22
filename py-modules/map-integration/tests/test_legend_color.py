@@ -74,3 +74,34 @@ def test_unreadable_color_leaves_the_group_alone():
         row(2, -91.0, 38.1, 100.0, color="junk"),
     ]
     assert assign_colors(rows) == {}
+
+
+def test_color_key_survives_float_noise_in_the_area():
+    """A parallel `sum()` differs in its last bits; the key must not.
+
+    `area_km` reaches this from `sum(ST_Area(...))`, and a parallel aggregate adds
+    its workers' partial sums in whatever order they finish. That is invisible
+    until an area lands near a power of two, where `floor(log2(...))` flips and a
+    legend entry changes colour between two runs on identical input.
+    """
+    # 1024 km^2 exactly, and the same area as two different summation orders
+    # might produce it.
+    exact = 1024.0
+    just_under = 1024.0 - 2e-10
+    just_over = 1024.0 + 2e-10
+
+    key = color_key(-105.0, 40.0, exact)
+    assert color_key(-105.0, 40.0, just_under) == key
+    assert color_key(-105.0, 40.0, just_over) == key
+
+    # ...while a real difference in size still separates them.
+    assert color_key(-105.0, 40.0, 2048.0) != key
+    assert color_key(-105.0, 40.0, 512.0) != key
+
+
+def test_color_key_still_separates_neighbours():
+    """Rounding must not collapse the differentiation the key exists to provide."""
+    base = color_key(-105.0, 40.0, 1000.0)
+    # A different grid cell.
+    assert color_key(-95.0, 40.0, 1000.0) != base
+    assert color_key(-105.0, 30.0, 1000.0) != base

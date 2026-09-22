@@ -49,9 +49,17 @@ def color_key(
     cx: float, cy: float, area_km: float, cell: float = CELL_SIZE
 ) -> tuple[int, int, int]:
     """The stable identity a variant is chosen from: grid cell and size class."""
+    # `area_km` arrives from a parallel `sum(ST_Area(...))`, and a parallel
+    # aggregate adds its workers' partial sums in whatever order they finish, so
+    # the value differs in its last bits between runs on identical input. That is
+    # invisible until an area lands near a power of two, where `floor(log2(...))`
+    # flips and the legend entry changes colour for no reason. Rounding to six
+    # significant figures is far inside any real difference in area and far
+    # outside the noise.
+    area_km = float(f"{max(area_km, 1.0):.6g}")
     # Areas below 1 km^2 collapse into one class rather than spreading over
     # negative powers, where small absolute changes would flip the class.
-    size_class = math.floor(math.log2(max(area_km, 1.0)))
+    size_class = math.floor(math.log2(area_km))
     return (math.floor(cx / cell), math.floor(cy / cell), size_class)
 
 

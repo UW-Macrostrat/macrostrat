@@ -116,117 +116,50 @@ INSERT INTO {lookup_table} (
     GROUP BY q.map_id
   ),
 
-  -- Find unique match types of strat_names
-  strat_name_bases AS (
-    SELECT array_agg(distinct basis_col) bases, q.map_id
-    FROM maps.map_strat_names
-    JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
-    WHERE source_id = :source_id
-    GROUP BY q.map_id
-    ORDER BY q.map_id
+  /* The same ranking as `legend_lookup`, joined out to the polygons that share
+     each legend entry. It is decided once per entry: every polygon of an entry
+     has the same matches, so ranking per `map_id` was the same answer computed
+     once per polygon. */
+  ranked AS (
+    SELECT
+      lsn.legend_id,
+      lsn.strat_name_id,
+      rank() OVER (
+        PARTITION BY lsn.legend_id
+    /* Strongest evidence first. A human assertion outranks everything;
+       then the field the name was found in -- `strat_name` and `name` are
+       the unit, a description is a mention; then temporal corroboration,
+       then spatial. Description and comments share a rank, as the ladder
+       this replaces also had them.
+
+       This is the same order the forty `WHEN` branches expressed, including
+       the part that reads oddly: a buffered footprint demotes *less* than
+       fuzzed time, so `_fspace` sorted above `_ftime`. */
+    ORDER BY
+      lsn.is_manual DESC,
+      CASE lsn.match_field
+        WHEN 'strat_name' THEN 0
+        WHEN 'name' THEN 1
+        ELSE 2
+      END,
+      CASE
+        WHEN lsn.age_overlaps THEN 0
+        WHEN NOT lsn.age_overlaps THEN 1
+        ELSE 2
+      END,
+      CASE WHEN lsn.in_footprint IS FALSE THEN 1 ELSE 0 END
+      ) AS tier
+    FROM maps.legend_strat_names lsn
+    JOIN maps.legend l ON l.legend_id = lsn.legend_id
+    WHERE l.source_id = :source_id
   ),
 
-  -- Find and aggregate best strat_name_ids for each map_id
   strat_name_ids AS (
-    SELECT q.map_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
-    FROM {scale_table} q
-    JOIN maps.map_strat_names ON q.map_id = map_strat_names.map_id
-    JOIN strat_name_bases ON strat_name_bases.map_id = q.map_id
-    WHERE source_id = :source_id AND map_strat_names.basis_col = ANY(
-      CASE
-        WHEN 'manual' = ANY(bases)
-          THEN array['manual']
-
-        WHEN 'strat_name' = ANY(bases)
-        THEN array['strat_name', 'manual']
-
-        WHEN 'strat_name_fspace' = ANY(bases)
-          THEN array['strat_name_fspace', 'manual']
-
-        WHEN 'strat_name_ftime' = ANY(bases)
-          THEN array['strat_name_ftime', 'manual']
-
-        WHEN 'strat_name_fspace_ftime' = ANY(bases)
-          THEN array['strat_name_fspace_ftime', 'manual']
-
-        WHEN 'strat_name_ntime' = ANY(bases)
-          THEN array['strat_name_ntime', 'manual']
-
-        WHEN 'strat_name_fspace_ntime' = ANY(bases)
-          THEN array['strat_name_fspace_ntime', 'manual']
-
-        WHEN 'strat_name_fname' = ANY(bases)
-          THEN array['strat_name_fname', 'manual']
-
-        WHEN 'strat_name_fname_fspace' = ANY(bases)
-          THEN array['strat_name_fname_fspace', 'manual']
-
-        WHEN 'strat_name_fname_ftime' = ANY(bases)
-          THEN array['strat_name_fname_ftime', 'manual']
-
-        WHEN 'strat_name_fname_fspace_ftime' = ANY(bases)
-          THEN array['strat_name_fname_fspace_ftime', 'manual']
-
-        WHEN 'strat_name_fname_ftime' = ANY(bases)
-          THEN array['strat_name_fname_ftime', 'manual']
-
-        WHEN 'strat_name_fname_fspace_ntime' = ANY(bases)
-          THEN array['strat_name_fname_fspace_ntime', 'manual']
-
---------------------------------------------------------------------------------------------
-        WHEN 'name' = ANY(bases)
-        THEN array['name', 'manual']
-
-        WHEN 'name_fname' = ANY(bases)
-        THEN array['name_fname', 'manual']
-
-        WHEN 'name_fspace' = ANY(bases)
-        THEN array['name_fspace', 'manual']
-
-        WHEN 'name_ftime' = ANY(bases)
-        THEN array['name_ftime', 'manual']
-
-        WHEN 'name_fname_fspace' = ANY(bases)
-          THEN array['name_fname_fspace', 'manual']
-
-        WHEN 'name_fspace_ftime' = ANY(bases)
-          THEN array['name_fspace_ftime', 'manual']
-
-        WHEN 'name_fname_ftime' = ANY(bases)
-          THEN array['name_fname_ftime', 'manual']
-
-        WHEN 'name_fname_fspace_ftime' = ANY(bases)
-          THEN array['name_fname_fspace_ftime', 'manual']
-
---------------------------------------------------------------------------------------------
-        WHEN ('descrip' = ANY(bases) OR 'comments' = ANY(bases))
-        THEN array['descrip', 'comments', 'manual']
-
-        WHEN ('descrip_fname' = ANY(bases) OR 'comments_fname' = ANY(bases))
-        THEN array['descrip_fname', 'comments_fname', 'manual']
-
-        WHEN ('descrip_fspace' = ANY(bases) OR 'comments_fspace' = ANY(bases))
-        THEN array['descrip_fspace', 'comments_fspace', 'manual']
-
-        WHEN ('descrip_ftime' = ANY(bases) OR 'comments_ftime' = ANY(bases))
-        THEN array['descrip_ftime', 'comments_ftime', 'manual']
-
-        WHEN ('descrip_fname_fspace' = ANY(bases) OR 'comments_fname_fspace' = ANY(bases))
-          THEN array['descrip_fname_fspace', 'comments_fname_fspace', 'manual']
-
-        WHEN ('descrip_fspace_ftime' = ANY(bases) OR 'comments_fspace_ftime' = ANY(bases))
-          THEN array['descrip_fspace_ftime', 'comments_fspace_ftime', 'manual']
-
-        WHEN ('descrip_fname_ftime' = ANY(bases) OR 'comments_fname_ftime' = ANY(bases))
-          THEN array['descrip_fname_ftime', 'comments_fname_ftime', 'manual']
-
-        WHEN ('descrip_fname_fspace_ftime' = ANY(bases) OR 'comments_fname_fspace_ftime' = ANY(bases))
-          THEN array['descrip_fname_fspace_ftime', 'comments_fname_fspace_ftime', 'manual']
-
-        ELSE
-        array['unknown', 'manual']
-        END
-    )
+    SELECT q.map_id, array_agg(DISTINCT r.strat_name_id) AS strat_name_ids
+    FROM ranked r
+    JOIN maps.map_legend ml ON ml.legend_id = r.legend_id
+    JOIN {scale_table} q ON q.map_id = ml.map_id
+    WHERE r.tier = 1 AND q.source_id = :source_id
     GROUP BY q.map_id
   ),
 
@@ -254,6 +187,11 @@ INSERT INTO {lookup_table} (
     -- if `strat_names` and NOT all are matched
         -- Use `lith` matches
 ---------------
+
+-- Find and aggregate best lith_ids for each map_id
+-- **NB:** Only uses lith matches from the map!
+--         All lithologies matches to matched units are ommitted
+-- Priority: `lith`, `descrip`, `name`, `comments`
 
 -- Find and aggregate best lith_ids for each map_id
 -- **NB:** Only uses lith matches from the map!

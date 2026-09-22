@@ -7,7 +7,16 @@ AND msn.basis_col NOT LIKE 'manual%';
 
 DROP TABLE IF EXISTS temp_rocks;
 
-CREATE TABLE temp_rocks AS WITH first AS (
+/** Temporary, and session-scoped, which it was not.
+
+  `CREATE TABLE` put this in the search path as an ordinary table, so two
+  pipeline runs at once -- which `for_each_map` invites -- overwrote each other's
+  match input, and a run that crashed left its rows behind for the next one to
+  read before the `DROP` above. Every statement that touches it runs on the same
+  `Database.session`, so a temporary table is visible to all of them and goes away
+  on its own.
+*/
+CREATE TEMPORARY TABLE temp_rocks AS WITH first AS (
   SELECT
     row_number() OVER() as row_no,
     array_agg(map_id) AS map_ids,
@@ -62,7 +71,8 @@ no_liths AS (
   SELECT
     row_no,
     name_no,
-    name_part
+    name_part,
+    nr
   FROM
     name_parts
   WHERE
@@ -79,14 +89,20 @@ no_liths AS (
       'group',
       'supergroup'
     )
-  order by
-    nr
 ),
 clean AS (
+  /** Reassemble the name from the words that survived, in their original order.
+
+    The ordering has to be on the aggregate. An `ORDER BY` in the CTE above is
+    not a guarantee that `array_agg` sees the rows that way -- Postgres may
+    hash-aggregate or parallelise and discard it -- and when it does the words
+    come out scrambled, so the twelve name-match passes downstream silently match
+    something else. `nr` is the word's ordinality from `unnest(... WITH
+    ORDINALITY)`, which is what the discarded `ORDER BY` was reaching for. */
   SELECT
     row_no,
     name_no,
-    trim(array_to_string(array_agg(name_part), ' ')) AS name
+    trim(array_to_string(array_agg(name_part ORDER BY nr), ' ')) AS name
   from
     no_liths
   GROUP BY

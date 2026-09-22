@@ -7,13 +7,10 @@ from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database
 from ..utils import MapInfo
-from .utils import get_match_count
+from .utils import find_scale_table, get_match_count, populated_fields
 
 #: Legend fields to match lithologies against, in the order they are tried.
 MATCH_FIELDS = ["lith", "strat_name", "name", "descrip", "comments"]
-
-#: Scale tables, smallest first -- a source lives in exactly one.
-SCALES = ["tiny", "small", "medium", "large"]
 
 
 def match_liths(map: MapInfo):
@@ -65,25 +62,6 @@ def run_lith_match(db, source_id: int):
     print(f"        + Matched in {time.time() - start:.1f}s")
 
 
-def find_scale_table(db, source_id: int) -> str:
-    """The scale table this source's polygons are in."""
-    for scale in SCALES:
-        found = db.run_query(
-            "SELECT map_id FROM {scale_table} WHERE source_id = :source_id LIMIT 1",
-            {"scale_table": Identifier("maps", scale), "source_id": source_id},
-        ).first()
-        if found is not None:
-            return scale
-
-    raise MacrostratError(
-        f"Source {source_id} is not present in any scale table",
-        details=(
-            "Copy it into the maps schema with `macrostrat maps process insert`"
-            " and try again."
-        ),
-    )
-
-
 def clear_matches(db, source_id: int):
     """Drop this source's automatic matches, keeping anything matched by hand."""
     db.run_sql(
@@ -100,26 +78,7 @@ def clear_matches(db, source_id: int):
 
 def matchable_fields(db, source_id: int, scale: str) -> list[str]:
     """The subset of `MATCH_FIELDS` this source actually populates."""
-    counts = db.run_query(
-        """
-        SELECT
-            count(distinct lith)::int AS lith,
-            count(distinct strat_name)::int AS strat_name,
-            count(distinct name)::int AS name,
-            count(distinct descrip)::int AS descrip,
-            count(distinct comments)::int AS comments
-        FROM {scale_table} WHERE source_id = :source_id
-        """,
-        {"scale_table": Identifier("maps", scale), "source_id": source_id},
-    ).one()
-
-    fields = []
-    for field in MATCH_FIELDS:
-        if counts._mapping[field] == 0:
-            print(f"        + Excluding {field} because it is null")
-        else:
-            fields.append(field)
-    return fields
+    return populated_fields(db, source_id, scale, MATCH_FIELDS)
 
 
 def match_field(db, source_id: int, field: str):

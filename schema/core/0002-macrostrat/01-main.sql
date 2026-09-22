@@ -1089,6 +1089,27 @@ CREATE TABLE macrostrat.lookup_strat_names (
     c_interval character varying(100) DEFAULT NULL::character varying
 );
 
+/** The stratigraphic hierarchy, flattened, for callers that need it whole.
+
+  Both columns are pure functions of `lookup_strat_names`, and both were being
+  derived from the entire table on every use: the rank-up concepts once per
+  legend row in the legend lookup, and the rank-down descendants once per
+  matching pass in unit matching -- up to sixty-four full-lexicon scans for a
+  single map source.
+
+  A derived table rather than a materialized view, because the lexicon rebuild
+  finishes by renaming `lookup_strat_names_new` over `lookup_strat_names` and a
+  view would hold a dependency on the table being dropped. It is repopulated by
+  the same rebuild, immediately after that swap.
+*/
+CREATE TABLE macrostrat.lookup_strat_name_tree (
+    strat_name_id integer PRIMARY KEY,
+    /** Concepts of this name's ancestors at every rank, self included. */
+    ancestor_concept_ids integer[] NOT NULL DEFAULT '{}',
+    /** Every name beneath this one in the rank tree. */
+    descendant_ids integer[] NOT NULL DEFAULT '{}'
+);
+
 CREATE TABLE macrostrat.lookup_strat_names_new (
     strat_name_id integer,
     strat_name character varying(100),

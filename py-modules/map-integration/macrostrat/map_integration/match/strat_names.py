@@ -79,7 +79,10 @@ def prepare_match_strat_names(db, source_id: int):
 
     # We now use the matched strat names for both this step and the
     # retired extract-strat-names step, so we use the same query file
-    create_temp_names_table = "CREATE TABLE temp_names AS \n" + sql_file(
+    # Temporary for the same reason `temp_rocks` is: concurrent runs would
+    # otherwise share one table in the search path, and a crashed run would leave
+    # its rows for the next one.
+    create_temp_names_table = "CREATE TEMPORARY TABLE temp_names AS \n" + sql_file(
         "matched-strat-names"
     )
 
@@ -143,7 +146,12 @@ def run_match_query(
         JOIN temp_names lsn
           ON {macro_name_match} = {map_name_match}
         JOIN macrostrat.strat_name_footprints snft
-          ON ST_Intersects(ST_Buffer(snft.geom, :buffer_amount), ST_Buffer(tr.envelope, :buffer_amount))
+          /* Buffering both sides put a function on the indexed column, so the
+             GiST index on `strat_name_footprints.geom` could not be used. Two
+             shapes buffered by `d` intersect exactly when they are within `2d`
+             of each other, which `ST_DWithin` asks directly and answers from the
+             index. */
+          ON ST_DWithin(snft.geom, tr.envelope, 2 * :buffer_amount)
         JOIN macrostrat.intervals intervals_top on tr.t_interval = intervals_top.id
         JOIN macrostrat.intervals intervals_bottom on tr.b_interval = intervals_bottom.id
         {where_clause}

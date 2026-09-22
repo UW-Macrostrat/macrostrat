@@ -159,120 +159,49 @@ class LegendLookup:
 
         self.db.run_sql(
             """
-            -- Find unique match types of strat_names
-            WITH strat_name_bases AS (
-              SELECT legend_id, array_agg(distinct basis_col) bases
-              FROM maps.map_strat_names
-              JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
-              JOIN maps.map_legend ON map_legend.map_id = q.map_id
-              WHERE source_id = :source_id
-              GROUP BY legend_id
-              ORDER BY legend_id
+            /* Keep each legend entry's strongest matches and drop the rest.
+
+               `rank()` returns every match that ties at the top, which is what
+               the `basis_col` ladder did by picking one tier and taking all of
+               it -- but read off the evidence columns rather than reassembled
+               from a string. */
+            WITH ranked AS (
+              SELECT
+                lsn.legend_id,
+                lsn.strat_name_id,
+                rank() OVER (
+                  PARTITION BY lsn.legend_id
+          /* Strongest evidence first. A human assertion outranks everything;
+             then the field the name was found in -- `strat_name` and `name` are
+             the unit, a description is a mention; then temporal corroboration,
+             then spatial. Description and comments share a rank, as the ladder
+             this replaces also had them.
+
+             This is the same order the forty `WHEN` branches expressed, including
+             the part that reads oddly: a buffered footprint demotes *less* than
+             fuzzed time, so `_fspace` sorted above `_ftime`. */
+          ORDER BY
+            lsn.is_manual DESC,
+            CASE lsn.match_field
+              WHEN 'strat_name' THEN 0
+              WHEN 'name' THEN 1
+              ELSE 2
+            END,
+            CASE
+              WHEN lsn.age_overlaps THEN 0
+              WHEN NOT lsn.age_overlaps THEN 1
+              ELSE 2
+            END,
+            CASE WHEN lsn.in_footprint IS FALSE THEN 1 ELSE 0 END
+                ) AS tier
+              FROM maps.legend_strat_names lsn
+              JOIN maps.legend l ON l.legend_id = lsn.legend_id
+              WHERE l.source_id = :source_id
             ),
-
-            -- Find and aggregate best strat_name_ids for each map_id
             strat_names AS (
-              SELECT map_legend.legend_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
-              FROM maps.map_strat_names
-              JOIN {scale_table} q ON map_strat_names.map_id = q.map_id
-              JOIN maps.map_legend ON map_legend.map_id = q.map_id
-              JOIN strat_name_bases ON strat_name_bases.legend_id = map_legend.legend_id
-              WHERE source_id = :source_id AND map_strat_names.basis_col = ANY(
-                CASE
-                  WHEN 'manual' = ANY(bases)
-                    THEN array['manual']
-
-                  WHEN 'strat_name' = ANY(bases)
-                   THEN array['strat_name', 'manual']
-
-                  WHEN 'strat_name_fspace' = ANY(bases)
-                    THEN array['strat_name_fspace', 'manual']
-
-                  WHEN 'strat_name_ftime' = ANY(bases)
-                    THEN array['strat_name_ftime', 'manual']
-
-                  WHEN 'strat_name_fspace_ftime' = ANY(bases)
-                    THEN array['strat_name_fspace_ftime', 'manual']
-
-                  WHEN 'strat_name_ntime' = ANY(bases)
-                    THEN array['strat_name_ntime', 'manual']
-
-                  WHEN 'strat_name_fspace_ntime' = ANY(bases)
-                    THEN array['strat_name_fspace_ntime', 'manual']
-
-                  WHEN 'strat_name_fname' = ANY(bases)
-                    THEN array['strat_name_fname', 'manual']
-
-                  WHEN 'strat_name_fname_fspace' = ANY(bases)
-                     THEN array['strat_name_fname_fspace', 'manual']
-
-                  WHEN 'strat_name_fname_ftime' = ANY(bases)
-                     THEN array['strat_name_fname_ftime', 'manual']
-
-                  WHEN 'strat_name_fname_fspace_ftime' = ANY(bases)
-                     THEN array['strat_name_fname_fspace_ftime', 'manual']
-
-                  WHEN 'strat_name_fname_ftime' = ANY(bases)
-                     THEN array['strat_name_fname_ftime', 'manual']
-
-                  WHEN 'strat_name_fname_fspace_ntime' = ANY(bases)
-                     THEN array['strat_name_fname_fspace_ntime', 'manual']
-
-       --------------------------------------------------------------------------------------------
-                  WHEN 'name' = ANY(bases)
-                   THEN array['name', 'manual']
-
-                  WHEN 'name_fname' = ANY(bases)
-                   THEN array['name_fname', 'manual']
-
-                  WHEN 'name_fspace' = ANY(bases)
-                   THEN array['name_fspace', 'manual']
-
-                  WHEN 'name_ftime' = ANY(bases)
-                   THEN array['name_ftime', 'manual']
-
-                  WHEN 'name_fname_fspace' = ANY(bases)
-                    THEN array['name_fname_fspace', 'manual']
-
-                  WHEN 'name_fspace_ftime' = ANY(bases)
-                    THEN array['name_fspace_ftime', 'manual']
-
-                  WHEN 'name_fname_ftime' = ANY(bases)
-                    THEN array['name_fname_ftime', 'manual']
-
-                  WHEN 'name_fname_fspace_ftime' = ANY(bases)
-                    THEN array['name_fname_fspace_ftime', 'manual']
-
-       --------------------------------------------------------------------------------------------
-                  WHEN ('descrip' = ANY(bases) OR 'comments' = ANY(bases))
-                   THEN array['descrip', 'comments', 'manual']
-
-                  WHEN ('descrip_fname' = ANY(bases) OR 'comments_fname' = ANY(bases))
-                   THEN array['descrip_fname', 'comments_fname', 'manual']
-
-                  WHEN ('descrip_fspace' = ANY(bases) OR 'comments_fspace' = ANY(bases))
-                   THEN array['descrip_fspace', 'comments_fspace', 'manual']
-
-                  WHEN ('descrip_ftime' = ANY(bases) OR 'comments_ftime' = ANY(bases))
-                   THEN array['descrip_ftime', 'comments_ftime', 'manual']
-
-                  WHEN ('descrip_fname_fspace' = ANY(bases) OR 'comments_fname_fspace' = ANY(bases))
-                    THEN array['descrip_fname_fspace', 'comments_fname_fspace', 'manual']
-
-                  WHEN ('descrip_fspace_ftime' = ANY(bases) OR 'comments_fspace_ftime' = ANY(bases))
-                    THEN array['descrip_fspace_ftime', 'comments_fspace_ftime', 'manual']
-
-                  WHEN ('descrip_fname_ftime' = ANY(bases) OR 'comments_fname_ftime' = ANY(bases))
-                    THEN array['descrip_fname_ftime', 'comments_fname_ftime', 'manual']
-
-                  WHEN ('descrip_fname_fspace_ftime' = ANY(bases) OR 'comments_fname_fspace_ftime' = ANY(bases))
-                    THEN array['descrip_fname_fspace_ftime', 'comments_fname_fspace_ftime', 'manual']
-
-                  ELSE
-                   array['unknown', 'manual']
-                  END
-              )
-              GROUP BY map_legend.legend_id
+              SELECT legend_id, array_agg(DISTINCT strat_name_id) AS strat_name_ids
+              FROM ranked WHERE tier = 1
+              GROUP BY legend_id
             )
             UPDATE maps.legend
             SET strat_name_ids = strat_names.strat_name_ids
@@ -299,8 +228,13 @@ class LegendLookup:
               ORDER BY q.legend_id
             ),
             liths AS (
+               /* `maps.map_legend` used to be joined here and contributed no
+                  column: it multiplied each legend entry by its polygon count --
+                  about 24x on a map the size of Alaska -- and the GROUP BY then
+                  collapsed it again. The `lith_ids` CTE below does the same
+                  aggregation without it. */
                SELECT
-                   map_legend.legend_id,
+                   sub.legend_id,
                    array_agg(DISTINCT lith_equiv) AS lith_ids,
                    array_agg(DISTINCT liths.lith_type) AS lith_types,
                    array_agg(DISTINCT liths.lith_class) AS lith_classes
@@ -323,9 +257,8 @@ class LegendLookup:
                             ELSE ''
                         END
                ) sub
-               JOIN maps.map_legend ON map_legend.legend_id = sub.legend_id
                JOIN macrostrat.liths ON sub.lith_id = liths.id
-               GROUP BY map_legend.legend_id
+               GROUP BY sub.legend_id
             )
             UPDATE maps.legend
             SET lith_ids = liths.lith_ids, lith_types = liths.lith_types, lith_classes = liths.lith_classes
@@ -384,61 +317,29 @@ class LegendLookup:
                             OR sgp_id = ANY(strat_name_ids)
                     ) AS strat_name_children
                 FROM (
+                    /* Per legend entry, not per polygon. `maps.map_legend` was
+                       joined here for a `legend_id` that `maps.legend` already
+                       has, fanning every row out across the entry's polygons
+                       before the GROUP BY put it back. */
                     SELECT
-                     map_legend.legend_id,
+                     legend.legend_id,
                      legend.strat_name_ids,
-                     array_agg(DISTINCT applicable_concepts.applicable_concepts) as ac,
+                     coalesce(array_agg(DISTINCT anc.id)
+                              FILTER (WHERE anc.id IS NOT NULL), '{{}}') as ac,
                      array_agg(DISTINCT lsn.concept_id) AS concept_ids
                     FROM maps.legend
-                    JOIN maps.map_legend ON map_legend.legend_id = legend.legend_id
                     JOIN macrostrat.lookup_strat_names lsn ON lsn.strat_name_id = ANY(legend.strat_name_ids)
-                    JOIN (
-                        SELECT
-                            ids.strat_name_id,
-                            unnest((
-                                SELECT COALESCE(array_agg(id), ARRAY[]::int[])
-                                FROM unnest(array_agg(ARRAY[lookup_bed.concept_id, lookup_mbr.concept_id, lookup_fm.concept_id, lookup_gp.concept_id, lookup_sgp.concept_id])) as id
-                                WHERE id is not null and id != 0
-                             )) as applicable_concepts
-                        FROM (
-                          SELECT
-                            strat_name_id,
-                            CASE
-                                WHEN bed_id = 0
-                                    THEN NULL
-                                ELSE bed_id
-                            END as bed_id,
-                            CASE
-                                WHEN mbr_id = 0
-                                    THEN NULL
-                                ELSE mbr_id
-                            END as mbr_id,
-                            CASE
-                                WHEN fm_id = 0
-                                    THEN NULL
-                                ELSE fm_id
-                            END as fm_id,
-                            CASE
-                                WHEN gp_id = 0
-                                    THEN NULL
-                                ELSE gp_id
-                            END as gp_id,
-                            CASE
-                                WHEN sgp_id = 0
-                                    THEN NULL
-                                ELSE sgp_id
-                            END as sgp_id
-                        FROM macrostrat.lookup_strat_names
-                        ) ids
-                        LEFT JOIN macrostrat.lookup_strat_names lookup_bed ON lookup_bed.strat_name_id = ids.bed_id
-                        LEFT JOIN macrostrat.lookup_strat_names lookup_mbr ON lookup_mbr.strat_name_id = ids.mbr_id
-                        LEFT JOIN macrostrat.lookup_strat_names lookup_fm ON lookup_fm.strat_name_id = ids.fm_id
-                        LEFT JOIN macrostrat.lookup_strat_names lookup_gp ON lookup_gp.strat_name_id = ids.gp_id
-                        LEFT JOIN macrostrat.lookup_strat_names lookup_sgp ON lookup_sgp.strat_name_id = ids.sgp_id
-                        GROUP BY ids.strat_name_id
-                    ) applicable_concepts ON applicable_concepts.strat_name_id = lsn.strat_name_id
+                    /* The ancestors' concepts come from the flattened rank
+                       tree, which the lexicon rebuild maintains. This was a
+                       five-way self-join over the whole of
+                       `lookup_strat_names`, with no source predicate, rebuilt on
+                       every run of every source. */
+                    JOIN macrostrat.lookup_strat_name_tree tree
+                      ON tree.strat_name_id = lsn.strat_name_id
+                    LEFT JOIN LATERAL unnest(tree.ancestor_concept_ids) AS anc(id)
+                      ON true
                     WHERE legend.source_id = :source_id
-                    GROUP BY map_legend.legend_id, legend.strat_name_ids
+                    GROUP BY legend.legend_id, legend.strat_name_ids
                 ) sub
              )
             UPDATE maps.legend

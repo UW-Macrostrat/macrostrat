@@ -2,6 +2,20 @@
 CREATE SCHEMA maps;
 
 
+/** Which of a legend entry's text fields a stratigraphic name was found in.
+
+  Evidence, not bookkeeping. A name in `strat_name` or `name` *is* this unit; a
+  name in `descrip` is a *mention*, and descriptions name correlative, overlying
+  and bounding units as readily as their own. Declared in strength order, so
+  `min(match_field)` is the strongest evidence for a match.
+*/
+CREATE TYPE maps.strat_name_match_field AS ENUM (
+    'strat_name',
+    'name',
+    'descrip',
+    'comments'
+);
+
 CREATE TYPE maps.map_scale AS ENUM (
     'tiny',
     'small',
@@ -381,11 +395,118 @@ CREATE TABLE maps.map_liths (
     basis_col character varying(50)
 );
 
-CREATE TABLE maps.map_strat_names (
+/** Stratigraphic names matched to map legend entries.
+
+  The grain is the legend entry, because that is where the judgment is made: one
+  row per (legend entry, name, field the name was found in). The polygon fan-out
+  is derived through `maps.map_legend` into `maps.map_strat_names`, not stored
+  twice over.
+
+  It replaces a single `basis_col varchar(50)` that packed four independent facts
+  into one string -- the text field, which pair of pre-normalized columns was
+  compared, whether space was buffered, whether time was fuzzed -- and could
+  record neither when a match was made nor whether the rank agreed.
+*/
+CREATE TABLE maps.legend_strat_names (
+    legend_id integer NOT NULL
+        REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
+    strat_name_id integer NOT NULL,
+    match_field maps.strat_name_match_field NOT NULL,
+    /** Did the rank the map's text asserted agree with the lexicon's?
+
+      Recorded, never enforced. `macrostrat.strat_names.rank` has no `Suite`, so
+      "New Hampshire Plutonic Suite" is stored as `Gp` while its own name says
+      Suite, and a map may legitimately call a Macrostrat group a formation.
+      Rejecting those cost 110 true matches on SGMC. NULL where the text asserted
+      no rank. */
+    rank_agrees boolean,
+    /** Spatial corroboration, independent of the name. False means the match was
+      admitted on a buffered footprint; NULL means the lexicon holds no footprint
+      for the name, which is true of 2,693 of 51,229 entries and is not evidence
+      against it. */
+    in_footprint boolean,
+    /** Temporal corroboration. NULL where the legend entry carries no interval
+      to compare against. */
+    age_overlaps boolean,
+    /** A human asserted this, and no matcher may withdraw it. Today this is
+      `basis_col LIKE 'manual%'`, which is why every delete in the pipeline
+      carries that predicate as a string test. */
+    is_manual boolean NOT NULL DEFAULT false,
+    /** Matching is re-run as the lexicon and the descriptions change, and
+      `basis_col` recorded how a match was made but never when. */
+    matched_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (legend_id, strat_name_id, match_field)
+);
+
+CREATE INDEX legend_strat_names_strat_name_id_idx
+    ON maps.legend_strat_names USING btree (strat_name_id);
+
+/* Read on every re-match, to be carried across it. */
+CREATE INDEX legend_strat_names_manual_idx
+    ON maps.legend_strat_names USING btree (legend_id) WHERE is_manual;
+
+/** The rows `maps.map_strat_names` held before it became a view.
+
+  Transitional, and meant to be dropped. Twelve additive match passes wrote
+  22,304,055 rows expressing 64,897 distinct facts, and all of it is matcher
+  output that re-running a matcher reproduces -- except the 152 human-asserted
+  matches, which the `legend-strat-names` migration carries across. It is kept
+  only so the old answer can be diffed against the new one.
+
+  Declared here rather than left undeclared so it does not surface as a pending
+  drop in every schema plan. Deleting this declaration is how it eventually goes
+  away, once a re-match has been compared against it.
+*/
+CREATE TABLE maps.map_strat_names_backup (
     map_id integer NOT NULL,
     strat_name_id integer NOT NULL,
     basis_col character varying(50)
 );
+
+/** Polygon-grain view of `maps.legend_strat_names`.
+
+  The matching decision is made once per legend entry; this is where the polygons
+  that share that entry get their copy of it, through `maps.map_legend`. It was a
+  table, holding every copy: 22.3M rows for 64,897 facts.
+
+  It stays under its old name, with its old columns, because the v2 API reads it
+  --  `macrostrat-api/v2/geologic_units_burwell_nearby.ts` joins it on `map_id`,
+  and ignores `basis_col` entirely -- and because `maps.map_units` matching scans
+  it per source. Everything else in v2 reads the arrays built downstream of it
+  (`maps.legend.strat_name_ids`, `public.lookup_<scale>.strat_name_ids`,
+  `strat_name_children`, `concept_ids`), which are untouched: the two precedence
+  ladders that build them keep reading this name.
+
+  `basis_col` is therefore synthesized rather than stored. The mapping is exact
+  for three of the four things the string used to pack:
+
+      field   -> match_field
+      _fspace -> NOT in_footprint      (admitted on a buffered footprint)
+      _ftime  -> NOT age_overlaps      (admitted on age fuzz)
+      _ntime  -> age_overlaps IS NULL  (no interval to compare)
+
+  `_fname` is never emitted. It meant "the fuzzy one of two differently
+  pre-normalized column pairs was compared", and both sides are now normalized by
+  the same function, so the distinction has no analogue. That loses nothing: both
+  ladders already rank every non-`_fname` tier *above* the `_fname` family, so
+  matches land at the stronger tiers without either ladder changing.
+*/
+CREATE VIEW maps.map_strat_names AS
+SELECT
+    ml.map_id,
+    lsn.strat_name_id,
+    (CASE
+        WHEN lsn.is_manual THEN 'manual'
+        ELSE lsn.match_field::text
+            || CASE WHEN lsn.in_footprint IS FALSE THEN '_fspace' ELSE '' END
+            || CASE
+                   WHEN lsn.age_overlaps IS NULL THEN '_ntime'
+                   WHEN lsn.age_overlaps IS FALSE THEN '_ftime'
+                   ELSE ''
+               END
+    END)::character varying(50) AS basis_col
+FROM maps.legend_strat_names lsn
+JOIN maps.map_legend ml ON ml.legend_id = lsn.legend_id;
 
 CREATE TABLE maps.map_units (
     map_id integer NOT NULL,

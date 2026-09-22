@@ -8,7 +8,7 @@ from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database
 from ..utils import MapInfo
-from .utils import get_match_count
+from .utils import find_scale_table, get_match_count, populated_fields
 
 #: Scale tables, smallest first -- a source lives in exactly one.
 SCALES = ["tiny", "small", "medium", "large"]
@@ -59,33 +59,22 @@ class Units:
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
                 WHERE m.source_id = :source_id
                 AND basis_col = :match_type
-                AND m.map_id NOT IN (
-                  SELECT x.map_id
+                AND NOT EXISTS (
+                  SELECT 1
                   FROM maps.map_units x
-                  JOIN {scale_table} z
-                  ON x.map_id = z.map_id
-                  WHERE z.source_id = :source_id
+                  WHERE x.map_id = m.map_id
                 )
             ),
-            shaped AS (
-              SELECT strat_name_id, strat_name, rank,
-                CASE
-                    WHEN rank = 'Bed'
-                      THEN '{{}}'
-                    WHEN rank = 'Mbr'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank = 'Bed' AND mbr_id = lsn.strat_name_id)
-                    WHEN rank = 'Fm'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr') AND fm_id = lsn.strat_name_id)
-                    WHEN rank = 'Gp'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm') AND gp_id = lsn.strat_name_id)
-                    WHEN rank = 'SGp'
-                      THEN (SELECT COALESCE(array_agg(DISTINCT strat_name_id), '{{}}') FROM macrostrat.lookup_strat_names WHERE rank IN ('Bed', 'Mbr', 'Fm', 'Gp') AND sgp_id = lsn.strat_name_id)
-                  END AS down
-              FROM macrostrat.lookup_strat_names lsn
-            ),
             flattened AS (
-              SELECT strat_name_id, strat_name, rank, unnest(down) as down_names
-              FROM shaped s
+              /* The rank tree is flattened once by the lexicon rebuild. This
+                 walked `lookup_strat_names` with four correlated subqueries per
+                 row, on every matching pass -- up to sixty-four full-lexicon
+                 scans for one source. */
+              SELECT lsn.strat_name_id, lsn.strat_name, lsn.rank,
+                     unnest(tree.descendant_ids) AS down_names
+              FROM macrostrat.lookup_strat_names lsn
+              JOIN macrostrat.lookup_strat_name_tree tree
+                ON tree.strat_name_id = lsn.strat_name_id
             ),
             b AS (
             SELECT
@@ -156,37 +145,22 @@ class Units:
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
                 WHERE m.source_id = :source_id
                 AND basis_col = :match_type
-                AND m.map_id NOT IN (
-                  SELECT x.map_id
+                AND NOT EXISTS (
+                  SELECT 1
                   FROM maps.map_units x
-                  JOIN {scale_table} z
-                  ON x.map_id = z.map_id
-                  WHERE z.source_id = :source_id
+                  WHERE x.map_id = m.map_id
                 )
             ),
-            shaped AS (
-              SELECT strat_name_id, strat_name, rank,
-              (SELECT COALESCE(array_agg(u), '{{}}')
-                FROM unnest(
-                CASE
-                  WHEN rank = 'Bed'
-                    THEN array[mbr_id, fm_id, gp_id, sgp_id]
-                  WHEN rank = 'Mbr'
-                    THEN array[fm_id, gp_id, sgp_id]
-                  WHEN rank = 'Fm'
-                    THEN array[gp_id, sgp_id]
-                  WHEN rank = 'Gp'
-                    THEN array[sgp_id]
-                  WHEN rank = 'SGp'
-                    THEN '{{}}'
-                END
-                ) AS u WHERE u != 0
-              ) AS up
-              FROM macrostrat.lookup_strat_names lsn
-            ),
             flattened AS (
-              SELECT strat_name_id, strat_name, rank, unnest(up) as up_names
-              FROM shaped s
+              /* The rank tree is flattened once by the lexicon rebuild. This
+                 walked `lookup_strat_names` with four correlated subqueries per
+                 row, on every matching pass -- up to sixty-four full-lexicon
+                 scans for one source. */
+              SELECT lsn.strat_name_id, lsn.strat_name, lsn.rank,
+                     unnest(tree.descendant_ids) AS down_names
+              FROM macrostrat.lookup_strat_names lsn
+              JOIN macrostrat.lookup_strat_name_tree tree
+                ON tree.strat_name_id = lsn.strat_name_id
             ),
             b AS (
             SELECT
@@ -257,12 +231,10 @@ class Units:
                 JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
                 WHERE m.source_id = :source_id
                 AND basis_col = :match_type
-                AND m.map_id NOT IN (
-                  SELECT x.map_id
+                AND NOT EXISTS (
+                  SELECT 1
                   FROM maps.map_units x
-                  JOIN {scale_table} z
-                  ON x.map_id = z.map_id
-                  WHERE z.source_id = :source_id
+                  WHERE x.map_id = m.map_id
                 )
             ),
                 b AS (
@@ -419,33 +391,7 @@ class Units:
         if result is None:
             raise MacrostratError(f"Source {source_id} was not found in maps.sources")
 
-        # Find scale table
-        scale = ""
-        for scale_table in ["tiny", "small", "medium", "large"]:
-            found = self.db.run_query(
-                """
-            SELECT map_id
-            FROM {scale_table}
-            WHERE source_id = :source_id
-            LIMIT 1
-        """,
-                {
-                    "scale_table": Identifier("maps", scale_table),
-                    "source_id": source_id,
-                },
-            ).first()
-            if found is not None:
-                scale = scale_table
-                break
-
-        if len(scale) == 0:
-            raise MacrostratError(
-                f"Source {source_id} is not present in any scale table",
-                details=(
-                    "Copy it into the maps schema with"
-                    " `macrostrat maps process insert` and try again."
-                ),
-            )
+        scale = find_scale_table(self.db, source_id)
 
         # Validate that this source intersects *any* Macrostrat units in space or time
         n_intersecting = self.db.run_query(
@@ -491,30 +437,9 @@ class Units:
 
             print("        + Done cleaning up")
 
-            # Fields in burwell to match on
-            fields = ["strat_name", "name", "descrip", "comments"]
-
-            # Filter null fields
-            result = self.db.run_query(
-                """
-            SELECT
-                count(distinct strat_name)::int AS strat_name,
-                count(distinct name)::int AS name,
-                count(distinct descrip)::int AS descrip,
-                count(distinct comments)::int AS comments
-            FROM {scale_table} where source_id = :source_id
-            """,
-                {
-                    "scale_table": Identifier("maps", scale),
-                    "source_id": source_id,
-                },
-            ).one()
-
-            for key, val in result._mapping.items():
-                if val == 0:
-                    field_name = key
-                    fields = [d for d in fields if d != key]
-                    print("        + Excluding %s because it is null" % (field_name,))
+            fields = populated_fields(
+                self.db, source_id, scale, ["strat_name", "name", "descrip", "comments"]
+            )
 
             # Insert a new task for each matching field into the queue
             print("Processing fields", fields)
