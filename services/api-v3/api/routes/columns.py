@@ -11,14 +11,16 @@ calls) enforce it. See the "Column ingestion task" feature-area note.
 """
 
 import os
-from uuid import uuid4
 import re
+from uuid import uuid4
+
 import minio
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from api.celery_app import celery_app
 from api.routes.security import has_access
+
 
 def _format_task_error(error) -> str:
     """Return a user-readable message from a Celery/SQLAlchemy/Postgres error."""
@@ -50,6 +52,7 @@ def _format_task_error(error) -> str:
         text = text.split(marker, 1)[0]
 
     return text.strip()
+
 
 # Object-storage bucket that column-ingest uploads are written to (and the worker
 # pulls from). Hardcoded — not read from S3_BUCKET — so the API and worker always
