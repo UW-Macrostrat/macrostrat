@@ -30,7 +30,9 @@ def test_cfg():
 
     try:
         with override_environment(
-            MACROSTRAT_CONFIG=str(test_cfg_file.resolve()), NO_COLOR="1"
+            MACROSTRAT_CONFIG=str(test_cfg_file.resolve()),
+            MACROSTRAT_ENV="",
+            NO_COLOR="1",
         ):
             importlib.reload(cfg)
             yield cfg.settings
