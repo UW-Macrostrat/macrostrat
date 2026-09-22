@@ -42,8 +42,10 @@ def _format_task_error(error) -> str:
 
     return text.strip()
 
+
 import os
 from uuid import uuid4
+
 import minio
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
