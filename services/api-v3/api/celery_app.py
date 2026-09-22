@@ -24,4 +24,5 @@ celery_app = Celery("macrostrat_api", broker=BROKER_URL, backend=RESULT_BACKEND)
 # must mirror the worker's task_routes or map tasks land on the wrong queue.
 celery_app.conf.task_routes = {
     "macrostrat.maps.*": {"queue": "maps"},
+    "macrostrat.columns.*": {"queue": "columns"},
 }

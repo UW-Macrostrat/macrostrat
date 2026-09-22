@@ -18,10 +18,14 @@ app = Celery(
     broker=BROKER_URL,
     backend=RESULT_BACKEND,
     # Register task modules here. Each requires the matching worker extra to be installed
-    include=["macrostrat.worker.tasks.maps"],
+    include=[
+        "macrostrat.worker.tasks.maps",
+        "macrostrat.worker.tasks.columns",
+    ],
 )
 
 # Route each domain's tasks to its own queue so workers can be scoped with `-Q`.
 app.conf.task_routes = {
     "macrostrat.maps.*": {"queue": "maps"},
+    "macrostrat.columns.*": {"queue": "columns"},
 }
