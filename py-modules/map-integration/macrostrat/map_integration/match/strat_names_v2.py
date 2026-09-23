@@ -397,6 +397,9 @@ def corroborate(
 #: found. Description is the floor for general text matching.
 FIELD_TIERS = ("strat_name", "name", "descrip")
 
+#: How many worked examples to keep per field, for `--field`.
+EXAMPLES_PER_FIELD = 40
+
 #: The fields that assert a unit's identity. The rest are prose.
 NAME_FIELDS = frozenset({"strat_name", "name"})
 
@@ -484,9 +487,40 @@ def _names_a_unit(p, cand) -> bool:
     return bool(cand.liths & frozenset(p.lith_signifiers))
 
 
+#: Rank words that are also ordinary descriptive English, and so are weak
+#: evidence that a phrase is a formal name.
+#:
+#: Only `Bed`. "lake bed", "red beds", "stream bed" describe a layer rather than
+#: naming one, where "Formation", "Member" and "Group" are almost always formal.
+#: "Playa, lake bed, and flood plain deposits" parses as the name `lake` at rank
+#: Bed, and `Lower Lake Formation` also cleans to `lake` -- `lower` being a
+#: positional term -- so the two met on a word the map never meant as a name.
+WEAK_RANKS = frozenset({StratRank.Bed})
+
+
+def _rank_carries(p, cand) -> bool:
+    """For a weak rank word, the lexicon has to agree before it counts.
+
+    Rank is evidence rather than a veto everywhere else, and deliberately so:
+    `macrostrat.strat_names.rank` has no `Suite`, and a map may call a Macrostrat
+    group a formation, so a general veto cost 110 true SGMC matches. The
+    disagreements are mostly real -- `Umpqua Group` -> `Umpqua Formation`,
+    `Zion Hill Quartzite Member` -> `Zion Hill Quartzite` are the same units.
+
+    Narrowed to `Bed` it costs nothing and removes a clear class of error: 25
+    SGMC matches, **none of which the SQL pipeline found**, among them `mineral`
+    -> `Mineral Formation` and `tioga` -> `Tioga Drift`.
+    """
+    if p.rank not in WEAK_RANKS:
+        return True
+    return p.rank in cand.ranks
+
+
 def _candidates(text: str, lexicon, *, prose: bool = False):
     for p in _parse(text):
         for cand in lexicon.get(p.name, ()):
+            if not _rank_carries(p, cand):
+                continue
             if prose and not _names_a_unit(p, cand):
                 continue
             yield p, cand
@@ -616,6 +650,11 @@ class Example:
     #: first, second and fourth are None for a match the current pipeline made,
     #: which records none of them.
     matches: list
+    #: The source text of each field that produced a match, whole. A match out of
+    #: a description cannot be judged from the name alone -- "Correlative with
+    #: ... the Hawley Formation" and "is the Hawley Formation" read identically
+    #: once the sentence is gone.
+    texts: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -633,6 +672,8 @@ class SourceReport:
     lexicon_gaps: set = field(default_factory=set)
     #: How many matches each `LocationBasis` accounts for.
     by_basis: dict = field(default_factory=dict)
+    #: A few worked examples per `match_field`, for reading rather than counting.
+    by_field_examples: dict = field(default_factory=dict)
     lost: list = field(default_factory=list)
     gained: list = field(default_factory=list)
     #: Matches, not rows. A row counts once however many names it acquires, so
@@ -672,10 +713,18 @@ class Match:
     age_overlaps: bool | None
 
 
-def match_source(db: Database, slug: str, lexicon, **kw) -> list[Match]:
+def match_source(
+    db: Database, slug: str, lexicon, *, fields=FIELD_TIERS, **kw
+) -> list[Match]:
     """Every match this source's legend supports, judged but not yet written.
 
     Text first, then geography and time -- see `corroborate` for why that order.
+
+    `fields` narrows which legend columns are read. Matching one field alone is
+    how a source whose descriptions carry the names -- NGS lumps units as
+    "Includes units such as X, Y and Z" -- can be matched without its `name`
+    column diluting the result, and how the contribution of a field can be
+    measured on its own.
     """
     rows = legend_rows(db, slug)
     concepts = dict(
@@ -684,7 +733,7 @@ def match_source(db: Database, slug: str, lexicon, **kw) -> list[Match]:
             " WHERE concept_id IS NOT NULL"
         ).all()
     )
-    matched = {r.legend_id: match_row(r, lexicon) for r in rows}
+    matched = {r.legend_id: match_row(r, lexicon, fields) for r in rows}
     for m in matched.values():
         m.by_id = prefer_exact_name(m.by_id, m.keys, m.lith_exact)
         m.by_id = prefer_rank_agreement(m.by_id, m.rank_agrees, concepts)
@@ -720,7 +769,11 @@ def match_source(db: Database, slug: str, lexicon, **kw) -> list[Match]:
 
 
 def report_for_source(
-    db: Database, slug: str, lexicon, buffer: float = DEFAULT_BUFFER
+    db: Database,
+    slug: str,
+    lexicon,
+    buffer: float = DEFAULT_BUFFER,
+    fields=FIELD_TIERS,
 ) -> SourceReport:
     rep = SourceReport(slug)
     rows = legend_rows(db, slug)
@@ -730,7 +783,7 @@ def report_for_source(
             " WHERE concept_id IS NOT NULL"
         ).all()
     )
-    found = match_source(db, slug, lexicon, buffer=buffer)
+    found = match_source(db, slug, lexicon, buffer=buffer, fields=fields)
     survives = {(m.legend_id, m.strat_name_id) for m in found}
     names = dict(
         db.run_query(
@@ -788,7 +841,32 @@ def report_for_source(
                     ],
                 )
             )
-        elif proposed:
+        # Examples per field, independent of whether the row is a gain -- a
+        # correlative mention usually lands on a row that already matched.
+        for f in set(m.by_id.values()):
+            bucket = rep.by_field_examples.setdefault(f, [])
+            if len(bucket) < EXAMPLES_PER_FIELD:
+                bucket.append(
+                    Example(
+                        text=r.strat_name or r.name or "",
+                        matches=[
+                            (
+                                m.by_id[i],
+                                m.keys.get(i),
+                                names.get(i, str(i)),
+                                basis.get((r.legend_id, i)),
+                            )
+                            for i in sorted(proposed)
+                            if m.by_id[i] == f
+                        ],
+                        texts={
+                            t: getattr(r, t)
+                            for t in FIELD_TIERS
+                            if getattr(r, t, None) and t in set(m.by_id.values())
+                        },
+                    )
+                )
+        if proposed and not current:
             rep.gained.append(
                 Example(
                     text=r.strat_name or r.name or "",

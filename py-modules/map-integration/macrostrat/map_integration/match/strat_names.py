@@ -16,21 +16,28 @@ from rich import print
 
 from ..database import get_database
 from ..utils import MapInfo
-from .strat_names_v2 import LocationBasis, match_source, prepare, write_matches
+from .strat_names_v2 import (
+    FIELD_TIERS,
+    LocationBasis,
+    match_source,
+    prepare,
+    write_matches,
+)
 
 
-def match_strat_names(map: MapInfo):
+def match_strat_names(map: MapInfo, fields=FIELD_TIERS):
     """Match this source's legend to the lexicon and record the result."""
     db = get_database()
-    match_strat_names_for_source(db, map.slug)
+    match_strat_names_for_source(db, map.slug, fields=fields)
 
 
-def match_strat_names_for_source(db, slug: str) -> int:
+def match_strat_names_for_source(db, slug: str, fields=FIELD_TIERS) -> int:
     start = time.time()
-    print(f"      Matching strat names for [bold cyan]{slug}[/]")
+    scope = "" if fields == FIELD_TIERS else f" [dim](from {', '.join(fields)})[/]"
+    print(f"      Matching strat names for [bold cyan]{slug}[/]{scope}")
 
     lexicon = prepare(db)
-    matches = match_source(db, slug, lexicon)
+    matches = match_source(db, slug, lexicon, fields=fields)
     written = write_matches(db, slug, matches)
 
     by_basis = {}

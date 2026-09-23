@@ -15,6 +15,7 @@ Map processing pipeline (v2)
 
 """
 
+import re
 from typing import Annotated, Optional
 
 from rich import print
@@ -173,9 +174,14 @@ def legend(maps: MapSelector):
 
 
 @cli.command(name="strat-names", rich_help_panel="Matching")
-def strat_names(maps: MapSelector):
+def strat_names(
+    maps: MapSelector,
+    field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
+):
     """Match the selected map sources to Macrostrat stratigraphic names."""
-    for_each_map(maps, match_strat_names)
+    from functools import partial
+
+    for_each_map(maps, partial(match_strat_names, fields=_match_fields(field)))
 
 
 @cli.command(name="units", rich_help_panel="Matching")
@@ -202,10 +208,37 @@ def legend_lookup_cmd(maps: MapSelector):
     for_each_map(maps, legend_lookup)
 
 
+def _match_fields(field: str | None) -> tuple:
+    """Resolve a `--field` option to the tuple of legend columns to read."""
+    from ..match.strat_names_v2 import FIELD_TIERS
+
+    if field is None:
+        return FIELD_TIERS
+    if field not in FIELD_TIERS:
+        raise MacrostratError(
+            f"{field!r} is not a legend text field",
+            details="Choose one of: " + ", ".join(FIELD_TIERS),
+        )
+    return (field,)
+
+
 @cli.command(name="strat-names-report", rich_help_panel="Lookup")
 def strat_names_report(
     pattern: str = Argument(..., help="Source slug or SQL LIKE pattern, e.g. `ngs-%`"),
     examples: int = Option(4, help="Lost/gained examples to print per source"),
+    field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
+    examples_from: str = Option(
+        None,
+        "--examples-from",
+        help="Show worked examples of matches from this field instead of the"
+        " lost/gained lists. Matching is unaffected.",
+    ),
+    full_text: bool = Option(
+        False,
+        "--full-text",
+        help="Print the whole source text of each example, with the matched"
+        " names highlighted. A description match cannot be judged without it.",
+    ),
 ):
     """Score the prototype matcher against what the current pipeline produced.
 
@@ -255,7 +288,7 @@ def strat_names_report(
     all_tiers: dict = {}
     reports = []
     for slug in slugs:
-        rep = report_for_source(db, slug, lexicon)
+        rep = report_for_source(db, slug, lexicon, fields=_match_fields(field))
         reports.append(rep)
         totals["rows"] += rep.rows
         totals["current"] += rep.current
@@ -344,6 +377,10 @@ def strat_names_report(
         for name in sorted(all_gaps)[:examples]:
             print(f"  [yellow]gap[/] {name}")
 
+    if examples_from:
+        _print_field_examples(reports, examples_from, examples, full_text)
+        return
+
     # Losses are the ones that matter: a match the current pipeline found and
     # this one did not is a regression, whatever the headline rate says.
     for rep in reports:
@@ -364,6 +401,45 @@ def strat_names_report(
                             f"        [dim]{match_field}[/] {key!r}"
                             f" -> {name} [dim]({basis})[/]"
                         )
+                if full_text:
+                    _print_texts(ex)
+
+
+def _highlight(text: str, keys) -> str:
+    """Mark every word of every matched name, so it can be found by eye."""
+    from rich.markup import escape
+
+    words = {w for key in keys if key for w in key.split() if len(w) > 2}
+    if not words:
+        return escape(text)
+    pattern = re.compile(
+        r"\b("
+        + "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+        + r")\b",
+        re.IGNORECASE,
+    )
+    return pattern.sub(lambda m: f"[bold yellow]{escape(m.group(0))}[/]", escape(text))
+
+
+def _print_texts(ex):
+    keys = [key for _, key, _, _ in ex.matches]
+    for name, text in ex.texts.items():
+        print(f"        [dim]{name}:[/] {_highlight(text, keys)}")
+
+
+def _print_field_examples(reports, field, limit, full_text):
+    """Worked examples of matches from one field, for reading rather than counting."""
+    for rep in reports:
+        found = rep.by_field_examples.get(field)
+        if not found:
+            continue
+        print(f"\n[bold]{rep.slug}[/] -- matches from [cyan]{field}[/]")
+        for ex in found[:limit]:
+            print(f"\n  {ex.text[:76]!r}")
+            for _, key, name, basis in ex.matches:
+                print(f"        {key!r} -> [bold]{name}[/] [dim]({basis})[/]")
+            if full_text:
+                _print_texts(ex)
 
 
 @cli.command(name="finalize", rich_help_panel="Map")
