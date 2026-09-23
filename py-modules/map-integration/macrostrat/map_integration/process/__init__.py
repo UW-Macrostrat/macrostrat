@@ -210,7 +210,7 @@ def legend_lookup_cmd(maps: MapSelector):
 
 def _match_fields(field: str | None) -> tuple:
     """Resolve a `--field` option to the tuple of legend columns to read."""
-    from ..match.strat_names_v2 import FIELD_TIERS
+    from ..match.strat_names import FIELD_TIERS
 
     if field is None:
         return FIELD_TIERS
@@ -251,7 +251,7 @@ def strat_names_report(
     """
     from rich.table import Table
 
-    from ..match.strat_names_v2 import (
+    from ..match.strat_names import (
         FIELD_TIERS,
         prepare,
         report_for_source,
@@ -349,7 +349,7 @@ def strat_names_report(
         )
 
     if all_basis:
-        from ..match.strat_names_v2 import LocationBasis
+        from ..match.strat_names import LocationBasis
 
         order = [b.value for b in LocationBasis if b.value in all_basis]
         total = sum(all_basis.values())
