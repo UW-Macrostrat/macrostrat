@@ -1,17 +1,38 @@
 import datetime
 import time
 
-from psycopg2.sql import Identifier
+from psycopg.sql import SQL, Identifier
 from rich import print
 
 from macrostrat.core.exc import MacrostratError
 
-from ..database import get_database
+from ..database import get_database, sql_file
 from ..utils import MapInfo
 from .utils import find_scale_table, get_match_count, populated_fields
 
 #: Scale tables, smallest first -- a source lives in exactly one.
 SCALES = ["tiny", "small", "medium", "large"]
+
+
+#: Millions of years a fuzzy-time pass will reach past the legend entry's own
+#: interval, and degrees a fuzzy-space pass will reach past the column.
+TIME_FUZZ_MA = 25
+SPACE_BUFFER_DEGREES = 1.2
+
+
+def column_geom(strict_space: bool) -> str:
+    """The column geometry a pass compares against.
+
+    Two different expressions rather than one expression with a different
+    number -- strict tests the column polygon itself, fuzzy tests a buffered
+    envelope of it -- so the choice of shape stays in Python while the distance
+    is bound. Changing that (testing a zero-buffered envelope in both cases, to
+    make it one expression) would alter which geometry the strict pass uses, and
+    spatial rewrites here are not made without benchmarking.
+    """
+    if strict_space:
+        return "cols.poly_geom "
+    return "ST_Buffer(ST_Envelope(cols.poly_geom), :space_buffer)"
 
 
 def match_units(map: MapInfo):
@@ -35,241 +56,52 @@ class Units:
         self.table = None
         self.field = None
 
-    def query_down(self, strictNameMatch, strictSpace, strictTime):
-        match_type = self.field
+    def _basis_col(
+        self, strict_name: bool, strict_space: bool, strict_time: bool
+    ) -> str:
+        """The `basis_col` string a pass writes, and reads back on the next one.
 
-        if not strictNameMatch:
-            match_type += "_fname"
+        Each pass excludes polygons an earlier one matched, so this doubles as
+        the pass's identity. The order of the suffixes is load-bearing: the two
+        precedence ladders downstream parse it back out.
+        """
+        basis = self.field
+        if not strict_name:
+            basis += "_fname"
+        if not strict_space:
+            basis += "_fspace"
+        if not strict_time:
+            basis += "_ftime"
+        return basis
 
-        if not strictSpace:
-            match_type += "_fspace"
+    def _match(self, procedure: str, strict_name, strict_space, strict_time):
+        """Run one matching pass from its SQL file.
 
-        if not strictTime:
-            match_type += "_ftime"
-
+        The only thing substituted rather than bound is `{column_geom}`, because
+        strict and fuzzy space are two different expressions -- the column
+        polygon against a buffered envelope of it -- and no bind can carry that.
+        Every value is a bind.
+        """
         self.db.run_sql(
-            """
-          INSERT INTO maps.map_units (map_id, unit_id, basis_col)
-            WITH a AS (
-                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM {scale_table} m
-                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = :source_id
-                AND basis_col = :match_type
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM maps.map_units x
-                  WHERE x.map_id = m.map_id
-                )
-            ),
-            flattened AS (
-              /* The rank tree is flattened once by the lexicon rebuild. This
-                 walked `lookup_strat_names` with four correlated subqueries per
-                 row, on every matching pass -- up to sixty-four full-lexicon
-                 scans for one source. */
-              SELECT lsn.strat_name_id, lsn.strat_name, lsn.rank,
-                     unnest(tree.descendant_ids) AS down_names
-              FROM macrostrat.lookup_strat_names lsn
-              JOIN macrostrat.lookup_strat_name_tree tree
-                ON tree.strat_name_id = lsn.strat_name_id
-            ),
-            b AS (
-            SELECT
-              flattened.strat_name_id AS match_strat_name_id,
-              flattened.strat_name AS match_strat_name,
-              flattened.rank AS match_rank,
-              lookup_strat_names.strat_name,
-              unit_strat_names.strat_name_id,
-              unit_strat_names.unit_id,
-              lookup_unit_intervals.t_age,
-              lookup_unit_intervals.b_age,
-              """
-            + (
-                "cols.poly_geom "
-                if strictSpace
-                else "st_buffer(st_envelope(cols.poly_geom), 1.2)"
-            )
-            + """ AS geom
-            FROM macrostrat.unit_strat_names
-            JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-            JOIN macrostrat.cols ON units_sections.col_id = cols.id
-            JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
-            JOIN flattened ON flattened.down_names = unit_strat_names.strat_name_id
-            JOIN macrostrat.lookup_strat_names ON flattened.down_names = lookup_strat_names.strat_name_id
-            WHERE cols.status_code='active'
-            )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
-            FROM a
-            JOIN b ON a.strat_name_id = b.match_strat_name_id
-            WHERE ST_Intersects(a.geom, b.geom)
-                AND ((b.t_age) < (a.age_bottom + """
-            + ("0" if strictTime else "25")
-            + """))
-                AND ((b.b_age) > (a.age_top - """
-            + ("0" if strictTime else "25")
-            + """));
-        """,
+            sql_file(procedure),
             {
                 "scale_table": Identifier("maps", self.table),
                 "source_id": self.source_id,
-                "match_type": match_type,
+                "match_type": self._basis_col(strict_name, strict_space, strict_time),
+                "column_geom": SQL(column_geom(strict_space)),
+                "time_fuzz": 0 if strict_time else TIME_FUZZ_MA,
+                "space_buffer": SPACE_BUFFER_DEGREES,
             },
         )
 
-        # print '        - Done with %s (up)' % (match_type, )
+    def query_down(self, strictNameMatch, strictSpace, strictTime):
+        self._match("match-units-down", strictNameMatch, strictSpace, strictTime)
 
     def query_up(self, strictNameMatch, strictSpace, strictTime):
-        match_type = self.field
-
-        if not strictNameMatch:
-            match_type += "_fname"
-
-        if not strictSpace:
-            match_type += "_fspace"
-
-        if not strictTime:
-            match_type += "_ftime"
-
-        self.db.run_sql(
-            """
-          INSERT INTO maps.map_units (map_id, unit_id, basis_col)
-            WITH a AS (
-                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM {scale_table} m
-                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = :source_id
-                AND basis_col = :match_type
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM maps.map_units x
-                  WHERE x.map_id = m.map_id
-                )
-            ),
-            flattened AS (
-              /* The rank tree is flattened once by the lexicon rebuild. This
-                 walked `lookup_strat_names` with four correlated subqueries per
-                 row, on every matching pass -- up to sixty-four full-lexicon
-                 scans for one source. */
-              SELECT lsn.strat_name_id, lsn.strat_name, lsn.rank,
-                     unnest(tree.descendant_ids) AS down_names
-              FROM macrostrat.lookup_strat_names lsn
-              JOIN macrostrat.lookup_strat_name_tree tree
-                ON tree.strat_name_id = lsn.strat_name_id
-            ),
-            b AS (
-            SELECT
-              flattened.strat_name_id AS match_strat_name_id,
-              flattened.strat_name AS match_strat_name,
-              flattened.rank AS match_rank,
-              lookup_strat_names.strat_name,
-              unit_strat_names.strat_name_id,
-              unit_strat_names.unit_id,
-              lookup_unit_intervals.t_age,
-              lookup_unit_intervals.b_age,
-              """
-            + (
-                "cols.poly_geom "
-                if strictSpace
-                else "st_buffer(st_envelope(cols.poly_geom), 1.2)"
-            )
-            + """ AS geom
-            FROM macrostrat.unit_strat_names
-            JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-            JOIN macrostrat.cols ON units_sections.col_id = cols.id
-            JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
-            JOIN flattened ON flattened.up_names = unit_strat_names.strat_name_id
-            JOIN macrostrat.lookup_strat_names ON flattened.up_names = lookup_strat_names.strat_name_id
-            WHERE cols.status_code='active'
-            )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
-            FROM a
-            JOIN b ON a.strat_name_id = b.match_strat_name_id
-            WHERE ST_Intersects(a.geom, b.geom)
-                AND ((b.t_age) < (a.age_bottom + """
-            + ("0" if strictTime else "25")
-            + """))
-                AND ((b.b_age) > (a.age_top - """
-            + ("0" if strictTime else "25")
-            + """));
-        """,
-            {
-                "scale_table": Identifier("maps", self.table),
-                "source_id": self.source_id,
-                "match_type": match_type,
-            },
-        )
-
-        # print '        - Done with %s (down)' % (match_type, )
+        self._match("match-units-up", strictNameMatch, strictSpace, strictTime)
 
     def query(self, strictNameMatch, strictSpace, strictTime):
-        match_type = self.field
-
-        if not strictNameMatch:
-            match_type += "_fname"
-
-        if not strictSpace:
-            match_type += "_fspace"
-
-        if not strictTime:
-            match_type += "_ftime"
-
-        self.db.run_sql(
-            """
-            INSERT INTO maps.map_units (map_id, unit_id, basis_col)
-            WITH a AS (
-                SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-                FROM {scale_table} m
-                JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
-                JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
-                JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
-                JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
-                WHERE m.source_id = :source_id
-                AND basis_col = :match_type
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM maps.map_units x
-                  WHERE x.map_id = m.map_id
-                )
-            ),
-                b AS (
-                  SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, """
-            + (
-                "cols.poly_geom "
-                if strictSpace
-                else "st_buffer(st_envelope(cols.poly_geom), 1.2)"
-            )
-            + """ AS geom
-                  FROM macrostrat.unit_strat_names
-                  JOIN macrostrat.units_sections ON unit_strat_names.unit_id = units_sections.unit_id
-                  JOIN macrostrat.cols ON units_sections.col_id = cols.id
-                  JOIN macrostrat.lookup_unit_intervals ON unit_strat_names.unit_id = lookup_unit_intervals.unit_id
-                  WHERE strat_name_id IN (SELECT DISTINCT strat_name_id FROM a) AND cols.status_code='active'
-                )
-            SELECT DISTINCT ON (map_id, b.unit_id) map_id, b.unit_id AS units, :match_type
-            FROM a
-            JOIN b ON a.strat_name_id = b.strat_name_id
-            WHERE ST_Intersects(a.geom, b.geom)
-                AND ((b.t_age) < (a.age_bottom + """
-            + ("0" if strictTime else "25")
-            + """))
-                AND ((b.b_age) > (a.age_top - """
-            + ("0" if strictTime else "25")
-            + """));
-        """,
-            {
-                "scale_table": Identifier("maps", self.table),
-                "source_id": self.source_id,
-                "match_type": match_type,
-            },
-        )
-
-        # print '        - Done with %s' % (match_type, )
+        self._match("match-units-direct", strictNameMatch, strictSpace, strictTime)
 
     def match(self):
         # strictName, strictSpace, strictTime, useNullSet
@@ -399,7 +231,8 @@ class Units:
             SELECT count(units.id)
             FROM maps.sources
             JOIN (
-                SELECT units.id, b_age, t_age, ST_Buffer(ST_Envelope(poly_geom), 1.2) as poly_geom
+                SELECT units.id, b_age, t_age,
+                       ST_Buffer(ST_Envelope(poly_geom), :space_buffer) as poly_geom
                 FROM macrostrat.units
                 JOIN macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id
                 JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
@@ -408,7 +241,7 @@ class Units:
             ) units ON ST_Intersects(poly_geom, rgeom)
             WHERE source_id = :source_id
         """,
-            {"source_id": source_id},
+            {"source_id": source_id, "space_buffer": SPACE_BUFFER_DEGREES},
         ).scalar()
 
         if n_intersecting > 0:
