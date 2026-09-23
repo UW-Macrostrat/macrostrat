@@ -5,18 +5,19 @@
 INSERT INTO maps.map_units (map_id, unit_id, basis_col)
 WITH a AS (
     SELECT DISTINCT ON (m.map_id, concept_id) m.map_id, concept_id, map_strat_names.strat_name_id, intervals_top.age_top, intervals_bottom.age_bottom, geom
-    FROM {scale_table} m
+    FROM maps.polygons m
     JOIN macrostrat.intervals intervals_top on m.t_interval = intervals_top.id
     JOIN macrostrat.intervals intervals_bottom on m.b_interval = intervals_bottom.id
     JOIN maps.map_strat_names ON m.map_id = map_strat_names.map_id
     JOIN macrostrat.lookup_strat_names on map_strat_names.strat_name_id = lookup_strat_names.strat_name_id
     WHERE m.source_id = :source_id
-    AND basis_col = :match_type
-    AND NOT EXISTS (
-      SELECT 1
-      FROM maps.map_units x
-      WHERE x.map_id = m.map_id
-    )
+      AND m.scale = :scale
+      AND basis_col = :match_type
+      AND NOT EXISTS (
+        SELECT 1
+        FROM maps.map_units x
+        WHERE x.map_id = m.map_id
+      )
 ),
     b AS (
       SELECT unit_strat_names.strat_name_id, unit_strat_names.unit_id, lookup_unit_intervals.t_age, lookup_unit_intervals.b_age, {column_geom} AS geom

@@ -47,7 +47,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from rich import print
 
 from macrostrat.database import Database
@@ -57,7 +57,6 @@ from macrostrat.match_utils.strat_names import (
     create_ignore_list,
 )
 
-from ..database import get_database
 from ..utils import MapInfo
 from .utils import find_scale_table
 
@@ -103,13 +102,8 @@ class Candidate:
     liths: frozenset = frozenset()
 
 
-def match_strat_names(map: MapInfo, fields=FIELD_TIERS):
-    """Match this source's legend to the lexicon and record the result."""
-    db = get_database()
-    match_strat_names_for_source(db, map.slug, fields=fields)
-
-
-def match_strat_names_for_source(db, slug: str, fields=FIELD_TIERS) -> int:
+def match_strat_names(db: Database, map_info: MapInfo, fields=FIELD_TIERS) -> int:
+    slug = map_info.slug
     start = time.time()
     scope = "" if fields == FIELD_TIERS else f" [dim](from {', '.join(fields)})[/]"
     print(f"      Matching strat names for [bold cyan]{slug}[/]{scope}")

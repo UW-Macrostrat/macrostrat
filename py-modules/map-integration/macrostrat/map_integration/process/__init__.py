@@ -181,19 +181,22 @@ def strat_names(
     """Match the selected map sources to Macrostrat stratigraphic names."""
     from functools import partial
 
-    for_each_map(maps, partial(match_strat_names, fields=_match_fields(field)))
+    db = get_database()
+    for_each_map(maps, partial(match_strat_names, db, fields=_match_fields(field)))
 
 
 @cli.command(name="units", rich_help_panel="Matching")
 def units(maps: MapSelector):
     """Match the selected map sources to Macrostrat units."""
-    for_each_map(maps, match_units)
+    db = get_database()
+    for_each_map(maps, partial(match_units, db))
 
 
 @cli.command(name="liths", rich_help_panel="Matching")
 def liths(maps: MapSelector):
     """Match the selected map sources to Macrostrat lithologies."""
-    for_each_map(maps, match_liths)
+    db = get_database()
+    for_each_map(maps, partial(match_liths, db))
 
 
 @cli.command(name="lookup", rich_help_panel="Lookup")

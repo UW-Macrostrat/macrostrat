@@ -8,7 +8,7 @@ from rich import print
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
 
-from ..database import get_database, sql_file
+from ..database import sql_file
 from ..utils import MapInfo
 from .utils import find_scale_table, get_match_count, populated_fields
 
@@ -27,7 +27,7 @@ class MatchContext:
     """Context for a single matching pass."""
 
     source_id: int
-    table: str
+    scale: str
     field: str
 
 
@@ -40,7 +40,8 @@ class MatchParams:
     strict_time: bool
 
 
-def run_unit_matching(db: Database, source_id: int):
+def match_units(db: Database, map_info: MapInfo):
+    source_id = map_info.id
     start = time.time()
     # Validate params!
     # Valid source_id
@@ -114,6 +115,9 @@ def run_unit_matching(db: Database, source_id: int):
     else:
         print("Skipping unit matching - source does not intersect any columns")
 
+    count = get_match_count(db, source_id, Identifier("maps", "map_units"))
+    print(f"Matched [bold cyan]{count}[/] units in {time.time() - start:.1f}s")
+
 
 def do_work(db: Database, ctx: MatchContext):
     # Time the process
@@ -172,7 +176,7 @@ def _match(db: Database, procedure: str, ctx: MatchContext, params: MatchParams)
     db.run_sql(
         sql_file(procedure),
         {
-            "scale_table": Identifier("maps", ctx.table),
+            "scale": ctx.scale,
             "source_id": ctx.source_id,
             "match_type": _basis_col(ctx.field, params),
             "column_geom": SQL(column_geom(params.strict_space)),
@@ -195,17 +199,3 @@ def column_geom(strict_space: bool) -> str:
     if strict_space:
         return "cols.poly_geom "
     return "ST_Buffer(ST_Envelope(cols.poly_geom), :space_buffer)"
-
-
-def match_units(map: MapInfo):
-    """Match a given map source to Macrostrat units.
-
-    Populates the table maps.map_units.
-    Uses all available fields of matching, including name, strat_name, descrip, and comments.
-    """
-    db = get_database()
-    source_id = map.id
-    run_unit_matching(db, source_id)
-
-    count = get_match_count(db, source_id, Identifier("maps", "map_units"))
-    print(f"Matched [bold cyan]{count}[/] units")
