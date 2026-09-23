@@ -12,10 +12,14 @@ WHERE map_id IN (
   WHERE source_id = ::source_id::
 );
 
-DELETE FROM maps.map_strat_names
-WHERE map_id IN (
-  SELECT map_id
-  FROM maps.::scale::
+/* `maps.map_strat_names` is a view over `maps.legend_strat_names`, which is
+   keyed on the legend entry. Deleting the legend rows takes the matches with
+   them through `ON DELETE CASCADE`, so this deletes at the grain the facts are
+   actually stored at. */
+DELETE FROM maps.legend_strat_names
+WHERE legend_id IN (
+  SELECT legend_id
+  FROM maps.legend
   WHERE source_id = ::source_id::
 );
 

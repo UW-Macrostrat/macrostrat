@@ -218,7 +218,12 @@ def strat_names_report(
     """
     from rich.table import Table
 
-    from ..match.strat_names_v2 import prepare, report_for_source, sources_matching
+    from ..match.strat_names_v2 import (
+        FIELD_TIERS,
+        prepare,
+        report_for_source,
+        sources_matching,
+    )
 
     db = get_database()
     print("[dim]Normalizing the lexicon[/]")
@@ -233,8 +238,20 @@ def strat_names_report(
     for col in ("Source", "Rows", "Current", "Proposed", "Lost", "Gained", "Gaps"):
         table.add_column(col, justify="right" if col != "Source" else "left")
 
-    totals = dict(rows=0, current=0, proposed=0, lost=0, gained=0)
+    totals = dict(
+        rows=0,
+        current=0,
+        proposed=0,
+        lost=0,
+        gained=0,
+        pairs_current=0,
+        pairs_proposed=0,
+        pairs_kept=0,
+        concepts_current=0,
+        concepts_proposed=0,
+    )
     all_gaps: set = set()
+    all_basis: dict = {}
     all_tiers: dict = {}
     reports = []
     for slug in slugs:
@@ -245,7 +262,17 @@ def strat_names_report(
         totals["proposed"] += rep.proposed
         totals["lost"] += len(rep.lost)
         totals["gained"] += len(rep.gained)
+        for k in (
+            "pairs_current",
+            "pairs_proposed",
+            "pairs_kept",
+            "concepts_current",
+            "concepts_proposed",
+        ):
+            totals[k] += getattr(rep, k)
         all_gaps |= rep.lexicon_gaps
+        for basis, n in rep.by_basis.items():
+            all_basis[basis] = all_basis.get(basis, 0) + n
         for tier, n in rep.by_tier.items():
             all_tiers[tier] = all_tiers.get(tier, 0) + n
         pct = lambda v: f"{100 * v / rep.rows:.1f}%" if rep.rows else "-"
@@ -273,10 +300,36 @@ def strat_names_report(
         )
     print(table)
 
+    # Rows are the wrong denominator on their own -- a row that acquires forty
+    # spurious names still counts once. These are the precision numbers.
+    pc, pp, pk = (totals[k] for k in ("pairs_current", "pairs_proposed", "pairs_kept"))
+    cc, cp = totals["concepts_current"], totals["concepts_proposed"]
+    if pc:
+        print(
+            f"matches: current [bold]{pc}[/] -> proposed [bold]{pp}[/]"
+            f" ([bold]{pp / pc:.2f}x[/]), keeping {100 * pk / pc:.1f}% of current"
+        )
+        print(
+            f"concepts: current [bold]{cc}[/] -> proposed [bold]{cp}[/]"
+            f" ([bold]{cp / max(cc, 1):.2f}x[/])"
+            "  [dim]-- the gap between these two is synonym expansion[/]"
+        )
+
+    if all_basis:
+        from ..match.strat_names_v2 import LocationBasis
+
+        order = [b.value for b in LocationBasis if b.value in all_basis]
+        total = sum(all_basis.values())
+        print(
+            "location: "
+            + "  ".join(
+                f"{b}={all_basis[b]} [dim]{100 * all_basis[b] / total:.1f}%[/]"
+                for b in order
+            )
+        )
+
     if all_tiers:
-        order = [
-            t for t in ("strat_name", "name", "descrip", "comments") if t in all_tiers
-        ]
+        order = [t for t in FIELD_TIERS if t in all_tiers]
         summary = "  ".join(f"{t}={all_tiers[t]}" for t in order)
         print(f"[dim]ids by strongest field:[/] {summary}")
 
@@ -301,8 +354,16 @@ def strat_names_report(
             ("lost", "red", rep.lost),
             ("gained", "green", rep.gained),
         ):
-            for text, ids in rows[:examples]:
-                print(f"  [{style}]{label}[/] {text[:66]!r} {ids[:4]}")
+            for ex in rows[:examples]:
+                print(f"  [{style}]{label}[/] {ex.text[:72]!r}")
+                for match_field, key, name, basis in ex.matches[:4]:
+                    if key is None:
+                        print(f"        -> {name}")
+                    else:
+                        print(
+                            f"        [dim]{match_field}[/] {key!r}"
+                            f" -> {name} [dim]({basis})[/]"
+                        )
 
 
 @cli.command(name="finalize", rich_help_panel="Map")

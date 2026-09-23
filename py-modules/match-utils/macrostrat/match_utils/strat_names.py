@@ -120,9 +120,12 @@ def _clean_name(
     """
     _ignore_list = get_ignore_list()
 
-    # Remove punctuation
+    # Remove punctuation. A hyphen that survived `_split_names` is inside a word,
+    # and becomes a token break so each part meets the ignore list on its own --
+    # `ash` in `ash-flow` is a lithology whether or not it is written solid.
     for d in delete:
         name = name.replace(d, " ")
+    name = name.replace("-", " ")
 
     # Collapse whitespace
     name = " ".join(name.split())
@@ -131,6 +134,7 @@ def _clean_name(
     rank = None
     tokens = name.split()
     collected_text = []
+    liths = []
     reversed_tokens = tokens[::-1]
     for position, token in enumerate(reversed_tokens):
         if token.endswith("?"):
@@ -155,6 +159,8 @@ def _clean_name(
                     continue
             # If token should be ignored
             if token in _ignore_list:
+                if token not in non_lith_ignores:
+                    liths.append(token)
                 continue
 
         should_reset = False
@@ -173,9 +179,13 @@ def _clean_name(
                 # No stratigraphic name
                 continue
             yield StratNameTextMatch(
-                name=" ".join(collected_text[::-1]), rank=rank, confidence=confidence
+                name=" ".join(collected_text[::-1]),
+                rank=rank,
+                confidence=confidence,
+                lith_signifiers=liths[::-1],
             )
             collected_text = []
+            liths = []
             # If the current token is a rank, we assign it to the next stratigraphic name
             rank = token_rank
         else:
@@ -185,16 +195,35 @@ def _clean_name(
     if len(collected_text) == 0:
         return
     yield StratNameTextMatch(
-        name=" ".join(collected_text[::-1]), rank=rank, confidence=confidence
+        name=" ".join(collected_text[::-1]),
+        rank=rank,
+        confidence=confidence,
+        lith_signifiers=liths[::-1],
     )
 
 
+#: A dash that separates names, as opposed to one inside a word. Only a spaced
+#: dash divides: "Granite - Cherryville pluton" names two things, "Ash-flow tuff"
+#: names one.
+_SPACED_DASH = re.compile(r"\s+[-\u2013\u2014]+\s+")
+
+
 def _split_names(name) -> list[str]:
-    """Split a stratigraphic name on one of several common delimiters."""
+    """Split a stratigraphic name on one of several common delimiters.
+
+    **An intra-word hyphen is not a delimiter.** Splitting on every `-` cut
+    `Ash-flow tuff` into `ash` and `flow`, and since `ash` is a lithology and
+    `flow` is not, the phrase reduced to the bare word `flow`. The lexicon was
+    normalized the same way, so `Devine Canyon Ash-flow Tuff` also reduced to
+    `flow` -- and the two matched each other on an artifact of the cleaner.
+    Hyphens inside words now separate tokens rather than names, so that entry
+    keeps its `devine canyon` and no longer collides with a description.
+    """
+    name = _SPACED_DASH.sub(";", name)
     acc = ""
     out = []
     for char in name:
-        if char in [";", "|", "-", "–", "—", "-", "\\", "&", "/", ","]:
+        if char in [";", "|", "\\", "&", "/", ","]:
             out.append(acc)
             acc = ""
         else:
@@ -225,8 +254,14 @@ class StratNameTextMatch(BaseModel):
     rank: StratRank | None
     confidence: Confidence
 
-    # Extra information about lithology and age
-    # lith_signifiers: list[str]
+    #: Lithology words the cleaner removed from this name, in the order they
+    #: appear. `Ravenswood Granodiorite` cleans to `ravenswood`, and this is
+    #: where the `granodiorite` goes. It is the only surviving evidence that the
+    #: text named a rock unit rather than described one, which is what
+    #: distinguishes it from a description reading "gray sandstone".
+    lith_signifiers: list[str] = []
+
+    # Extra information about age
     # age_signifiers: list[str]
 
     # Sort by name
@@ -367,6 +402,11 @@ replace = {
 }
 
 stop_words = ["of", "and", "or"]
+
+#: Entries of the ignore list that are not lithologies. The ignore list mixes
+#: rock names with grammar and position, and only the rock names are evidence
+#: that a phrase named a unit, so these are held back from `lith_signifiers`.
+non_lith_ignores = frozenset(stop_words + ["lower", "upper", "middle", "basal"])
 
 #: Dropped only in hierarchy mode. Only ever reached there, since a separator is
 #: what leaves one exposed: "of *the* Endicott Group".

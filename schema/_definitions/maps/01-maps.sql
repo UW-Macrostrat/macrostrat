@@ -407,6 +407,31 @@ CREATE TABLE maps.map_liths (
   compared, whether space was buffered, whether time was fuzzed -- and could
   record neither when a match was made nor whether the rank agreed.
 */
+/** How the place corroborates a name match, strongest first.
+
+  The progression `macrostrat.match-utils` uses for SGP, translated from a point
+  to a legend entry's polygons. It is a second axis beside `match_field`: that
+  says how strongly the text asserted the name, this says how strongly the
+  ground agrees.
+
+  Measured on SGMC: 35.0% of matches reach `column_unit`, 2.9% `adjacent_column`,
+  61.8% `footprint`, 0.3% `none`. Agreement with the twelve-pass SQL pipeline
+  falls monotonically down the scale -- 77.9%, 63.0%, 43.2%, 0% -- so it is a
+  usable confidence ordering.
+
+  It does *not* separate a description's mentions from a curated name, and is not
+  used to try: `descrip` matches reach `column_unit` 30.1% of the time against
+  `strat_name`'s 35.1%. A description reading "may include ... Montoya Dolomite"
+  names a unit that really is there, so it corroborates spatially just as well.
+  That difference is semantic, and `match_field` is where it lives.
+*/
+CREATE TYPE maps.strat_name_location_basis AS ENUM (
+    'column_unit',
+    'adjacent_column',
+    'footprint',
+    'none'
+);
+
 CREATE TABLE maps.legend_strat_names (
     legend_id integer NOT NULL
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
@@ -420,11 +445,9 @@ CREATE TABLE maps.legend_strat_names (
       Rejecting those cost 110 true matches on SGMC. NULL where the text asserted
       no rank. */
     rank_agrees boolean,
-    /** Spatial corroboration, independent of the name. False means the match was
-      admitted on a buffered footprint; NULL means the lexicon holds no footprint
-      for the name, which is true of 2,693 of 51,229 entries and is not evidence
-      against it. */
-    in_footprint boolean,
+    /** Spatial corroboration, independent of the name. NULL only where no
+      spatial test was run. */
+    location_basis maps.strat_name_location_basis,
     /** Temporal corroboration. NULL where the legend entry carries no interval
       to compare against. */
     age_overlaps boolean,
@@ -481,7 +504,7 @@ CREATE TABLE maps.map_strat_names_backup (
   for three of the four things the string used to pack:
 
       field   -> match_field
-      _fspace -> NOT in_footprint      (admitted on a buffered footprint)
+      _fspace -> location_basis = 'none' (no spatial corroboration at all)
       _ftime  -> NOT age_overlaps      (admitted on age fuzz)
       _ntime  -> age_overlaps IS NULL  (no interval to compare)
 
@@ -498,7 +521,7 @@ SELECT
     (CASE
         WHEN lsn.is_manual THEN 'manual'
         ELSE lsn.match_field::text
-            || CASE WHEN lsn.in_footprint IS FALSE THEN '_fspace' ELSE '' END
+            || CASE WHEN lsn.location_basis = 'none' THEN '_fspace' ELSE '' END
             || CASE
                    WHEN lsn.age_overlaps IS NULL THEN '_ntime'
                    WHEN lsn.age_overlaps IS FALSE THEN '_ftime'

@@ -192,7 +192,7 @@ class LegendLookup:
               WHEN NOT lsn.age_overlaps THEN 1
               ELSE 2
             END,
-            CASE WHEN lsn.in_footprint IS FALSE THEN 1 ELSE 0 END
+            lsn.location_basis
                 ) AS tier
               FROM maps.legend_strat_names lsn
               JOIN maps.legend l ON l.legend_id = lsn.legend_id

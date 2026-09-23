@@ -13,6 +13,7 @@ BEGIN
     DROP TABLE IF EXISTS maps.map_strat_names_backup;
     DROP TABLE IF EXISTS maps.legend_strat_names;
     DROP TYPE IF EXISTS maps.strat_name_match_field;
+    DROP TYPE IF EXISTS maps.strat_name_location_basis;
   END IF;
 END
 $$;
@@ -24,13 +25,20 @@ CREATE TYPE maps.strat_name_match_field AS ENUM (
     'comments'
 );
 
+CREATE TYPE maps.strat_name_location_basis AS ENUM (
+    'column_unit',
+    'adjacent_column',
+    'footprint',
+    'none'
+);
+
 CREATE TABLE maps.legend_strat_names (
     legend_id integer NOT NULL
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
     strat_name_id integer NOT NULL,
     match_field maps.strat_name_match_field NOT NULL,
     rank_agrees boolean,
-    in_footprint boolean,
+    location_basis maps.strat_name_location_basis,
     age_overlaps boolean,
     is_manual boolean NOT NULL DEFAULT false,
     matched_at timestamptz NOT NULL DEFAULT now(),
@@ -54,7 +62,7 @@ SELECT
     (CASE
         WHEN lsn.is_manual THEN 'manual'
         ELSE lsn.match_field::text
-            || CASE WHEN lsn.in_footprint IS FALSE THEN '_fspace' ELSE '' END
+            || CASE WHEN lsn.location_basis = 'none' THEN '_fspace' ELSE '' END
             || CASE
                    WHEN lsn.age_overlaps IS NULL THEN '_ntime'
                    WHEN lsn.age_overlaps IS FALSE THEN '_ftime'

@@ -153,25 +153,28 @@ class Backup(Base):
                 shell=True,
             )
 
-            # maps.map_strat_names
+            # maps.legend_strat_names
+            #
+            # `maps.map_strat_names` is now a view over this, so it can be read
+            # but not restored into. The facts live at legend grain; the polygon
+            # fan-out is derived.
             self.pg["cursor"].execute(
                 """
-                COPY (SELECT * FROM maps.map_strat_names
-                WHERE map_id IN (
-                    SELECT map_id
-                    FROM maps.%(scale)s
+                COPY (SELECT * FROM maps.legend_strat_names
+                WHERE legend_id IN (
+                    SELECT legend_id
+                    FROM maps.legend
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_strat_names.tsv' WITH ENCODING 'UTF8'
             """,
                 {
-                    "scale": AsIs(source_info.scale),
                     "source_id": self.args[1],
                     "cwd": AsIs(cwd),
                 },
             )
             call(
                 [
-                    'echo "COPY maps.map_strat_names FROM stdin;" | cat - temp_strat_names.tsv > strat_names.tsv && echo "\.\n" >> strat_names.tsv && rm -f temp_strat_names.tsv'
+                    'echo "COPY maps.legend_strat_names FROM stdin;" | cat - temp_strat_names.tsv > strat_names.tsv && echo "\.\n" >> strat_names.tsv && rm -f temp_strat_names.tsv'
                 ],
                 shell=True,
             )

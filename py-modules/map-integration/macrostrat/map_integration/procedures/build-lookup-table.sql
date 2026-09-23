@@ -13,106 +13,19 @@ INSERT INTO {lookup_table} (
   color
 ) (
 
-  -- Find unique match types for units
-  WITH unit_bases AS (
-    SELECT array_agg(distinct basis_col) bases, q.map_id
-    FROM maps.map_units
-    JOIN {scale_table} q ON map_units.map_id = q.map_id
-    WHERE source_id = :source_id
-    GROUP BY q.map_id
-    ORDER BY q.map_id
-  ),
+  /* Every unit match a polygon carries.
 
-  -- Find and aggregate best unit_ids for each map_id
-  unit_ids AS (
-    SELECT q.map_id, array_agg(DISTINCT unit_id) AS unit_ids
+     No tier to choose between: `units.py` excludes a polygon from every later
+     pass once it has matched, so a `map_id` holds exactly one `basis_col` --
+     true of all 651,909 of them. The ladder that stood here resolved a tie that
+     cannot occur. Unlike the strat-name side this stays at polygon grain, and
+     correctly: units belong to columns, and 6,953 of 20,130 legend entries have
+     polygons resolving to different units. */
+  WITH unit_ids AS (
+    SELECT q.map_id, array_agg(DISTINCT mu.unit_id) AS unit_ids
     FROM {scale_table} q
-    JOIN maps.map_units ON q.map_id = map_units.map_id
-    JOIN unit_bases ON unit_bases.map_id = q.map_id
-
-    WHERE source_id = :source_id AND map_units.basis_col = ANY(
-      CASE
-        WHEN 'manual' = ANY(bases)
-          THEN array['manual']
-
-        WHEN 'strat_name' = ANY(bases)
-        THEN array['strat_name', 'manual']
-
-        WHEN 'strat_name_fname' = ANY(bases)
-          THEN array['strat_name_fname', 'manual']
-
-        WHEN 'strat_name_fspace' = ANY(bases)
-          THEN array['strat_name_fspace', 'manual']
-
-        WHEN 'strat_name_ftime' = ANY(bases)
-          THEN array['strat_name_ftime', 'manual']
-
-        WHEN 'strat_name_fname_fspace' = ANY(bases)
-          THEN array['strat_name_fname_fspace', 'manual']
-
-        WHEN 'strat_name_fspace_ftime' = ANY(bases)
-          THEN array['strat_name_fspace_ftime', 'manual']
-
-        WHEN 'strat_name_fname_ftime' = ANY(bases)
-          THEN array['strat_name_fname_ftime', 'manual']
-
-        WHEN 'strat_name_fname_fspace_ftime' = ANY(bases)
-          THEN array['strat_name_fname_fspace_ftime', 'manual']
-
---------------------------------------------------------------------------------------------
-        WHEN 'name' = ANY(bases)
-        THEN array['name', 'manual']
-
-        WHEN 'name_fname' = ANY(bases)
-        THEN array['name_fname', 'manual']
-
-        WHEN 'name_fspace' = ANY(bases)
-        THEN array['name_fspace', 'manual']
-
-        WHEN 'name_ftime' = ANY(bases)
-        THEN array['name_ftime', 'manual']
-
-        WHEN 'name_fname_fspace' = ANY(bases)
-          THEN array['name_fname_fspace', 'manual']
-
-        WHEN 'name_fspace_ftime' = ANY(bases)
-          THEN array['name_fspace_ftime', 'manual']
-
-        WHEN 'name_fname_ftime' = ANY(bases)
-          THEN array['name_fname_ftime', 'manual']
-
-        WHEN 'name_fname_fspace_ftime' = ANY(bases)
-          THEN array['name_fname_fspace_ftime', 'manual']
-
---------------------------------------------------------------------------------------------
-        WHEN ('descrip' = ANY(bases) OR 'comments' = ANY(bases))
-        THEN array['descrip', 'comments', 'manual']
-
-        WHEN ('descrip_fname' = ANY(bases) OR 'comments_fname' = ANY(bases))
-        THEN array['descrip_fname', 'comments_fname', 'manual']
-
-        WHEN ('descrip_fspace' = ANY(bases) OR 'comments_fspace' = ANY(bases))
-        THEN array['descrip_fspace', 'comments_fspace', 'manual']
-
-        WHEN ('descrip_ftime' = ANY(bases) OR 'comments_ftime' = ANY(bases))
-        THEN array['descrip_ftime', 'comments_ftime', 'manual']
-
-        WHEN ('descrip_fname_fspace' = ANY(bases) OR 'comments_fname_fspace' = ANY(bases))
-          THEN array['descrip_fname_fspace', 'comments_fname_fspace', 'manual']
-
-        WHEN ('descrip_fspace_ftime' = ANY(bases) OR 'comments_fspace_ftime' = ANY(bases))
-          THEN array['descrip_fspace_ftime', 'comments_fspace_ftime', 'manual']
-
-        WHEN ('descrip_fname_ftime' = ANY(bases) OR 'comments_fname_ftime' = ANY(bases))
-          THEN array['descrip_fname_ftime', 'comments_fname_ftime', 'manual']
-
-        WHEN ('descrip_fname_fspace_ftime' = ANY(bases) OR 'comments_fname_fspace_ftime' = ANY(bases))
-          THEN array['descrip_fname_fspace_ftime', 'comments_fname_fspace_ftime', 'manual']
-
-        ELSE
-        array['unknown', 'manual']
-        END
-    )
+    JOIN maps.map_units mu ON mu.map_id = q.map_id
+    WHERE q.source_id = :source_id
     GROUP BY q.map_id
   ),
 
@@ -147,7 +60,7 @@ INSERT INTO {lookup_table} (
         WHEN NOT lsn.age_overlaps THEN 1
         ELSE 2
       END,
-      CASE WHEN lsn.in_footprint IS FALSE THEN 1 ELSE 0 END
+      lsn.location_basis
       ) AS tier
     FROM maps.legend_strat_names lsn
     JOIN maps.legend l ON l.legend_id = lsn.legend_id

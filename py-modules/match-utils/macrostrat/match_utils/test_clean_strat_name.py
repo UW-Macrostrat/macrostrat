@@ -158,3 +158,47 @@ def test_hierarchy_keeps_an_article_that_is_part_of_the_name():
         "Kekiktuk Conglomerate of the Endicott Group", split_hierarchy=True
     )
     assert [r.name for r in res] == ["endicott", "kekiktuk"]
+
+
+def test_lith_signifiers_are_kept():
+    """A name whose rank is carried by its lithology keeps that lithology.
+
+    `Ravenswood Granodiorite` cleans to `ravenswood` with no rank, which is the
+    same shape a stripped description leaves behind. The lithology is the only
+    thing that still says this was a unit name.
+    """
+    (name,) = clean_strat_name("Ravenswood Granodiorite")
+    assert name.name == "ravenswood"
+    assert name.rank is None
+    assert name.lith_signifiers == ["granodiorite"]
+
+
+def test_lith_signifiers_distinguish_a_description():
+    """The collision this exists to break."""
+    (member,) = clean_strat_name("Gray Member")
+    described = clean_strat_name("gray, medium-grained sandstone")
+    assert member.name == "gray" and member.lith_signifiers == []
+    # Same key, so the lexicon is reached either way -- but the clause that
+    # reduced to `gray` carries no lithology to agree with.
+    assert described[0].name == "gray"
+    assert described[0].lith_signifiers == []
+
+
+def test_lith_signifiers_exclude_grammar_and_position():
+    """Stop words and positional terms share the ignore list but are not liths."""
+    names = clean_strat_name(
+        "Kekiktuk Conglomerate of the Endicott Group", split_hierarchy=True
+    )
+    by_name = {n.name: n for n in names}
+    assert by_name["kekiktuk"].lith_signifiers == ["conglomerate"]
+    assert by_name["endicott"].lith_signifiers == []
+    (lower,) = clean_strat_name("Lower Chugwater Formation")
+    assert lower.lith_signifiers == []
+
+
+def test_lith_signifiers_do_not_affect_equality():
+    """Adding the field must not change how matches compare or hash."""
+    (a,) = clean_strat_name("Ravenswood Granodiorite")
+    b = a.model_copy(update={"lith_signifiers": []})
+    assert a == b
+    assert hash(a) == hash(b)
