@@ -385,3 +385,6 @@ class lookup_strat_names:
         db.session.commit()
 
         db.run_sql(here / "sql" / "lookup-strat-names-03.sql")
+        # Flatten the rank tree, now that the swap above has left
+        # `lookup_strat_names` in its final state.
+        db.run_sql(here / "sql" / "lookup-strat-names-04.sql")

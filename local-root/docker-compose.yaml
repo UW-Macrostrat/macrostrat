@@ -78,6 +78,11 @@ services:
       - OAUTH_CLIENT_SECRET
       - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
       - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
+      # Tile-cache management (admin-only, api/routes/cache.py). Both are
+      # in-network addresses: the BAN goes straight to Varnish, and L2 expiry is
+      # forwarded to the tileserver, which owns the tile-geometry SQL.
+      - VARNISH_URL=http://tileserver_cache:8000
+      - TILESERVER_URL=http://tileserver_core:8000
       # Object storage for the column-ingest upload. Values come from local-root/.env
       # (gitignored) — never hardcode them here. `access_key`/`secret_key` are the
       # var names api/routes/columns.py (and create_object) read.
@@ -133,8 +138,8 @@ services:
     environment:
       - VARNISH_HTTP_PORT=8000
     volumes:
-      # TODO:
-      # Changes to this config file aren't pulled in without explicitly restarting the container.
+      # `macrostrat up` reloads the VCL (see restart_commands in macrostrat.core.main),
+      # which picks up edits here and re-resolves the backend hostnames.
       - ./configs/tileserver-cache.vcl:/etc/varnish/default.vcl
   tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main

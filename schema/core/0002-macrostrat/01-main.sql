@@ -827,6 +827,10 @@ CREATE TABLE macrostrat.cols (
   coordinate public.geometry,
   wkt text,
   poly_geom public.geometry,
+  -- The identifier this column carries in the dataset it came from. See the note on
+  -- `macrostrat.units.orig_id`; `project_id` is the source scope, so uniqueness is
+  -- `(project_id, orig_id)`.
+  orig_id text,
   CONSTRAINT idx_44157014_primary PRIMARY KEY (id),
   CONSTRAINT cols_col_groups_fk FOREIGN KEY (col_group_id) REFERENCES macrostrat.col_groups(id) ON DELETE CASCADE,
   CONSTRAINT cols_project_fk FOREIGN KEY (project_id) REFERENCES macrostrat.projects(id) ON DELETE CASCADE
@@ -1083,6 +1087,27 @@ CREATE TABLE macrostrat.lookup_strat_names (
     name_no_lith character varying(100) DEFAULT NULL::character varying,
     ref_id integer NOT NULL,
     c_interval character varying(100) DEFAULT NULL::character varying
+);
+
+/** The stratigraphic hierarchy, flattened, for callers that need it whole.
+
+  Both columns are pure functions of `lookup_strat_names`, and both were being
+  derived from the entire table on every use: the rank-up concepts once per
+  legend row in the legend lookup, and the rank-down descendants once per
+  matching pass in unit matching -- up to sixty-four full-lexicon scans for a
+  single map source.
+
+  A derived table rather than a materialized view, because the lexicon rebuild
+  finishes by renaming `lookup_strat_names_new` over `lookup_strat_names` and a
+  view would hold a dependency on the table being dropped. It is repopulated by
+  the same rebuild, immediately after that swap.
+*/
+CREATE TABLE macrostrat.lookup_strat_name_tree (
+    strat_name_id integer PRIMARY KEY,
+    /** Concepts of this name's ancestors at every rank, self included. */
+    ancestor_concept_ids integer[] NOT NULL DEFAULT '{}',
+    /** Every name beneath this one in the rank tree. */
+    descendant_ids integer[] NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE macrostrat.lookup_strat_names_new (
@@ -1613,10 +1638,17 @@ CREATE TABLE macrostrat.sections (
     lo integer DEFAULT 0 NOT NULL,
     fo_h smallint,
     lo_h smallint,
+    -- The identifier this section carries in the dataset it came from — a source's own
+    -- section id, or a workbook author's `section_id` label; see the note on
+    -- `macrostrat.units.orig_id`. Unlike `cols` and `units`, a section is often **ours**
+    -- rather than the source's: a gap-bound package `column_ingestion` derived by splitting
+    -- at non-conformable contacts, which the source has no identifier for. Those stay NULL
+    -- and are matched ordinally within the column, which is why `units.section_id` must
+    -- not participate in a unit's natural key. Both kinds may sit in one column. Scope is
+    -- the column, so uniqueness is `(col_id, orig_id)`.
+    orig_id text,
     CONSTRAINT idx_44157294_primary PRIMARY KEY (id)
 );
-
-COMMENT ON TABLE macrostrat.sections IS 'Last updated from MariaDB - 2023-07-28 18:11';
 
 CREATE SEQUENCE macrostrat.sections_id_seq
     START WITH 1
@@ -2328,6 +2360,28 @@ CREATE TABLE macrostrat.units (
   section_id integer, -- TODO: re-add this NOT NULL constraint, but without a default value
   col_id integer NOT NULL,
   date_mod timestamp with time zone,
+  /* The identifier this unit carries in the dataset it came from — GBDB's `unit_id`,
+     ChinaLex's composite key, a StraboSpot UUID. `text` rather than `integer` so any
+     source's key shape fits without per-dataset DDL; this is the one deliberate
+     divergence from `maps.orig_id`, which is integer.
+
+     Why it exists: re-ingesting a dataset has to resolve to the same rows, and the
+     natural key `column_ingestion` falls back on — `(col_id, section_id, strat_name,
+     position_bottom, position_top)` — cannot do that. Positions are derived from
+     cumulative thickness, so an upstream thickness correction reads as a different
+     unit; the old row is deleted and `ON DELETE CASCADE` takes its `unit_liths`,
+     `unit_environs`, `unit_notes`, `unit_strat_names` and `unit_boundaries` with it.
+
+     Unique within the scope the source declares: within the section for a source that
+     identifies its sections, within the column otherwise. `column_ingestion` reads that
+     scope off the data rather than being told, so a pipeline supplies the source's own
+     identifiers and nothing more.
+
+     NULL where no source identifier applies (hand-authored workbook columns, and every
+     row predating this column). A unique index treats NULLs as distinct, so any number
+     of them coexist. NULL, never `0` — `macrostrat.strat_names.orig_id` uses `0` as a
+     no-value sentinel across 27,331 rows and cannot be constrained as a result. */
+  orig_id text,
   CONSTRAINT idx_44157375_primary PRIMARY KEY (id),
   CONSTRAINT units_cols_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
   CONSTRAINT units_sections_fk FOREIGN KEY (section_id) REFERENCES macrostrat.sections(id) ON DELETE CASCADE,

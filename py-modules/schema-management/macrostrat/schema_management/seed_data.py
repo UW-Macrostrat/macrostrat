@@ -19,7 +19,12 @@ import sqlparse
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
-from .rebuild import RebuildReport, apply_statements, iter_chunk_statements
+from .rebuild import (
+    ChunkStatement,
+    RebuildReport,
+    apply_statements,
+    iter_chunk_statements,
+)
 
 log = get_logger(__name__)
 
@@ -51,7 +56,7 @@ def data_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_seed_statements(chunks) -> Iterator[str]:
+def iter_seed_statements(chunks) -> Iterator[ChunkStatement]:
     """Yield seed-data statements from ``chunks``, in dependency/apply order."""
     yield from iter_chunk_statements(chunks, data_statements_in)
 
@@ -73,9 +78,9 @@ def rebuild_seed_data(db: Database, chunks) -> RebuildReport:
     """
     statements = list(iter_seed_statements(chunks))
     for statement in statements:
-        if _is_non_idempotent_insert(statement):
+        if _is_non_idempotent_insert(statement.sql):
             log.warning(
                 "Seed INSERT lacks ON CONFLICT (may not be idempotent): %s",
-                statement[:120],
+                statement.sql[:120],
             )
     return apply_statements(db, statements)

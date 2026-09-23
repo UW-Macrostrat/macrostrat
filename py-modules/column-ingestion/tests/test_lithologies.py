@@ -171,6 +171,24 @@ test_cases = [
         "tabular, thickly bedded, cross-bedded, sandstone; flute casts, siltstone",
         output1,
     ),
+    # --- lith synonyms -----------------------------------------------------
+    LithologyTestCase("Volcanics", {LithologyDescription(name="volcanic")}),
+    LithologyTestCase("Lava", {LithologyDescription(name="volcanic")}),
+    LithologyTestCase("Metavolcanics", {LithologyDescription(name="metavolcanic")}),
+    LithologyTestCase("Granitic", {LithologyDescription(name="igneous")}),
+    LithologyTestCase("Gypsum-Anhydrite", {LithologyDescription(name="evaporite")}),
+    # --- hyphenated grainsize attributes -----------------------------------
+    LithologyTestCase(
+        "Fine-grained sandstone",
+        {LithologyDescription(name="sandstone", attributes={"fine"})},
+    ),
+    LithologyTestCase(
+        "Coarse-grained sandstone",
+        {LithologyDescription(name="sandstone", attributes={"coarse"})},
+    ),
+    # A synonym must not shadow a longer real term that contains it. Adding
+    # `aus conglomerat` as a synonym once broke `Aus conglomerate` outright.
+    LithologyTestCase("Aus conglomerate", {LithologyDescription(name="conglomerate")}),
 ]
 
 
@@ -209,6 +227,67 @@ def validate_lithology_description(
         attrs = None
 
     return Lithology(id=lith_id, name=lithology.name, attributes=attrs)
+
+
+def test_a_synonym_longer_than_its_term_still_terminates(processor):
+    """`thin bedded-massive` used to hang the processor outright.
+
+    `bedded-massive` expands to `regularly bedded-massive` through the `bedded` synonym,
+    matches neither an attribute nor a lithology, and the word-advance at the foot of the
+    loop then strips `regularly` back off — returning the text to exactly where it
+    started. A synonym longer than the term it replaces can undo the loop's only progress
+    step, so `process_domain` counts words instead of trusting the text to shrink.
+
+    Real GBDB input, and it would have hung the ingest rather than only a measurement.
+    """
+    assert processor.process_text("thin bedded-massive") == set()
+
+
+def test_supplied_synonyms_merge_over_the_defaults(test_db):
+    """A dataset's own vocabulary resolves like any other term, attributes included.
+
+    The point of loading a crosswalk rather than special-casing at the call site: a
+    crosswalked name is substituted before matching, so anything else in the string is
+    still read normally.
+    """
+    processor = LithsProcessor(test_db, lith_synonyms={"conglomerate": ["glutenite"]})
+
+    assert {lith.name for lith in processor.process_text("glutenite")} == {
+        "conglomerate"
+    }
+    fine = processor.process_text("fine glutenite")
+    assert {lith.name for lith in fine} == {"conglomerate"}
+    assert {att.name for lith in fine for att in (lith.attributes or set())} == {"fine"}
+    # The defaults are still there rather than replaced.
+    assert "volcanic" in processor.lith_synonyms
+
+
+def test_a_rewrite_reads_a_term_as_an_attribute_plus_a_lithology(test_db):
+    """Some source terms mean a rock *and* a modifier, which a synonym cannot express.
+
+    `porphyry` is a porphyritic plutonic rock, not a rock Macrostrat lacks a name for. A
+    `lith_synonyms` entry fails here because it substitutes inside `find_lith`, which then
+    searches the result for a lithology only — `porphyritic plutonic` leads with an
+    attribute, so nothing matches. Rewriting before the parse loop lets the normal
+    machinery read the attribute and then the rock.
+    """
+    processor = LithsProcessor(
+        test_db, lith_rewrites={"porphyry": "porphyritic plutonic"}
+    )
+
+    liths = processor.process_text("porphyry")
+    assert {lith.name for lith in liths} == {"plutonic"}
+    assert {att.name for lith in liths for att in (lith.attributes or set())} == {
+        "porphyritic"
+    }
+
+    # Applied on word boundaries and anywhere in the term, so a qualifier survives and
+    # still contributes whatever it matches.
+    qualified = processor.process_text("quartz porphyry")
+    assert {lith.name for lith in qualified} == {"plutonic"}
+    assert "porphyritic" in {
+        att.name for lith in qualified for att in (lith.attributes or set())
+    }
 
 
 @mark.parametrize("test_case", test_cases)

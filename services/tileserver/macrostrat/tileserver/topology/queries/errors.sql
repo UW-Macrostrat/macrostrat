@@ -4,14 +4,14 @@
 WITH errors AS (
   SELECT
     t.id,
-    t.map_id,
+    t.source_id,
     t.topology_error,
     s.name,
     s.slug,
     t.geometry
   FROM map_bounds.map_topo t
-  JOIN maps.sources s ON s.source_id = t.map_id
-  LEFT JOIN map_bounds.map_area ma ON ma.id = t.map_id
+  JOIN maps.sources s ON s.source_id = t.source_id
+  LEFT JOIN map_bounds.map_area ma ON ma.source_id = t.source_id
   LEFT JOIN map_bounds.map_layer ml ON ml.id = ma.map_layer
   WHERE t.topology_error IS NOT NULL
     AND ::map_layer_filter
@@ -24,7 +24,7 @@ SELECT json_build_object(
       'geometry', ST_AsGeoJSON(geometry)::json,
       'properties', json_build_object(
         'id', id,
-        'map_id', map_id,
+        'source_id', source_id,
         'name', name,
         'slug', slug,
         'topology_error', topology_error

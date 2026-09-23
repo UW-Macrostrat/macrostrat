@@ -1,7 +1,28 @@
 from pathlib import Path
 from typing import Callable, Iterable
 
+from sqlalchemy.dialects.postgresql.base import ischema_names
+from sqlalchemy.types import UserDefinedType
+
 from macrostrat.database import Database
+
+
+class TopoGeometry(UserDefinedType):
+    """PostGIS `topogeometry`, which SQLAlchemy's Postgres dialect doesn't know.
+
+    Reflection is otherwise fine — the column just comes back as `NullType` with a
+    `SAWarning` per column per inspection, which is noise on every migration check
+    that touches `map_bounds`. Registering the name resolves it. Nothing here
+    composes topogeometry values; this only needs to be a distinct, nameable type.
+    """
+
+    cache_ok = True
+
+    def get_col_spec(self, **kw):
+        return "topogeometry"
+
+
+ischema_names["topogeometry"] = TopoGeometry
 
 """Higher-order functions that return a function that evaluates whether a condition is met on the database """
 DbEvaluator = Callable[[Database], bool]

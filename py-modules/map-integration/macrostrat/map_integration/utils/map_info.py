@@ -53,6 +53,64 @@ MapInfo = Annotated[
 ]
 
 
+def _selector_to_like(selector: str) -> str:
+    """Translate a shell-style glob into a SQL `LIKE` pattern."""
+    return (
+        selector.replace("%", r"\%")
+        .replace("_", r"\_")
+        .replace("*", "%")
+        .replace("?", "_")
+    )
+
+
+def resolve_maps(db: Database, selectors: list[str]) -> list[_MapInfo]:
+    """Expand map selectors -- source ids, slugs, or slug globs -- to map info.
+
+    `ngs-*` names a compilation's 114 members without listing them, which is the
+    same targeting `macrostrat bounds build` accepts. Quote the pattern in a
+    shell, which would otherwise try to expand it against filenames.
+
+    Order follows `source_id`, and a map named twice appears once. A selector
+    matching nothing raises rather than being skipped quietly -- a typo'd glob
+    would otherwise look like a successful run over no maps.
+    """
+    found: dict[int, _MapInfo] = {}
+    for selector in selectors:
+        if selector in ("-", "active"):
+            active = app.state.get("active_map")
+            if active is None:
+                raise MacrostratError("No active map set")
+            selector = active
+
+        if any(ch in selector for ch in "*?"):
+            rows = db.run_query(
+                "SELECT source_id, slug, name, url FROM maps.sources"
+                " WHERE slug LIKE :pattern ORDER BY source_id",
+                dict(pattern=_selector_to_like(selector)),
+            ).all()
+            if not rows:
+                raise MacrostratError(f"No maps match {selector!r}")
+            for r in rows:
+                found[r.source_id] = MapInfo(
+                    id=r.source_id, slug=r.slug, url=r.url, name=r.name
+                )
+        else:
+            info = get_map_info(db, selector)
+            found[info.id] = info
+
+    return [found[k] for k in sorted(found)]
+
+
+MapSelector = Annotated[
+    list[str],
+    Argument(
+        ...,
+        autocompletion=complete_map_slugs,
+        help="Map slugs, source ids, or slug globs (e.g. 'ngs-*')",
+    ),
+]
+
+
 def get_map_info(db: Database, identifier: str | int) -> MapInfo:
     """Get map info for a map ID or slug."""
     query = "SELECT source_id, slug, name, url FROM maps.sources"
@@ -66,7 +124,15 @@ def get_map_info(db: Database, identifier: str | int) -> MapInfo:
         query += " WHERE slug = %(slug)s"
         params["slug"] = map_slug
 
-    res = db.run_query(query, params).one()
+    res = db.run_query(query, params).one_or_none()
+    if res is None:
+        # `.one()` here raised a bare `NoResultFound` that named neither the
+        # identifier nor the fact that a glob had been handed to a command
+        # taking a single map -- which is the likeliest way to get here.
+        hint = ""
+        if any(ch in str(identifier) for ch in "*?"):
+            hint = " -- this command takes one map, not a pattern"
+        raise MacrostratError(f"No map found matching {identifier!r}{hint}")
 
     return MapInfo(id=res.source_id, slug=res.slug, url=res.url, name=res.name)
 
@@ -108,8 +174,7 @@ def create_sources_record(db, slug) -> MapInfo:
     return MapInfo(id=source_id, slug=slug)
 
 
-def feature_counts(db, info: MapInfo):
-    db = get_database()
+def feature_counts(db: Database, info: MapInfo):
     res = db.run_query(
         """SELECT
             (SELECT count(*) FROM {poly_table} WHERE source_id = :source_id) AS n_polygons,

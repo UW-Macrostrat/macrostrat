@@ -10,9 +10,11 @@ from api.routes.dev_routes.api import convert_router
 dotenv.load_dotenv()
 
 import api.routes.security
+from api.compilations import router as compilations_router
 from api.database import AppDatabase, get_db_url
 from api.map import router as map_router
 from api.match import router as match_router
+from api.routes.cache import router as cache_router
 from api.routes.columns import router as columns_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
@@ -60,7 +62,9 @@ app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(columns_router)
 app.include_router(sources_router)
+app.include_router(compilations_router)
 app.include_router(map_router, prefix="/map")
+app.include_router(cache_router, prefix="/cache")
 
 app.include_router(convert_router, prefix="/dev")
 app.include_router(match_router, prefix="/dev/match")

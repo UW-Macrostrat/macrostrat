@@ -48,19 +48,6 @@ def reset(
     ctx.database.run_fixtures(proc("reset-topology"))
 
 
-@cli.command("init")
-@writes(WriteScope.Schema, action="topology initialization")
-def init(
-    yes: bool = Option(
-        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
-    ),
-):
-    """Initialize map topology"""
-    mgr = get_topo_manager()
-    mgr.check_setup()
-    mgr.create_tables(check=True)
-
-
 @cli.command("remove")
 def _remove(
     maps: list[str] = Argument(None),
@@ -132,7 +119,6 @@ def mark_all():
                 SELECT f.face_id, ml.id
                 FROM map_bounds_topology.face f
                 CROSS JOIN map_bounds.map_layer ml
-                WHERE ml.composited_from IS NULL
                 ON CONFLICT DO NOTHING
                 RETURNING id
         )
@@ -162,8 +148,14 @@ def _update_identity(db):
 
 
 def _set_dirty(db, map_id: int):
+    """Force a map to be reprocessed from its boundary.
+
+    Clearing `geometry_hash` now means "the parts came from no known boundary",
+    which makes `insert-map-topo-features` re-derive them -- the strongest form
+    of dirty, and the one `topo rebuild` wants.
+    """
     db.run_query(
-        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE id = :id",
+        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE source_id = :id",
         dict(id=map_id),
     )
 
@@ -231,14 +223,14 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
     # Try to re-run errors
     all_maps = db.run_query(
         """
-        SELECT t.id, t.map_id, slug, area_km, t.topology_error
+        SELECT t.id, t.source_id AS map_id, slug, area_km, t.topology_error
         FROM map_bounds.map_topo t
         JOIN maps.sources_metadata m
-          ON t.map_id = m.source_id
+          ON t.source_id = m.source_id
         JOIN map_bounds.map_area
-          ON t.map_id = map_area.id
+          ON t.source_id = map_area.id
         WHERE t.topology_error IS NOT NULL
-        ORDER BY t.map_id, ST_GeoHash(t.geometry::geography)
+        ORDER BY t.source_id, ST_GeoHash(t.geometry::geography)
     """
     ).all()
 

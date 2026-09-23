@@ -43,6 +43,7 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
 
 
 def preprocess_dataframe(
+    db,
     poly_line_pt_df: G.GeoDataFrame,
     meta_path: Path,
     join_col: str,
@@ -81,7 +82,7 @@ def preprocess_dataframe(
         state = "needs review"
         comments = ""
         if feature_suffix == "polygons":
-            meta_df = map_t_b_standard(poly_line_pt_df, "epoch", "period")
+            meta_df = map_t_b_standard(db, poly_line_pt_df, "epoch", "period")
             return meta_df, ingest_pipeline, comments, state
         else:
             return poly_line_pt_df, ingest_pipeline, comments, state
@@ -107,7 +108,7 @@ def preprocess_dataframe(
                 # TODO update to needs review. this status makes UI fail for some reason so kept it at pending.
                 state = "pending"
                 return poly_line_pt_df, ingest_pipeline, comments, state
-            meta_df = map_t_b_intervals(meta_df)
+            meta_df = map_t_b_intervals(db, meta_df)
             if (
                 meta_df["b_interval"].isna().all()
                 and meta_df["t_interval"].isna().all()
@@ -115,7 +116,7 @@ def preprocess_dataframe(
                 comments += "Both b_interval and t_interval are NA. "
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
-            meta_df = map_strat_name(meta_df)
+            meta_df = map_strat_name(db, meta_df)
             if meta_df["strat_name"].isna().all():
                 comments += "No strat_names found."
         elif feature_suffix == "lines":
@@ -294,6 +295,7 @@ def ingest_map(
             if pipeline == "":
                 pipeline = meta_path.suffix.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
+                db,
                 df,
                 meta_path=meta_path,
                 join_col=join_col.lower(),

@@ -7,15 +7,17 @@ from macrostrat.database import on_conflict
 
 from .age_model import build_age_model
 from .columns import (
-    assign_section_ids,
+    Column,
     get_column_data,
+    get_sections,
     reconcile_column_group,
     reconcile_columns,
+    reconcile_sections,
 )
-from .database import get_or_create_project
+from .database import ProjectIdentifier, get_or_create_project
 from .metadata import get_metadata
 from .refs import get_reference_data, reconcile_references, resolve_column_references
-from .units import PositionAxisType, get_units, write_units
+from .units import PositionAxisType, write_units
 
 
 class _DryRunRollback(Exception):
@@ -57,16 +59,37 @@ def ingest_columns_from_file(
     if meta.axis_type == "age":
         position = PositionAxisType.ORDINAL
 
-    units = get_units(db, data_file, position=position, fill_values=meta.fill_values)
+    sections = get_sections(
+        db, data_file, position=position, fill_values=meta.fill_values
+    )
 
     for col in columns:
-        col.units = units.get(col.local_id, [])
+        col.sections = sections.get(col.local_id, [])
         if len(col.units) == 0:
             print(f"Warning: No units found for column {col.local_id}")
 
     if project is None:
         raise ValueError("Project not found in the data file")
 
+    ingest_columns(db, columns, project=project, references=references)
+
+
+def ingest_columns(
+    db,
+    columns: list[Column],
+    *,
+    project: ProjectIdentifier,
+    references: list | None = None,
+):
+    """Write columns, their sections, their units and their age models.
+
+    Takes `Column` objects with `sections` already populated, which is the seam a
+    caller needs when its data did not come from a workbook. The spreadsheet is one
+    source of columns, not the only one: GBDB yields ~29,000 columns from a
+    relational staging schema, and routing those through an .xlsx to reach this
+    sequence would be absurd. `ingest_columns_from_file` is now the spreadsheet
+    front-end to this function.
+    """
     # One transaction for the whole (column, sections, units) set, so `units.section_id`
     # can reference sections that are created in the same breath — the constraint the
     # legacy importer had to drop because it could not precalculate sections.
@@ -91,7 +114,7 @@ def ingest_columns_from_file(
 
             # References come first: columns cite them, and the citations are resolved from
             # workbook-local ids once the reference rows exist.
-            ref_map = reconcile_references(db, references)
+            ref_map = reconcile_references(db, references or [])
 
             reconcile_columns(
                 db, columns, project_id=_project.id, col_group_id=col_group_id
@@ -103,8 +126,9 @@ def ingest_columns_from_file(
                 if not col.units:
                     continue
                 print(f"Ingesting column: {col.name}, ID: {col.id}")
-                assign_section_ids(db, col.id, col.units)
-                write_units(db, col.units)
+                # Sections first, so every unit is written against a section that exists.
+                reconcile_sections(db, col.id, col.sections)
+                write_units(db, col.sections)
                 build_age_model(db, col.units)
 
             # Capture the summary before committing/rolling back, while the ORM
@@ -124,8 +148,6 @@ def ingest_columns_from_file(
 
             if dry_run:
                 raise _DryRunRollback
-
+            return summary
     except _DryRunRollback:
         print("Dry run — transaction rolled back; nothing was persisted.")
-
-    return summary

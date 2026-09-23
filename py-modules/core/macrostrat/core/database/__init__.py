@@ -10,7 +10,7 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
 from ..config import PG_DATABASE, settings
-from ..connections import DatabaseRole
+from ..connections import DEFAULT_DATABASE, DatabaseRole, connection_for
 from ..environment import WriteGate, WriteScope
 from ..exc import MacrostratError
 
@@ -127,6 +127,67 @@ def _confirm_read_if_gated() -> None:
     from ..safety import require_read_access
 
     require_read_access(settings=settings)
+
+
+#: The main database's name in the connection registry; `[<env>.databases]`
+#: holds everything else. Kept as an alias so callers can say what they mean.
+MAIN_DATABASE = DEFAULT_DATABASE
+
+
+def _settings_for_env(env: str | None):
+    """A settings object for a named environment, under either config loader.
+
+    The point of naming an environment here is to reach a *known* deployment
+    without the CLI having selected it, so this deliberately does not touch the
+    active-environment pointer.
+    """
+    if env is None or env == getattr(settings, "env", None):
+        return settings
+
+    from ..config import IS_V2
+
+    if IS_V2:
+        from ..config_loader import load_settings_v2
+
+        return load_settings_v2(settings.config_file, env)
+    # Dynaconf's per-environment view. Absent on the v2 settings object, which
+    # is why this goes through the loader above instead.
+    return settings.from_env(env)
+
+
+def database_url_for(name: str = MAIN_DATABASE, env: str | None = None) -> str:
+    """Look up a database URL by name, optionally in a named environment.
+
+    Independent of the process-global active environment, so a caller can target a
+    known deployment without the CLI having selected it first — which is what makes
+    a pipeline runnable against `test` without changing anything persistent.
+
+    Composed through the connection registry rather than read from a config key,
+    so an environment whose credentials live in a secret manager resolves here
+    too, and a `[<env>.databases]` entry written as a bare name inherits its
+    server. The URL is for handing to another process, so it carries the write
+    login and none of this process's `application_name` attribution.
+    """
+    from ..config import exported_database_url
+
+    cfg = _settings_for_env(env)
+    conn = connection_for(cfg, name)
+    if conn is None:
+        where = f"environment {env!r}" if env else "the active environment"
+        raise KeyError(f"No database {name!r} configured for {where}")
+    return exported_database_url(conn, DatabaseRole.Writer)
+
+
+def database_for(name: str = MAIN_DATABASE, env: str | None = None) -> Database:
+    """Resolve a named database from configuration. See `database_url_for`.
+
+    Pass the result explicitly to library functions, or install it for code that
+    still resolves its own with `get_database()`:
+
+        with database_context(database_for(env="test")):
+            ...
+    """
+    return Database(database_url_for(name, env))
 
 
 def get_database():

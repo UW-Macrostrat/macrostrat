@@ -369,8 +369,26 @@ from macrostrat.map_topology import cli as topo_cli
 main.add_typer(
     topo_cli,
     name="topo",
-    rich_help_panel="Subsystems",
+    rich_help_panel="Maps",
     short_help="Manage the Macrostrat maps topology",
+)
+
+from macrostrat.map_topology.bounds import cli as bounds_cli
+
+main.add_typer(
+    bounds_cli,
+    name="bounds",
+    rich_help_panel="Maps",
+    short_help="Compose and edit map boundaries",
+)
+
+from macrostrat.map_topology.compilations import cli as compilations_cli
+
+main.add_typer(
+    compilations_cli,
+    name="compilations",
+    rich_help_panel="Maps",
+    short_help="Assemble maps out of other maps",
 )
 
 from .cache import cli as cache_cli
@@ -387,28 +405,60 @@ main.add_typer(auth_cli, name="auth", rich_help_panel="Subsystems")
     name="run",
 )
 def _run(
-    ctx: typer.Context, command: str = Argument(help="Command to run", default=None)
+    ctx: typer.Context,
+    command: str = Argument(help="Command to run", default=None),
 ):
-    """Run a command in the Macrostrat command-line context"""
+    """Run a data pipeline, or a script from `bin/`, with the environment resolved.
+
+    A **pipeline** is a directory holding a Typer app named `cli.py` or a Makefile,
+    in a workbook such as `data-integration`. Name one by its directory, from
+    anywhere inside the workbook, or give a path from anywhere at all:
+
+        macrostrat run                       list the pipelines here
+        macrostrat run ngs sources --apply   Maps/NGS/cli.py sources --apply
+        macrostrat --env development run Stratigraphy/GBDB ingest
+
+    It is *executed, not imported*, in its own virtualenv, and receives the
+    resolved environment as MACROSTRAT_ENV and MACROSTRAT_DATABASE_URL. Anything
+    that is neither a pipeline nor a path is looked up in `srcroot/bin`.
+    """
+    from . import pipelines
 
     bindir = Path(settings.srcroot) / "bin"
 
     if command is None:
-        # List available commands
-        print("Available commands:")
-        for f in bindir.iterdir():
+        root = pipelines.workbook_root()
+        if root is not None:
+            pipelines.list_pipelines(root)
+        print("[bold]Scripts in bin/[/bold]")
+        for f in sorted(bindir.iterdir()):
             if f.is_file() and f.name != "macrostrat":
-                print(f.name)
+                print(f"  {f.name}")
         return
 
+    target = pipelines.resolve(command)
+    if target is not None:
+        raise typer.Exit(pipelines.run_pipeline(target, ctx.args))
+
     cmd = bindir / command
+    if not cmd.is_file():
+        root = pipelines.workbook_root()
+        where = (
+            f"the pipelines in {root.name}"
+            if root
+            else "any workbook (no .dvc above here)"
+        )
+        raise MacrostratError(
+            f"[item]{command}[/item] is not a pipeline, a path, or a script in bin/",
+            details=f"Looked in {where} and {bindir}. `macrostrat run` alone lists both.",
+        )
     run(str(cmd), *ctx.args)
 
 
 # Add subsystems if they are available.
 # This organization is a bit awkward, and we may change it eventually.
 try:
-    from macrostrat.map_integration import cli as map_app
+    from macrostrat.map_integration.cli import cli as map_app
 
     from .commands.export import export_map
 
@@ -417,7 +467,7 @@ try:
     main.add_typer(
         map_app,
         name="maps",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Maps",
         short_help="Map integration system",
     )
 
@@ -430,7 +480,7 @@ try:
     main.add_typer(
         build_raster_cli(),
         name="raster",
-        rich_help_panel="Subsystems",
+        rich_help_panel="Maps",
         short_help="Raster data integration",
     )
 except ImportError as err:

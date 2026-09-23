@@ -1,14 +1,8 @@
 from psycopg.sql import SQL, Identifier
 from sqlalchemy.exc import NoSuchTableError
 
+from ...source_tables import LINE_COLUMNS, POINT_COLUMNS, POLYGON_COLUMNS
 from ...utils import column_exists, table_exists
-
-common_columns = {
-    "source_id": "integer",
-    "orig_id": "integer",
-    "omit": "boolean",
-    # "ready": "boolean",  # Ready to be inserted?
-}
 
 
 class SourcesTableUpdater:
@@ -84,20 +78,7 @@ class SourcesTableUpdater:
 
 
 class PolygonTableUpdater(SourcesTableUpdater):
-    column_spec = {
-        **common_columns,
-        "name": "text",
-        "strat_name": "text",
-        "age": "text",
-        "lith": "text",
-        "descrip": "text",
-        "comments": "text",
-        "t_interval": "integer",
-        "b_interval": "integer",
-        "color": "text",
-        "unit_label": "text",
-        "fill_pattern": "text",
-    }
+    column_spec = POLYGON_COLUMNS
 
     def _update_legacy_polygon_columns(self):
         """Legacy tables had different standard names for several columns."""
@@ -123,25 +104,8 @@ class PolygonTableUpdater(SourcesTableUpdater):
 
 
 class LineworkTableUpdater(SourcesTableUpdater):
-    column_spec = {
-        **common_columns,
-        "descrip": "text",
-        "comments": "text",
-        "name": "character varying(255)",
-        "type": "character varying(100)",
-        "direction": "character varying(20)",
-        "certainty": "character varying(100)",
-    }
+    column_spec = LINE_COLUMNS
 
 
 class PointsTableUpdater(SourcesTableUpdater):
-    column_spec = {
-        **common_columns,
-        "descrip": "text",
-        "comments": "text",
-        "strike": "integer",
-        "dip": "integer",
-        "dip_dir": "integer",
-        "point_type": "character varying(100)",
-        "certainty": "character varying(100)",
-    }
+    column_spec = POINT_COLUMNS

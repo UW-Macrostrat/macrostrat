@@ -5,7 +5,7 @@ WITH update AS (
   SELECT
     map_bounds.update_topogeom(m, :tolerance) res
   FROM map_bounds.map_topo m
-  WHERE map_id = :map_id
+  WHERE source_id = :map_id
     AND topo IS NULL
     AND topology_error IS NOT NULL
   LIMIT :batch_size

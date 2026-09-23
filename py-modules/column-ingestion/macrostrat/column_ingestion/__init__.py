@@ -17,7 +17,7 @@ app = Typer(
 
 
 @app.command(name="ingest")
-def ingest_columns(
+def ingest_command(
     data_file: Path = Argument(..., help="Path to the data file to ingest"),
     dry_run: bool = Option(
         False, "--dry-run", help="Validate the file and roll back without persisting."

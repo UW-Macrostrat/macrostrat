@@ -7,18 +7,19 @@ from rich import print
 
 from macrostrat.utils import get_logger
 
-from ..intervals import Interval, RelativeAge, get_intervals
+from ..boundary_status import BoundaryStatus
+from ..intervals import (
+    Interval,
+    RelativeAge,
+    containing_interval,
+    get_intervals,
+    timescale_intervals,
+)
 from ..reconciliation import ReconciliationPlan
 from ..units import Unit
 from .reconciliation import reconcile_unit_boundaries, write_unit_boundaries
 
 log = get_logger(__name__)
-
-
-class BoundaryStatus(Enum):
-    MODELED = "modeled"
-    RELATIVE = "relative"
-    ABSOLUTE = "absolute"
 
 
 @dataclass
@@ -74,7 +75,15 @@ class AgeModelSurface:
         # Set relative age if not provided
         if self.relative_age is None and self.infer_relative_age:
             self.relative_age = self.build_relative_age()
-        if self.relative_age is not None:
+        # `MODELED` is the placeholder callers pass before it is known whether the
+        # surface carries its own constraint, so it is the only status this is
+        # allowed to overwrite. A caller that states `IMPOSED` or `ABSOLUTE` is
+        # describing where the constraint came from, and that must survive —
+        # otherwise every dataset whose ages are thickness-interpolated would be
+        # recorded as though the source had named an interval.
+        if self.relative_age is not None and self.boundary_status is (
+            BoundaryStatus.MODELED
+        ):
             self.boundary_status = BoundaryStatus.RELATIVE
 
     @property
@@ -131,11 +140,6 @@ class AgeModelSurface:
         return hash((self.position, self.relative_age))
 
 
-def timescale_intervals(db, timescale_id: int):
-    intervals = get_intervals(db)
-    return [i for i in intervals if timescale_id in i.timescales]
-
-
 class AgeModel:
     surfaces: list[AgeModelSurface]
 
@@ -155,9 +159,8 @@ class AgeModel:
                 self._match_intervals.append(est.interval)
         # Sort intervals by age span (smallest first)
         self._match_intervals = sorted(self._match_intervals, key=lambda i: i.age_span)
-        self._match_intervals += sorted(
-            timescale_intervals(db, timescale), key=lambda i: i.age_span
-        )
+        # `timescale_intervals` is already narrowest-first.
+        self._match_intervals += timescale_intervals(db, timescale)
 
     def axis_position(self, surface: AgeModelSurface) -> float:
         """The coordinate this model spreads time along.
@@ -190,14 +193,14 @@ class AgeModel:
         """Fit an unconstrained surface to the model"""
         pass
 
-    @property
-    def _linear_interpolator(self):
-        from scipy.interpolate import make_interp_spline
+    def _knots(self):
+        """`(x, y)` for the interpolator: constrained positions and their ages.
 
-        # Coincident axis positions are possible — a zero-thickness unit puts two
-        # surfaces at the same coordinate — and a spline cannot represent a step.
-        # Collapse them, keeping the last (oldest) age so the model stays
-        # monotonic below the collapsed point. Surfaces are already sorted.
+        Coincident axis positions are possible — a zero-thickness unit puts two
+        surfaces at the same coordinate — and a spline cannot represent a step.
+        Collapse them, keeping the last (oldest) age so the model stays
+        monotonic below the collapsed point. Surfaces are already sorted.
+        """
         x, y = [], []
         for surface in self.constrained_surfaces:
             position = self.axis_position(surface)
@@ -206,33 +209,61 @@ class AgeModel:
                 continue
             x.append(position)
             y.append(surface.model_age)
+        return x, y
+
+    @property
+    def _linear_interpolator(self):
+        from scipy.interpolate import make_interp_spline
+
+        x, y = self._knots()
         # A one-degree b-spline is a piecewise linear interpolator
-        # Natural boundary conditions arbitrarily extend the domain
-        # in either direction
         return make_interp_spline(x, y, k=1, bc_type=None)
 
+    def _model_age(self, position: float) -> float:
+        """The model's age at `position`, **without extrapolating past the constraints**.
+
+        Natural boundary conditions extend the end segments indefinitely, and that is not a
+        harmless default: a pair of constraints close together in position and far apart in
+        age defines a near-vertical segment, and extending it a few hundred metres leaves
+        geological time altogether. GBDB has 9,957 such pairs — a formation bracketed
+        2500-0 Ma across a 0.1 m unit is the common shape — and extrapolating one of them
+        to a section base 14.8 km below produced an age of 371,002,500 Ma. In the other
+        direction it goes negative, which is what `No interval found for age -625000.0`
+        was.
+
+        Clamping the position to the constrained span replaces that with constant
+        extension: a surface outside the span takes the age of the nearest constraint. That
+        asserts less than an extrapolation does — "no older than the lowest thing we dated"
+        rather than an invented number — and it keeps the model monotonic, which is the
+        invariant that matters. It cannot be more wrong than the extrapolation it replaces.
+        """
+        x, _ = self._knots()
+        if x:
+            position = min(max(position, x[0]), x[-1])
+        return self._linear_interpolator(position)
+
     def _containing_interval(self, age: float):
-        # Find the first _match_interval that contains the age
-        for interval in self._match_intervals:
-            if interval.contains(age):
-                return interval
-        assert False, f"No interval found for age {age}"
+        interval = containing_interval(self._match_intervals, age)
+        assert interval is not None, f"No interval found for age {age}"
+        return interval
 
     def apply(self) -> list[AgeModelSurface]:
         """Apply the model to unconstrained surfaces"""
 
         for surface in self.surfaces:
             position = self.axis_position(surface)
-            model_age = self._linear_interpolator(position)
+            model_age = self._model_age(position)
             if surface.relative_age is None:
-                interpolated_age = self._linear_interpolator(position)
+                interpolated_age = self._model_age(position)
                 interval = self._containing_interval(interpolated_age)
                 proportion = interval.relative_position(interpolated_age)
 
-                # Build relative age
+                # Build relative age. This surface really was interpolated by this
+                # model, so `MODELED` is correct regardless of what was declared.
                 surface.relative_age = RelativeAge(interval, proportion)
                 surface.boundary_status = BoundaryStatus.MODELED
-            else:
+            elif surface.boundary_status is BoundaryStatus.MODELED:
+                # Placeholder status, and the surface turned out to be constrained.
                 surface.boundary_status = BoundaryStatus.RELATIVE
             # Sanity check
             if surface.relative_age is not None:
@@ -266,6 +297,33 @@ def build_age_model(db, units: list[Unit]) -> dict[int, ReconciliationPlan]:
     return plans
 
 
+def _declared_status(position: float, units: list[Unit]) -> BoundaryStatus:
+    """The status the units meeting at `position` claim for their own constraint.
+
+    Only the ages that actually bear on this surface count: a unit's `b_age`
+    constrains its base and its `t_age` its top. `MODELED` is returned as the
+    placeholder when nothing is claimed — or when neighbours disagree, which leaves
+    the surface to be treated as ordinarily relative rather than silently adopting
+    one side's provenance.
+    """
+    claimed = set()
+    for unit in units:
+        if unit.b_pos == position and unit.b_age is not None:
+            claimed.add(unit.age_status)
+        if unit.t_pos == position and unit.t_age is not None:
+            claimed.add(unit.age_status)
+    if len(claimed) == 1:
+        return claimed.pop()
+    if len(claimed) > 1:
+        log.warning(
+            "Surface at position %s has conflicting age provenance (%s); "
+            "recording it as relative",
+            position,
+            ", ".join(sorted(s.value for s in claimed)),
+        )
+    return BoundaryStatus.MODELED
+
+
 def _build_section_age_model(db, units: list[Unit]):
     """Build an age model for a section"""
 
@@ -276,8 +334,8 @@ def _build_section_age_model(db, units: list[Unit]):
         surfaces[unit.t_pos].append(unit)
 
     surfaces = [
-        AgeModelSurface(pos, units, BoundaryStatus.MODELED)
-        for pos, units in surfaces.items()
+        AgeModelSurface(pos, section_units, _declared_status(pos, section_units))
+        for pos, section_units in surfaces.items()
     ]
 
     # TODO: we only need the db to grab timescale intervals

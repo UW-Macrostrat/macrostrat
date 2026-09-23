@@ -124,17 +124,32 @@ def filter_changes_from_plan(changes):
 
 
 def filter_topogeometry_elements(inspector):
-    """Filter out the topology layer constraints that do not respond well to schema
-    diffing due to their reliance on stable IDs in the topology.topology table."""
+    """Filter out topology objects that do not respond well to schema diffing
+    due to their reliance on stable IDs in the topology.topology table.
+
+    A planning database builds its topology from scratch, so `CreateTopology`
+    assigns id 1 there while a long-lived database is on some other id. Anything
+    that embeds that id therefore looks like a difference on every diff, and
+    "fixing" it writes the planning database's id into the live one.
+    """
     inspector.constraints = {
         k: v
         for k, v in inspector.constraints.items()
-        if v.name != "check_topogeom_topo"
+        if not v.name.startswith("check_topogeom_")
     }
     inspector.sequences = {
         k: v
         for k, v in inspector.sequences.items()
         if not v.name.startswith("topogeo_s_")
+    }
+    # PostGIS bakes the topology id into this trigger's arguments as a literal
+    # (`relationtrigger('38', 'map_bounds_topology')`). Left unfiltered, a diff
+    # rewrites it to the planning database's id, after which every topogeometry
+    # insert fails with `Layer N does not exist in topology 1`.
+    inspector.triggers = {
+        k: v
+        for k, v in inspector.triggers.items()
+        if v.name != "relation_integrity_checks"
     }
 
 
@@ -177,6 +192,8 @@ def apply(
     ),
 ):
     """Apply migration plan to database"""
+    from .ownership import applied_as_app_owner
+
     db = get_database()
 
     dumpdir = settings.srcroot / "schema"
@@ -194,9 +211,16 @@ def apply(
 
     counter = StatementCounter(safe=safe)
 
-    db.run_fixtures(
-        pending_plan, statement_filter=counter.filter, console=macrostrat_app.console
-    )
+    # The plan has no chunk structure to take an owner from, so it is applied as
+    # `macrostrat` wholesale and `escalate` re-runs the statements that need the
+    # connector. Without this, everything a diff creates is born connector-owned.
+    with applied_as_app_owner(db) as escalate:
+        db.run_fixtures(
+            pending_plan,
+            statement_filter=counter.filter,
+            on_error=escalate,
+            console=macrostrat_app.console,
+        )
     db.run_sql("NOTIFY pgrst, 'reload schema';")
 
     counter.print_report()

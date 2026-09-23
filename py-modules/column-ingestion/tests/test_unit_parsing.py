@@ -6,7 +6,8 @@ from io import StringIO
 
 from polars import read_csv
 
-from macrostrat.column_ingestion.units import PositionAxisType, get_units_from_df
+from macrostrat.column_ingestion.columns import get_sections_from_df
+from macrostrat.column_ingestion.units import PositionAxisType
 
 # Wkt for a basic point-based stratigraphic column
 basic_column_wkt = "POINT (0 0)"  # null island
@@ -23,12 +24,14 @@ def test_ingest_units(test_db):
     """Ingest basic column into the Macrostrat database"""
     df = read_df(basic_units_csv)
     assert df.shape == (3, 6)
-    col_units = get_units_from_df(test_db, df)
+    col_sections = get_sections_from_df(test_db, df)
 
-    assert len(col_units) == 1
-    assert "1" in col_units
+    assert len(col_sections) == 1
+    assert "1" in col_sections
 
-    units = col_units["1"]
+    # No `section_id` column: one unidentified section.
+    assert [s.orig_id for s in col_sections["1"]] == [None]
+    units = flatten(col_sections["1"])
 
     assert len(units) == 2
 
@@ -69,11 +72,13 @@ def test_ingest_multi_section_units(test_db):
         multi_section_units_csv,
     )
     assert df.shape == (6, 7)
-    col_units = get_units_from_df(test_db, df)
-    assert len(col_units) == 1
-    assert "1" in col_units
-    units = col_units["1"]
-    assert len(units) == 4
+    col_sections = get_sections_from_df(test_db, df)
+    assert len(col_sections) == 1
+    assert "1" in col_sections
+    sections = col_sections["1"]
+    # The author's label is the section's identifier, as a source dataset's would be.
+    assert sorted(s.orig_id for s in sections) == ["1", "2"]
+    assert len(flatten(sections)) == 4
 
 
 # Overlapping units with ordinal heights
@@ -90,11 +95,14 @@ def test_ingest_overlapping_units(test_db):
     """Ingest basic column into the Macrostrat database"""
     df = read_df(overlapping_units_csv)
     assert df.shape == (4, 4)
-    col_units = get_units_from_df(test_db, df, position=PositionAxisType.ORDINAL)
-    assert len(col_units) == 1
-    assert "1" in col_units
-    units = col_units["1"]
-    assert len(units) == 4
+    col_sections = get_sections_from_df(test_db, df, position=PositionAxisType.ORDINAL)
+    assert len(col_sections) == 1
+    assert "1" in col_sections
+    assert len(flatten(col_sections["1"])) == 4
+
+
+def flatten(sections):
+    return [unit for section in sections for unit in section.units]
 
 
 def read_df(obj: str):

@@ -14,5 +14,5 @@ def setup_session():
     )
     # Reload the macrostrat.core and macrostrat.map_ingestion modules
     reload(import_module("macrostrat.core.config"))
-    reload(import_module("macrostrat.map_integration"))
+    reload(import_module("macrostrat.map_integration.cli"))
     yield

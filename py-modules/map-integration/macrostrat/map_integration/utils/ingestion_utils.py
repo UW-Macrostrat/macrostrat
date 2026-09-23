@@ -164,24 +164,25 @@ def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
     return f"{place_name}, {region_name}"
 
 
-def get_age_interval_df() -> pd.DataFrame:
+def get_age_interval_df(db) -> pd.DataFrame:
     """Query and store interval names from the database into a DataFrame for lookups.
     Returns:
     pd.DataFrame. A pandas series with interval_name strings.
     """
-    db = get_database()
-    query = "SELECT id, interval_name FROM macrostrat.intervals"
+    # The bounding ages come along so a caller can order two matched intervals
+    # by age rather than by the order they happen to appear in a sentence -- see
+    # `gems_utils.lookup_and_validate_age`.
+    query = "SELECT id, interval_name, age_bottom, age_top FROM macrostrat.intervals"
     with db.engine.connect() as conn:
         df = pd.read_sql(query, conn)
     return df
 
 
-def get_strat_names_df() -> pd.DataFrame:
+def get_strat_names_df(db) -> pd.DataFrame:
     """Query and store interval names from the database into a DataFrame for lookups.
     Returns:
     pd.DataFrame. A pandas series with interval_name strings.
     """
-    db = get_database()
     query = "select rank_name from macrostrat.lookup_strat_names"
     with db.engine.connect() as conn:
         df = pd.read_sql(query, conn)
@@ -190,9 +191,9 @@ def get_strat_names_df() -> pd.DataFrame:
 
 # standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
 def map_t_b_standard(
-    meta_df: G.GeoDataFrame, col_one: str, col_two: str
+    db, meta_df: G.GeoDataFrame, col_one: str, col_two: str
 ) -> G.GeoDataFrame:
-    interval_df = get_age_interval_df().reset_index(drop=True)
+    interval_df = get_age_interval_df(db).reset_index(drop=True)
     interval_lookup = {
         str(row["interval_name"]).strip().lower(): int(row["id"])
         for _, row in interval_df.iterrows()
@@ -313,7 +314,6 @@ def process_sources_metadata(
 
 
 def insert_sources_metadata(db, data_path, slug: str):
-    db = get_database()
     get_name_from_slug(slug)
     slug, name, ext = normalize_slug(prefix, Path(data_path))
     source_id = db.run_query(

@@ -41,6 +41,7 @@ See `Investigations/Column ingestion architecture.md` for the reasoning, and
 `Investigations/Age model creation from legacy fields.md` for the eODP decoding.
 """
 
+from ..boundary_status import BoundaryStatus
 from .approaches import (
     AgeModelApproach,
     default_approach_for_column,
@@ -49,7 +50,6 @@ from .approaches import (
 from .model import (
     AgeModel,
     AgeModelSurface,
-    BoundaryStatus,
     UnitBoundary,
     build_age_model,
     build_age_model_for_existing_column,

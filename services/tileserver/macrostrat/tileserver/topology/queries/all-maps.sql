@@ -16,6 +16,6 @@ WITH tile AS (
   JOIN tile
     ON ST_Intersects(geometry, projected_envelope)
   JOIN maps.sources s
-    ON ma.id = s.source_id
+    ON ma.source_id = s.source_id
 )
 SELECT ST_AsMVT(sources, 'maps', 4096, 'geom') FROM sources;

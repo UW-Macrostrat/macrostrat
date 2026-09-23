@@ -127,6 +127,7 @@ class FakeUnit:
         self.section_id = 2
         self.b_pos = 10.0
         self.t_pos = 0.0
+        self.orig_id = None
 
 
 def test_units_without_intervals_get_the_unmodeled_sentinel():
@@ -142,3 +143,62 @@ def test_unmodeled_sentinel_spans_all_of_geologic_time():
     """499 is Precambrian-Phanerozoic (4031-0 Ma) — a non-answer, not a wrong answer.
     Guards against it drifting to something that reads as a real interval."""
     assert UNMODELED_INTERVAL == 499
+
+
+# ---------------------------------------------------------------------------
+# Unit identity: the source's identifier, in the scope the source declares
+# ---------------------------------------------------------------------------
+
+
+def test_a_unit_survives_a_section_renumbering_when_the_source_owns_no_sections():
+    """The case this whole mechanism exists for.
+
+    GBDB's sections are derived from contacts, so an upstream edit renumbers them and
+    moves units between them as an artifact. The unit's own identifier has to outlast
+    that, or the delete-and-insert cascades away its liths, environs, notes and
+    boundaries.
+    """
+    before = existing(1, section_id=2, orig_id="244492")
+    after = desired(section_id=7, orig_id="244492")
+
+    assert unit_identity(before) == unit_identity(after)
+
+    p = plan([before], [after])
+    assert (p.matched, p.inserts, p.deletes) == ([1], [], [])
+    # `section_id` is owned, so the move is an update rather than a new row.
+    assert p.updates == [(1, {c: after[c] for c in UNIT_COLUMNS})]
+
+
+def test_a_source_that_names_its_sections_pins_units_to_them():
+    """The converse: naming sections declares them the resolution context, so the same
+    unit identifier under a different section is a different unit — and a section that
+    keeps its own identifier through a renumbering keeps its units."""
+    stable = existing(1, section_id=2, section_orig_id="S-1", orig_id="7")
+    renumbered = desired(section_id=9, section_orig_id="S-1", orig_id="7")
+    elsewhere = desired(section_id=2, section_orig_id="S-2", orig_id="7")
+
+    assert unit_identity(stable) == unit_identity(renumbered)
+    assert unit_identity(stable) != unit_identity(elsewhere)
+
+
+def test_position_is_the_fallback_and_needs_a_section_scope():
+    """With no unit identifier, position is all there is — and it repeats across
+    sections, so it is scoped by the section's identifier where there is one and by the
+    mutable `sections.id` where there is not."""
+    unscoped = existing(1, section_id=2)
+    assert unit_identity(unscoped) == unit_identity(desired(section_id=2))
+    # The known limit of the fallback, asserted so it is a decision, not a surprise.
+    assert unit_identity(unscoped) != unit_identity(desired(section_id=3))
+
+    scoped = existing(2, section_id=2, section_orig_id="S-1")
+    assert unit_identity(scoped) == unit_identity(
+        desired(section_id=9, section_orig_id="S-1")
+    )
+
+
+def test_blank_identifiers_are_treated_as_absent():
+    """A CSV-sourced pipeline yields `''` rather than NULL. An empty string is not an
+    identity, and treating it as one would collapse every unidentified row onto one key."""
+    assert unit_identity(existing(1, orig_id="")) == unit_identity(existing(2))
+    assert unit_identity(existing(1, orig_id="  ")) == unit_identity(existing(2))
+    assert unit_identity(existing(1, section_orig_id="")) == unit_identity(existing(2))

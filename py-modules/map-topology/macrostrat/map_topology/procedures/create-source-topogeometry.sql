@@ -2,7 +2,7 @@ WITH elements AS (
   SELECT
     (topo).*
   FROM map_bounds.map_topo
-  WHERE map_id = :map_id
+  WHERE source_id = :map_id
 ),
 face_ids AS (
   SELECT r.element_id face_id
@@ -34,10 +34,13 @@ topogeo AS (
 )
 UPDATE map_bounds.map_area
 SET
-  topo = topogeo.topo,
-  geometry_hash = md5(ST_AsBinary(geometry))::uuid
+  -- `geometry_hash` is deliberately not touched here: it records which boundary
+  -- the `map_topo` parts were derived from, and this step assembles those parts.
+  -- Writing it here certified stale parts as current, so a map whose boundary
+  -- had changed was skipped for good.
+  topo = topogeo.topo
 FROM topogeo
-WHERE map_area.id = :map_id
+WHERE map_area.source_id = :map_id
 
 
 

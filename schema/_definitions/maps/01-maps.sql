@@ -2,6 +2,20 @@
 CREATE SCHEMA maps;
 
 
+/** Which of a legend entry's text fields a stratigraphic name was found in.
+
+  Evidence, not bookkeeping. A name in `strat_name` or `name` *is* this unit; a
+  name in `descrip` is a *mention*, and descriptions name correlative, overlying
+  and bounding units as readily as their own. Declared in strength order, so
+  `min(match_field)` is the strongest evidence for a match.
+*/
+CREATE TYPE maps.strat_name_match_field AS ENUM (
+    'strat_name',
+    'name',
+    'descrip',
+    'comments'
+);
+
 CREATE TYPE maps.map_scale AS ENUM (
     'tiny',
     'small',
@@ -20,6 +34,34 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
+/** Which slice of the geologic record a map depicts.
+
+  An open lookup rather than an enum on purpose: the four values below are NGS's
+  seed vocabulary, and a geolayer is really any set of elements that mosaic in
+  time -- eventually a temporal selection predicate rather than four buckets. New
+  values must not need a migration.
+
+  NULL means unspecified, and is read as `surface`: every map Macrostrat served
+  before this column existed is a surface map, so the default preserves their
+  behaviour without asserting anything about them.
+*/
+CREATE TABLE maps.geolayer (
+  id          text PRIMARY KEY,
+  description text NOT NULL
+);
+
+INSERT INTO maps.geolayer (id, description) VALUES
+  ('surface', 'What is present at Earth''s surface.'),
+  ('quaternary',
+   'Quaternary geology, in many cases inclusive of units spanning the beginning '
+   'of the Quaternary.'),
+  ('pre-quaternary',
+   'Geology older than the Quaternary, including geology beneath Quaternary '
+   'deposits.'),
+  ('precambrian',
+   'Precambrian geology, typically where it is buried beneath younger cover.')
+ON CONFLICT (id) DO NOTHING;
+
 SET default_tablespace = '';
 
 CREATE TABLE maps.sources (
@@ -31,6 +73,7 @@ CREATE TABLE maps.sources (
   authors character varying(255),
   ref_year text,
   ref_source character varying(255),
+  ref_compilation text,
   isbn_doi character varying(100),
   scale character varying(20),
   primary_line_table character varying(50),
@@ -52,10 +95,45 @@ CREATE TABLE maps.sources (
   ingested_by text,
   keywords text[],
   language text,
-  description character varying
+  description character varying,
+  superseded_by integer REFERENCES maps.sources(source_id),
+  geolayer text REFERENCES maps.geolayer(id),
+  CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
 );
 
+CREATE INDEX sources_superseded_by_idx ON maps.sources USING btree (superseded_by);
+
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
+
+COMMENT ON COLUMN maps.sources.geolayer IS
+  'Which slice of the geologic record this map depicts. NULL means unspecified '
+  'and is read as `surface`. Load-bearing for assembly: the scale layers '
+  '(`tiny`/`small`/`medium`/`large`) are *surface* layers, so a map depicting '
+  'something else -- Precambrian basement, Quaternary cover -- is a real map '
+  'with a real boundary that has no place in a surface stack. Checked when '
+  'membership is authored -- `macrostrat compilations add` refuses it, '
+  '`compilations lint` reports one that went stale -- rather than enforced on '
+  'sync: layer membership is curated, and withdrawing a map from a layer is a '
+  'decision somebody makes, not one a sweep makes behind them.';
+
+COMMENT ON COLUMN maps.sources.superseded_by IS
+  'The map that replaces this one, where a better product covers the same '
+  'ground -- SGMC by NGS, our Alaska compilation by NGS''s. `WHERE '
+  'superseded_by IS NULL` is the set of maps that should still be used. '
+  'Functional by nature (a map has at most one successor), which is why it is a '
+  'column rather than a relation table; where no single map replaces an old one '
+  'the successor is a compilation, which is a map. Distinct from status_code: a '
+  'superseded map is not obsolete, it remains a real unit of work, citable and '
+  'browsable, and only stops contributing to assembly. Advisory, not enforced: '
+  'it is checked where membership is authored, and an existing edge stands until '
+  'somebody withdraws it.';
+
+COMMENT ON COLUMN maps.sources.ref_compilation IS
+  'Published compilation or programme this map was produced under -- NGS, SGMC, '
+  'IODP. Bibliographic, like the other ref_ fields, and distinct from '
+  'map_bounds.compilation_member, which records what a map is assembled from. '
+  'Free text and single-valued on purpose: a placeholder until organizations and '
+  'projects are modelled properly, kept deliberately too small to grow into them.';
 
 -- TODO: integrate lines sequence into maps schema
 CREATE TABLE maps.lines (
@@ -259,6 +337,19 @@ CREATE TABLE maps.lines_tiny (
     CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
 );
 
+/** Hand-made additions and removals layered over the derived strat-name and unit
+  matches for a polygon.
+
+  `map_id` deliberately carries **no** foreign key: `maps.polygons` is partitioned
+  by scale, so its primary key is `(map_id, scale)` and a unique index on `map_id`
+  alone cannot exist. The reference is unenforceable rather than unenforced.
+
+  That matters because `maps.polygons.map_id` defaults to `nextval('maps.map_ids')`
+  and is therefore regenerated when a source is re-ingested -- so curation for that
+  source silently stops resolving, with nothing to notice. The durable key is
+  `(source_id, orig_id)`, which is what re-ingestion preserves; rekeying to it is
+  the real repair, and is tracked separately.
+*/
 CREATE TABLE maps.manual_matches (
     match_id integer NOT NULL,
     map_id integer NOT NULL,
@@ -266,7 +357,15 @@ CREATE TABLE maps.manual_matches (
     unit_id integer,
     addition boolean DEFAULT false,
     removal boolean DEFAULT false,
-    type character varying(20)
+    type character varying(20),
+    CONSTRAINT manual_matches_pkey PRIMARY KEY (match_id),
+    CONSTRAINT manual_matches_unit_fk FOREIGN KEY (unit_id)
+      REFERENCES macrostrat.units(id),
+    -- 53 of 21,711 rows point at strat names that no longer exist. `NOT VALID`
+    -- stops new ones without asserting the past is clean, the way
+    -- `strat_tree_refs_fk` already does.
+    CONSTRAINT manual_matches_strat_name_fk FOREIGN KEY (strat_name_id)
+      REFERENCES macrostrat.strat_names(id) NOT VALID
 );
 
 CREATE SEQUENCE maps.manual_matches_match_id_seq
@@ -296,11 +395,141 @@ CREATE TABLE maps.map_liths (
     basis_col character varying(50)
 );
 
-CREATE TABLE maps.map_strat_names (
+/** Stratigraphic names matched to map legend entries.
+
+  The grain is the legend entry, because that is where the judgment is made: one
+  row per (legend entry, name, field the name was found in). The polygon fan-out
+  is derived through `maps.map_legend` into `maps.map_strat_names`, not stored
+  twice over.
+
+  It replaces a single `basis_col varchar(50)` that packed four independent facts
+  into one string -- the text field, which pair of pre-normalized columns was
+  compared, whether space was buffered, whether time was fuzzed -- and could
+  record neither when a match was made nor whether the rank agreed.
+*/
+/** How the place corroborates a name match, strongest first.
+
+  The progression `macrostrat.match-utils` uses for SGP, translated from a point
+  to a legend entry's polygons. It is a second axis beside `match_field`: that
+  says how strongly the text asserted the name, this says how strongly the
+  ground agrees.
+
+  Measured on SGMC: 35.0% of matches reach `column_unit`, 2.9% `adjacent_column`,
+  61.8% `footprint`, 0.3% `none`. Agreement with the twelve-pass SQL pipeline
+  falls monotonically down the scale -- 77.9%, 63.0%, 43.2%, 0% -- so it is a
+  usable confidence ordering.
+
+  It does *not* separate a description's mentions from a curated name, and is not
+  used to try: `descrip` matches reach `column_unit` 30.1% of the time against
+  `strat_name`'s 35.1%. A description reading "may include ... Montoya Dolomite"
+  names a unit that really is there, so it corroborates spatially just as well.
+  That difference is semantic, and `match_field` is where it lives.
+*/
+CREATE TYPE maps.strat_name_location_basis AS ENUM (
+    'column_unit',
+    'adjacent_column',
+    'footprint',
+    'none'
+);
+
+CREATE TABLE maps.legend_strat_names (
+    legend_id integer NOT NULL
+        REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
+    strat_name_id integer NOT NULL,
+    match_field maps.strat_name_match_field NOT NULL,
+    /** Did the rank the map's text asserted agree with the lexicon's?
+
+      Recorded, never enforced. `macrostrat.strat_names.rank` has no `Suite`, so
+      "New Hampshire Plutonic Suite" is stored as `Gp` while its own name says
+      Suite, and a map may legitimately call a Macrostrat group a formation.
+      Rejecting those cost 110 true matches on SGMC. NULL where the text asserted
+      no rank. */
+    rank_agrees boolean,
+    /** Spatial corroboration, independent of the name. NULL only where no
+      spatial test was run. */
+    location_basis maps.strat_name_location_basis,
+    /** Temporal corroboration. NULL where the legend entry carries no interval
+      to compare against. */
+    age_overlaps boolean,
+    /** A human asserted this, and no matcher may withdraw it. Today this is
+      `basis_col LIKE 'manual%'`, which is why every delete in the pipeline
+      carries that predicate as a string test. */
+    is_manual boolean NOT NULL DEFAULT false,
+    /** Matching is re-run as the lexicon and the descriptions change, and
+      `basis_col` recorded how a match was made but never when. */
+    matched_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (legend_id, strat_name_id, match_field)
+);
+
+CREATE INDEX legend_strat_names_strat_name_id_idx
+    ON maps.legend_strat_names USING btree (strat_name_id);
+
+/* Read on every re-match, to be carried across it. */
+CREATE INDEX legend_strat_names_manual_idx
+    ON maps.legend_strat_names USING btree (legend_id) WHERE is_manual;
+
+/** The rows `maps.map_strat_names` held before it became a view.
+
+  Transitional, and meant to be dropped. Twelve additive match passes wrote
+  22,304,055 rows expressing 64,897 distinct facts, and all of it is matcher
+  output that re-running a matcher reproduces -- except the 152 human-asserted
+  matches, which the `legend-strat-names` migration carries across. It is kept
+  only so the old answer can be diffed against the new one.
+
+  Declared here rather than left undeclared so it does not surface as a pending
+  drop in every schema plan. Deleting this declaration is how it eventually goes
+  away, once a re-match has been compared against it.
+*/
+CREATE TABLE maps.map_strat_names_backup (
     map_id integer NOT NULL,
     strat_name_id integer NOT NULL,
     basis_col character varying(50)
 );
+
+/** Polygon-grain view of `maps.legend_strat_names`.
+
+  The matching decision is made once per legend entry; this is where the polygons
+  that share that entry get their copy of it, through `maps.map_legend`. It was a
+  table, holding every copy: 22.3M rows for 64,897 facts.
+
+  It stays under its old name, with its old columns, because the v2 API reads it
+  --  `macrostrat-api/v2/geologic_units_burwell_nearby.ts` joins it on `map_id`,
+  and ignores `basis_col` entirely -- and because `maps.map_units` matching scans
+  it per source. Everything else in v2 reads the arrays built downstream of it
+  (`maps.legend.strat_name_ids`, `public.lookup_<scale>.strat_name_ids`,
+  `strat_name_children`, `concept_ids`), which are untouched: the two precedence
+  ladders that build them keep reading this name.
+
+  `basis_col` is therefore synthesized rather than stored. The mapping is exact
+  for three of the four things the string used to pack:
+
+      field   -> match_field
+      _fspace -> location_basis = 'none' (no spatial corroboration at all)
+      _ftime  -> NOT age_overlaps      (admitted on age fuzz)
+      _ntime  -> age_overlaps IS NULL  (no interval to compare)
+
+  `_fname` is never emitted. It meant "the fuzzy one of two differently
+  pre-normalized column pairs was compared", and both sides are now normalized by
+  the same function, so the distinction has no analogue. That loses nothing: both
+  ladders already rank every non-`_fname` tier *above* the `_fname` family, so
+  matches land at the stronger tiers without either ladder changing.
+*/
+CREATE VIEW maps.map_strat_names AS
+SELECT
+    ml.map_id,
+    lsn.strat_name_id,
+    (CASE
+        WHEN lsn.is_manual THEN 'manual'
+        ELSE lsn.match_field::text
+            || CASE WHEN lsn.location_basis = 'none' THEN '_fspace' ELSE '' END
+            || CASE
+                   WHEN lsn.age_overlaps IS NULL THEN '_ntime'
+                   WHEN lsn.age_overlaps IS FALSE THEN '_ftime'
+                   ELSE ''
+               END
+    END)::character varying(50) AS basis_col
+FROM maps.legend_strat_names lsn
+JOIN maps.map_legend ml ON ml.legend_id = lsn.legend_id;
 
 CREATE TABLE maps.map_units (
     map_id integer NOT NULL,

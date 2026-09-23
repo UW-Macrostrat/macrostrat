@@ -17,7 +17,12 @@ import sqlparse
 
 from macrostrat.database import Database
 
-from .rebuild import RebuildReport, apply_statements, iter_chunk_statements
+from .rebuild import (
+    ChunkStatement,
+    RebuildReport,
+    apply_statements,
+    iter_chunk_statements,
+)
 
 _PROC_STMT_RE = re.compile(
     r"^\s*create\s+(or\s+replace\s+)?(function|procedure)\b", re.IGNORECASE
@@ -44,7 +49,7 @@ def _as_create_or_replace(statement: str) -> str:
     )
 
 
-def iter_procedure_statements(chunks) -> Iterator[str]:
+def iter_procedure_statements(chunks) -> Iterator[ChunkStatement]:
     """Yield function/procedure statements from ``chunks``, in dependency/apply order."""
     yield from iter_chunk_statements(chunks, procedure_statements_in)
 
