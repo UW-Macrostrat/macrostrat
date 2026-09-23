@@ -2,6 +2,9 @@
 
 from pathlib import Path
 
+from psycopg.errors import UndefinedTable
+from sqlalchemy.exc import ProgrammingError
+
 from macrostrat.database import Database
 from macrostrat.schema_management import Migration
 
@@ -135,4 +138,7 @@ class CompilationAssemblyMode(Migration):
 
 
 def _scalar(db: Database, sql: str) -> bool:
-    return db.run_query(sql).scalar() is True
+    try:
+        return db.run_query(sql).scalar() is True
+    except ProgrammingError:
+        return False
