@@ -15,12 +15,11 @@ Map processing pipeline (v2)
 
 """
 
-import re
 from functools import partial
 from typing import Annotated, Optional
 
 from rich import print
-from typer import Argument, Exit, Option
+from typer import Argument, Option
 
 from macrostrat.core.exc import MacrostratError
 
@@ -108,20 +107,19 @@ def for_each_map(selectors, step, **kwargs):
 
 def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
     """Run the full post-ingestion pipeline for one map source."""
+    db = get_database()
     try:
-        copy_to_maps(
-            get_database(), source, delete_existing=delete_existing, scale=scale
-        )
+        copy_to_maps(db, source, delete_existing=delete_existing, scale=scale)
     except ValueError as e:
         print(e)
         if not delete_existing:
             print("Continuing with existing map data")
     run_legend(source)
-    match_strat_names(source)
-    match_units(source)
-    match_liths(source)
-    make_lookup(source)
-    legend_lookup(source)
+    match_strat_names(db, source)
+    match_units(db, source)
+    match_liths(db, source)
+    make_lookup(db, source)
+    legend_lookup(db, source)
     finalize_one(source)
 
 
@@ -225,18 +223,6 @@ def liths(maps: MapSelector):
     for_each_map(maps, partial(match_liths, db))
 
 
-@cli.command(name="lookup", rich_help_panel="Lookup")
-def lookup(maps: MapSelector):
-    """Refresh the lookup tables for the selected map sources."""
-    for_each_map(maps, make_lookup)
-
-
-@cli.command(name="legend-lookup", rich_help_panel="Lookup")
-def legend_lookup_cmd(maps: MapSelector):
-    """Refresh legend lookup tables for the selected map sources."""
-    for_each_map(maps, legend_lookup)
-
-
 def _match_fields(field: str | None) -> tuple:
     """Resolve a `--field` option to the tuple of legend columns to read."""
     from ..match.strat_names import FIELD_TIERS
@@ -251,7 +237,7 @@ def _match_fields(field: str | None) -> tuple:
     return (field,)
 
 
-@cli.command(name="strat-names-report", rich_help_panel="Lookup")
+@cli.command(name="strat-names-report", rich_help_panel="Matching")
 def strat_names_report(
     pattern: str = Argument(..., help="Source slug or SQL LIKE pattern, e.g. `ngs-%`"),
     examples: int = Option(4, help="Lost/gained examples to print per source"),
@@ -274,201 +260,31 @@ def strat_names_report(
     Read-only. Writes nothing and touches no pipeline table -- it reports what a
     legend-grain matcher *would* find, beside `maps.legend.strat_name_ids` as it
     stands, so the two can be compared before anything is replaced.
-
-    SGMC is the benchmark: clean legend text, 96.7% matched by the current
-    twelve-pass pipeline. Reaching that is the bar for adopting this on NGS.
     """
-    from rich.table import Table
+    from ..match.strat_names_report import strat_names_report as report
 
-    from ..match.strat_names import (
-        FIELD_TIERS,
-        prepare,
-        report_for_source,
-        sources_matching,
+    report(
+        get_database(),
+        pattern,
+        fields=_match_fields(field),
+        examples=examples,
+        examples_from=examples_from,
+        full_text=full_text,
     )
 
+
+@cli.command(name="lookup", rich_help_panel="Lookup")
+def lookup(maps: MapSelector):
+    """Refresh the lookup tables for the selected map sources."""
     db = get_database()
-    print("[dim]Normalizing the lexicon[/]")
-    lexicon = prepare(db)
-
-    slugs = sources_matching(db, pattern)
-    if not slugs:
-        print(f"[red]No sources with legend rows match[/] {pattern}")
-        raise Exit(1)
-
-    table = Table(title=f"Prototype vs current ({pattern})")
-    for col in ("Source", "Rows", "Current", "Proposed", "Lost", "Gained", "Gaps"):
-        table.add_column(col, justify="right" if col != "Source" else "left")
-
-    totals = dict(
-        rows=0,
-        current=0,
-        proposed=0,
-        lost=0,
-        gained=0,
-        pairs_current=0,
-        pairs_proposed=0,
-        pairs_kept=0,
-        concepts_current=0,
-        concepts_proposed=0,
-    )
-    all_gaps: set = set()
-    all_basis: dict = {}
-    all_tiers: dict = {}
-    reports = []
-    for slug in slugs:
-        rep = report_for_source(db, slug, lexicon, fields=_match_fields(field))
-        reports.append(rep)
-        totals["rows"] += rep.rows
-        totals["current"] += rep.current
-        totals["proposed"] += rep.proposed
-        totals["lost"] += len(rep.lost)
-        totals["gained"] += len(rep.gained)
-        for k in (
-            "pairs_current",
-            "pairs_proposed",
-            "pairs_kept",
-            "concepts_current",
-            "concepts_proposed",
-        ):
-            totals[k] += getattr(rep, k)
-        all_gaps |= rep.lexicon_gaps
-        for basis, n in rep.by_basis.items():
-            all_basis[basis] = all_basis.get(basis, 0) + n
-        for tier, n in rep.by_tier.items():
-            all_tiers[tier] = all_tiers.get(tier, 0) + n
-        pct = lambda v: f"{100 * v / rep.rows:.1f}%" if rep.rows else "-"
-        table.add_row(
-            rep.slug,
-            str(rep.rows),
-            f"{rep.current} [dim]{pct(rep.current)}[/]",
-            f"{rep.proposed} [dim]{pct(rep.proposed)}[/]",
-            f"[red]{len(rep.lost)}[/]" if rep.lost else "0",
-            f"[green]{len(rep.gained)}[/]" if rep.gained else "0",
-            f"[yellow]{len(rep.lexicon_gaps)}[/]" if rep.lexicon_gaps else "0",
-        )
-
-    if len(reports) > 1:
-        pct = lambda v: f"{100 * v / totals['rows']:.1f}%" if totals["rows"] else "-"
-        table.add_section()
-        table.add_row(
-            "[bold]total[/]",
-            str(totals["rows"]),
-            f"[bold]{totals['current']}[/] [dim]{pct(totals['current'])}[/]",
-            f"[bold]{totals['proposed']}[/] [dim]{pct(totals['proposed'])}[/]",
-            f"[bold]{totals['lost']}[/]",
-            f"[bold]{totals['gained']}[/]",
-            f"[bold]{len(all_gaps)}[/]",
-        )
-    print(table)
-
-    # Rows are the wrong denominator on their own -- a row that acquires forty
-    # spurious names still counts once. These are the precision numbers.
-    pc, pp, pk = (totals[k] for k in ("pairs_current", "pairs_proposed", "pairs_kept"))
-    cc, cp = totals["concepts_current"], totals["concepts_proposed"]
-    if pc:
-        print(
-            f"matches: current [bold]{pc}[/] -> proposed [bold]{pp}[/]"
-            f" ([bold]{pp / pc:.2f}x[/]), keeping {100 * pk / pc:.1f}% of current"
-        )
-        print(
-            f"concepts: current [bold]{cc}[/] -> proposed [bold]{cp}[/]"
-            f" ([bold]{cp / max(cc, 1):.2f}x[/])"
-            "  [dim]-- the gap between these two is synonym expansion[/]"
-        )
-
-    if all_basis:
-        from ..match.strat_names import LocationBasis
-
-        order = [b.value for b in LocationBasis if b.value in all_basis]
-        total = sum(all_basis.values())
-        print(
-            "location: "
-            + "  ".join(
-                f"{b}={all_basis[b]} [dim]{100 * all_basis[b] / total:.1f}%[/]"
-                for b in order
-            )
-        )
-
-    if all_tiers:
-        order = [t for t in FIELD_TIERS if t in all_tiers]
-        summary = "  ".join(f"{t}={all_tiers[t]}" for t in order)
-        print(f"[dim]ids by strongest field:[/] {summary}")
-
-    # Not a matching failure: a formally named unit -- the text gave it a rank --
-    # that Macrostrat's lexicon does not carry. A large number here is a signal
-    # that the source needs lexicon ingestion, not better matching.
-    if all_gaps:
-        print(
-            f"\n[yellow]{len(all_gaps)}[/] rank-bearing names with no lexicon entry"
-            " [dim](candidates for lexicon ingestion)[/]"
-        )
-        for name in sorted(all_gaps)[:examples]:
-            print(f"  [yellow]gap[/] {name}")
-
-    if examples_from:
-        _print_field_examples(reports, examples_from, examples, full_text)
-        return
-
-    # Losses are the ones that matter: a match the current pipeline found and
-    # this one did not is a regression, whatever the headline rate says.
-    for rep in reports:
-        if not rep.lost and not rep.gained:
-            continue
-        print(f"\n[bold]{rep.slug}[/]")
-        for label, style, rows in (
-            ("lost", "red", rep.lost),
-            ("gained", "green", rep.gained),
-        ):
-            for ex in rows[:examples]:
-                print(f"  [{style}]{label}[/] {ex.text[:72]!r}")
-                for match_field, key, name, basis in ex.matches[:4]:
-                    if key is None:
-                        print(f"        -> {name}")
-                    else:
-                        print(
-                            f"        [dim]{match_field}[/] {key!r}"
-                            f" -> {name} [dim]({basis})[/]"
-                        )
-                if full_text:
-                    _print_texts(ex)
+    for_each_map(maps, partial(make_lookup, db))
 
 
-def _highlight(text: str, keys) -> str:
-    """Mark every word of every matched name, so it can be found by eye."""
-    from rich.markup import escape
-
-    words = {w for key in keys if key for w in key.split() if len(w) > 2}
-    if not words:
-        return escape(text)
-    pattern = re.compile(
-        r"\b("
-        + "|".join(re.escape(w) for w in sorted(words, key=len, reverse=True))
-        + r")\b",
-        re.IGNORECASE,
-    )
-    return pattern.sub(lambda m: f"[bold yellow]{escape(m.group(0))}[/]", escape(text))
-
-
-def _print_texts(ex):
-    keys = [key for _, key, _, _ in ex.matches]
-    for name, text in ex.texts.items():
-        print(f"        [dim]{name}:[/] {_highlight(text, keys)}")
-
-
-def _print_field_examples(reports, field, limit, full_text):
-    """Worked examples of matches from one field, for reading rather than counting."""
-    for rep in reports:
-        found = rep.by_field_examples.get(field)
-        if not found:
-            continue
-        print(f"\n[bold]{rep.slug}[/] -- matches from [cyan]{field}[/]")
-        for ex in found[:limit]:
-            print(f"\n  {ex.text[:76]!r}")
-            for _, key, name, basis in ex.matches:
-                print(f"        {key!r} -> [bold]{name}[/] [dim]({basis})[/]")
-            if full_text:
-                _print_texts(ex)
+@cli.command(name="legend-lookup", rich_help_panel="Lookup")
+def legend_lookup_cmd(maps: MapSelector):
+    """Refresh legend lookup tables for the selected map sources."""
+    db = get_database()
+    for_each_map(maps, partial(legend_lookup, db))
 
 
 @cli.command(name="finalize", rich_help_panel="Map")

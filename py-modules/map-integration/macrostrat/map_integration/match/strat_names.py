@@ -42,7 +42,7 @@ is counted in pairs and in concepts.
 """
 
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
@@ -82,9 +82,6 @@ _RANK_BY_VALUE = {r.value: r for r in StratRank}
 #: the field contributed 1,448 matches and *none* that the SQL pipeline also
 #: found. Description is the floor for general text matching.
 FIELD_TIERS = ("strat_name", "name", "descrip")
-
-#: How many worked examples to keep per field, for `--field`.
-EXAMPLES_PER_FIELD = 40
 
 #: The fields that assert a unit's identity. The rest are prose.
 NAME_FIELDS = frozenset({"strat_name", "name"})
@@ -672,53 +669,6 @@ def prefer_rank_agreement(by_id: dict, rank_agrees: set, concepts: dict) -> dict
     return kept
 
 
-@dataclass
-class Example:
-    """One legend entry, with every match shown as text rather than an id."""
-
-    #: The map's own words.
-    text: str
-    #: `(field, cleaned name that matched, lexicon name, location basis)`. The
-    #: first, second and fourth are None for a match the current pipeline made,
-    #: which records none of them.
-    matches: list
-    #: The source text of each field that produced a match, whole. A match out of
-    #: a description cannot be judged from the name alone -- "Correlative with
-    #: ... the Hawley Formation" and "is the Hawley Formation" read identically
-    #: once the sentence is gone.
-    texts: dict = field(default_factory=dict)
-
-
-@dataclass
-class SourceReport:
-    slug: str
-    rows: int = 0
-    current: int = 0
-    proposed: int = 0
-    both: int = 0
-    shared: int = 0
-    superset: int = 0
-    #: How many rows each tier was the strongest evidence for.
-    by_tier: dict = field(default_factory=dict)
-    #: Distinct rank-bearing names this source uses that the lexicon lacks.
-    lexicon_gaps: set = field(default_factory=set)
-    #: How many matches each `LocationBasis` accounts for.
-    by_basis: dict = field(default_factory=dict)
-    #: A few worked examples per `match_field`, for reading rather than counting.
-    by_field_examples: dict = field(default_factory=dict)
-    lost: list = field(default_factory=list)
-    gained: list = field(default_factory=list)
-    #: Matches, not rows. A row counts once however many names it acquires, so
-    #: row totals cannot see over-matching at all -- they read 71% against 74%
-    #: while the prototype was emitting five times as many matches as the
-    #: pipeline it was being scored against. Precision lives here.
-    pairs_current: int = 0
-    pairs_proposed: int = 0
-    pairs_kept: int = 0
-    concepts_current: int = 0
-    concepts_proposed: int = 0
-
-
 def legend_rows(db: Database, slug: str):
     return db.run_query(
         """
@@ -798,122 +748,6 @@ def match_source(
                 )
             )
     return out
-
-
-def report_for_source(
-    db: Database,
-    slug: str,
-    lexicon,
-    buffer: float = DEFAULT_BUFFER,
-    fields=FIELD_TIERS,
-) -> SourceReport:
-    rep = SourceReport(slug)
-    rows = legend_rows(db, slug)
-    concepts = dict(
-        db.run_query(
-            "SELECT strat_name_id, concept_id FROM macrostrat.lookup_strat_names"
-            " WHERE concept_id IS NOT NULL"
-        ).all()
-    )
-    found = match_source(db, slug, lexicon, buffer=buffer, fields=fields)
-    survives = {(m.legend_id, m.strat_name_id) for m in found}
-    names = dict(
-        db.run_query(
-            "SELECT strat_name_id, rank_name FROM macrostrat.lookup_strat_names"
-        ).all()
-    )
-    basis = {(m.legend_id, m.strat_name_id): m.location_basis.value for m in found}
-    # `match_source` already matched the text; re-deriving it here would double
-    # the work. Rebuild the per-row view from what it returned.
-    matched = {r.legend_id: RowMatch() for r in rows}
-    for m in found:
-        matched[m.legend_id].by_id[m.strat_name_id] = m.match_field
-        matched[m.legend_id].keys[m.strat_name_id] = m.matched_text
-    for r in rows:
-        matched[r.legend_id].lexicon_gaps = _gaps(r, lexicon)
-    rep.by_basis = Counter(m.location_basis.value for m in found)
-
-    cur_pairs = {(r.legend_id, i) for r in rows for i in (r.strat_name_ids or [])}
-    rep.pairs_current = len(cur_pairs)
-    rep.pairs_proposed = len(survives)
-    rep.pairs_kept = len(cur_pairs & survives)
-    rep.concepts_current = len(
-        {(l, concepts[i]) for l, i in cur_pairs if i in concepts}
-    )
-    rep.concepts_proposed = len(
-        {(l, concepts[i]) for l, i in survives if i in concepts}
-    )
-
-    for r in rows:
-        rep.rows += 1
-        current = set(r.strat_name_ids or [])
-        m = matched[r.legend_id]
-        m.by_id = {i: t for i, t in m.by_id.items() if (r.legend_id, i) in survives}
-        proposed = set(m.by_id)
-        rep.lexicon_gaps |= m.lexicon_gaps
-        for tier in m.by_id.values():
-            rep.by_tier[tier] = rep.by_tier.get(tier, 0) + 1
-        if current:
-            rep.current += 1
-        if proposed:
-            rep.proposed += 1
-        if current and proposed:
-            rep.both += 1
-            if current & proposed:
-                rep.shared += 1
-            if current <= proposed:
-                rep.superset += 1
-        elif current:
-            rep.lost.append(
-                Example(
-                    text=r.strat_name or r.name or "",
-                    matches=[
-                        (None, None, names.get(i, str(i)), None)
-                        for i in sorted(current)
-                    ],
-                )
-            )
-        # Examples per field, independent of whether the row is a gain -- a
-        # correlative mention usually lands on a row that already matched.
-        for f in set(m.by_id.values()):
-            bucket = rep.by_field_examples.setdefault(f, [])
-            if len(bucket) < EXAMPLES_PER_FIELD:
-                bucket.append(
-                    Example(
-                        text=r.strat_name or r.name or "",
-                        matches=[
-                            (
-                                m.by_id[i],
-                                m.keys.get(i),
-                                names.get(i, str(i)),
-                                basis.get((r.legend_id, i)),
-                            )
-                            for i in sorted(proposed)
-                            if m.by_id[i] == f
-                        ],
-                        texts={
-                            t: getattr(r, t)
-                            for t in FIELD_TIERS
-                            if getattr(r, t, None) and t in set(m.by_id.values())
-                        },
-                    )
-                )
-        if proposed and not current:
-            rep.gained.append(
-                Example(
-                    text=r.strat_name or r.name or "",
-                    matches=[
-                        (
-                            m.by_id[i],
-                            m.keys.get(i),
-                            names.get(i, str(i)),
-                            basis.get((r.legend_id, i)),
-                        )
-                        for i in sorted(proposed)
-                    ],
-                )
-            )
-    return rep
 
 
 def write_matches(db: Database, slug: str, matches: list) -> tuple[int, int, int]:
@@ -1039,20 +873,6 @@ def write_matches(db: Database, slug: str, matches: list) -> tuple[int, int, int
 
     inserted = sum(1 for r in written if r.inserted)
     return inserted, len(written) - inserted, removed
-
-
-def sources_matching(db: Database, pattern: str) -> list[str]:
-    return list(
-        db.run_query(
-            """
-            SELECT DISTINCT s.slug FROM maps.sources s
-            JOIN maps.legend lg ON lg.source_id = s.source_id
-            WHERE s.slug LIKE :pattern
-            ORDER BY 1
-            """,
-            dict(pattern=pattern),
-        ).scalars()
-    )
 
 
 def prepare(db: Database):

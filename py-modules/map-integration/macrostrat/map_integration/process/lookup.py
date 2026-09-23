@@ -2,36 +2,47 @@ from psycopg2.sql import Identifier
 from rich import print
 
 from macrostrat.core.exc import MacrostratError
+from macrostrat.database import Database
 
-from ..database import get_database, sql_file
+from ..database import sql_file
 from ..utils import MapInfo
 
 
-def make_lookup(source: MapInfo):
-    """
-    Inserts/updates a given map source's records in public.lookup_<scale>
-    Computes things like best_age_top/bottom and the appropriate color for each polygon
-    """
-    db = get_database()
-    row = db.run_query(
-        "SELECT scale FROM maps.sources WHERE source_id = :source_id",
-        {"source_id": source.id},
-    ).first()
+def make_lookup(db: Database, source: MapInfo):
+    """Rebuild a map source's rows in `lookup_<scale>` and refresh its stats.
 
-    # Raised rather than `sys.exit(1)`, which the version-1 command used: these
-    # steps now run over a selector, and killing the process on the first map
-    # without a scale would abandon the other 113.
-    if row is None:
-        raise MacrostratError(f"Source {source.id} was not found in maps.sources")
-    if row.scale is None:
-        raise MacrostratError(f"Source {source.id} is missing a scale")
-
-    refresh_lookup_table(db, source.id, row.scale)
+    Each polygon gets its unit, strat-name and lith matches, its best age and a
+    colour for tiles.
+    """
+    scale = source_scale(db, source.id)
+    refresh_lookup_table(db, source.id, scale)
     update_source_stats(db, source.id)
 
 
-def refresh_lookup_table(db, source_id: int, scale: str):
-    """Rebuild this source's rows in `lookup_<scale>`."""
+def source_scale(db: Database, source_id: int) -> str:
+    """The scale `maps.sources` declares, which names the source's lookup table.
+
+    Raised rather than `sys.exit(1)`, which the version-1 command used: these
+    steps run over a selector, and killing the process on the first map without
+    a scale would abandon the other 113.
+    """
+    row = db.run_query(
+        "SELECT scale FROM maps.sources WHERE source_id = :source_id",
+        {"source_id": source_id},
+    ).first()
+    if row is None:
+        raise MacrostratError(f"Source {source_id} was not found in maps.sources")
+    if row.scale is None:
+        raise MacrostratError(f"Source {source_id} is missing a scale")
+    return row.scale
+
+
+def refresh_lookup_table(db: Database, source_id: int, scale: str):
+    """Rebuild this source's rows in `lookup_<scale>`.
+
+    The delete and the insert share a transaction, so the source is never seen
+    with no lookup rows: `run_sql` otherwise commits each statement on its own.
+    """
     params = {
         # `scale` names two tables, not one: the scale-partitioned view of
         # `maps` and the lookup table beside it.
@@ -39,20 +50,11 @@ def refresh_lookup_table(db, source_id: int, scale: str):
         "scale_table": Identifier("maps", scale),
         "source_id": source_id,
     }
-
-    db.run_sql(
-        """
-        DELETE FROM {lookup_table}
-        WHERE map_id IN (
-            SELECT map_id FROM {scale_table} WHERE source_id = :source_id
-        )
-        """,
-        params,
-    )
-    db.run_sql(sql_file("build-lookup-table"), params)
+    with db.transaction():
+        db.run_sql(sql_file("build-lookup-table"), params)
 
 
-def update_source_stats(db, source_id: int):
+def update_source_stats(db: Database, source_id: int):
     """Record the source's area and feature count from its staging table."""
     primary_table = db.run_query(
         "SELECT primary_table FROM maps.sources WHERE source_id = :source_id",
