@@ -40,35 +40,6 @@ class MatchParams:
     strict_time: bool
 
 
-def column_geom(strict_space: bool) -> str:
-    """The column geometry a pass compares against.
-
-    Two different expressions rather than one expression with a different
-    number -- strict tests the column polygon itself, fuzzy tests a buffered
-    envelope of it -- so the choice of shape stays in Python while the distance
-    is bound. Changing that (testing a zero-buffered envelope in both cases, to
-    make it one expression) would alter which geometry the strict pass uses, and
-    spatial rewrites here are not made without benchmarking.
-    """
-    if strict_space:
-        return "cols.poly_geom "
-    return "ST_Buffer(ST_Envelope(cols.poly_geom), :space_buffer)"
-
-
-def match_units(map: MapInfo):
-    """Match a given map source to Macrostrat units.
-
-    Populates the table maps.map_units.
-    Uses all available fields of matching, including name, strat_name, descrip, and comments.
-    """
-    db = get_database()
-    source_id = map.id
-    run_unit_matching(db, source_id)
-
-    count = get_match_count(db, source_id, Identifier("maps", "map_units"))
-    print(f"Matched [bold cyan]{count}[/] units")
-
-
 def run_unit_matching(db: Database, source_id: int):
     start = time.time()
     # Validate params!
@@ -209,3 +180,32 @@ def _match(db: Database, procedure: str, ctx: MatchContext, params: MatchParams)
             "space_buffer": SPACE_BUFFER_DEGREES,
         },
     )
+
+
+def column_geom(strict_space: bool) -> str:
+    """The column geometry a pass compares against.
+
+    Two different expressions rather than one expression with a different
+    number -- strict tests the column polygon itself, fuzzy tests a buffered
+    envelope of it -- so the choice of shape stays in Python while the distance
+    is bound. Changing that (testing a zero-buffered envelope in both cases, to
+    make it one expression) would alter which geometry the strict pass uses, and
+    spatial rewrites here are not made without benchmarking.
+    """
+    if strict_space:
+        return "cols.poly_geom "
+    return "ST_Buffer(ST_Envelope(cols.poly_geom), :space_buffer)"
+
+
+def match_units(map: MapInfo):
+    """Match a given map source to Macrostrat units.
+
+    Populates the table maps.map_units.
+    Uses all available fields of matching, including name, strat_name, descrip, and comments.
+    """
+    db = get_database()
+    source_id = map.id
+    run_unit_matching(db, source_id)
+
+    count = get_match_count(db, source_id, Identifier("maps", "map_units"))
+    print(f"Matched [bold cyan]{count}[/] units")
