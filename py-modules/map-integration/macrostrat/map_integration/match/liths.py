@@ -27,13 +27,22 @@ def match_liths(db: Database, map_info: MapInfo):
 
     scale = find_scale_table(db, source_id)
 
-    clear_matches(db, source_id)
-    print("        + Done cleaning up")
+    fields = matchable_fields(db, source_id, scale)
 
-    for field in matchable_fields(db, source_id, scale):
-        match_field(db, source_id, field)
+    # One transaction for the whole rebuild, so the table is never seen
+    # half-matched. `db.transaction()` opens its *own* connection and rebinds
+    # `db.session` to it, so the staging table has to be created inside -- one
+    # made outside is on a different connection and invisible here.
+    with db.transaction():
+        stage_matches(db)
+        for field in fields:
+            match_field(db, source_id, field)
+        added, removed = merge_matches(db, source_id)
 
-    print(f"        + Matched in {time.time() - start:.1f}s")
+    print(
+        f"        + Matched in {time.time() - start:.1f}s"
+        f" ([green]+{added}[/] [red]-{removed}[/])"
+    )
 
     counts = get_lith_count(db, map_info.id)
     mlc = counts["map_liths"]
@@ -53,18 +62,72 @@ def get_lith_count(db, source_id: int):
     return {"map_liths": map_liths_count, "legend_liths": lith_count}
 
 
-def clear_matches(db, source_id: int):
-    """Drop this source's automatic matches, keeping anything matched by hand."""
+def stage_matches(db):
+    """Start a staging table for this source's matches.
+
+    `ON COMMIT DROP` is load-bearing. `db.transaction()` takes its connection
+    from the pool, and a pooled connection keeps its temporary tables when it is
+    handed back -- so in a sweep the next source was given a connection that
+    still had this table on it, and the `CREATE` failed with "already exists",
+    aborting that source's whole rebuild. Scoping the table to the transaction
+    ends it with the transaction rather than with the connection.
+    """
     db.run_sql(
         """
-        DELETE FROM maps.legend_liths
-        WHERE legend_id IN (
-          SELECT legend_id FROM maps.legend WHERE source_id = :source_id
-        )
-        AND basis_col NOT LIKE 'manual%'
+        CREATE TEMPORARY TABLE legend_lith_matches (
+          legend_id integer NOT NULL,
+          lith_id integer NOT NULL,
+          basis_col text NOT NULL
+        ) ON COMMIT DROP
+        """
+    )
+
+
+def merge_matches(db, source_id: int) -> tuple[int, int]:
+    """Bring `maps.legend_liths` into line with what was staged.
+
+    **A merge, not a rebuild.** The old workflow deleted every automatic match
+    for the source and then re-inserted, which had two problems. The delete ran
+    in its own transaction -- `run_sql` gives each statement one when the session
+    is not already in a transaction -- so between it and the last insert the
+    source had no lithologies at all, and a field that failed midway left it
+    that way. And since matching is re-run whenever the lexicon or the
+    descriptions change, every unchanged row was churned for nothing.
+
+    `(legend_id, lith_id, basis_col)` is the whole row and carries a UNIQUE
+    constraint, so there is no payload to update: a row either belongs or does
+    not. The merge inserts what is new, leaves what is unchanged untouched, and
+    removes what the staged set no longer contains. Manual matches are outside
+    it entirely.
+
+    Runs inside the caller's transaction; see `match_liths`.
+    """
+    added = db.run_query(
+        """
+        INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
+        SELECT DISTINCT legend_id, lith_id, basis_col
+        FROM legend_lith_matches
+        ON CONFLICT (legend_id, lith_id, basis_col) DO NOTHING
+        """,
+        {},
+    ).rowcount
+    removed = db.run_query(
+        """
+        DELETE FROM maps.legend_liths ll
+        USING maps.legend l
+        WHERE ll.legend_id = l.legend_id
+          AND l.source_id = :source_id
+          AND ll.basis_col NOT LIKE 'manual%'
+          AND NOT EXISTS (
+            SELECT 1 FROM legend_lith_matches m
+            WHERE m.legend_id = ll.legend_id
+              AND m.lith_id = ll.lith_id
+              AND m.basis_col = ll.basis_col
+          )
         """,
         {"source_id": source_id},
-    )
+    ).rowcount
+    return added, removed
 
 
 def matchable_fields(db, source_id: int, scale: str) -> list[str]:
@@ -84,9 +147,13 @@ def match_field(db, source_id: int, field: str):
     real difference worth seeing.
     """
     try:
-        db.run_sql(
-            r"""
-            INSERT INTO maps.legend_liths (legend_id, lith_id, basis_col)
+        # A savepoint, because this runs inside the rebuild's transaction: a
+        # failing statement would otherwise abort the whole rebuild rather than
+        # just this field.
+        with db.savepoint():
+            db.run_sql(
+                r"""
+            INSERT INTO legend_lith_matches (legend_id, lith_id, basis_col)
             SELECT legend_id, liths.id, :basis
             FROM maps.legend, macrostrat.liths
             WHERE source_id = :source_id
@@ -96,7 +163,7 @@ def match_field(db, source_id: int, field: str):
                 legend.{field} ~* concat('\y', liths.lith, 's', '\y')
             )
             """,
-            {"source_id": source_id, "basis": field, "field": Identifier(field)},
-        )
+                {"source_id": source_id, "basis": field, "field": Identifier(field)},
+            )
     except Exception as err:  # noqa: BLE001 -- reported per field, see above
         print(f"        [yellow]+ {field} failed[/]: {str(err).splitlines()[0]}")

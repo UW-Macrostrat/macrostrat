@@ -110,7 +110,7 @@ def match_strat_names(db: Database, map_info: MapInfo, fields=FIELD_TIERS) -> in
 
     lexicon = prepare(db)
     matches = match_source(db, slug, lexicon, fields=fields)
-    written = write_matches(db, slug, matches)
+    inserted, updated, removed = write_matches(db, slug, matches)
 
     by_basis = {}
     for m in matches:
@@ -120,12 +120,16 @@ def match_strat_names(db: Database, map_info: MapInfo, fields=FIELD_TIERS) -> in
         for basis in LocationBasis
         if basis in by_basis
     )
+    unchanged = len(matches) - inserted - updated
     print(
-        f"        Matched [bold cyan]{written}[/] strat names in {time.time() - start:.1f}s"
+        f"        Matched [bold cyan]{len(matches)}[/] strat names"
+        f" in {time.time() - start:.1f}s"
+        f" ([green]+{inserted}[/] ~{updated} [red]-{removed}[/],"
+        f" {unchanged} unchanged)"
     )
     if summary:
         print(f"        {summary}")
-    return written
+    return len(matches)
 
 
 def build_lexicon(db: Database) -> dict[str, list[Candidate]]:
@@ -912,16 +916,36 @@ def report_for_source(
     return rep
 
 
-def write_matches(db: Database, slug: str, matches: list) -> int:
-    """Replace this source's matcher-derived matches with `matches`.
+def write_matches(db: Database, slug: str, matches: list) -> tuple[int, int, int]:
+    """Bring this source's matches into line with `matches`.
 
-    Manual matches are never touched. `is_manual` means a human asserted it and
-    no matcher may withdraw it, so the delete excludes them and the insert
-    refuses to overwrite one -- which is what the old pipeline expressed as the
-    string test `basis_col NOT LIKE 'manual%'` on every delete it ran.
+    **A merge, not a replace.** Matching is re-run whenever the lexicon or a
+    description changes, and most of what it finds is what it found last time:
+    deleting and re-inserting churned every unchanged row and reset every
+    `matched_at`, so the column recorded the last run rather than when the match
+    was established.
 
-    One transaction: a source is left with its old matches or its new ones, never
-    with a half-replaced set.
+    Unlike `maps.legend_liths`, where the row is its own key, this table has a
+    payload -- `rank_agrees`, `location_basis`, `age_overlaps` -- so the merge is
+    a real update. The `WHERE` on the `DO UPDATE` is what makes it one: a row
+    whose evidence is unchanged is not written at all, and only a row that
+    actually moved gets a new `matched_at`. `IS DISTINCT FROM` rather than `<>`
+    because all three are nullable.
+
+    Manual matches are untouched on every path. `is_manual` means a human
+    asserted it and no matcher may withdraw it, so the update skips them and the
+    delete excludes them -- what the old pipeline expressed as the string test
+    `basis_col NOT LIKE 'manual%'`.
+
+    Everything runs inside one transaction, staging included: `db.transaction()`
+    takes a connection of its own and rebinds `db.session` to it, so a temporary
+    table created before the block belongs to a different connection and is not
+    visible inside it. The staging table is `ON COMMIT DROP` because that
+    connection comes from a pool and keeps its temporary tables when handed
+    back -- without it the next source in a sweep finds the table already
+    there.
+
+    Returns `(inserted, updated, removed)`.
     """
     rows = [
         {
@@ -934,22 +958,24 @@ def write_matches(db: Database, slug: str, matches: list) -> int:
         }
         for m in matches
     ]
+
     with db.transaction():
-        db.run_query(
+        db.run_sql(
             """
-            DELETE FROM maps.legend_strat_names lsn
-            USING maps.legend lg, maps.sources s
-            WHERE lsn.legend_id = lg.legend_id
-              AND lg.source_id = s.source_id
-              AND s.slug = :slug
-              AND NOT lsn.is_manual
-            """,
-            dict(slug=slug),
+            CREATE TEMPORARY TABLE legend_strat_name_matches (
+              legend_id integer NOT NULL,
+              strat_name_id integer NOT NULL,
+              match_field maps.strat_name_match_field NOT NULL,
+              rank_agrees boolean,
+              location_basis maps.strat_name_location_basis,
+              age_overlaps boolean
+            ) ON COMMIT DROP
+            """
         )
         if rows:
             db.run_query(
                 """
-                INSERT INTO maps.legend_strat_names (
+                INSERT INTO legend_strat_name_matches (
                   legend_id, strat_name_id, match_field,
                   rank_agrees, location_basis, age_overlaps
                 ) VALUES (
@@ -959,11 +985,60 @@ def write_matches(db: Database, slug: str, matches: list) -> int:
                   CAST(:location_basis AS maps.strat_name_location_basis),
                   :age_overlaps
                 )
-                ON CONFLICT (legend_id, strat_name_id, match_field) DO NOTHING
                 """,
                 rows,
             )
-    return len(rows)
+
+        # `xmax = 0` is true only of a tuple this statement inserted, which is
+        # how an upsert tells its two outcomes apart.
+        written = db.run_query(
+            """
+            INSERT INTO maps.legend_strat_names (
+              legend_id, strat_name_id, match_field,
+              rank_agrees, location_basis, age_overlaps
+            )
+            SELECT legend_id, strat_name_id, match_field,
+                   rank_agrees, location_basis, age_overlaps
+            FROM legend_strat_name_matches
+            ON CONFLICT (legend_id, strat_name_id, match_field) DO UPDATE
+              SET rank_agrees = EXCLUDED.rank_agrees,
+                  location_basis = EXCLUDED.location_basis,
+                  age_overlaps = EXCLUDED.age_overlaps,
+                  matched_at = now()
+              WHERE NOT maps.legend_strat_names.is_manual
+                AND (
+                  maps.legend_strat_names.rank_agrees
+                    IS DISTINCT FROM EXCLUDED.rank_agrees
+                  OR maps.legend_strat_names.location_basis
+                    IS DISTINCT FROM EXCLUDED.location_basis
+                  OR maps.legend_strat_names.age_overlaps
+                    IS DISTINCT FROM EXCLUDED.age_overlaps
+                )
+            RETURNING (xmax = 0) AS inserted
+            """
+        ).all()
+
+        removed = db.run_query(
+            """
+            DELETE FROM maps.legend_strat_names lsn
+            USING maps.legend lg
+            WHERE lsn.legend_id = lg.legend_id
+              AND lg.source_id = (
+                SELECT source_id FROM maps.sources WHERE slug = :slug
+              )
+              AND NOT lsn.is_manual
+              AND NOT EXISTS (
+                SELECT 1 FROM legend_strat_name_matches m
+                WHERE m.legend_id = lsn.legend_id
+                  AND m.strat_name_id = lsn.strat_name_id
+                  AND m.match_field = lsn.match_field
+              )
+            """,
+            dict(slug=slug),
+        ).rowcount
+
+    inserted = sum(1 for r in written if r.inserted)
+    return inserted, len(written) - inserted, removed
 
 
 def sources_matching(db: Database, pattern: str) -> list[str]:

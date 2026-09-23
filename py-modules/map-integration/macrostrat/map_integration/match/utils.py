@@ -4,6 +4,17 @@ from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database
 
+
+class SourceNotMaterialized(MacrostratError):
+    """The source has no polygons of its own in any scale table.
+
+    Not an error in itself. A compilation carries no geometry -- its content is
+    its members' -- and a source that has been registered but not yet copied into
+    the maps schema has none yet either. Processing steps that need polygons
+    raise this so `for_each_map` can record a skip rather than a failure.
+    """
+
+
 #: Scale tables, coarsest first.
 SCALES = ["tiny", "small", "medium", "large"]
 
@@ -34,12 +45,22 @@ def find_scale_table(db, source_id: int) -> str:
         if found is not None:
             return scale
 
-    raise MacrostratError(
-        f"Source {source_id} is not present in any scale table",
-        details=(
+    is_compilation = db.run_query(
+        "SELECT true FROM maps.map_bounds.compilation WHERE source_id = :source_id",
+        {"source_id": source_id},
+    ).scalar()
+    if is_compilation:
+        details = (
+            "This is a compilation. Materialize it if you want to process matches."
+        )
+    else:
+        details = (
             "Copy it into the maps schema with `macrostrat maps process insert`"
             " and try again."
-        ),
+        )
+    raise SourceNotMaterialized(
+        f"Source {source_id} has no polygons in any scale table",
+        details=details,
     )
 
 

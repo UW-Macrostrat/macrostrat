@@ -16,6 +16,7 @@ Map processing pipeline (v2)
 """
 
 import re
+from functools import partial
 from typing import Annotated, Optional
 
 from rich import print
@@ -25,6 +26,7 @@ from macrostrat.core.exc import MacrostratError
 
 from ..database import get_database, sql_file
 from ..match import match_liths, match_strat_names, match_units
+from ..match.utils import SourceNotMaterialized
 from ..utils import IngestionCLI
 from ..utils.map_info import (
     MapInfo,
@@ -59,8 +61,32 @@ def for_each_map(selectors, step, **kwargs):
     if many:
         print(f"[dim]{len(maps)} maps[/]")
 
+    # A source with no polygons of its own has nothing for these steps to do.
+    # Compilations are the usual case -- their content is their members' -- and
+    # a registered but uncopied source is the other. Neither is a failure, and
+    # reporting them as one buried the real ones.
+    materialized = set(
+        db.run_query(
+            """
+            SELECT DISTINCT source_id FROM maps.polygons
+            WHERE source_id = ANY(CAST(:ids AS integer[]))
+            """,
+            {"ids": [m.id for m in maps]},
+        ).scalars()
+    )
+
     failed = []
+    skipped = []
     for m in maps:
+        if m.id not in materialized:
+            skipped.append(m.slug)
+            if many:
+                print(f"[dim]{m.slug} #{m.id} -- no polygons, skipped[/]")
+            else:
+                raise SourceNotMaterialized(
+                    f"Source {m.id} ({m.slug}) has no polygons in any scale table"
+                )
+            continue
         if many:
             print(f"[bold cyan]{m.slug}[/] [dim]#{m.id}[/]")
         try:
@@ -71,6 +97,8 @@ def for_each_map(selectors, step, **kwargs):
             failed.append((m.slug, str(err).strip().splitlines()[0]))
             print(f"  [red]failed[/] {failed[-1][1]}")
 
+    if skipped:
+        print(f"\n[dim]{len(skipped)} of {len(maps)} skipped (no polygons)[/]")
     if failed:
         print(f"\n[red]{len(failed)} of {len(maps)} failed[/]")
         for slug, err in failed:
@@ -179,8 +207,6 @@ def strat_names(
     field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
 ):
     """Match the selected map sources to Macrostrat stratigraphic names."""
-    from functools import partial
-
     db = get_database()
     for_each_map(maps, partial(match_strat_names, db, fields=_match_fields(field)))
 
