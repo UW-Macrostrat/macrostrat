@@ -1,10 +1,12 @@
 import datetime
 import time
+from dataclasses import dataclass
 
 from psycopg.sql import SQL, Identifier
 from rich import print
 
 from macrostrat.core.exc import MacrostratError
+from macrostrat.database import Database
 
 from ..database import get_database, sql_file
 from ..utils import MapInfo
@@ -18,6 +20,24 @@ SCALES = ["tiny", "small", "medium", "large"]
 #: interval, and degrees a fuzzy-space pass will reach past the column.
 TIME_FUZZ_MA = 25
 SPACE_BUFFER_DEGREES = 1.2
+
+
+@dataclass
+class MatchContext:
+    """Context for a single matching pass."""
+
+    source_id: int
+    table: str
+    field: str
+
+
+@dataclass
+class MatchParams:
+    """Context for a single matching pass."""
+
+    strict_name: bool
+    strict_space: bool
+    strict_time: bool
 
 
 def column_geom(strict_space: bool) -> str:
@@ -43,240 +63,149 @@ def match_units(map: MapInfo):
     """
     db = get_database()
     source_id = map.id
-    Units(db).run(source_id)
+    run_unit_matching(db, source_id)
 
     count = get_match_count(db, source_id, Identifier("maps", "map_units"))
     print(f"Matched [bold cyan]{count}[/] units")
 
 
-class Units:
-    def __init__(self, db):
-        self.db = db
-        self.source_id = None
-        self.table = None
-        self.field = None
-
-    def _basis_col(
-        self, strict_name: bool, strict_space: bool, strict_time: bool
-    ) -> str:
-        """The `basis_col` string a pass writes, and reads back on the next one.
-
-        Each pass excludes polygons an earlier one matched, so this doubles as
-        the pass's identity. The order of the suffixes is load-bearing: the two
-        precedence ladders downstream parse it back out.
+def run_unit_matching(db: Database, source_id: int):
+    start = time.time()
+    # Validate params!
+    # Valid source_id
+    result = db.run_query(
         """
-        basis = self.field
-        if not strict_name:
-            basis += "_fname"
-        if not strict_space:
-            basis += "_fspace"
-        if not strict_time:
-            basis += "_ftime"
-        return basis
+        SELECT source_id
+        FROM maps.sources
+        WHERE source_id = :source_id
+    """,
+        {"source_id": source_id},
+    ).first()
+    if result is None:
+        raise MacrostratError(f"Source {source_id} was not found in maps.sources")
 
-    def _match(self, procedure: str, strict_name, strict_space, strict_time):
-        """Run one matching pass from its SQL file.
+    scale = find_scale_table(db, source_id)
 
-        The only thing substituted rather than bound is `{column_geom}`, because
-        strict and fuzzy space are two different expressions -- the column
-        polygon against a buffered envelope of it -- and no bind can carry that.
-        Every value is a bind.
+    # Validate that this source intersects *any* Macrostrat units in space or time
+    n_intersecting = db.run_query(
         """
-        self.db.run_sql(
-            sql_file(procedure),
+        SELECT count(units.id)
+        FROM maps.sources
+        JOIN (
+            SELECT units.id, b_age, t_age,
+                   ST_Buffer(ST_Envelope(poly_geom), :space_buffer) as poly_geom
+            FROM macrostrat.units
+            JOIN macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id
+            JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
+            JOIN macrostrat.cols ON macrostrat.cols.id = units_sections.col_id
+            WHERE macrostrat.cols.status_code='active'
+        ) units ON ST_Intersects(poly_geom, rgeom)
+        WHERE source_id = :source_id
+    """,
+        {"source_id": source_id, "space_buffer": SPACE_BUFFER_DEGREES},
+    ).scalar()
+
+    if n_intersecting > 0:
+        # skip this
+        # TODO cleanup this jank assignment
+
+        print("      Starting unit match at ", str(datetime.datetime.now()))
+
+        # Clean up
+        db.run_sql(
+            """
+          DELETE FROM maps.map_units
+          WHERE map_id IN (
+            SELECT map_id
+            FROM maps.polygons
+            WHERE source_id = :source_id
+              AND scale = :scale
+          )
+          AND basis_col NOT LIKE 'manual%'
+        """,
             {
-                "scale_table": Identifier("maps", self.table),
-                "source_id": self.source_id,
-                "match_type": self._basis_col(strict_name, strict_space, strict_time),
-                "column_geom": SQL(column_geom(strict_space)),
-                "time_fuzz": 0 if strict_time else TIME_FUZZ_MA,
-                "space_buffer": SPACE_BUFFER_DEGREES,
+                "scale": scale,
+                "source_id": source_id,
             },
         )
 
-    def query_down(self, strictNameMatch, strictSpace, strictTime):
-        self._match("match-units-down", strictNameMatch, strictSpace, strictTime)
+        print("        + Done cleaning up")
 
-    def query_up(self, strictNameMatch, strictSpace, strictTime):
-        self._match("match-units-up", strictNameMatch, strictSpace, strictTime)
-
-    def query(self, strictNameMatch, strictSpace, strictTime):
-        self._match("match-units-direct", strictNameMatch, strictSpace, strictTime)
-
-    def match(self):
-        # strictName, strictSpace, strictTime, useNullSet
-
-        # Strict name, strict space, strict time
-        a = Units.query(self, True, True, True)
-
-        # Strict name, fuzzy space, strict time
-        b = Units.query(self, True, False, True)
-
-        # Fuzzy name, strict space, strict time
-        c = Units.query(self, False, True, True)
-
-        # Strict name, strict space, fuzzy time
-        d = Units.query(self, True, True, False)
-
-        # Fuzzy name, fuzzy space, strict time
-        e = Units.query(self, False, False, True)
-
-        # Strict name, fuzzy space, fuzzy time
-        f = Units.query(self, True, False, False)
-
-        # Fuzzy name, strict space, fuzzy time
-        g = Units.query(self, False, True, False)
-
-        # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query(self, False, False, False)
-
-    def match_down(self):
-        # strictName, strictSpace, strictTime, useNullSet
-
-        # Strict name, strict space, strict time
-        a = Units.query_down(self, True, True, True)
-
-        # Strict name, fuzzy space, strict time
-        b = Units.query_down(self, True, False, True)
-
-        # Fuzzy name, strict space, strict time
-        c = Units.query_down(self, False, True, True)
-
-        # Strict name, strict space, fuzzy time
-        d = Units.query_down(self, True, True, False)
-
-        # Fuzzy name, fuzzy space, strict time
-        e = Units.query_down(self, False, False, True)
-
-        # Strict name, fuzzy space, fuzzy time
-        f = Units.query_down(self, True, False, False)
-
-        # Fuzzy name, strict space, fuzzy time
-        g = Units.query_down(self, False, True, False)
-
-        # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query_down(self, False, False, False)
-
-    def match_up(self):
-        # strictName, strictSpace, strictTime
-
-        # Strict name, strict space, strict time
-        a = Units.query_up(self, True, True, True)
-
-        # Strict name, fuzzy space, strict time
-        b = Units.query_up(self, True, False, True)
-
-        # Fuzzy name, strict space, strict time
-        c = Units.query_up(self, False, True, True)
-
-        # Strict name, strict space, fuzzy time
-        d = Units.query_up(self, True, True, False)
-
-        # Fuzzy name, fuzzy space, strict time
-        e = Units.query_up(self, False, False, True)
-
-        # Strict name, fuzzy space, fuzzy time
-        f = Units.query_up(self, True, False, False)
-
-        # Fuzzy name, strict space, fuzzy time
-        g = Units.query_up(self, False, True, False)
-
-        # Fuzzy name, fuzzy space, fuzzy time
-        h = Units.query_up(self, False, False, False)
-
-    def do_work(self, field):
-        # Time the process
-        start_time = time.time()
-
-        print("      * Working on ", field, " *")
-
-        self.field = field
-
-        Units.match(self)
-        Units.match_down(self)
-        Units.match_up(self)
-
-        elapsed = int(time.time() - start_time)
-        print(
-            "        Done with ",
-            self.field,
-            " in ",
-            elapsed / 60,
-            " minutes and ",
-            elapsed % 60,
-            " seconds",
+        fields = populated_fields(
+            db, source_id, scale, ["strat_name", "name", "descrip", "comments"]
         )
 
-    def run(self, source_id):
-        start = time.time()
-        self.source_id = source_id
-        # Validate params!
-        # Valid source_id
-        result = self.db.run_query(
-            """
-            SELECT source_id
-            FROM maps.sources
-            WHERE source_id = :source_id
-        """,
-            {"source_id": source_id},
-        ).first()
-        if result is None:
-            raise MacrostratError(f"Source {source_id} was not found in maps.sources")
+        # Insert a new task for each matching field into the queue
+        print("Processing fields", fields)
+        for field in fields:
+            ctx = MatchContext(source_id, scale, field)
+            do_work(db, ctx)
+    else:
+        print("Skipping unit matching - source does not intersect any columns")
 
-        scale = find_scale_table(self.db, source_id)
 
-        # Validate that this source intersects *any* Macrostrat units in space or time
-        n_intersecting = self.db.run_query(
-            """
-            SELECT count(units.id)
-            FROM maps.sources
-            JOIN (
-                SELECT units.id, b_age, t_age,
-                       ST_Buffer(ST_Envelope(poly_geom), :space_buffer) as poly_geom
-                FROM macrostrat.units
-                JOIN macrostrat.lookup_unit_intervals ON lookup_unit_intervals.unit_id = units.id
-                JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
-                JOIN macrostrat.cols ON macrostrat.cols.id = units_sections.col_id
-                WHERE macrostrat.cols.status_code='active'
-            ) units ON ST_Intersects(poly_geom, rgeom)
-            WHERE source_id = :source_id
-        """,
-            {"source_id": source_id, "space_buffer": SPACE_BUFFER_DEGREES},
-        ).scalar()
+def do_work(db: Database, ctx: MatchContext):
+    # Time the process
+    start_time = time.time()
 
-        if n_intersecting > 0:
-            # skip this
-            # TODO cleanup this jank assignment
-            self.table = scale
+    print(f"      Matching units for field {ctx.field}...")
 
-            print("      Starting unit match at ", str(datetime.datetime.now()))
+    lattice = [
+        # strictName, strictSpace, strictTime
+        MatchParams(True, True, True),
+        MatchParams(True, False, True),
+        # strict space and time
+        MatchParams(False, True, True),
+        MatchParams(True, True, False),
+        MatchParams(False, False, True),
+        MatchParams(True, False, False),
+        MatchParams(False, True, False),
+        MatchParams(False, False, False),
+    ]
 
-            # Clean up
-            self.db.run_sql(
-                """
-              DELETE FROM maps.map_units
-              WHERE map_id IN (
-                SELECT map_id
-                FROM {scale_table}
-                WHERE source_id = :source_id
-              )
-              AND basis_col NOT LIKE 'manual%'
-            """,
-                {
-                    "scale_table": Identifier("maps", scale),
-                    "source_id": source_id,
-                },
-            )
+    for match_direction in ["direct", "down", "up"]:
+        for params in lattice:
+            _match(db, f"match-units-{match_direction}", ctx, params)
 
-            print("        + Done cleaning up")
+    print(f"      Done with {ctx.field} in {time.time() - start_time:.1f}s")
 
-            fields = populated_fields(
-                self.db, source_id, scale, ["strat_name", "name", "descrip", "comments"]
-            )
 
-            # Insert a new task for each matching field into the queue
-            print("Processing fields", fields)
-            for field in fields:
-                self.do_work(field)
-        else:
-            print("Skipping unit matching - source does not intersect any columns")
+def _basis_col(
+    field: str,
+    params: MatchParams,
+) -> str:
+    """The `basis_col` string a pass writes, and reads back on the next one.
+
+    Each pass excludes polygons an earlier one matched, so this doubles as
+    the pass's identity. The order of the suffixes is load-bearing: the two
+    precedence ladders downstream parse it back out.
+    """
+    basis = field
+    if not params.strict_name:
+        basis += "_fname"
+    if not params.strict_space:
+        basis += "_fspace"
+    if not params.strict_time:
+        basis += "_ftime"
+    return basis
+
+
+def _match(db: Database, procedure: str, ctx: MatchContext, params: MatchParams):
+    """Run one matching pass from its SQL file.
+
+    The only thing substituted rather than bound is `{column_geom}`, because
+    strict and fuzzy space are two different expressions -- the column
+    polygon against a buffered envelope of it -- and no bind can carry that.
+    Every value is a bind.
+    """
+    db.run_sql(
+        sql_file(procedure),
+        {
+            "scale_table": Identifier("maps", ctx.table),
+            "source_id": ctx.source_id,
+            "match_type": _basis_col(ctx.field, params),
+            "column_geom": SQL(column_geom(params.strict_space)),
+            "time_fuzz": 0 if params.strict_time else TIME_FUZZ_MA,
+            "space_buffer": SPACE_BUFFER_DEGREES,
+        },
+    )
