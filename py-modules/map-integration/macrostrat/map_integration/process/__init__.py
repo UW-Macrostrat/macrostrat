@@ -64,6 +64,8 @@ def for_each_map(selectors, step, **kwargs):
     # Compilations are the usual case -- their content is their members' -- and
     # a registered but uncopied source is the other. Neither is a failure, and
     # reporting them as one buried the real ones.
+    skip_empty_maps = kwargs.pop("skip_empty_maps", True)
+
     materialized = set(
         db.run_query(
             """
@@ -77,7 +79,7 @@ def for_each_map(selectors, step, **kwargs):
     failed = []
     skipped = []
     for m in maps:
-        if m.id not in materialized:
+        if (m.id not in materialized) and skip_empty_maps:
             skipped.append(m.slug)
             if many:
                 print(f"[dim]{m.slug} #{m.id} -- no polygons, skipped[/]")
@@ -190,6 +192,7 @@ def insert(
         scale=scale,
         staging_prefix=staging_prefix,
         allow_unattributed=allow_unattributed,
+        skip_empty_maps=False,
     )
 
 
