@@ -20,7 +20,7 @@ def _database() -> Database:
 
 def _storage() -> StorageConfig | None:
     """Build a StorageConfig from env, or None to run a DB-only delete."""
-    endpoint = os.environ.get("S3_ENDPOINT")
+    endpoint = os.environ.get("S3_HOST")
     bucket = os.environ.get("S3_BUCKET")
     if not endpoint or not bucket:
         return None
@@ -29,7 +29,7 @@ def _storage() -> StorageConfig | None:
         access_key=os.environ.get("S3_ACCESS_KEY", ""),
         secret_key=os.environ.get("S3_SECRET_KEY", ""),
         bucket=bucket,
-        secure=os.environ.get("S3_SECURE", "false").lower() == "true",
+        secure=True,
     )
 
 

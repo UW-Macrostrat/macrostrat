@@ -20,7 +20,7 @@ in through **extras** so each worker image installs only what its tasks need.
 - `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` — Redis (default
   `redis://localhost:6379/0`).
 - `DB_URL` — Postgres connection string (used by the map tasks).
-- `S3_ENDPOINT` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` / `S3_SECURE` —
+- `S3_HOST` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` / `S3_SECURE` —
   optional MinIO/S3 staging store for the map tasks.
 
 ## Running

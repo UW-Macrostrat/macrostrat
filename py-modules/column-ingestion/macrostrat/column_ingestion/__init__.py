@@ -19,12 +19,16 @@ app = Typer(
 @app.command(name="ingest")
 def ingest_command(
     data_file: Path = Argument(..., help="Path to the data file to ingest"),
+    dry_run: bool = Option(
+        False, "--dry-run", help="Validate the file and roll back without persisting."
+    ),
 ):
     """Ingest columns from tabular data."""
     from .ingest import ingest_columns_from_file
 
     db = get_database()
-    ingest_columns_from_file(db, data_file)
+    summary = ingest_columns_from_file(db, data_file, dry_run=dry_run)
+    console.print(summary)
 
 
 age_model_app = Typer(

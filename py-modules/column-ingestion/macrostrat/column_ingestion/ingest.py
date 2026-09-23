@@ -20,10 +20,16 @@ from .refs import get_reference_data, reconcile_references, resolve_column_refer
 from .units import PositionAxisType, write_units
 
 
+class _DryRunRollback(Exception):
+    pass
+
+
 def ingest_columns_from_file(
     db,
     data_file,
-):
+    *,
+    dry_run: bool = False,
+) -> dict:
     # Get sheet names
     workbook = load_workbook(
         data_file, read_only=True, data_only=True, keep_links=False
@@ -87,41 +93,61 @@ def ingest_columns(
     # One transaction for the whole (column, sections, units) set, so `units.section_id`
     # can reference sections that are created in the same breath — the constraint the
     # legacy importer had to drop because it could not precalculate sections.
-    with db.transaction(), on_conflict("restrict"):
-        print(f"Ingesting data into project: {project.name}")
-        _project = get_or_create_project(db, project)
+    try:
+        with db.transaction(), on_conflict("restrict"):
+            print(f"Ingesting data into project: {project.name}")
+            _project = get_or_create_project(db, project)
 
-        # Attribute everything below in the change-tracking trail. Transaction-local
-        # is right here (unlike the rebuild scripts): every audited write in this
-        # function — col_groups, cols, sections, units, and the unit_boundaries the
-        # age model writes — happens inside this one transaction. Set after the
-        # project is resolved so the batch can name it; `projects` is not audited,
-        # so nothing captured is missed by setting it here rather than earlier.
-        set_audit_context(
-            db,
-            "system:column-ingest",
-            f"ingest:{_project.slug}:{date.today().isoformat()}",
-        )
+            # Attribute everything below in the change-tracking trail. Transaction-local
+            # is right here (unlike the rebuild scripts): every audited write in this
+            # function — col_groups, cols, sections, units, and the unit_boundaries the
+            # age model writes — happens inside this one transaction. Set after the
+            # project is resolved so the batch can name it; `projects` is not audited,
+            # so nothing captured is missed by setting it here rather than earlier.
+            set_audit_context(
+                db,
+                "system:column-ingest",
+                f"ingest:{_project.slug}:{date.today().isoformat()}",
+            )
 
-        col_group_id = reconcile_column_group(db, _project.id)
+            col_group_id = reconcile_column_group(db, _project.id)
 
-        # References come first: columns cite them, and the citations are resolved from
-        # workbook-local ids once the reference rows exist.
-        ref_map = reconcile_references(db, references or [])
+            # References come first: columns cite them, and the citations are resolved from
+            # workbook-local ids once the reference rows exist.
+            ref_map = reconcile_references(db, references or [])
 
-        reconcile_columns(
-            db, columns, project_id=_project.id, col_group_id=col_group_id
-        )
-        if ref_map:
-            resolve_column_references(db, columns, ref_map)
+            reconcile_columns(
+                db, columns, project_id=_project.id, col_group_id=col_group_id
+            )
+            if ref_map:
+                resolve_column_references(db, columns, ref_map)
 
-        for col in columns:
-            if not col.units:
-                continue
-            print(f"Ingesting column: {col.name}, ID: {col.id}")
-            # Sections first, so every unit is written against a section that exists.
-            reconcile_sections(db, col.id, col.sections)
-            write_units(db, col.sections)
-            build_age_model(db, col.units)
+            for col in columns:
+                if not col.units:
+                    continue
+                print(f"Ingesting column: {col.name}, ID: {col.id}")
+                # Sections first, so every unit is written against a section that exists.
+                reconcile_sections(db, col.id, col.sections)
+                write_units(db, col.sections)
+                build_age_model(db, col.units)
 
-        db.session.commit()
+            # Capture the summary before committing/rolling back, while the ORM
+            # objects are still live (a rollback would expire them).
+            summary = {
+                "project": {
+                    "id": _project.id,
+                    "slug": _project.slug,
+                    "name": project.name,
+                },
+                "col_group_id": col_group_id,
+                "n_columns": len(columns),
+                "n_units": sum(len(col.units) for col in columns),
+                "n_references": len(references),
+                "dry_run": dry_run,
+            }
+
+            if dry_run:
+                raise _DryRunRollback
+            return summary
+    except _DryRunRollback:
+        print("Dry run — transaction rolled back; nothing was persisted.")

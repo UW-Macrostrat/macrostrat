@@ -352,8 +352,8 @@ async def get_ingest_process_objects(source_id: int, database: DatabaseDep):
         first_object = schema_objects[0]
         m = minio.Minio(
             endpoint=first_object.host,
-            access_key=os.environ["access_key"],
-            secret_key=os.environ["secret_key"],
+            access_key=os.environ["S3_ACCESS_KEY"],
+            secret_key=os.environ["S3_SECRET_KEY"],
             secure=True,
         )
 
@@ -398,8 +398,8 @@ async def create_object(
             for upload_file in files:
                 m = minio.Minio(
                     endpoint=os.environ["S3_HOST"],
-                    access_key=os.environ["access_key"],
-                    secret_key=os.environ["secret_key"],
+                    access_key=os.environ["S3_ACCESS_KEY"],
+                    secret_key=os.environ["S3_SECRET_KEY"],
                     secure=True,
                 )
 

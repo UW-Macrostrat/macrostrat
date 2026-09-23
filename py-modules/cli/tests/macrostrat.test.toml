@@ -1,3 +1,7 @@
 [default]
 
 pg_database = "postgresql://user:password@localhost:5432/macrostrat"
+
+[development]
+
+pg_database = "postgresql://user:password@localhost:5432/macrostrat"

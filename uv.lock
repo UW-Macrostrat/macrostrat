@@ -1683,9 +1683,10 @@ maps = [
 [package.metadata]
 requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.3,<6" },
+    { name = "macrostrat-column-ingestion", marker = "extra == 'columns'", editable = "py-modules/column-ingestion" },
     { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
 ]
-provides-extras = ["maps"]
+provides-extras = ["maps", "columns"]
 
 [[package]]
 name = "mapboard-topology-manager"
