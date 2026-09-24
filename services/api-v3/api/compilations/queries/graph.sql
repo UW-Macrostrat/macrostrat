@@ -99,8 +99,7 @@ nodes AS (
     coalesce(mc.n_members, 0) > 0 AS is_compilation,
     coalesce(mc.n_members, 0)::int AS n_members,
     map_bounds.holds_polygons(s.source_id) AS holds_polygons,
-    coalesce(mc.n_members, 0) > 0
-      AND map_bounds.holds_polygons(s.source_id) AS is_materialized,
+    map_bounds.is_materialized(s.source_id) AS is_materialized,
     map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
     /* In no compilation at all. Not a kind either — just a map nothing has
        wrapped yet, which is worth seeing rather than silently omitting. */
@@ -112,7 +111,6 @@ nodes AS (
     s.superseded_by,
     coalesce(lv.n_sources, 0)::int AS n_sources,
     cs.assembly_mode,
-    cs.content,
     cs.state,
     ma.area_km::float AS area_km,
     /* The layer whose faces represent this map. A served layer *is* one, so it
@@ -134,7 +132,7 @@ SELECT
     SELECT jsonb_agg(jsonb_build_object(
       'compilation_id', cm.compilation_id,
       'member_id', cm.member_id,
-      /* Higher wins where members overlap; null in a disjoint mosaic. */
+      /* Higher wins where members overlap; null in a mosaic. */
       'priority', cm.priority,
       'role', cm.role
     ) ORDER BY cm.compilation_id, cm.priority DESC NULLS LAST, cm.member_id)

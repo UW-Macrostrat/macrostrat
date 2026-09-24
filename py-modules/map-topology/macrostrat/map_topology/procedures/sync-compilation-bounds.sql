@@ -9,8 +9,10 @@
   References are to *transitive leaf* members, not direct ones: `relationtrigger()`
   requires every element to come from the layer's single `child_id`, so one layer
   holds one level of nesting. Flattening to leaves keeps arbitrary nesting depth
-  in a single layer. A *materialized* compilation is skipped -- it holds its own
-  polygons, so its boundary comes from them like any other map's.
+  in a single layer. A *materialized* compilation gets the same references plus a
+  level-0 `topo` over the same face set, because `identity_for_face` resolves at
+  level 0 and a compilation must never be re-noded; a *mosaic* is skipped, since
+  its boundary is its own and it is parted out like a plain map.
 
   `map_bounds.compilation_assembly` decides what to build and what has already
   been built. Only stale compilations are touched, because resolving a

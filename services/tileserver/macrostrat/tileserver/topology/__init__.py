@@ -127,11 +127,12 @@ async def get_info(
     is chosen server-side; flags describe each row so a client can filter or build
     the tree as it needs:
 
-    - ``is_composite`` -- the map is assembled from members.
-    - ``holds_polygons`` -- the map has polygons of its own, so resolution stops
-      here. True for an ordinary map, and for a compilation once it is solved.
-    - ``is_materialized`` -- a composite that holds polygons: the compilation that
-      *replaced* its constituents. This is the row to mark in a UI.
+    - ``is_compilation`` -- the map is assembled from members.
+    - ``holds_polygons`` -- the map has polygons of its own. True for an ordinary
+      map, and for a compilation once materialized (or ingested holding them).
+    - ``is_materialized`` -- a compilation whose polygons are a cache cut from
+      its members': the one that *replaced* its constituents. This is the row
+      to mark in a UI. False for SGMC, whose polygons are originals.
     - ``is_unit`` -- the level the ``maps`` and ``faces`` tiles are drawn at by
       default, so this is the row matching a clicked feature.
     - ``is_constituent`` -- the map is presented as some compilation above it.

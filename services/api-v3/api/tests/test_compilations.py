@@ -1,8 +1,9 @@
 """The compilation graph routes.
 
 Written against whatever compilations the test database happens to hold, since
-the membership table is seeded by `compilations sync` rather than by a fixture:
-the invariants below hold for any member set, including an empty one.
+membership is authored (by the schema's carto seed, the CLI or a pipeline) rather
+than by a test fixture: the invariants below hold for any member set, including
+an empty one.
 """
 
 from fastapi.testclient import TestClient

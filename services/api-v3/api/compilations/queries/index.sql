@@ -51,15 +51,14 @@ SELECT
   ml.min_zoom,
   ml.max_zoom,
   true AS is_compilation,
-  map_bounds.holds_polygons(s.source_id) AS holds_polygons,
-  map_bounds.holds_polygons(s.source_id) AS is_materialized,
+  cs.holds_polygons,
+  cs.is_materialized,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
   cs.n_members,
   /* What the compilation actually resolves to, descending through member
      compilations to the maps at the bottom -- so `carto-large` reads 2 and 384. */
   lv.n_sources,
   cs.assembly_mode,
-  cs.content,
   cs.state,
   ma.area_km::float AS area_km,
   coalesce(par.parent_ids, '{}'::integer[]) AS parent_ids

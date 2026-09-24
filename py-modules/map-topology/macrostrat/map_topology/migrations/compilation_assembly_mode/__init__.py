@@ -39,14 +39,6 @@ SELECT EXISTS (
 )
 """
 
-_IS_DERIVED_COLUMN = """
-SELECT EXISTS (
-  SELECT 1 FROM information_schema.columns
-  WHERE table_schema = 'map_bounds' AND table_name = 'compilation'
-    AND column_name = 'is_derived'
-)
-"""
-
 
 class CompilationAssemblyMode(Migration):
     """`assembly_mode` becomes `topological` | `mosaic` (was `layered` | `disjoint`).
@@ -63,16 +55,18 @@ class CompilationAssemblyMode(Migration):
     resolved. `is_mosaic_member` says the second thing only, and a nested virtual
     mosaic (South Carolina's two maps as one unit under SGMC) needs exactly that.
 
-    `content` becomes `is_derived`, the one fact worth recording: the polygons
-    are a cache that `materialize` wrote. `ingested` stops being stored -- it is
-    "holds polygons and is not derived", read through `map_bounds.content()` --
-    so it can no longer drift, and the manual `compilations content` command goes.
+    The stored `content` column goes. Whether a compilation's polygons are a
+    cache is read off the rows themselves (`map_bounds.is_materialized`: it holds
+    polygons and owns no legend entry, because `materialize` links each polygon to
+    its member's), so it can no longer drift, and the manual `compilations
+    content` command goes. (An intermediate `is_derived` boolean existed between
+    2026-09-17 and 2026-09-24; the declarative schema drops it.)
     """
 
     name = "compilation-assembly-mode-vocabulary"
     subsystem = "maps"
     description = (
-        "assembly_mode: layered/disjoint -> topological/mosaic; content -> is_derived"
+        "assembly_mode: layered/disjoint -> topological/mosaic; drop stored content"
     )
     readiness_state = "ga"
     destructive = False
@@ -83,7 +77,6 @@ class CompilationAssemblyMode(Migration):
             or not _scalar(db, _NEW_CONSTRAINT)
             or _scalar(db, _OLD_PREDICATE)
             or _scalar(db, _CONTENT_COLUMN)
-            or not _scalar(db, _IS_DERIVED_COLUMN)
         ),
     ]
     postconditions = [
@@ -91,7 +84,6 @@ class CompilationAssemblyMode(Migration):
         lambda db: _scalar(db, _NEW_CONSTRAINT),
         lambda db: not _scalar(db, _OLD_PREDICATE),
         lambda db: not _scalar(db, _CONTENT_COLUMN),
-        lambda db: _scalar(db, _IS_DERIVED_COLUMN),
     ]
 
     def apply(self, database: Database):
@@ -118,16 +110,9 @@ class CompilationAssemblyMode(Migration):
             -- predicates, and `schema sync` cannot drop the old one.
             DROP FUNCTION IF EXISTS map_bounds.is_documentary(integer);
 
-            -- `content` -> `is_derived`. `ingested` is no longer stored: it is
-            -- "holds polygons and is not derived" (`map_bounds.content`).
-            ALTER TABLE map_bounds.compilation
-              ADD COLUMN IF NOT EXISTS is_derived boolean NOT NULL DEFAULT false;
-
-            UPDATE map_bounds.compilation SET is_derived = true
-            WHERE content = 'derived';
-
-            -- `compilation_sync` reads the column; the fixture below recreates
-            -- it over `is_derived`.
+            -- Whether polygons are a cache is no longer stored: it is read off
+            -- the legend links (`map_bounds.is_materialized`). `compilation_sync`
+            -- reads the column; the fixture below recreates it.
             DROP VIEW IF EXISTS map_bounds.compilation_sync;
             ALTER TABLE map_bounds.compilation DROP COLUMN IF EXISTS content;
             """

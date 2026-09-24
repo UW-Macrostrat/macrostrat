@@ -50,12 +50,11 @@ SELECT
   ml.description AS layer_description,
   n.n_members > 0 AS is_compilation,
   n.holds_polygons,
-  n.n_members > 0 AND n.holds_polygons AS is_materialized,
+  map_bounds.is_materialized(s.source_id) AS is_materialized,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
   n.n_members,
   lv.n_sources,
   c.assembly_mode,
-  map_bounds.content(s.source_id) AS content,
   c.note,
   cs.state,
   /* The member set the polygon cache was built from, against the current one.
@@ -108,14 +107,13 @@ LEFT JOIN LATERAL (
     'is_served_layer', mlr.id IS NOT NULL,
     'is_compilation', mn.n_members > 0,
     'holds_polygons', mn.holds_polygons,
-    'is_materialized', mn.n_members > 0 AND mn.holds_polygons,
+    'is_materialized', map_bounds.is_materialized(m.source_id),
     'is_mosaic_member', map_bounds.is_mosaic_member(m.source_id),
     'n_members', mn.n_members,
-    'content', map_bounds.content(m.source_id),
     'state', mcs.state,
     'area_km', mma.area_km::float
   /* Highest priority first -- the member that wins where they overlap. A null
-     priority is a disjoint mosaic, where the ordering carries no meaning. */
+     priority is a mosaic, where the ordering carries no meaning. */
   ) ORDER BY cm.priority DESC NULLS LAST, m.slug) AS members
   FROM map_bounds.compilation_member cm
   JOIN maps.sources m ON m.source_id = cm.member_id

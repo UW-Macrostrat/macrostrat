@@ -19,6 +19,12 @@
   in the same pass -- `INSERT ... RETURNING` gives no way to correlate a new row
   back to the polygon it came from.
 
+  Each derived polygon records where it came from twice over: `orig_id` is the
+  member polygon's `map_id` (the member's polygons are the staging table a cache
+  is built from), and its legend link is the member's legend entry. That is what
+  makes the cache recognisable (`is_materialized`) with nothing stored about it,
+  and what `dematerialize` checks polygon by polygon before deleting.
+
   Reversible by construction: members keep their own polygons, and
   `dematerialize` removes only what this wrote.
 */
@@ -48,7 +54,8 @@ SELECT
   p.map_id AS source_polygon,
   :compilation_id::integer AS source_id,
   :scale::maps.map_scale AS scale,
-  p.orig_id, p.name, p.strat_name, p.age, p.lith, p.descrip, p.comments,
+  p.map_id::text AS orig_id,
+  p.name, p.strat_name, p.age, p.lith, p.descrip, p.comments,
   p.t_interval, p.b_interval,
   CASE
     WHEN c.geometry IS NULL OR NOT ST_Intersects(p.geom, c.geometry)
@@ -89,13 +96,10 @@ ON CONFLICT (legend_id, map_id) DO NOTHING;
    to its members. */
 UPDATE maps.sources SET is_finalized = true WHERE source_id = :compilation_id;
 
-INSERT INTO map_bounds.compilation (source_id, member_hash, is_derived)
-VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id), true)
+INSERT INTO map_bounds.compilation (source_id, member_hash)
+VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id))
 ON CONFLICT (source_id) DO UPDATE
-  SET member_hash = EXCLUDED.member_hash,
-      -- These polygons came from the members and can go back; recording that is
-      -- what makes `dematerialize` safe to offer.
-      is_derived = true;
+  SET member_hash = EXCLUDED.member_hash;
 
 DROP TABLE IF EXISTS _staged;
 

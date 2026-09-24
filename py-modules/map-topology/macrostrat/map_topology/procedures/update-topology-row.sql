@@ -9,9 +9,9 @@ WITH update AS (
 )
 SELECT
   -- Count of successful updates
-  count(m.res IS NULL) updated,
+  count(*) FILTER (WHERE m.res IS NULL) updated,
   -- Count of failed updates
-  count(m.res IS NOT NULL) failed,
+  count(*) FILTER (WHERE m.res IS NOT NULL) failed,
   (
     SELECT count(*) n
     FROM map_bounds.map_topo

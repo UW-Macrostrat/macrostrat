@@ -2,7 +2,15 @@
 
   Members keep their own polygons throughout, so this restores the virtual state
   exactly -- resolution goes back to descending through the compilation.
+
+  Nothing stored says these polygons are a cache, so prove it first, polygon by
+  polygon: every one must carry a legend entry owned by some *other* source (the
+  member it was cut from), which is what `materialize` writes and an ingested
+  dataset never has. One polygon that fails -- unlinked, or linked to a legend
+  row the compilation itself owns, as all of SGMC's are -- and nothing is deleted.
 */
+SELECT map_bounds.assert_dematerializable(:compilation_id);
+
 DELETE FROM maps.map_legend ml
 USING maps.polygons p
 WHERE ml.map_id = p.map_id
@@ -12,8 +20,8 @@ DELETE FROM maps.polygons WHERE source_id = :compilation_id;
 
 UPDATE maps.sources SET is_finalized = false WHERE source_id = :compilation_id;
 
-/* Back to virtual: no polygons, so no cache to record. */
-UPDATE map_bounds.compilation SET is_derived = false, member_hash = NULL
+/* Back to virtual: no polygons, so no cache to stamp. */
+UPDATE map_bounds.compilation SET member_hash = NULL
 WHERE source_id = :compilation_id;
 
 /* Materializing changes who owns the territory while no boundary moves, so

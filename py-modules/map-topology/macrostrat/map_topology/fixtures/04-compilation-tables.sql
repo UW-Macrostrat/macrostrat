@@ -5,8 +5,10 @@
   not a distinct kind of thing, so there is no `map_type` column anywhere:
   "is a compilation" means *has members*, "is a constituent" means *is a member*,
   and both are read straight off `compilation_member`. Whether a map holds polygons
-  of its own separates a materialized compilation from a virtual one, and a
-  constituent from a map that simply has not been ingested yet.
+  of its own (`holds_polygons`) separates a concrete node from a virtual one; whether
+  those polygons are a cache of its members' (`is_materialized`, read off the legend
+  links `materialize` writes) separates a materialized compilation from an ingested
+  one such as SGMC.
 */
 
 CREATE TABLE IF NOT EXISTS map_bounds.compilation_member (
@@ -14,8 +16,8 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation_member (
     REFERENCES maps.sources(source_id) ON DELETE CASCADE,
   member_id integer NOT NULL
     REFERENCES maps.sources(source_id) ON DELETE CASCADE,
-  /** Higher wins where members overlap. NULL for a disjoint mosaic, where
-    nothing overlaps and the ordering carries no meaning. */
+  /** Higher wins where members overlap. NULL for a mosaic, where nothing
+    overlaps and the ordering carries no meaning. */
   priority integer,
   /** Open vocabulary, left for the stage that needs it (Stage E wants an
     `updated_by` value for SGMC's editorial artifacts). NULL is a plain member. */
@@ -53,21 +55,14 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
     Not derivable -- whether members overlap is an assertion the operator makes. */
   assembly_mode text NOT NULL DEFAULT 'topological'
     CHECK (assembly_mode IN ('topological', 'mosaic')),
-  /** Whether the compilation's polygons are a cache: written by `materialize`
-    from its members' content and removable by `dematerialize`, which is safe
-    precisely because the members still hold the originals. False otherwise --
-    the compilation is virtual, or its polygons are originals.
-
-    The one recorded bit about content, and only its two writers touch it.
-    Everything else is derivable and is (`map_bounds.content`): a compilation
-    that holds polygons and is not derived holds originals -- SGMC's 312,286,
-    ingested as one map. It cannot itself be derived: graph position says
-    "derived" for a topological compilation holding polygons, but a compilation
-    whose polygons were *ingested* as one dataset sits in that same position,
-    and the inference would hand its originals to `dematerialize`. */
-  is_derived boolean NOT NULL DEFAULT false,
   /** The member set the compilation's derived polygons were built from. NULL
-    while virtual; stale once it no longer matches the current members. */
+    while virtual; stale once it no longer matches the current members.
+
+    Nothing records *whether* the polygons are derived: `materialize` writes each
+    polygon with its member's legend entry and the member's `map_id` as
+    `orig_id`, so a cache is recognisable from the rows themselves
+    (`is_materialized`), and `dematerialize` checks every polygon before it
+    deletes anything. */
   member_hash uuid,
   /** The member state the *boundary* was last assembled from. Separate from
     `member_hash`: the footprint and the polygon cache are independent derived
@@ -93,8 +88,8 @@ ALTER TABLE map_bounds.map_layer
     REFERENCES maps.sources(source_id) ON DELETE SET NULL;
 
 /** Give every served layer a map identity, so it can hold and be held as a
-  compilation member. Layers hold no polygons, so they are never an answer to
-  identity resolution -- see `holds_polygons` below. */
+  compilation member. Layers hold no polygons and stand for none, so they are
+  never an answer to identity resolution -- see `has_content` below. */
 INSERT INTO maps.sources (slug, status_code, is_finalized)
 SELECT ml.slug, 'active', false
 FROM map_bounds.map_layer ml
@@ -141,11 +136,11 @@ SELECT EXISTS (
 );
 $$ LANGUAGE SQL STABLE;
 
-/** Whether a map holds polygons of its own, and is therefore a leaf for identity
-  resolution: the flattening descends *virtual* compilations and stops at
-  materialized ones, which hold the polygons. `is_finalized` is the cached
-  `has_map_schema_data` flag, so this is a lookup rather than a scan of the
-  partitioned polygon table. */
+/** Whether a map holds polygons of its own. This is where `content_of` stops
+  walking; the leaf test for identity resolution is `has_content`, which also
+  admits a mosaic member standing for its parent's polygons. `is_finalized` is the
+  cached `has_map_schema_data` flag (and `materialize` sets it), so this is a lookup
+  rather than a scan of the partitioned polygon table. */
 CREATE OR REPLACE FUNCTION map_bounds.holds_polygons(_source_id integer)
   RETURNS boolean AS $$
 SELECT coalesce(is_finalized, false)
@@ -163,9 +158,9 @@ $$ LANGUAGE SQL STABLE;
   (`sgmc-sc001 -> sgmc-sc -> sgmc`), and the depth is invisible to a caller.
 
   Every consumer that once wrote `WHERE p.source_id = <map>` reads through this
-  instead: the single-map tile query, the carto fill, `materialize`. A NULL
-  `source_id` means the map has no content anywhere -- a virtual topological
-  compilation, or a mosaic member whose chain never reaches polygons. */
+  instead: the single-map tile query, the carto fill, `materialize`. No row means
+  the map has no content anywhere -- a virtual topological compilation, or a mosaic
+  member whose chain never reaches polygons -- which is what `has_content` tests. */
 CREATE OR REPLACE FUNCTION map_bounds.content_of(_source_id integer)
   RETURNS TABLE (source_id integer, footprint geometry) AS $$
 WITH RECURSIVE up AS (
@@ -252,28 +247,58 @@ WHERE (_within IS NULL OR ST_Intersects(l.geom, _within))
   AND (c.footprint IS NULL OR ST_Contains(c.footprint, ST_PointOnSurface(l.geom)));
 $$ LANGUAGE SQL STABLE;
 
-/** What a map's polygons are: `derived` (a cache `materialize` wrote),
-  `ingested` (originals -- any plain map, or a compilation such as SGMC whose
-  polygons arrived with it), or NULL (holds none). Only `is_derived` is stored. */
-CREATE OR REPLACE FUNCTION map_bounds.content(_source_id integer)
-  RETURNS text AS $$
-SELECT CASE
-  WHEN NOT map_bounds.holds_polygons(_source_id) THEN NULL
-  WHEN EXISTS (
-    SELECT 1 FROM map_bounds.compilation c
-    WHERE c.source_id = _source_id AND c.is_derived
-  ) THEN 'derived'
-  ELSE 'ingested'
-END;
+/** Whether a compilation's polygons are a cache of its members' -- written by
+  `materialize`, removable by `dematerialize`. Read off the data rather than
+  recorded: a derived polygon keeps its member's legend entry, so a materialized
+  compilation holds polygons and owns no `maps.legend` row of its own. A
+  compilation that holds polygons *and* legend rows holds originals (SGMC), and
+  its members are provenance rather than material. The per-polygon form of the
+  same test is `dematerialize`'s precondition. */
+CREATE OR REPLACE FUNCTION map_bounds.is_materialized(_source_id integer)
+  RETURNS boolean AS $$
+SELECT map_bounds.holds_polygons(_source_id)
+  AND EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.compilation_id = _source_id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM maps.legend l WHERE l.source_id = _source_id
+  );
 $$ LANGUAGE SQL STABLE;
 
-/** Whether a map's polygons are originals rather than a cache -- so they are
-  never `dematerialize`'s to delete, and, for a compilation, its members are
-  provenance rather than material. */
-CREATE OR REPLACE FUNCTION map_bounds.is_ingested(_source_id integer)
-  RETURNS boolean AS $$
-SELECT map_bounds.content(_source_id) = 'ingested';
-$$ LANGUAGE SQL STABLE;
+/** The per-polygon form of `is_materialized`, run before `dematerialize` deletes
+  anything: every polygon must carry a legend entry owned by some *other* source
+  (the member it was cut from), which is what `materialize` writes and an
+  ingested dataset never has. One polygon that fails -- unlinked, or linked to a
+  legend row the compilation itself owns, as all of SGMC's are -- and the whole
+  call raises. */
+CREATE OR REPLACE FUNCTION map_bounds.assert_dematerializable(_source_id integer)
+  RETURNS void AS $$
+DECLARE
+  _bad integer;
+  _total integer;
+BEGIN
+  SELECT
+    count(*) FILTER (WHERE NOT EXISTS (
+      SELECT 1
+      FROM maps.map_legend ml
+      JOIN maps.legend l ON l.legend_id = ml.legend_id
+      WHERE ml.map_id = p.map_id
+        AND l.source_id <> p.source_id
+    )),
+    count(*)
+  INTO _bad, _total
+  FROM maps.polygons p
+  WHERE p.source_id = _source_id;
+
+  IF _bad > 0 THEN
+    RAISE EXCEPTION USING
+      MESSAGE = 'Refusing to dematerialize source ' || _source_id || ': ' || _bad
+        || ' of ' || _total || ' polygons are not linked to another source''s'
+        || ' legend, so they cannot be shown to be a cache of the members'' polygons.';
+  END IF;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 /** A stamp over the member set, for detecting a stale polygon cache. */
 CREATE OR REPLACE FUNCTION map_bounds.compilation_member_hash(_source_id integer)
@@ -568,22 +593,26 @@ CREATE OR REPLACE FUNCTION map_bounds.compilation_id(_slug text)
 SELECT source_id FROM maps.sources WHERE slug = _slug;
 $$ LANGUAGE SQL STABLE;
 
-/** Compilation state: virtual, materialized, or stale. */
+/** Polygon-cache state per compilation: `virtual` (no polygons of its own),
+  `ingested` (holds polygons that are originals, not a cache), `current` or
+  `stale` (a cache whose `member_hash` does or does not match the membership
+  now). Built from `compilation_member`, so a compilation with no members has no
+  row. */
 CREATE OR REPLACE VIEW map_bounds.compilation_sync AS
 SELECT
   mc.compilation_id AS source_id,
   s.slug,
   count(*) AS n_members,
   coalesce(c.assembly_mode, 'topological') AS assembly_mode,
-  map_bounds.content(mc.compilation_id) AS content,
-  map_bounds.holds_polygons(mc.compilation_id) AS materialized,
+  map_bounds.holds_polygons(mc.compilation_id) AS holds_polygons,
+  map_bounds.is_materialized(mc.compilation_id) AS is_materialized,
   c.member_hash,
   map_bounds.compilation_member_hash(mc.compilation_id) AS current_member_hash,
   CASE
     WHEN NOT map_bounds.holds_polygons(mc.compilation_id) THEN 'virtual'
     -- Originals: there is nothing to assemble, so the member hash says nothing
     -- and 'stale' would invite a destructive rebuild.
-    WHEN NOT coalesce(c.is_derived, false) THEN 'ingested'
+    WHEN NOT map_bounds.is_materialized(mc.compilation_id) THEN 'ingested'
     WHEN c.member_hash IS NOT DISTINCT FROM
          map_bounds.compilation_member_hash(mc.compilation_id) THEN 'current'
     ELSE 'stale'
@@ -591,4 +620,4 @@ SELECT
 FROM map_bounds.compilation_member mc
 JOIN maps.sources s ON s.source_id = mc.compilation_id
 LEFT JOIN map_bounds.compilation c ON c.source_id = mc.compilation_id
-GROUP BY mc.compilation_id, s.slug, c.assembly_mode, c.is_derived, c.member_hash;
+GROUP BY mc.compilation_id, s.slug, c.assembly_mode, c.member_hash;

@@ -12,7 +12,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 CompilationState = Literal["virtual", "current", "stale", "ingested"]
-CompilationContent = Literal["ingested", "derived"]
 
 
 class MapNode(BaseModel):
@@ -29,13 +28,14 @@ class MapNode(BaseModel):
     is_served_layer: bool = False
     #: Has members.
     is_compilation: bool = False
-    #: Holds polygons of its own, and is therefore where identity resolution
-    #: stops. True for any ingested map; true for a compilation only once it has
-    #: been materialized.
+    #: Holds polygons of its own (concrete, as against virtual). True for any
+    #: ingested map, for a materialized compilation, and for an ingested
+    #: compilation such as SGMC.
     holds_polygons: bool = False
-    #: A compilation that *replaced* its constituents. This is the distinction a
-    #: UI wants to call out -- `holds_polygons` alone is true of every ordinary
-    #: map too.
+    #: A compilation whose polygons are a cache cut from its members' -- the one
+    #: that *replaced* its constituents, and can be dematerialized. False for
+    #: SGMC, whose polygons are originals and whose members are provenance;
+    #: `state` says `ingested` there.
     is_materialized: bool = False
     #: A member of a mosaic: a real source with a citation and a footprint that
     #: *is* its extent, whose content is the mosaic's content inside it. No
@@ -43,10 +43,6 @@ class MapNode(BaseModel):
     is_mosaic_member: bool = False
 
     n_members: int = 0
-    #: Where a materialized compilation's polygons came from: `derived` from its
-    #: members (and reversible), or `ingested` with the compilation itself (in
-    #: which case the members are provenance, not material).
-    content: Optional[CompilationContent] = None
     area_km: Optional[float] = None
     #: In no compilation at all — an ingested map nothing has wrapped yet. Not a
     #: kind; just a state of the catalog, and one worth showing rather than
@@ -83,8 +79,8 @@ class CompilationSummary(CompilationFacts):
 class MemberRef(MapNode):
     """A map as seen from the compilation that contains it."""
 
-    #: Higher wins where members overlap; null in a disjoint mosaic, where
-    #: nothing overlaps and the ordering carries no meaning.
+    #: Higher wins where members overlap; null in a mosaic, where nothing
+    #: overlaps and the ordering carries no meaning.
     priority: Optional[int] = None
     role: Optional[str] = None
     state: Optional[CompilationState] = None
@@ -150,8 +146,8 @@ class GraphEdge(BaseModel):
 
     compilation_id: int
     member_id: int
-    #: Higher wins where members overlap; null in a disjoint mosaic, where
-    #: nothing overlaps and the ordering carries no meaning.
+    #: Higher wins where members overlap; null in a mosaic, where nothing
+    #: overlaps and the ordering carries no meaning.
     priority: Optional[int] = None
     role: Optional[str] = None
 

@@ -39,18 +39,23 @@ def _resolve(name: str) -> tuple[int, str]:
 
 
 def _is_ingested(db, source_id: int) -> bool:
-    """Whether the compilation's polygons arrived with it rather than from members."""
+    """Whether the compilation holds polygons that are originals, not a cache."""
     return bool(
-        db.run_query("SELECT map_bounds.is_ingested(:id)", dict(id=source_id)).scalar()
+        db.run_query(
+            "SELECT map_bounds.holds_polygons(:id)"
+            " AND NOT map_bounds.is_materialized(:id)",
+            dict(id=source_id),
+        ).scalar()
     )
 
 
 def _refuse_if_ingested(db, source_id: int, slug: str, verb: str):
     """Guard the polygon-rewriting commands.
 
-    Only `derived` content can be materialized or dematerialized -- it came from
-    the members and can go back to them. Ingested polygons are the original
-    dataset, and `dematerialize` would delete them outright.
+    Only a cache can be dematerialized -- it came from the members and can go
+    back to them -- and only a virtual compilation can be materialized. Ingested
+    polygons are the original dataset, and `dematerialize` would delete them
+    outright. (The procedure re-checks this polygon by polygon.)
     """
     if not _is_ingested(db, source_id):
         return
@@ -98,6 +103,26 @@ WHERE c.source_id = :compilation_id
   AND s.source_id = ANY(:member_ids)
 ORDER BY s.slug
 """
+
+
+def _refuse_if_materialized(db, source_id: int, slug: str):
+    """`materialize` appends: it never deletes the polygons a previous run wrote.
+
+    So a compilation already holding derived polygons must be dematerialized
+    first, or a second copy of every polygon lands under its `source_id`.
+    """
+    state = db.run_query(
+        "SELECT state FROM map_bounds.compilation_sync WHERE source_id = :id",
+        dict(id=source_id),
+    ).scalar()
+    if state not in ("current", "stale"):
+        return
+    print(
+        f"[red]{slug}[/] already holds derived polygons ({state})."
+        f"\n[dim]Run [cyan]macrostrat compilations dematerialize {slug}[/] first,"
+        " then materialize again.[/]"
+    )
+    raise typer.Exit(1)
 
 
 def _member_problems(db, compilation_id: int, member_ids: list[int]):
@@ -471,6 +496,7 @@ def materialize(
     db = get_database()
     source_id, slug = _resolve(compilation)
     _refuse_if_ingested(db, source_id, slug, "materialize")
+    _refuse_if_materialized(db, source_id, slug)
     scale = db.run_query(
         "SELECT scale FROM maps.sources WHERE source_id = :id", dict(id=source_id)
     ).scalar()
@@ -551,9 +577,12 @@ def dematerialize(
 def sync():
     """Rebuild everything derived from compilation membership.
 
-    The same steps `macrostrat topo update` runs, without the per-map topology
-    work in between -- for picking up a membership edit, or for finishing a
-    schema apply.
+    Boundaries by reference, priority paths, stale-identity marking and unit
+    faces -- for picking up a membership edit, or for finishing a schema apply.
+    It does not dissolve faces: the faces it marks stale are solved by the next
+    `macrostrat topo update`, and unit faces are rebuilt from the constituents as
+    they stand, so after a membership or materialization change the order is
+    `compilations sync`, `topo update`, `compilations sync`.
 
     Nothing here writes membership. `sync` derives boundaries, paths and faces
     *from* the edges; the edges themselves are authored, by these commands or by
