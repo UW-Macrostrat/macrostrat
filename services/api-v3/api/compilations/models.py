@@ -1,17 +1,18 @@
 """Response models for the compilation graph.
 
-The vocabulary is the database's, not a second one invented here: a compilation
-is a map with members, a served layer is a compilation with a `map_layer` row,
-and materialization is a lifecycle state rather than a kind. The flags below are
-the ones a client needs to tell those cases apart, and they are derived in SQL so
-this module stays a description of the payload.
+The vocabulary is the database's, not a second one invented here. Four facts
+classify a source and there are no names for their combinations: `is_compilation`
+(has members), `is_materialized` (holds polygons), `is_derived` (those polygons are
+a cache cut from its members'), and `assembly_mode` (`topological` | `mosaic`). Two
+more are authored: `is_served` (may be requested by name) and `superseded_by`.
+`has_faces` says the compilation's faces are cached, which every served one will
+have once sync solves them all. The flags are derived in SQL so this module stays
+a description of the payload.
 """
 
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel
-
-CompilationState = Literal["virtual", "current", "stale", "ingested"]
 
 
 class MapNode(BaseModel):
@@ -22,24 +23,28 @@ class MapNode(BaseModel):
     name: Optional[str] = None
     scale: Optional[str] = None
 
-    #: A compilation served as a tile layer -- `medium`, `carto-large`. Layers
-    #: are structural: nobody means to *see* one, so a client usually renders
-    #: them as containers rather than as maps.
-    is_served_layer: bool = False
+    #: The compilation's faces are cached in `map_face` (a `map_layer` row).
+    #: Today the seven scale and carto layers, which a client renders as
+    #: containers rather than as maps.
+    has_faces: bool = False
+    #: May be requested by name. Authored; a compilation that is not served
+    #: exists to build others.
+    is_served: bool = True
+    #: Bounds spanning the world: a client does not zoom to it.
+    is_global: bool = False
     #: Has members.
     is_compilation: bool = False
-    #: Holds polygons of its own (concrete, as against virtual). True for any
-    #: ingested map, for a materialized compilation, and for an ingested
-    #: compilation such as SGMC.
-    holds_polygons: bool = False
-    #: A compilation whose polygons are a cache cut from its members' -- the one
-    #: that *replaced* its constituents, and can be dematerialized. False for
-    #: SGMC, whose polygons are originals and whose members are provenance;
-    #: `state` says `ingested` there.
+    #: Holds polygons of its own: any ingested map, a materialized compilation,
+    #: or a compilation holding originals such as SGMC.
     is_materialized: bool = False
-    #: A member of a mosaic: a real source with a citation and a footprint that
-    #: *is* its extent, whose content is the mosaic's content inside it. No
-    #: polygons, linework or faces of its own. SGMC's published maps are the case.
+    #: Those polygons are a cache cut from its members' -- the compilation that
+    #: *replaced* its members, and can be dematerialized. False for SGMC.
+    is_derived: bool = False
+    #: Derived, and the members have changed since the polygons were cut.
+    is_stale: bool = False
+    #: Belongs to a mosaic: a real source with a citation and bounds that *are*
+    #: its extent, whose content is the mosaic's inside them. No polygons,
+    #: linework or faces of its own. SGMC's published maps are the case.
     is_mosaic_member: bool = False
 
     n_members: int = 0
@@ -48,15 +53,16 @@ class MapNode(BaseModel):
     #: kind; just a state of the catalog, and one worth showing rather than
     #: silently omitting.
     is_standalone: bool = False
-    #: Stage I supersession: the map that replaced this one. Often the reason a
-    #: map sits outside every compilation.
+    #: The map that replaced this one. Often the reason a map sits outside every
+    #: compilation.
     superseded_by: Optional[int] = None
 
 
 class CompilationFacts(MapNode):
     """A compilation's own state, shared by the index and the detail view."""
 
-    map_layer: Optional[int] = None
+    #: The `map_layer` id when the compilation has faces.
+    map_layer_id: Optional[int] = None
     min_zoom: Optional[int] = None
     max_zoom: Optional[int] = None
 
@@ -64,7 +70,6 @@ class CompilationFacts(MapNode):
     #: compilations to the maps at the bottom.
     n_sources: int = 0
     assembly_mode: Optional[str] = None
-    state: Optional[CompilationState] = None
 
 
 class CompilationSummary(CompilationFacts):
@@ -82,8 +87,6 @@ class MemberRef(MapNode):
     #: Higher wins where members overlap; null in a mosaic, where nothing
     #: overlaps and the ordering carries no meaning.
     priority: Optional[int] = None
-    role: Optional[str] = None
-    state: Optional[CompilationState] = None
 
 
 class ParentRef(BaseModel):
@@ -91,8 +94,8 @@ class ParentRef(BaseModel):
     slug: str
     name: Optional[str] = None
     priority: Optional[int] = None
-    role: Optional[str] = None
-    is_served_layer: bool = False
+    has_faces: bool = False
+    is_served: bool = True
 
 
 class CompilationDetail(CompilationFacts):
@@ -107,13 +110,13 @@ class CompilationDetail(CompilationFacts):
     layer_description: Optional[str] = None
     note: Optional[str] = None
 
-    #: The layer whose faces represent this map. Null for a served layer, which
-    #: *is* one, and for a map that is not in the topology.
-    placed_in_layer: Optional[int] = None
+    #: The registered compilation whose faces represent this map. Null for one
+    #: that has faces of its own, and for a map that is not in the topology.
+    placed_in_layer_id: Optional[int] = None
 
     #: The member set the polygon cache was built from, against the current one.
-    #: Equal means current, different means stale, both null means virtual. The
-    #: `state` field is the readable form; these are here so a client can show
+    #: Equal means current, different means stale, both null means virtual.
+    #: `is_stale` is the readable form; these are here so a client can show
     #: *why* something is stale.
     member_hash: Optional[str] = None
     current_member_hash: Optional[str] = None
@@ -130,26 +133,24 @@ class GraphNode(MapNode):
     a map that has no members.
     """
 
-    map_layer: Optional[int] = None
+    map_layer_id: Optional[int] = None
     min_zoom: Optional[int] = None
     max_zoom: Optional[int] = None
     n_sources: int = 0
     assembly_mode: Optional[str] = None
-    state: Optional[CompilationState] = None
-    #: The layer whose faces represent this map. A served layer *is* one, so it
-    #: has none of its own.
-    placed_in_layer: Optional[int] = None
+    #: The registered compilation whose faces represent this map. One that has
+    #: faces of its own has none here.
+    placed_in_layer_id: Optional[int] = None
 
 
 class GraphEdge(BaseModel):
-    """One authored membership edge."""
+    """One authored membership."""
 
     compilation_id: int
     member_id: int
     #: Higher wins where members overlap; null in a mosaic, where nothing
     #: overlaps and the ordering carries no meaning.
     priority: Optional[int] = None
-    role: Optional[str] = None
 
 
 class CompilationGraph(BaseModel):
@@ -175,9 +176,9 @@ class NeighborMap(BaseModel):
     ref_year: Optional[str] = None
     superseded_by: Optional[int] = None
 
-    #: The neighbour's own footprint.
+    #: The neighbour's own bounds.
     area_km: Optional[float] = None
-    #: Area the two footprints share. Null when the overlap was not computed —
+    #: Area the two bounds share. Null when the overlap was not computed —
     #: see `NeighborResult.overlap_available`.
     overlap_km: Optional[float] = None
     #: How much of *this* map the neighbour covers, 0–1. The complementary
@@ -191,7 +192,7 @@ class NeighborMap(BaseModel):
     scale_distance: int = 0
 
     is_compilation: bool = False
-    holds_polygons: bool = False
+    is_materialized: bool = False
     is_mosaic_member: bool = False
     #: Compilations this map belongs to, so a page can say "part of SGMC" rather
     #: than leaving the reader to guess why it is in the list.
@@ -203,7 +204,7 @@ class NeighborResult(BaseModel):
 
     source_id: int
     slug: str
-    #: False when the map's own boundary is too large to intersect in reasonable
+    #: False when the map's own bounds are too large to intersect in reasonable
     #: time, in which case every `overlap_km` is null and the list is ordered by
     #: scale distance and footprint alone.
     overlap_available: bool = True

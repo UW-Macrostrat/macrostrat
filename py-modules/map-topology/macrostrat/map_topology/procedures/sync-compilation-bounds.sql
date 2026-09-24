@@ -60,7 +60,7 @@ WHERE a.topo IS NOT NULL
     WHERE cm.compilation_id = a.source_id
   )
   AND (
-    NOT map_bounds.holds_polygons(a.source_id)
+    NOT map_bounds.is_materialized(a.source_id)
     OR coalesce(
       (SELECT ca.is_stale FROM _assembly ca WHERE ca.source_id = a.source_id),
       true
@@ -76,7 +76,7 @@ WHERE ma.topo IS NOT NULL
     WHERE cm.compilation_id = ma.source_id
   )
   AND (
-    NOT map_bounds.holds_polygons(ma.source_id)
+    NOT map_bounds.is_materialized(ma.source_id)
     OR coalesce(
       (SELECT ca.is_stale FROM _assembly ca WHERE ca.source_id = ma.source_id),
       true
@@ -101,7 +101,7 @@ SET topo = topology.createTopoGeom(
     )
 FROM _assembly ca
 WHERE ca.source_id = ma.source_id
-  AND map_bounds.holds_polygons(ma.source_id)
+  AND map_bounds.is_materialized(ma.source_id)
   AND ma.topo IS NULL;
 
 /* Re-snapshot. A materialized compilation is a leaf in its parents' descent, so
@@ -166,14 +166,14 @@ FROM _assembly ca
 WHERE ca.source_id = ma.source_id
   AND ca.is_stale
   AND ma.composite_topo IS NOT NULL
-  AND NOT map_bounds.is_served_layer(ma.source_id);
+  AND NOT map_bounds.has_faces(ma.source_id);
 
 UPDATE map_bounds.map_area ma
 SET area_km = ST_Area(ST_Segmentize(ma.geometry, 90)::geography) / 1e6
 FROM _assembly ca
 WHERE ca.source_id = ma.source_id
   AND ca.is_stale
-  AND NOT map_bounds.is_served_layer(ma.source_id)
+  AND NOT map_bounds.has_faces(ma.source_id)
   AND NOT ST_IsEmpty(ma.geometry);
 
 /* A served layer's extent is global and unrendered, so the envelope of its
@@ -192,7 +192,7 @@ CROSS JOIN LATERAL (
 ) box
 WHERE ca.source_id = ma.source_id
   AND ca.is_stale
-  AND map_bounds.is_served_layer(ma.source_id)
+  AND map_bounds.has_faces(ma.source_id)
   AND box.envelope IS NOT NULL;
 
 /* Record what was assembled, so the next run can skip it. Last, so a failure

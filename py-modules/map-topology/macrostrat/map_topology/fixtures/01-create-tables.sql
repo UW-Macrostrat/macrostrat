@@ -274,22 +274,12 @@ WHERE ml.id = $1.map_layer
 $$ LANGUAGE SQL IMMUTABLE;
 
 
-/** Scale key for Carto compilations:
-      scaleIsIn = {
-        "tiny": ["tiny", "small"],
-        "small": ["small", "medium"],
-        "medium": ["medium", "large"],
-        "large": ["large"],
-    }
- */
-
+/** Derived: one row per registered compilation per resolved map. Rebuilt outright
+  by `sync-priority-paths`; the columns are declared in `04-compilation-tables.sql`. */
 CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
   map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
-  source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
-  priority integer,
-  /** Cached bounds for the map's contribution to the compilation. */
-  --geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (map_layer, source_id)
+  map_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  PRIMARY KEY (map_layer, map_id)
 );
 
 

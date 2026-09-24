@@ -43,34 +43,36 @@ SELECT
   s.url,
   s.status_code,
   s.is_finalized,
-  ml.id IS NOT NULL AS is_served_layer,
-  ml.id AS map_layer,
+  ml.id IS NOT NULL AS has_faces,
+  map_bounds.is_served(s.source_id) AS is_served,
+  map_bounds.is_global(s.source_id) AS is_global,
+  ml.id AS map_layer_id,
   ml.min_zoom,
   ml.max_zoom,
   ml.description AS layer_description,
   n.n_members > 0 AS is_compilation,
-  n.holds_polygons,
-  map_bounds.is_materialized(s.source_id) AS is_materialized,
+  n.is_materialized,
+  map_bounds.is_derived(s.source_id) AS is_derived,
+  map_bounds.is_stale(s.source_id) AS is_stale,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
   n.n_members,
   lv.n_sources,
   c.assembly_mode,
   c.note,
-  cs.state,
   /* The member set the polygon cache was built from, against the current one.
      Equal means the cache is current; different means it is stale. Both null on
      a virtual compilation, which has no cache to be stale. */
   c.member_hash::text AS member_hash,
   cs.current_member_hash::text AS current_member_hash,
   ma.area_km::float AS area_km,
-  ma.map_layer AS placed_in_layer,
+  ma.map_layer AS placed_in_layer_id,
   coalesce(par.parents, '[]'::jsonb) AS parents,
   coalesce(mem.members, '[]'::jsonb) AS members
 FROM target t
 JOIN maps.sources s ON s.source_id = t.source_id
 CROSS JOIN LATERAL (
   SELECT
-    map_bounds.holds_polygons(s.source_id) AS holds_polygons,
+    map_bounds.is_materialized(s.source_id) AS is_materialized,
     (SELECT count(*) FROM map_bounds.compilation_member cm
       WHERE cm.compilation_id = s.source_id) AS n_members
 ) n
@@ -79,8 +81,9 @@ LEFT JOIN map_bounds.compilation c ON c.source_id = s.source_id
 LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
 CROSS JOIN LATERAL (
-  SELECT count(DISTINCT source_id) AS n_sources
-  FROM map_bounds.compilation_leaves(s.source_id, true)
+  SELECT count(*) AS n_sources
+  FROM map_bounds.members_of(s.source_id, true) m
+  WHERE NOT map_bounds.is_compilation(m.source_id)
 ) lv
 LEFT JOIN LATERAL (
   SELECT jsonb_agg(jsonb_build_object(
@@ -88,8 +91,8 @@ LEFT JOIN LATERAL (
     'slug', p.slug,
     'name', coalesce(p.name, pl.name),
     'priority', cm.priority,
-    'role', cm.role,
-    'is_served_layer', pl.id IS NOT NULL
+    'has_faces', pl.id IS NOT NULL,
+    'is_served', map_bounds.is_served(p.source_id)
   ) ORDER BY p.slug) AS parents
   FROM map_bounds.compilation_member cm
   JOIN maps.sources p ON p.source_id = cm.compilation_id
@@ -103,14 +106,14 @@ LEFT JOIN LATERAL (
     'name', coalesce(m.name, mlr.name),
     'scale', m.scale,
     'priority', cm.priority,
-    'role', cm.role,
-    'is_served_layer', mlr.id IS NOT NULL,
+    'has_faces', mlr.id IS NOT NULL,
+    'is_served', map_bounds.is_served(m.source_id),
     'is_compilation', mn.n_members > 0,
-    'holds_polygons', mn.holds_polygons,
-    'is_materialized', map_bounds.is_materialized(m.source_id),
+    'is_materialized', mn.is_materialized,
+    'is_derived', map_bounds.is_derived(m.source_id),
+    'is_stale', map_bounds.is_stale(m.source_id),
     'is_mosaic_member', map_bounds.is_mosaic_member(m.source_id),
     'n_members', mn.n_members,
-    'state', mcs.state,
     'area_km', mma.area_km::float
   /* Highest priority first -- the member that wins where they overlap. A null
      priority is a mosaic, where the ordering carries no meaning. */
@@ -119,13 +122,11 @@ LEFT JOIN LATERAL (
   JOIN maps.sources m ON m.source_id = cm.member_id
   CROSS JOIN LATERAL (
     SELECT
-      map_bounds.holds_polygons(m.source_id) AS holds_polygons,
+      map_bounds.is_materialized(m.source_id) AS is_materialized,
       (SELECT count(*) FROM map_bounds.compilation_member c2
         WHERE c2.compilation_id = m.source_id) AS n_members
   ) mn
   LEFT JOIN map_bounds.map_layer mlr ON mlr.source_id = m.source_id
-  LEFT JOIN map_bounds.compilation mc ON mc.source_id = m.source_id
-  LEFT JOIN map_bounds.compilation_sync mcs ON mcs.source_id = m.source_id
   LEFT JOIN map_bounds.map_area mma ON mma.source_id = m.source_id
   WHERE cm.compilation_id = s.source_id
     AND (
@@ -134,8 +135,9 @@ LEFT JOIN LATERAL (
          does; an ordinary map, when its own footprint does. */
       OR CASE WHEN mn.n_members > 0 THEN EXISTS (
            SELECT 1
-           FROM map_bounds.compilation_leaves(m.source_id, true) l
-           WHERE l.source_id IN (SELECT source_id FROM covering)
+           FROM map_bounds.members_of(m.source_id, true) l
+           WHERE NOT map_bounds.is_compilation(l.source_id)
+             AND l.source_id IN (SELECT source_id FROM covering)
          )
          ELSE m.source_id IN (SELECT source_id FROM covering)
       END

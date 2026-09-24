@@ -12,7 +12,7 @@ SELECT
   cs.lines_oriented AS oriented,
   tile_layers.tile_geom(l.geom, :envelope) AS geom
 FROM map_bounds.lines_of(
-  map_bounds.compilation_id(:slug),
+  map_bounds.source_id(:slug),
   ST_Transform(:envelope, 4326)
 ) l
 JOIN maps.sources cs ON cs.source_id = l.source_id

@@ -14,6 +14,7 @@ from . import (  # noqa: F401
     carto_v1_compilation,
     compilation_assembly_mode,
     composite_topo_layer,
+    map_priority_columns,
     relation_trigger_repair,
     source_id_rename,
 )
@@ -24,4 +25,5 @@ __all__ = [
     "relation_trigger_repair",
     "composite_topo_layer",
     "compilation_assembly_mode",
+    "map_priority_columns",
 ]

@@ -98,12 +98,19 @@ CREATE TABLE maps.sources (
   description character varying,
   superseded_by integer REFERENCES maps.sources(source_id),
   geolayer text REFERENCES maps.geolayer(id),
+  is_served boolean NOT NULL DEFAULT true,
   CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
 );
 
 CREATE INDEX sources_superseded_by_idx ON maps.sources USING btree (superseded_by);
 
 COMMENT ON COLUMN maps.sources.slug IS 'Unique identifier for each Macrostrat source';
+
+COMMENT ON COLUMN maps.sources.is_served IS
+  'Whether this source may be requested by name (tiles, API). A source that is '
+  'not served still resolves inside every compilation it belongs to; a '
+  'compilation that is not served exists to build others -- no faces are solved '
+  'for it and it is skipped when naming the member a face belongs to. Authored.';
 
 COMMENT ON COLUMN maps.sources.geolayer IS
   'Which slice of the geologic record this map depicts. NULL means unspecified '

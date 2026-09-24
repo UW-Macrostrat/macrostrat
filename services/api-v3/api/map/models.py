@@ -43,13 +43,12 @@ class MapUnit(BaseModel):
     #: drawn" answerable across levels.
     priority: Optional[str] = None
     priority_path: list[int] = []
-    #: The layer member this map is presented as. A face in `carto-large`
-    #: belongs to member `medium` from the layer's point of view even when the
-    #: map that owns it is two levels further down, and that is the level a UI
-    #: should name.
-    unit_id: Optional[int] = None
-    unit_slug: Optional[str] = None
-    unit_name: Optional[str] = None
+    #: The member of the layer this map belongs to, skipping intermediate scale
+    #: layers -- from `carto-large` British Columbia is `bc-surface` -- and the
+    #: level a UI should name. `unit_ids` below are Macrostrat units.
+    member_id: Optional[int] = None
+    member_slug: Optional[str] = None
+    member_name: Optional[str] = None
 
     legend_id: Optional[int] = None
     map_unit_name: Optional[str] = None

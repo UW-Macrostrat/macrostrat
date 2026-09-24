@@ -41,15 +41,16 @@ member_counts AS (
   FROM map_bounds.compilation_member
   GROUP BY compilation_id
 ),
-/* Over `member_counts` (tens of rows), not over every node: `compilation_leaves`
+/* Over `member_counts` (tens of rows), not over every node: `members_of`
    is a recursive descent, and hanging it off each of the ~470 nodes measured at
    465 ms against 88 ms for the graph as a whole. */
 source_counts AS (
   SELECT mc.source_id, l.n_sources
   FROM member_counts mc
   CROSS JOIN LATERAL (
-    SELECT count(DISTINCT source_id) AS n_sources
-    FROM map_bounds.compilation_leaves(mc.source_id, true)
+    SELECT count(*) AS n_sources
+    FROM map_bounds.members_of(mc.source_id, true) m
+    WHERE NOT map_bounds.is_compilation(m.source_id)
   ) l
 ),
 linked AS (
@@ -78,8 +79,9 @@ included AS (
   WHERE (SELECT geometry FROM loc) IS NULL
     OR CASE WHEN coalesce(mc.n_members, 0) > 0 THEN EXISTS (
          SELECT 1
-         FROM map_bounds.compilation_leaves(p.source_id, true) l
-         WHERE l.source_id IN (SELECT source_id FROM covering)
+         FROM map_bounds.members_of(p.source_id, true) l
+         WHERE NOT map_bounds.is_compilation(l.source_id)
+           AND l.source_id IN (SELECT source_id FROM covering)
        )
        ELSE p.source_id IN (SELECT source_id FROM covering)
     END
@@ -92,14 +94,17 @@ nodes AS (
        a bridge minted by the schema and has none. */
     coalesce(s.name, ml.name) AS name,
     s.scale,
-    ml.id IS NOT NULL AS is_served_layer,
-    ml.id AS map_layer,
+    ml.id IS NOT NULL AS has_faces,
+    map_bounds.is_served(s.source_id) AS is_served,
+    map_bounds.is_global(s.source_id) AS is_global,
+    ml.id AS map_layer_id,
     ml.min_zoom,
     ml.max_zoom,
     coalesce(mc.n_members, 0) > 0 AS is_compilation,
     coalesce(mc.n_members, 0)::int AS n_members,
-    map_bounds.holds_polygons(s.source_id) AS holds_polygons,
     map_bounds.is_materialized(s.source_id) AS is_materialized,
+    map_bounds.is_derived(s.source_id) AS is_derived,
+    map_bounds.is_stale(s.source_id) AS is_stale,
     map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
     /* In no compilation at all. Not a kind either — just a map nothing has
        wrapped yet, which is worth seeing rather than silently omitting. */
@@ -111,11 +116,10 @@ nodes AS (
     s.superseded_by,
     coalesce(lv.n_sources, 0)::int AS n_sources,
     cs.assembly_mode,
-    cs.state,
     ma.area_km::float AS area_km,
-    /* The layer whose faces represent this map. A served layer *is* one, so it
-       has none of its own. */
-    ma.map_layer AS placed_in_layer
+    /* The registered compilation whose faces represent this map. One that has
+       faces of its own has none here. */
+    ma.map_layer AS placed_in_layer_id
   FROM included i
   JOIN maps.sources s ON s.source_id = i.source_id
   LEFT JOIN member_counts mc ON mc.source_id = s.source_id
@@ -133,8 +137,7 @@ SELECT
       'compilation_id', cm.compilation_id,
       'member_id', cm.member_id,
       /* Higher wins where members overlap; null in a mosaic. */
-      'priority', cm.priority,
-      'role', cm.role
+      'priority', cm.priority
     ) ORDER BY cm.compilation_id, cm.priority DESC NULLS LAST, cm.member_id)
     FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id IN (SELECT source_id FROM included)

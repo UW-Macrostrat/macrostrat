@@ -8,7 +8,7 @@ SELECT
   l.*, --  map legend info
   tile_layers.tile_geom(p.geom, :envelope) AS geom
 FROM map_bounds.polygons_of(
-  map_bounds.compilation_id(:slug),
+  map_bounds.source_id(:slug),
   ST_Transform(:envelope, 4326)
 ) p
 LEFT JOIN maps.map_legend ml

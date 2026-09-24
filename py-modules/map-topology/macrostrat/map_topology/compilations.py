@@ -42,8 +42,7 @@ def _is_ingested(db, source_id: int) -> bool:
     """Whether the compilation holds polygons that are originals, not a cache."""
     return bool(
         db.run_query(
-            "SELECT map_bounds.holds_polygons(:id)"
-            " AND NOT map_bounds.is_materialized(:id)",
+            "SELECT map_bounds.is_materialized(:id) AND NOT map_bounds.is_derived(:id)",
             dict(id=source_id),
         ).scalar()
     )
@@ -91,7 +90,7 @@ SELECT
   sup.slug AS superseded_by,
   coalesce(s.geolayer, 'surface') AS member_geolayer,
   coalesce(c.geolayer, 'surface') AS compilation_geolayer,
-  map_bounds.is_served_layer(c.source_id) AS compilation_is_layer,
+  map_bounds.has_faces(c.source_id) AS compilation_is_layer,
   EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = s.source_id
@@ -111,12 +110,13 @@ def _refuse_if_materialized(db, source_id: int, slug: str):
     So a compilation already holding derived polygons must be dematerialized
     first, or a second copy of every polygon lands under its `source_id`.
     """
-    state = db.run_query(
-        "SELECT state FROM map_bounds.compilation_sync WHERE source_id = :id",
+    derived = db.run_query(
+        "SELECT map_bounds.is_derived(:id), map_bounds.is_stale(:id)",
         dict(id=source_id),
-    ).scalar()
-    if state not in ("current", "stale"):
+    ).first()
+    if not derived[0]:
         return
+    state = "stale" if derived[1] else "current"
     print(
         f"[red]{slug}[/] already holds derived polygons ({state})."
         f"\n[dim]Run [cyan]macrostrat compilations dematerialize {slug}[/] first,"
@@ -208,12 +208,14 @@ def list_compilations():
     # the bottom -- so `carto-large` reads 2 and 284.
     rows = db.run_query(
         """
-        SELECT cs.source_id, cs.slug, cs.n_members, cs.assembly_mode, cs.state,
+        SELECT cs.source_id, cs.slug, cs.n_members, cs.assembly_mode,
+            cs.is_materialized, cs.is_derived, cs.is_stale,
             l.n_sources
         FROM map_bounds.compilation_sync cs
         CROSS JOIN LATERAL (
-            SELECT count(DISTINCT source_id) AS n_sources
-            FROM map_bounds.compilation_leaves(cs.source_id, true)
+            SELECT count(*) AS n_sources
+            FROM map_bounds.members_of(cs.source_id, true) m
+            WHERE NOT map_bounds.is_compilation(m.source_id)
         ) l
         ORDER BY cs.slug
         """
@@ -222,16 +224,19 @@ def list_compilations():
         print("[dim]No compilations[/]")
         return
     table = Table()
-    for col in ("Compilation", "Members", "Sources", "Mode", "State"):
+    for col in ("Compilation", "Members", "Sources", "Mode", "Content"):
         table.add_column(col)
-    colors = {
-        "virtual": "dim",
-        "current": "green",
-        "stale": "yellow",
-        # Not a sync state at all -- there is nothing to keep in step.
-        "ingested": "cyan",
-    }
     for r in rows:
+        # Three facts, no names for their combinations: holds polygons; those
+        # polygons are a cache of the members'; the cache is out of date.
+        if not r.is_materialized:
+            content = "[dim]virtual[/]"
+        elif not r.is_derived:
+            content = "[cyan]materialized[/]"
+        elif r.is_stale:
+            content = "[yellow]materialized, derived, stale[/]"
+        else:
+            content = "[green]materialized, derived[/]"
         if r.n_sources == r.n_members:
             # Nothing below the members is itself a compilation.
             n_sources = f"[dim]{r.n_sources}[/]"
@@ -242,7 +247,7 @@ def list_compilations():
             str(r.n_members),
             n_sources,
             r.assembly_mode,
-            f"[{colors.get(r.state, 'white')}]{r.state}[/]",
+            content,
         )
     print(table)
 
@@ -359,8 +364,8 @@ def show(compilation: Annotated[str, Argument(help="Slug or source id")]):
     rows = db.run_query(
         """
         SELECT
-          mc.member_id, s.slug, mc.priority, mc.role,
-          map_bounds.holds_polygons(mc.member_id) AS holds_polygons
+          mc.member_id, s.slug, mc.priority,
+          map_bounds.is_materialized(mc.member_id) AS is_materialized
         FROM map_bounds.compilation_member mc
         JOIN maps.sources s ON s.source_id = mc.member_id
         WHERE mc.compilation_id = :source_id
@@ -376,9 +381,8 @@ def show(compilation: Annotated[str, Argument(help="Slug or source id")]):
         priority = "[dim]--[/]" if r.priority is None else str(r.priority)
         # A member without polygons is descended through when identity is
         # resolved; one with polygons is where resolution stops.
-        leaf = "" if r.holds_polygons else " [dim](virtual)[/]"
-        role = f" [cyan]{r.role}[/]" if r.role else ""
-        print(f"  {priority:>4}  {r.slug} [dim]#{r.member_id}[/]{role}{leaf}")
+        virtual = "" if r.is_materialized else " [dim](virtual)[/]"
+        print(f"  {priority:>4}  {r.slug} [dim]#{r.member_id}[/]{virtual}")
 
 
 @cli.command("add")
@@ -389,7 +393,6 @@ def add(
         Optional[int],
         Option(help="Priority of the first member; later members ascend from it"),
     ] = None,
-    role: Annotated[Optional[str], Option(help="Membership role")] = None,
     reparent: Annotated[
         bool,
         Option(
@@ -410,16 +413,15 @@ def add(
         db.run_query(
             """
             INSERT INTO map_bounds.compilation_member
-              (compilation_id, member_id, priority, role)
-            VALUES (:compilation_id, :member_id, :priority, :role)
+              (compilation_id, member_id, priority)
+            VALUES (:compilation_id, :member_id, :priority)
             ON CONFLICT (compilation_id, member_id) DO UPDATE
-              SET priority = EXCLUDED.priority, role = EXCLUDED.role
+              SET priority = coalesce(EXCLUDED.priority, compilation_member.priority)
             """,
             dict(
                 compilation_id=source_id,
                 member_id=member_id,
                 priority=None if priority is None else priority + offset,
-                role=role,
             ),
         )
         print(f"[green]+[/] {slug} <- {member_slug}")
@@ -613,7 +615,7 @@ def sync():
     ).first()
     print(
         f"[green]{counts.resolved}[/] resolutions across "
-        f"[green]{counts.layers}[/] served layers"
+        f"[green]{counts.layers}[/] registered compilations"
     )
 
 
@@ -636,7 +638,7 @@ def lint():
                sup.slug AS superseded_by,
                coalesce(s.geolayer, 'surface') AS member_geolayer,
                coalesce(c.geolayer, 'surface') AS compilation_geolayer,
-               map_bounds.is_served_layer(c.source_id) AS compilation_is_layer,
+               map_bounds.has_faces(c.source_id) AS compilation_is_layer,
                EXISTS (
                  SELECT 1 FROM map_bounds.map_area a
                  WHERE a.source_id = s.source_id
@@ -688,14 +690,14 @@ def lint():
         """
         SELECT layer.slug AS layer, member.slug AS member, parent.slug AS through
         FROM map_bounds.compilation_member direct
-        JOIN map_bounds.compilation_member via
-          ON via.compilation_id = direct.compilation_id
+        JOIN map_bounds.compilation_member through
+          ON through.compilation_id = direct.compilation_id
         JOIN map_bounds.compilation_member nested
-          ON nested.compilation_id = via.member_id
+          ON nested.compilation_id = through.member_id
          AND nested.member_id = direct.member_id
         JOIN maps.sources layer ON layer.source_id = direct.compilation_id
         JOIN maps.sources member ON member.source_id = direct.member_id
-        JOIN maps.sources parent ON parent.source_id = via.member_id
+        JOIN maps.sources parent ON parent.source_id = through.member_id
         ORDER BY 1, 2
         """
     ).all()
@@ -717,9 +719,9 @@ def lint():
         SELECT c.slug, count(DISTINCT cm.member_id) AS members
         FROM maps.sources c
         JOIN map_bounds.compilation_member cm ON cm.compilation_id = c.source_id
-        WHERE NOT map_bounds.is_served_layer(c.source_id)
+        WHERE NOT map_bounds.has_faces(c.source_id)
           AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.map_priority mp WHERE mp.via = c.source_id
+            SELECT 1 FROM map_bounds.map_priority mp WHERE mp.member_id = c.source_id
           )
         GROUP BY 1 ORDER BY 1
         """
@@ -814,7 +816,7 @@ def freeze_placements(
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
             WHERE cm.member_id = s.source_id
-              AND NOT map_bounds.is_served_layer(cm.compilation_id)
+              AND NOT map_bounds.has_faces(cm.compilation_id)
               AND NOT map_bounds.is_mosaic(cm.compilation_id)
           )
           AND NOT EXISTS (

@@ -44,7 +44,7 @@ WHERE s.scale IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.member_id = s.source_id
-      AND NOT map_bounds.is_served_layer(cm.compilation_id)
+      AND NOT map_bounds.has_faces(cm.compilation_id)
       AND NOT map_bounds.is_mosaic(cm.compilation_id)
   )
 ON CONFLICT (compilation_id, member_id) DO NOTHING;

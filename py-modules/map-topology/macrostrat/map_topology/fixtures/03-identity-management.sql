@@ -12,10 +12,10 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_area(
   by copying its members' faces. Candidates are filtered by `has_content`, so a
   virtual compilation is never an answer: resolution descends to whichever member
   holds (or, for a mosaic member, stands for) the polygons. */
-SELECT mc.source_id
+SELECT mc.map_id
 FROM map_bounds.map_area ma
 JOIN map_bounds.map_priority mc
-  ON mc.source_id = ma.source_id
+  ON mc.map_id = ma.source_id
  AND mc.map_layer = _map_layer
 -- The center of the area must be within each candidate map
 WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
@@ -24,18 +24,18 @@ WHERE ST_Intersects(ST_PointOnSurface(geom), ma.geometry)
   -- geometry, and this keeps the compilation itself out of the running. A
   -- mosaic member placed in the layer *is* an answer: it holds no polygons but
   -- stands for its parent's inside its footprint.
-  AND map_bounds.has_content(mc.source_id)
+  AND map_bounds.has_content(mc.map_id)
 ORDER BY
   mc.priority_path DESC,
   ma.area_km -- smaller areas first
 LIMIT 1;
-$$ LANGUAGE sql;
+$$ LANGUAGE sql STABLE;
 
 
 /** TODO: this has to be recreated here because the types are wrong **/
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
-SELECT mc.source_id
+SELECT mc.map_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
   -- A topogeometry id is only unique *within* a layer, so both halves are
@@ -44,11 +44,11 @@ JOIN map_bounds.map_area f
   ON (f.topo).id = r.topogeo_id
  AND (f.topo).layer_id = r.layer_id
 JOIN map_bounds.map_priority mc
-  ON mc.source_id = f.source_id
+  ON mc.map_id = f.source_id
  AND mc.map_layer = $2
 WHERE element_id = $1
   AND element_type = 3
-  AND map_bounds.has_content(mc.source_id)
+  AND map_bounds.has_content(mc.map_id)
 ORDER BY
   mc.priority_path DESC,
   f.area_km -- smaller areas first
@@ -69,16 +69,16 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.resolve_layer_identity(_map_layer
   RETURNS TABLE (face_id integer, identity text) AS $$
 SELECT DISTINCT ON (r.element_id)
   r.element_id,
-  mc.source_id::text
+  mc.map_id::text
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
   ON (f.topo).id = r.topogeo_id
  AND (f.topo).layer_id = r.layer_id
 JOIN map_bounds.map_priority mc
-  ON mc.source_id = f.source_id
+  ON mc.map_id = f.source_id
  AND mc.map_layer = _map_layer
 WHERE r.element_type = 3
-  AND map_bounds.has_content(mc.source_id)
+  AND map_bounds.has_content(mc.map_id)
 ORDER BY r.element_id, mc.priority_path DESC, f.area_km;
 $$ LANGUAGE SQL STABLE;
 

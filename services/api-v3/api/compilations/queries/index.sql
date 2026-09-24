@@ -16,7 +16,7 @@
    shared nodes.
 
    Given `:lng`/`:lat`, only the compilations covering that point are returned.
-   The set stays closed upward -- a compilation's leaves are a superset of any
+   The set stays closed upward -- a compilation's maps are a superset of any
    member's -- so roots remain roots and the tree still assembles.
 */
 WITH loc AS (
@@ -46,20 +46,22 @@ SELECT
      bridge minted by the schema and has none. */
   coalesce(s.name, ml.name) AS name,
   s.scale,
-  ml.id IS NOT NULL AS is_served_layer,
-  ml.id AS map_layer,
+  ml.id IS NOT NULL AS has_faces,
+  map_bounds.is_served(s.source_id) AS is_served,
+  map_bounds.is_global(s.source_id) AS is_global,
+  ml.id AS map_layer_id,
   ml.min_zoom,
   ml.max_zoom,
   true AS is_compilation,
-  cs.holds_polygons,
   cs.is_materialized,
+  cs.is_derived,
+  cs.is_stale,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
   cs.n_members,
   /* What the compilation actually resolves to, descending through member
      compilations to the maps at the bottom -- so `carto-large` reads 2 and 384. */
   lv.n_sources,
   cs.assembly_mode,
-  cs.state,
   ma.area_km::float AS area_km,
   coalesce(par.parent_ids, '{}'::integer[]) AS parent_ids
 FROM nodes n
@@ -68,8 +70,9 @@ JOIN map_bounds.compilation_sync cs USING (source_id)
 LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
 CROSS JOIN LATERAL (
-  SELECT count(DISTINCT source_id) AS n_sources
-  FROM map_bounds.compilation_leaves(s.source_id, true)
+  SELECT count(*) AS n_sources
+  FROM map_bounds.members_of(s.source_id, true) m
+  WHERE NOT map_bounds.is_compilation(m.source_id)
 ) lv
 LEFT JOIN LATERAL (
   SELECT array_agg(cm.compilation_id ORDER BY cm.compilation_id) AS parent_ids
@@ -82,7 +85,8 @@ WHERE (SELECT geometry FROM loc) IS NULL
      over the whole bounding box. */
   OR EXISTS (
     SELECT 1
-    FROM map_bounds.compilation_leaves(s.source_id, true) l
-    WHERE l.source_id IN (SELECT source_id FROM covering)
+    FROM map_bounds.members_of(s.source_id, true) l
+    WHERE NOT map_bounds.is_compilation(l.source_id)
+      AND l.source_id IN (SELECT source_id FROM covering)
   )
 ORDER BY s.slug;

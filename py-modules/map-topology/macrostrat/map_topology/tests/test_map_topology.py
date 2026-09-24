@@ -389,7 +389,7 @@ class TestMapTopology:
         rows = dict(
             db.run_query(
                 """
-                SELECT source_id, priority_path
+                SELECT map_id, priority_path
                 FROM map_bounds.map_priority
                 WHERE map_layer = :layer
                 """,
@@ -438,7 +438,7 @@ def n_map_areas(db):
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds.map_area a
-        WHERE NOT map_bounds.is_served_layer(a.source_id)
+        WHERE NOT map_bounds.has_faces(a.source_id)
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
             WHERE cm.compilation_id = a.source_id

@@ -22,8 +22,8 @@
   Each derived polygon records where it came from twice over: `orig_id` is the
   member polygon's `map_id` (the member's polygons are the staging table a cache
   is built from), and its legend link is the member's legend entry. That is what
-  makes the cache recognisable (`is_materialized`) with nothing stored about it,
-  and what `dematerialize` checks polygon by polygon before deleting.
+  makes the cache recognisable (`is_derived`) with nothing stored about it, and
+  what `dematerialize` checks polygon by polygon before deleting.
 
   Reversible by construction: members keep their own polygons, and
   `dematerialize` removes only what this wrote.
