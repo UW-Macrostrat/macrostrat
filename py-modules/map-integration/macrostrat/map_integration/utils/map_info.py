@@ -1,8 +1,9 @@
+from fnmatch import fnmatch
 from typing import Optional
 
 from psycopg2.sql import Identifier
 from pydantic import BaseModel
-from typer import Argument
+from typer import Argument, Option
 from typing_extensions import Annotated
 
 from macrostrat.core import app
@@ -63,7 +64,12 @@ def _selector_to_like(selector: str) -> str:
     )
 
 
-def resolve_maps(db: Database, selectors: list[str]) -> list[_MapInfo]:
+def resolve_maps(
+    db: Database,
+    selectors: list[str],
+    exclude: Optional[list[str]] = None,
+    state: Optional[str] = None,
+) -> list[_MapInfo]:
     """Expand map selectors -- source ids, slugs, or slug globs -- to map info.
 
     `ngs-*` names a compilation's 114 members without listing them, which is the
@@ -73,6 +79,14 @@ def resolve_maps(db: Database, selectors: list[str]) -> list[_MapInfo]:
     Order follows `source_id`, and a map named twice appears once. A selector
     matching nothing raises rather than being skipped quietly -- a typo'd glob
     would otherwise look like a successful run over no maps.
+
+    `exclude` drops slugs matching any of the given globs (e.g. `arizona_adgm_*`)
+    from the resolved selection, applied after the selectors above so it can
+    carve members back out of a broader pattern or a whole compilation.
+
+    `state` keeps only maps whose `maps_metadata.ingest_process.state` equals
+    the given value (e.g. `ready`). A map with no `ingest_process` row has no
+    state to match, so it drops out along with the rest.
     """
     found: dict[int, _MapInfo] = {}
     for selector in selectors:
@@ -98,7 +112,26 @@ def resolve_maps(db: Database, selectors: list[str]) -> list[_MapInfo]:
             info = get_map_info(db, selector)
             found[info.id] = info
 
-    return [found[k] for k in sorted(found)]
+    result = [found[k] for k in sorted(found)]
+
+    if exclude:
+        result = [m for m in result if not any(fnmatch(m.slug, pat) for pat in exclude)]
+        if not result:
+            raise MacrostratError("--exclude left no maps in the selection")
+
+    if state:
+        matching_ids = set(
+            db.run_query(
+                "SELECT source_id FROM maps_metadata.ingest_process"
+                " WHERE source_id = ANY(:ids) AND state = :state",
+                dict(ids=[m.id for m in result], state=state),
+            ).scalars()
+        )
+        result = [m for m in result if m.id in matching_ids]
+        if not result:
+            raise MacrostratError(f"--state {state!r} left no maps in the selection")
+
+    return result
 
 
 MapSelector = Annotated[
@@ -107,6 +140,23 @@ MapSelector = Annotated[
         ...,
         autocompletion=complete_map_slugs,
         help="Map slugs, source ids, or slug globs (e.g. 'ngs-*')",
+    ),
+]
+
+MapExclude = Annotated[
+    Optional[list[str]],
+    Option(
+        "--exclude",
+        help="Slug globs to leave out of the selection (e.g. 'arizona_adgm_*')",
+    ),
+]
+
+MapState = Annotated[
+    Optional[str],
+    Option(
+        "--state",
+        help="Only include maps whose maps_metadata.ingest_process.state"
+        " equals this (e.g. 'ready')",
     ),
 ]
 
