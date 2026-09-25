@@ -313,15 +313,23 @@ def process_map(
     primitives may have changed.
     """
     db = mgr.database
+    # The bounds hash is computed once, in a materialized CTE. Written inline in
+    # the correlated subquery, Postgres re-hashes the geometry for every piece
+    # row it filters: 11,000 pieces of a 22 MB geometry took `global2` past 20
+    # minutes before it was hoisted.
     state = db.run_query(
         """
+        WITH a AS MATERIALIZED (
+          SELECT source_id, md5(ST_AsBinary(geometry))::uuid AS bounds_hash
+          FROM map_bounds.map_area
+          WHERE source_id = :map_id
+        )
         SELECT sync.is_current, sync.pending_pieces, sync.failed_pieces,
                (SELECT count(*) FROM map_bounds.map_topo t
                  WHERE t.source_id = a.source_id
-                   AND t.bounds_hash = md5(ST_AsBinary(a.geometry))::uuid) AS matching_pieces
-        FROM map_bounds.map_area a
+                   AND t.bounds_hash = a.bounds_hash) AS matching_pieces
+        FROM a
         JOIN map_bounds.map_area_sync sync ON sync.source_id = a.source_id
-        WHERE a.source_id = :map_id
         """,
         dict(map_id=map.map_id),
     ).one()
