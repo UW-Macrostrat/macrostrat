@@ -10,7 +10,14 @@ from .operations import COMPUTED_OPENINGS, OPENING_OPERATIONS, BoundaryOp, load
 #: SQL yielding the running geometry inside the fold.
 _SEED = "SELECT geometry FROM map_bounds.boundary_op WHERE id = :opening_id"
 
-_AREA_KM = "ST_Area(ST_Segmentize({geom}, 90)::geography) / 1e6"
+#: Geodesic area. A ring that wraps the globe is ambiguous on the sphere and the
+#: geography type takes the smaller side, so bounds that cover the world -- the
+#: `world` opening -- would come out as nothing. That case is the surface of the
+#: WGS84 spheroid, stated.
+_AREA_KM = """CASE
+  WHEN ST_Covers({geom}, ST_MakeEnvelope(-180, -90, 180, 90, 4326)) THEN 510065621.7
+  ELSE ST_Area(ST_Segmentize({geom}, 90)::geography) / 1e6
+END"""
 
 
 @dataclass
@@ -100,15 +107,36 @@ _OPENING_GEOMETRY = {
         FROM maps.polygons
         WHERE source_id = :source_id
     """,
-    # The bounds of every noded source below the compilation. Unioning the noded
-    # sources rather than the direct members makes the result independent of the
-    # order nested compilations are built in.
+    # The bounds of every noded source below the compilation, read from the
+    # topology: the faces their topogeometries hold form a coverage (the noding
+    # already resolved every overlap), so they merge with `ST_CoverageUnion`
+    # rather than an overlay. Half the time of `ST_Union` over the sources'
+    # geometries for `medium` (20 s against 44 s), and exact: the bounds are the
+    # region the compilation's faces will tile. Taking the noded sources rather
+    # than the direct members makes the result independent of the order nested
+    # compilations are built in; a mosaic is noded whole, so it counts and its
+    # members do not. Nothing noded yet gives empty bounds, rebuilt when the
+    # members' stamp changes.
     "compile": """
-        SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(a.geometry)), 3))
-        FROM map_bounds.members_of(:source_id, true) m
-        JOIN map_bounds.map_area a ON a.source_id = m.source_id
-        WHERE NOT map_bounds.is_compilation(m.source_id)
+        SELECT coalesce(
+          ST_Multi(ST_SetSRID(ST_CoverageUnion(
+            topology.ST_GetFaceGeometry('map_bounds_topology', f.face_id)
+          ), 4326)),
+          ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)
+        )
+        FROM (
+          SELECT DISTINCT r.element_id AS face_id
+          FROM map_bounds.members_of(:source_id, true) m
+          JOIN map_bounds.map_area a ON a.source_id = m.source_id
+          JOIN map_bounds_topology.relation r
+            ON r.layer_id = (a.topo).layer_id
+           AND r.topogeo_id = (a.topo).id
+           AND r.element_type = 3
+          WHERE a.topo IS NOT NULL
+        ) f
     """,
+    # The whole world, by assertion.
+    "world": "SELECT ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))",
 }
 
 
@@ -151,7 +179,7 @@ def set_opening(db: Database, source_id: int, operation: str) -> int:
 
 
 def recompute_opening(db: Database, source_id: int) -> None:
-    """Rebuild the cached geometry of a computed opening (`union` or `compile`).
+    """Rebuild the cached geometry of a computed opening (`union`, `compile`, `world`).
 
     A map with no opening row is opened with `union`, as it always was.
     """
@@ -201,6 +229,9 @@ def _fold(
         seed = _SEED
         params["opening_id"] = ops[0].id
         start = 1
+    elif ops and ops[0].position == 0 and ops[0].operation in OPENING_OPERATIONS:
+        # The seed stands in for the opening row.
+        start = 1
     expr = f"({seed})"
     for i, row in enumerate(ops[start : upto if upto is None else upto], start=1):
         key = f"operand_{i}"
@@ -242,14 +273,17 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
     seed = None
     if (
         ops[0].position == 0
-        and ops[0].operation in OPENING_OPERATIONS
+        and ops[0].operation in COMPUTED_OPENINGS
         and not ops[0].has_geometry
-        and ops[0].op.takes_geometry
     ):
         # A computed opening whose cache was never filled (`bounds open`, or a
-        # compilation seeded with `compile`): compute it now.
-        recompute_opening(db, source_id)
-        ops = load_ops(db, source_id)
+        # compilation seeded with `compile` or `world`): compute it now. A dry
+        # run must not write, so it folds over the opening's SQL instead.
+        if dry_run:
+            seed = _OPENING_GEOMETRY[ops[0].operation]
+        else:
+            recompute_opening(db, source_id)
+            ops = load_ops(db, source_id)
     if ops[0].position != 0:
         # Operations authored outside the CLI -- QGIS edits `boundary_op`
         # directly -- have no opening row. Fill it from the current boundary

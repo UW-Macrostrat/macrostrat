@@ -25,7 +25,7 @@ from .units import Area, Distance
 OPENING_OPERATIONS = ("union", "adopt", "init", "compile", "world")
 
 #: Opening operations whose cached geometry is *computed* and can be recomputed.
-COMPUTED_OPENINGS = ("union", "compile")
+COMPUTED_OPENINGS = ("union", "compile", "world")
 
 
 class BoundaryOp(BaseModel):
@@ -76,7 +76,7 @@ class Union(BoundaryOp):
 
 
 class Compile(BoundaryOp):
-    """Union the bounds of every noded source below a compilation."""
+    """Merge the faces of every noded source below a compilation, from the topology."""
 
     op_id: ClassVar[str] = "compile"
     takes_geometry: ClassVar[bool] = True  # caches its result
@@ -95,9 +95,13 @@ class World(BoundaryOp):
     """Open the boundary as the whole world, by assertion."""
 
     op_id: ClassVar[str] = "world"
+    takes_geometry: ClassVar[bool] = True  # caches the envelope, like the others
 
     def sql(self, inner: str, params: dict[str, Any], operand: str) -> str:
-        return "ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))"
+        # `inner` is the cached envelope for this row. Every opening is read from
+        # its cache by the fold, so the envelope is computed into the cache
+        # (`_OPENING_GEOMETRY` in build.py) rather than returned here.
+        return inner
 
 
 class Adopt(BoundaryOp):

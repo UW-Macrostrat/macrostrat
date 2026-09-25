@@ -343,6 +343,27 @@ class TestMapTopology:
             == 0
         )
 
+    def test_world_opening(self, ctx):
+        """`bounds open <map> world` then `bounds build` gives the map the whole
+        world. The cache is filled on build, so the fold never seeds from NULL."""
+        from macrostrat.map_topology.bounds import build as build_mod
+
+        db = ctx.database
+        build_mod.set_opening(db, 1001, "world")
+        db.session.commit()
+
+        dry = build_mod.build(db, 1001, dry_run=True)
+        assert dry.error is None
+        assert dry.area_km == approx(510_000_000, rel=0.01)
+
+        res = build_mod.build(db, 1001)
+        assert res.error is None
+        assert res.written
+        xmin, xmax = db.run_query(
+            "SELECT ST_XMin(geometry), ST_XMax(geometry) FROM map_bounds.map_area WHERE source_id = 1001"
+        ).first()
+        assert (xmin, xmax) == (-180, 180)
+
     def test_virtual_compilation(self, ctx):
         """A compilation with no polygons of its own is descended through.
 

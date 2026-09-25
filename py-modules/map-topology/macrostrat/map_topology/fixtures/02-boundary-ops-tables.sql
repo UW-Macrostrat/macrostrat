@@ -13,8 +13,8 @@
     union    computed by us from the map''s own features
     adopt    lifted from the source dataset and promoted without recomputation
     init     supplied by hand
-    compile  the union of a compilation''s members'' bounds (every noded source
-             below it), recomputed when they change
+    compile  the faces of every noded source below a compilation, merged from
+             the topology; recomputed when those sources or their noding change
     world    the whole world, by assertion: a global compilation has no bounds
              worth knowing, and a client does not zoom to it
 
@@ -29,7 +29,7 @@ VALUES
   ('union',            'Open the boundary with a union computed from the map''s own features. Parameters carry a working srid and a union approach. This is the implicit default when a map has no operations at all.'),
   ('adopt',            'Open the boundary with a geometry shipped by the source dataset, promoted as-is. Record which layer or file in parameters / note.'),
   ('init',             'Open the boundary with a hand-supplied geometry.'),
-  ('compile',          'Open a compilation''s boundary with the union of its members'' bounds -- every noded source below it. Recomputed by `topo update` when the members change; cached in geometry.'),
+  ('compile',          'Open a compilation''s boundary with the faces of every noded source below it, merged from the topology. Recomputed by `topo update` when those sources or their noding change; cached in geometry.'),
   ('world',            'Open the boundary as the whole world. For global compilations, whose extent is not worth computing and which a client never zooms to.'),
   ('add',              'Union an operand polygon into the boundary'),
   ('subtract',         'Difference an operand polygon out of the boundary'),

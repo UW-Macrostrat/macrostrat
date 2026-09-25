@@ -519,33 +519,12 @@ ON CONFLICT (compilation_id, member_id) DO NOTHING;
 DROP VIEW IF EXISTS map_bounds.compilation_assembly;
 DROP FUNCTION IF EXISTS map_bounds.compilation_face_elements(integer);
 
-/** Every registered compilation gets a `map_area` row and an opening operation at
-  creation, so it has bounds before any sync: the global ones (`tiny`, `small`,
-  `carto-*`) open with `world`, the scale layers with `compile`. Compilations made
-  later get `compile` from `topo update`. */
-INSERT INTO map_bounds.map_area (id, geometry, map_layer)
-SELECT ml.source_id,
-  CASE WHEN ml.slug IN ('tiny', 'small', 'carto-small', 'carto-medium', 'carto-large')
-       THEN ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))
-       ELSE ST_GeomFromText('MULTIPOLYGON EMPTY', 4326) END,
-  NULL
-FROM map_bounds.map_layer ml
-WHERE ml.source_id IS NOT NULL
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO map_bounds.boundary_op (source_id, position, operation, note)
-SELECT ml.source_id, 0,
-  CASE WHEN ml.slug IN ('tiny', 'small', 'carto-small', 'carto-medium', 'carto-large')
-       THEN 'world' ELSE 'compile' END,
-  'Seeded with the compilation schema'
-FROM map_bounds.map_layer ml
-WHERE ml.source_id IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1 FROM map_bounds.boundary_op o
-    WHERE o.source_id = ml.source_id AND o.position = 0
-  );
--- No ON CONFLICT: `boundary_op_unique_position` is deferrable, which ON CONFLICT
--- cannot use as an arbiter; the NOT EXISTS above is the idempotence.
+/* Every registered compilation gets a `map_area` row and an opening operation --
+   the global ones (`tiny`, `small`, `carto-*`) open with `world`, the scale
+   layers with `compile`. That is data, which the schema differ does not carry,
+   so it lives in `bounds/layers.py`: `create_topo_fixtures` seeds a fresh
+   database with it and the `compilation-layer-bounds` migration an existing one.
+   Compilations made later get `compile` from `topo update`. */
 
 /* ---------------------------------------------------------------------------
    STATE

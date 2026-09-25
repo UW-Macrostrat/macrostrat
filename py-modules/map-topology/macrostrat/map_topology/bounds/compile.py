@@ -14,15 +14,17 @@ from macrostrat.database import Database
 
 from . import build as build_mod
 
-#: A stamp over the bounds of the noded sources below a compilation.
+#: A stamp over the noded sources below a compilation: which they are, and the
+#: bounds each was noded from (`geometry_hash`, the library's stamp). The
+#: `compile` opening reads their faces, so a source noded since, or re-noded from
+#: new bounds, changes the stamp; one not yet noded is not in it.
 _MEMBERS_HASH = """
-SELECT md5(string_agg(
-    a.source_id || '/' || coalesce(a.geometry_hash::text, md5(ST_AsBinary(a.geometry))),
-    ',' ORDER BY a.source_id
-  ))
+SELECT md5(coalesce(string_agg(
+    a.source_id || '/' || a.geometry_hash::text, ',' ORDER BY a.source_id
+  ), ''))
 FROM map_bounds.members_of(:source_id, true) m
 JOIN map_bounds.map_area a ON a.source_id = m.source_id
-WHERE NOT map_bounds.is_compilation(m.source_id)
+WHERE a.topo IS NOT NULL AND a.geometry_hash IS NOT NULL
 """
 
 
@@ -35,13 +37,16 @@ class CompileResult:
     area_km: float | None = None
 
 
-def compile_bounds(db: Database, *, force: bool = False) -> list[CompileResult]:
+def compile_bounds(
+    db: Database, *, force: bool = False, only: list[int] | None = None
+) -> list[CompileResult]:
     """Give every compilation bounds, and refresh the stale ones.
 
     Mosaics are left alone: a mosaic's bounds are its own (it is parted out like
     a map). Every other compilation gets a `map_area` row and a `compile` opening
     operation if it has neither, and is rebuilt when the stamp over its members'
-    bounds no longer matches the one recorded on the operation.
+    bounds no longer matches the one recorded on the operation. `only` restricts
+    the rebuild to those compilations; `force` rebuilds regardless of the stamp.
     """
     db.run_query(
         """
@@ -81,8 +86,10 @@ def compile_bounds(db: Database, *, force: bool = False) -> list[CompileResult]:
         WHERE o.position = 0
           AND map_bounds.is_compilation(o.source_id)
           AND NOT map_bounds.is_mosaic(o.source_id)
+          AND (CAST(:only AS integer[]) IS NULL OR o.source_id = ANY(CAST(:only AS integer[])))
         ORDER BY s.slug
-        """
+        """,
+        dict(only=only),
     ).all()
 
     results = []
