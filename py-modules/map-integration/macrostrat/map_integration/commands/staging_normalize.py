@@ -21,6 +21,11 @@ from macrostrat.map_integration.commands.prepare_fields.utils import (
 )
 from macrostrat.map_integration.database import get_database
 from macrostrat.map_integration.utils import IngestionCLI
+from macrostrat.map_integration.utils.map_info import (
+    MapExclude,
+    MapSelector,
+    resolve_maps,
+)
 
 console = Console()
 
@@ -3622,6 +3627,238 @@ def calculate_dip_dir_from_columns(
     )
 
 
+# `maps.points` check constraints (dip_lt_90, dip_positive, strike_lt_360,
+# strike_positive) as (column, min, max). NULL never violates a CHECK
+# constraint, so bounds only apply to non-null values.
+#
+# dip_dir has its own pair (direction_lt_360, direction_positive) but is
+# deliberately left out here -- fixing it needs a compass-direction judgment
+# call this command doesn't make, so it's shown for context only and never
+# edited, cleared or used to flag a row.
+ORIENTATION_BOUNDS = {
+    "strike": (0, 360),
+    "dip": (0, 90),
+}
+
+
+def _warn_if_still_out_of_range(col: str, value: Optional[int]):
+    lo, hi = ORIENTATION_BOUNDS[col]
+    if value is not None and not (lo <= value <= hi):
+        console.print(
+            f"  [yellow]warning:[/yellow] {col}={value} is still outside "
+            f"[{lo}, {hi}] -- applying it anyway"
+        )
+
+
+def review_orientation_values(target: TableTarget, dry_run: bool = False):
+    """Interactively walk every non-omitted point whose strike or dip would
+    fail a `maps.points` check constraint, and let the user resolve it.
+
+    For each flagged row the user can: edit strike and/or dip, clear both to
+    NULL, omit the row from insertion entirely, apply a bulk fix to every row
+    sharing the same offending value, or leave it for later (skip). Only rows
+    that would actually be inserted are shown -- already-omitted rows are not
+    this command's business. dip_dir is shown for context but is out of scope
+    for this pass.
+    """
+    db = get_database()
+    existing_cols = get_existing_columns(target)
+    required = set(ORIENTATION_BOUNDS) | {"_pkid", "dip_dir"}
+    missing = required - existing_cols
+    if missing:
+        raise ValueError(
+            f"{target.schema}.{target.table} is missing column(s): "
+            f"{', '.join(sorted(missing))}"
+        )
+
+    violation = " OR ".join(
+        f"({col} IS NOT NULL AND ({col} < {lo} OR {col} > {hi}))"
+        for col, (lo, hi) in ORIENTATION_BOUNDS.items()
+    )
+    rows = db.run_query(
+        f"""
+        SELECT _pkid, orig_id, strike, dip, dip_dir, point_type, certainty, comments
+        FROM {{table}}
+        WHERE NOT coalesce(omit, false) AND ({violation})
+        ORDER BY _pkid
+        """,
+        dict(table=target.fq_identifier),
+    ).fetchall()
+
+    if not rows:
+        console.print(
+            f"[green]No out-of-range strike/dip rows in[/green] "
+            f"{target.schema}.{target.table}"
+        )
+        return
+
+    console.print(
+        f"[blue]{len(rows)} row(s) with out-of-range strike/dip values in[/blue] "
+        f"[bold]{target.schema}.{target.table}[/bold]"
+    )
+
+    # Rows a bulk fix already disposed of; skipped without re-prompting.
+    resolved_pkids: set[int] = set()
+
+    for i, row in enumerate(rows, start=1):
+        if row._pkid in resolved_pkids:
+            continue
+
+        console.print(
+            f"\n[bold]{i}/{len(rows)}[/bold] "
+            f"[dim]_pkid={row._pkid} orig_id={row.orig_id}[/dim]"
+        )
+        console.print(
+            f"  strike=[yellow]{row.strike}[/yellow]  "
+            f"dip=[yellow]{row.dip}[/yellow]  "
+            f"dip_dir=[dim]{row.dip_dir}[/dim] [dim](not editable here)[/dim]"
+        )
+        console.print(f"  point_type={row.point_type!r}  certainty={row.certainty!r}")
+        if row.comments:
+            console.print(f"  comments={row.comments!r}")
+
+        action = Prompt.ask(
+            "  [edit/clear/omit/bulk/skip]",
+            choices=["edit", "clear", "omit", "bulk", "skip"],
+            default="skip",
+            show_choices=False,
+        )
+
+        if action == "skip":
+            continue
+
+        if action == "omit":
+            console.print("  [yellow]-> omitting row[/yellow]")
+            if not dry_run:
+                db.run_sql(
+                    "UPDATE {table} SET omit = true WHERE _pkid = :pkid",
+                    dict(table=target.fq_identifier, pkid=row._pkid),
+                )
+            continue
+
+        if action == "clear":
+            console.print("  [yellow]-> clearing strike/dip to NULL[/yellow]")
+            if not dry_run:
+                db.run_sql(
+                    """
+                    UPDATE {table}
+                    SET strike = NULL, dip = NULL
+                    WHERE _pkid = :pkid
+                    """,
+                    dict(table=target.fq_identifier, pkid=row._pkid),
+                )
+            continue
+
+        if action == "bulk":
+            # Same offending value shows up on many rows (e.g. a -999 sentinel
+            # for "unknown"); fix every row sharing it in one shot instead of
+            # walking each one individually.
+            bad_cols = [
+                col
+                for col, (lo, hi) in ORIENTATION_BOUNDS.items()
+                if getattr(row, col) is not None and not (lo <= getattr(row, col) <= hi)
+            ]
+            col = Prompt.ask(
+                "  bulk column",
+                choices=list(ORIENTATION_BOUNDS),
+                default=bad_cols[0] if len(bad_cols) == 1 else None,
+                show_choices=True,
+            )
+            current = getattr(row, col)
+            match_raw = Prompt.ask(
+                f"  match value (blank = this row's {col}={current})",
+                default="",
+                show_default=False,
+            ).strip()
+            try:
+                match_value = current if match_raw == "" else float(match_raw)
+            except ValueError:
+                console.print(
+                    f"  [red]'{match_raw}' is not a number, aborting bulk[/red]"
+                )
+                continue
+            new_raw = Prompt.ask(
+                f"  new {col} for every matching row ('null' to clear)"
+            ).strip()
+            if new_raw.lower() in ("null", "none"):
+                new_value = None
+            else:
+                try:
+                    new_value = int(round(float(new_raw)))
+                except ValueError:
+                    console.print(
+                        f"  [red]'{new_raw}' is not a number, aborting bulk[/red]"
+                    )
+                    continue
+            _warn_if_still_out_of_range(col, new_value)
+
+            select_or_update = (
+                f"SELECT _pkid FROM {{table}} WHERE {col} = :match AND NOT coalesce(omit, false)"
+                if dry_run
+                else (
+                    f"UPDATE {{table}} SET {col} = :new WHERE {col} = :match "
+                    f"AND NOT coalesce(omit, false) RETURNING _pkid"
+                )
+            )
+            affected = (
+                db.run_query(
+                    select_or_update,
+                    dict(table=target.fq_identifier, match=match_value, new=new_value),
+                )
+                .scalars()
+                .all()
+            )
+            resolved_pkids.update(affected)
+            verb = "would set" if dry_run else "set"
+            console.print(
+                f"  [yellow]-> {verb} {col}={new_value} for {len(affected)} row(s) "
+                f"where {col} = {match_value}[/yellow]"
+            )
+            continue
+
+        # action == "edit": prompt per field, blank keeps the current value.
+        updates: dict[str, Optional[int]] = {}
+        for col in ORIENTATION_BOUNDS:
+            entered = Prompt.ask(
+                f"  new {col} (blank to leave unchanged, 'null' to clear)",
+                default="",
+                show_default=False,
+            ).strip()
+            if entered == "":
+                continue
+            if entered.lower() in ("null", "none"):
+                updates[col] = None
+                continue
+            try:
+                updates[col] = int(round(float(entered)))
+            except ValueError:
+                console.print(
+                    f"  [red]'{entered}' is not a number, skipping {col}[/red]"
+                )
+
+        if not updates:
+            console.print("  [dim]No changes entered[/dim]")
+            continue
+
+        for col, value in updates.items():
+            _warn_if_still_out_of_range(col, value)
+
+        console.print(f"  [yellow]-> setting {updates}[/yellow]")
+        if dry_run:
+            continue
+
+        set_clause = ", ".join(f"{col} = :{col}" for col in updates)
+        params = dict(updates)
+        params["table"] = target.fq_identifier
+        params["pkid"] = row._pkid
+        db.run_sql(f"UPDATE {{table}} SET {set_clause} WHERE _pkid = :pkid", params)
+
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+    else:
+        console.print("[green]Done:[/green] orientation review complete")
+
+
 # ____________________________________CLI COMMANDS________________________________________________
 
 
@@ -4364,6 +4601,44 @@ def normalize_calculate_dip_dir(
         dip_cardinal_col=dip_cardinal_col,
         dry_run=dry_run,
     )
+
+
+@normalize_cli.command("points-review-orientation")
+def normalize_points_review_orientation(
+    maps: MapSelector,
+    exclude: MapExclude = None,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Interactively resolve strike/dip values that would violate a
+    `maps.points` check constraint (e.g. strike=555, dip=410), across the
+    `_points` table of every selected map. The layer is always `_points`; this
+    command does not use the set-map/set-layer context.
+
+        macrostrat maps staging normalize points-review-orientation 'arizona_*' \\
+            --exclude 'arizona_adgm_*'
+
+    dip_dir is shown for context but is out of scope for this pass -- it needs
+    a compass-direction judgment call this command doesn't make.
+
+    For each flagged row you can:
+    - edit: enter new value(s) for strike and/or dip
+    - clear: set strike and dip to NULL
+    - omit: set omit=true so the row is not inserted at all
+    - skip: leave the row unchanged for now
+    """
+    db = get_database()
+    selected = resolve_maps(db, maps, exclude=exclude)
+
+    for i, m in enumerate(selected, start=1):
+        target = TableTarget(schema="sources", table=f"{m.slug}_points")
+        console.print(f"\n[bold cyan]({i}/{len(selected)}) {m.slug}[/bold cyan]")
+        try:
+            review_orientation_values(target=target, dry_run=dry_run)
+        except ValueError as e:
+            console.print(
+                f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
+            )
 
 
 @normalize_cli.command("set-map")

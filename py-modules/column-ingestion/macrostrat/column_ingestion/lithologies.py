@@ -105,9 +105,7 @@ class LithsProcessor:
         """
         self.liths = get_all_liths(db)
         self.atts = get_all_lith_attributes(db)
-        self.lith_synonyms = _merge_synonyms(
-            self.default_lith_synonyms, lith_synonyms
-        )
+        self.lith_synonyms = _merge_synonyms(self.default_lith_synonyms, lith_synonyms)
         self.lith_attribute_synonyms = _merge_synonyms(
             self.default_lith_attribute_synonyms, lith_attribute_synonyms
         )

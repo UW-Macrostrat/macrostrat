@@ -28,8 +28,10 @@ from ..match import match_liths, match_strat_names, match_units
 from ..match.utils import SourceNotMaterialized
 from ..utils import IngestionCLI
 from ..utils.map_info import (
+    MapExclude,
     MapInfo,
     MapSelector,
+    MapState,
     has_map_schema_data,
     resolve_maps,
 )
@@ -46,7 +48,7 @@ cli = IngestionCLI(
 cli.add_command(processing_status, name="status")
 
 
-def for_each_map(selectors, step, **kwargs):
+def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
     """Run a single-map processing step over every selected map.
 
     Every step in this module takes a `MapInfo` first and options after, so one
@@ -55,7 +57,7 @@ def for_each_map(selectors, step, **kwargs):
     run, and the summary says which to look at.
     """
     db = get_database()
-    maps = resolve_maps(db, selectors)
+    maps = resolve_maps(db, selectors, exclude=exclude, state=state)
     many = len(maps) > 1
     if many:
         print(f"[dim]{len(maps)} maps[/]")
@@ -126,7 +128,13 @@ def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = No
 
 
 @cli.command(name="pipeline")
-def pipeline(maps: MapSelector, delete_existing: bool = False, scale: str = None):
+def pipeline(
+    maps: MapSelector,
+    delete_existing: bool = False,
+    scale: str = None,
+    exclude: MapExclude = None,
+    state: MapState = None,
+):
     """
     Run the full post-pipeline for the selected map sources
 
@@ -138,7 +146,14 @@ def pipeline(maps: MapSelector, delete_existing: bool = False, scale: str = None
     - Match liths
     - Make lookup
     """
-    for_each_map(maps, run_pipeline, delete_existing=delete_existing, scale=scale)
+    for_each_map(
+        maps,
+        run_pipeline,
+        exclude=exclude,
+        state=state,
+        delete_existing=delete_existing,
+        scale=scale,
+    )
 
 
 def run_legend(map: MapInfo):
@@ -149,15 +164,20 @@ def run_legend(map: MapInfo):
 
 
 @cli.command(name="rgeom", rich_help_panel="Sources")
-def rgeom(maps: MapSelector):
+def rgeom(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Compose reference geometries for the selected map sources."""
-    for_each_map(maps, create_rgeom)
+    for_each_map(maps, create_rgeom, exclude=exclude, state=state)
 
 
 @cli.command(name="web-geom", rich_help_panel="Sources")
-def web_geom(maps: MapSelector, legacy: bool = False):
+def web_geom(
+    maps: MapSelector,
+    legacy: bool = False,
+    exclude: MapExclude = None,
+    state: MapState = None,
+):
     """Create simplified web geometries for the selected map sources."""
-    for_each_map(maps, create_webgeom, legacy=legacy)
+    for_each_map(maps, create_webgeom, exclude=exclude, state=state, legacy=legacy)
 
 
 @cli.command(name="insert", rich_help_panel="Map")
@@ -179,6 +199,8 @@ def insert(
             help="Insert even though lith/t_interval/b_interval are entirely null",
         ),
     ] = False,
+    exclude: MapExclude = None,
+    state: MapState = None,
 ):
     """Copy staged data to the maps schema for the selected map sources.
 
@@ -188,6 +210,8 @@ def insert(
     for_each_map(
         maps,
         run_insert,
+        exclude=exclude,
+        state=state,
         delete_existing=delete_existing,
         scale=scale,
         staging_prefix=staging_prefix,
@@ -197,33 +221,40 @@ def insert(
 
 
 @cli.command(name="legend", rich_help_panel="Map")
-def legend(maps: MapSelector):
+def legend(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Update legend lookup tables for the selected map sources."""
-    for_each_map(maps, run_legend)
+    for_each_map(maps, run_legend, exclude=exclude, state=state)
 
 
 @cli.command(name="strat-names", rich_help_panel="Matching")
 def strat_names(
     maps: MapSelector,
     field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
+    exclude: MapExclude = None,
+    state: MapState = None,
 ):
     """Match the selected map sources to Macrostrat stratigraphic names."""
     db = get_database()
-    for_each_map(maps, partial(match_strat_names, db, fields=_match_fields(field)))
+    for_each_map(
+        maps,
+        partial(match_strat_names, db, fields=_match_fields(field)),
+        exclude=exclude,
+        state=state,
+    )
 
 
 @cli.command(name="units", rich_help_panel="Matching")
-def units(maps: MapSelector):
+def units(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Match the selected map sources to Macrostrat units."""
     db = get_database()
-    for_each_map(maps, partial(match_units, db))
+    for_each_map(maps, partial(match_units, db), exclude=exclude, state=state)
 
 
 @cli.command(name="liths", rich_help_panel="Matching")
-def liths(maps: MapSelector):
+def liths(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Match the selected map sources to Macrostrat lithologies."""
     db = get_database()
-    for_each_map(maps, partial(match_liths, db))
+    for_each_map(maps, partial(match_liths, db), exclude=exclude, state=state)
 
 
 def _match_fields(field: str | None) -> tuple:
@@ -277,23 +308,25 @@ def strat_names_report(
 
 
 @cli.command(name="lookup", rich_help_panel="Lookup")
-def lookup(maps: MapSelector):
+def lookup(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Refresh the lookup tables for the selected map sources."""
     db = get_database()
-    for_each_map(maps, partial(make_lookup, db))
+    for_each_map(maps, partial(make_lookup, db), exclude=exclude, state=state)
 
 
 @cli.command(name="legend-lookup", rich_help_panel="Lookup")
-def legend_lookup_cmd(maps: MapSelector):
+def legend_lookup_cmd(
+    maps: MapSelector, exclude: MapExclude = None, state: MapState = None
+):
     """Refresh legend lookup tables for the selected map sources."""
     db = get_database()
-    for_each_map(maps, partial(legend_lookup, db))
+    for_each_map(maps, partial(legend_lookup, db), exclude=exclude, state=state)
 
 
 @cli.command(name="finalize", rich_help_panel="Map")
-def finalize(maps: MapSelector):
+def finalize(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Finalize the selected map sources."""
-    for_each_map(maps, finalize_one)
+    for_each_map(maps, finalize_one, exclude=exclude, state=state)
 
 
 def finalize_one(map: MapInfo):

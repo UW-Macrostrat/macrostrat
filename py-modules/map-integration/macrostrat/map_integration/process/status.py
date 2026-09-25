@@ -4,7 +4,7 @@ from rich.table import Table
 
 from ..database import get_database
 from ..utils import MapInfo, feature_counts
-from ..utils.map_info import MapSelector, resolve_maps
+from ..utils.map_info import MapExclude, MapSelector, MapState, resolve_maps
 
 
 class MapProcessingStep(BaseModel):
@@ -33,10 +33,12 @@ class MapProcessingTable(Table):
         )
 
 
-def processing_status(maps: MapSelector):
+def processing_status(
+    maps: MapSelector, exclude: MapExclude = None, state: MapState = None
+):
     """Get the processing status for the selected map sources."""
     db = get_database()
-    selected = resolve_maps(db, maps)
+    selected = resolve_maps(db, maps, exclude=exclude, state=state)
     if len(selected) == 1:
         _status_detail(db, selected[0])
     else:

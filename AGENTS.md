@@ -197,9 +197,10 @@ than at module scope, so importing a subsystem stays cheap.
 ```python
 @app.command(name="ingest")
 def ingest_command(data_file: Path = Argument(...)):
-    from .ingest import ingest_columns_from_file   # lazy
-    db = get_database()                            # only here
-    ingest_columns_from_file(db, data_file)        # library takes it
+    from .ingest import ingest_columns_from_file  # lazy
+
+    db = get_database()  # only here
+    ingest_columns_from_file(db, data_file)  # library takes it
 ```
 
 This is the same rule the API v3 work settled from the other direction: utilities

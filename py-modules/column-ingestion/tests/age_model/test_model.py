@@ -78,5 +78,8 @@ def test_ages_stay_monotonic_across_a_clamped_span(test_db):
         ],
     )
 
-    ages = [s.relative_age.model_age() for s in sorted(model.apply(), key=lambda s: s.position)]
+    ages = [
+        s.relative_age.model_age()
+        for s in sorted(model.apply(), key=lambda s: s.position)
+    ]
     assert ages == sorted(ages, reverse=True), ages
