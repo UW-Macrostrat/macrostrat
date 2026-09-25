@@ -367,13 +367,14 @@ CREATE TABLE maps.manual_matches (
     type character varying(20),
     CONSTRAINT manual_matches_pkey PRIMARY KEY (match_id),
     CONSTRAINT manual_matches_unit_fk FOREIGN KEY (unit_id)
-      REFERENCES macrostrat.units(id),
-    -- 53 of 21,711 rows point at strat names that no longer exist. `NOT VALID`
-    -- stops new ones without asserting the past is clean, the way
-    -- `strat_tree_refs_fk` already does.
-    CONSTRAINT manual_matches_strat_name_fk FOREIGN KEY (strat_name_id)
-      REFERENCES macrostrat.strat_names(id) NOT VALID
+      REFERENCES macrostrat.units(id)
 );
+
+-- 53 of 21,711 rows point at strat names that no longer exist. `NOT VALID`
+-- stops new ones without asserting the past is clean, the way
+-- `strat_tree_refs_fk` already does.
+ALTER TABLE maps.manual_matches ADD CONSTRAINT manual_matches_strat_name_fk
+    FOREIGN KEY (strat_name_id) REFERENCES macrostrat.strat_names(id) NOT VALID;
 
 CREATE SEQUENCE maps.manual_matches_match_id_seq
     START WITH 1
