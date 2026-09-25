@@ -22,7 +22,10 @@ from pydantic import BaseModel, Field
 from .units import Area, Distance
 
 #: Operations permitted at position 0. Mirrors `boundary_op_opening_position`.
-OPENING_OPERATIONS = ("union", "adopt", "init")
+OPENING_OPERATIONS = ("union", "adopt", "init", "compile", "world")
+
+#: Opening operations whose cached geometry is *computed* and can be recomputed.
+COMPUTED_OPENINGS = ("union", "compile", "world")
 
 
 class BoundaryOp(BaseModel):
@@ -69,6 +72,35 @@ class Union(BoundaryOp):
     def sql(self, inner: str, params: dict[str, Any], operand: str) -> str:
         # `inner` is the cached geometry column for this row; recomputation is
         # handled by build.py under --init, not here.
+        return inner
+
+
+class Compile(BoundaryOp):
+    """Merge the faces of every noded source below a compilation, from the topology."""
+
+    op_id: ClassVar[str] = "compile"
+    takes_geometry: ClassVar[bool] = True  # caches its result
+
+    members_hash: str | None = Field(
+        None, description="Stamp over the members' bounds the cache was computed from"
+    )
+
+    def sql(self, inner: str, params: dict[str, Any], operand: str) -> str:
+        # `inner` is the cached union for this row; `compile.py` recomputes it
+        # when the members' bounds change.
+        return inner
+
+
+class World(BoundaryOp):
+    """Open the boundary as the whole world, by assertion."""
+
+    op_id: ClassVar[str] = "world"
+    takes_geometry: ClassVar[bool] = True  # caches the envelope, like the others
+
+    def sql(self, inner: str, params: dict[str, Any], operand: str) -> str:
+        # `inner` is the cached envelope for this row. Every opening is read from
+        # its cache by the fold, so the envelope is computed into the cache
+        # (`_OPENING_GEOMETRY` in build.py) rather than returned here.
         return inner
 
 
@@ -255,6 +287,8 @@ OPERATIONS: dict[str, type[BoundaryOp]] = {
     cls.op_id: cls
     for cls in (
         Union,
+        Compile,
+        World,
         Adopt,
         Init,
         Add,
@@ -267,9 +301,12 @@ OPERATIONS: dict[str, type[BoundaryOp]] = {
     )
 }
 
-#: Operations the CLI can create: parameter-only, not authored in QGIS.
+#: Operations the CLI can create: parameter-only, not authored in QGIS, and not
+#: an opening (`bounds open` sets those).
 CLI_OPERATIONS = {
-    k: v for k, v in OPERATIONS.items() if not v.geometry_authored and k != "union"
+    k: v
+    for k, v in OPERATIONS.items()
+    if not v.geometry_authored and k not in OPENING_OPERATIONS
 }
 
 

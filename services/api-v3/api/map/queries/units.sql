@@ -93,7 +93,7 @@ units AS (
     h.layer_slug,
     h.map_face_id,
     mp.priority_path,
-    mp.via,
+    mp.member_id,
     p.map_id,
     p.orig_id,
     p.scale,
@@ -113,7 +113,7 @@ units AS (
    AND ST_Intersects(p.geom, ST_SetSRID(ST_GeomFromText(:bounds), 4326))
   LEFT JOIN map_bounds.map_priority mp
     ON mp.map_layer = h.layer_id
-   AND mp.source_id = p.source_id
+   AND mp.map_id = p.source_id
   /* The face bounds what its map answers for. Redundant for a point -- the face
      and the polygon both contain it -- but an area request can span several
      faces, and a map's polygons must not be reported where another map's face
@@ -155,12 +155,11 @@ SELECT
      this map. Null outside a layer, or before the layer has been solved. */
   array_to_string(u.priority_path, '.') AS priority,
   coalesce(u.priority_path, '{}') AS priority_path,
-  /* The member of the layer this map is presented as -- a face in `carto-large`
-     belongs to member `medium` from the layer's point of view even when the map
-     that owns it is further down. */
-  u.via AS unit_id,
-  v.slug AS unit_slug,
-  v.name AS unit_name,
+  /* The member of the layer this map belongs to, skipping intermediate scale
+     layers -- from `carto-large` British Columbia is `bc-surface`. */
+  u.member_id,
+  v.slug AS member_slug,
+  v.name AS member_name,
   l.legend_id,
   coalesce(l.name, u.name) AS map_unit_name,
   coalesce(l.strat_name, u.strat_name) AS strat_name,
@@ -185,7 +184,7 @@ SELECT
   coalesce(l.unit_ids, '{}') AS unit_ids
 FROM units u
 JOIN maps.sources s ON s.source_id = u.source_id
-LEFT JOIN maps.sources v ON v.source_id = u.via
+LEFT JOIN maps.sources v ON v.source_id = u.member_id
 LEFT JOIN maps.map_legend ON map_legend.map_id = u.map_id
 LEFT JOIN maps.legend l ON l.legend_id = map_legend.legend_id
 LEFT JOIN macrostrat.intervals lti ON lti.id = l.t_interval

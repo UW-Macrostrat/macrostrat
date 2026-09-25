@@ -91,8 +91,8 @@ def write(db: Database, suffix: str = "v1", log=None) -> dict[str, int]:
         db.run_query(
             """
             INSERT INTO map_bounds.compilation_member
-              (compilation_id, member_id, priority, role)
-            SELECT :compilation_id, s.source_id, v.priority, 'constituent'
+              (compilation_id, member_id, priority)
+            SELECT :compilation_id, s.source_id, v.priority
             FROM (SELECT unnest(:slugs::text[]) AS slug,
                          unnest(:priorities::integer[]) AS priority) v
             JOIN maps.sources s ON s.slug = v.slug
@@ -145,10 +145,10 @@ def write(db: Database, suffix: str = "v1", log=None) -> dict[str, int]:
         db.run_query(
             """
             INSERT INTO map_bounds.compilation_member
-              (compilation_id, member_id, priority, role)
-            VALUES (:compilation_id, :member_id, :priority, 'snapshot')
+              (compilation_id, member_id, priority)
+            VALUES (:compilation_id, :member_id, :priority)
             ON CONFLICT (compilation_id, member_id)
-            DO UPDATE SET priority = EXCLUDED.priority, role = EXCLUDED.role
+            DO UPDATE SET priority = EXCLUDED.priority
             """,
             dict(
                 compilation_id=umbrella_id,

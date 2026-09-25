@@ -1,8 +1,9 @@
 """The compilation graph routes.
 
 Written against whatever compilations the test database happens to hold, since
-the membership table is seeded by `compilations sync` rather than by a fixture:
-the invariants below hold for any member set, including an empty one.
+membership is authored (by the schema's carto seed, the CLI or a pipeline) rather
+than by a test fixture: the invariants below hold for any member set, including
+an empty one.
 """
 
 from fastapi.testclient import TestClient
@@ -23,8 +24,12 @@ class TestCompilations:
             # A compilation resolves to at least as many maps as it directly
             # contains -- descending a member compilation can only add.
             assert node["n_sources"] >= node["n_members"]
-            # Materialization is a compilation that holds its own polygons.
-            assert node["is_materialized"] == node["holds_polygons"]
+            # Derived polygons are a cache of the members', so a derived
+            # compilation holds polygons; stale narrows derived further.
+            if node["is_derived"]:
+                assert node["is_materialized"]
+            if node["is_stale"]:
+                assert node["is_derived"]
 
     def test_detail_of_each_compilation(self, api_client: TestClient):
         for node in api_client.get("/compilations").json():
@@ -118,7 +123,15 @@ class TestGraph:
         for node in index:
             assert node["source_id"] in nodes
             graph_node = nodes[node["source_id"]]
-            for key in ("slug", "n_members", "n_sources", "state", "content"):
+            for key in (
+                "slug",
+                "n_members",
+                "n_sources",
+                "is_materialized",
+                "is_derived",
+                "is_stale",
+                "assembly_mode",
+            ):
                 assert graph_node[key] == node[key]
 
     def test_every_edge_endpoint_is_a_node(self, api_client: TestClient):
@@ -169,7 +182,7 @@ class TestGraph:
             if node["is_standalone"]:
                 # Only *ingested* maps qualify; a bare `maps.sources` row with
                 # neither polygons nor a footprint would bury the real ones.
-                assert node["holds_polygons"] or node["area_km"] is not None
+                assert node["is_materialized"] or node["area_km"] is not None
 
 
 class TestNeighbors:

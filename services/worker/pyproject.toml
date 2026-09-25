@@ -11,6 +11,11 @@ requires-python = ">=3.11,<4"
 readme = "README.md"
 dependencies = [
     "celery[redis]>=5.3,<6",
+    # The image installs with pip from the index, with no lockfile, so this is
+    # the only pin. SQLAlchemy 2.1 made `ScalarAttributeImpl` private and
+    # sqlalchemy-utils (0.42.1, pulled in by macrostrat.database) still imports
+    # it, so the worker fails at import. Drop once sqlalchemy-utils supports 2.1.
+    "sqlalchemy<2.1",
 ]
 
 [project.optional-dependencies]

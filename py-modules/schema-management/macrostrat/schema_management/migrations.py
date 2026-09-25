@@ -1,4 +1,5 @@
 import inspect
+import warnings
 from enum import Enum
 from functools import lru_cache, total_ordering
 from graphlib import TopologicalSorter
@@ -105,8 +106,8 @@ class Migration:
     # Unique name for the migration
     name: str
 
-    # Short description for the migration
-    description: str
+    # Short description for the migration, printed beneath it when listed
+    description: Optional[str] = None
 
     # Portion of the database to which this migration applies
     subsystem: str
@@ -126,6 +127,13 @@ class Migration:
     # Fixtures to run after loaded sql
     fixtures: list[Path | DBCallable] = []
 
+    # Schema chunks to re-sync once this migration has applied: their views,
+    # functions, seed data and grants are re-applied, as `macrostrat schema sync
+    # --target <chunk> --no-dependents` would. For a migration that changes the
+    # structure a chunk's code objects are defined against, so it need not
+    # re-run the chunk's files itself. Runs before the postconditions are checked.
+    sync_chunks: list[str] = []
+
     # Flag for whether running this migration will cause data changes in the database in addition to
     # schema changes
     destructive: bool = False
@@ -142,7 +150,10 @@ class Migration:
         pass
 
     def should_apply(self, database: Database) -> ApplicationStatus:
-        """Determine whether this migration can run, or has already run."""
+        """Determine whether this migration can run, or has already run.
+
+        Only called once every dependency has applied, so a condition may read
+        what a dependency creates."""
         if self.always_apply:
             return ApplicationStatus.CAN_APPLY
         # If all post-conditions are met, the migration is already applied
@@ -196,8 +207,8 @@ def run_migrations(
     wait: bool = False,
     legacy: bool = False,
     reapply: bool = False,
+    show_applied: bool = False,
 ):
-
     if dry_run:
         print("Running migrations in dry-run mode")
         dry_run_migrations(wait=True, legacy=legacy)
@@ -213,6 +224,7 @@ def run_migrations(
         subsystem=subsystem,
         legacy=legacy,
         reapply=reapply,
+        show_applied=show_applied,
     )
 
 
@@ -301,20 +313,7 @@ def _get_all_migrations(
     :return: List of migration instances
     """
 
-    # Find all subclasses of Migration among imported modules
-    migrations = Migration.__subclasses__()
-
-    for cls in migrations:
-        if hasattr(cls, "name"):
-            # This is a concrete migration class
-            continue
-        # Recursively include subclasses if not concrete
-        subclasses = cls.__subclasses__()
-        if len(subclasses) == 0:
-            warnings.warn(
-                f"No subclasses or concrete implementation found for migration class {cls}"
-            )
-        migrations.extend(subclasses)
+    migrations = _migration_classes()
 
     # Instantiate each migration, then sort topologically according to dependency order
     instances = [
@@ -339,6 +338,82 @@ def _get_all_migrations(
     return instances
 
 
+def _migration_classes() -> list[type[Migration]]:
+    """Every concrete migration class among imported modules."""
+    migrations = Migration.__subclasses__()
+
+    for cls in migrations:
+        if hasattr(cls, "name"):
+            # This is a concrete migration class
+            continue
+        # Recursively include subclasses if not concrete
+        subclasses = cls.__subclasses__()
+        if len(subclasses) == 0:
+            warnings.warn(
+                f"No subclasses or concrete implementation found for migration class {cls}"
+            )
+        migrations.extend(subclasses)
+    return [cls for cls in migrations if hasattr(cls, "name")]
+
+
+def _sync_after(db: Database, migration: Migration):
+    """Re-sync the chunks a migration names, once it has applied."""
+    if not migration.sync_chunks:
+        return
+    from .composer import selected_chunks
+    from .sync import sync_schema_chunks
+
+    chunks = [
+        c for c in selected_chunks(settings.env) if c.name in migration.sync_chunks
+    ]
+    unknown = set(migration.sync_chunks) - {c.name for c in chunks}
+    if unknown:
+        print(
+            f"[yellow]{migration.name} syncs {', '.join(sorted(unknown))}, which is not"
+            f" a schema chunk in {settings.env}[/]"
+        )
+    if not chunks:
+        return
+    print(f"[dim]Syncing {', '.join(c.name for c in chunks)}[/]")
+    report = sync_schema_chunks(db, chunks)
+    for failure in report.failures:
+        print(f"[red]  - {failure}")
+
+
+def _undefined_dependencies(migration: Migration, defined: set[str]) -> list[str]:
+    """Dependencies that name no migration at all, legacy ones included."""
+    return [d for d in migration.depends_on if d not in defined]
+
+
+def _dependencies_met(
+    migration: Migration, completed: set[str] | list[str], present: set[str]
+) -> bool:
+    """Whether every dependency in this run has applied.
+
+    A dependency that is not in the run counts as met. Migrations are removed
+    once they hold in every environment, and what depended on one still stands;
+    the listing names any that no longer exist, so a typo does not pass silently.
+    """
+    return all(d in completed for d in migration.depends_on if d in present)
+
+
+def _evaluate(db: Database, instances: list[Migration]):
+    """Yield each migration with its `ApplicationStatus`, in dependency order.
+
+    A migration whose dependencies have not applied is not evaluated, and yields
+    None: its conditions may read what a dependency creates.
+    """
+    present = {m.name for m in instances}
+    completed = set()
+    for migration in instances:
+        status = None
+        if _dependencies_met(migration, completed, present):
+            status = migration.should_apply(db)
+            if status == ApplicationStatus.APPLIED:
+                completed.add(migration.name)
+        yield migration, status
+
+
 def _run_migrations(
     db: Database,
     apply: bool = False,
@@ -349,6 +424,7 @@ def _run_migrations(
     verbose: bool = True,
     legacy: bool = False,
     reapply: bool = False,
+    show_applied: bool = False,
 ) -> [Optional[int], set[str]]:
     """Apply database migrations"""
     # Start time
@@ -374,10 +450,18 @@ def _run_migrations(
     print("Migrations:")
 
     migrations_to_run = []
+    listed = []
+    present = {m.name for m in instances}
+    defined = present | {cls.name for cls in _migration_classes()}
 
-    for _migration in instances:
+    # Every migration is evaluated, filtered or not, so that one named with
+    # --name sees whether its dependencies have applied.
+    for _migration, apply_status in _evaluate(db, instances):
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
+
+        if apply_status == ApplicationStatus.APPLIED:
+            completed_migrations.append(_name)
 
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
@@ -387,16 +471,39 @@ def _run_migrations(
         if subsystem is not None and subsystem != _subsystem:
             continue
 
-        # Check whether the migration is capable of applying, or has already applied
-        apply_status = _migration.should_apply(db)
-        if apply_status == ApplicationStatus.APPLIED:
-            completed_migrations.append(_migration.name)
+        _status = _get_status(
+            _migration,
+            completed_migrations,
+            apply_status,
+            data_changes=data_changes,
+            env=_get_active_env(),
+        )
 
-        _status = _get_status(_migration, completed_migrations, env=_get_active_env())
-
-        _print_status(_name, _status, name_max_width=name_max_width)
-
+        listed.append((_migration, _status))
         migrations_to_run.append(_migration)
+
+    # Applied migrations last, so what needs attention is at the top, and only on
+    # request (or when named). Printing only: `migrations_to_run` keeps
+    # dependency order for application.
+    listed.sort(key=lambda row: row[1] == MigrationState.COMPLETE)
+    n_hidden = 0
+    for _migration, _status in listed:
+        if _status == MigrationState.COMPLETE and not (show_applied or name):
+            n_hidden += 1
+            continue
+        _print_status(_migration.name, _status, name_max_width=name_max_width)
+        undefined = _undefined_dependencies(_migration, defined)
+        if undefined:
+            print(
+                f"    [yellow]depends on {', '.join(undefined)}, which no longer"
+                " exist -- assumed met[/]"
+            )
+        if _migration.description:
+            print(f"    [dim]{_migration.description}[/]")
+        if _migration.sync_chunks:
+            print(f"    [dim]then syncs {', '.join(_migration.sync_chunks)}[/]")
+    if n_hidden:
+        print(f"[dim]{n_hidden} already applied (--show-applied to list them)[/]")
 
     if not apply:
         print("\n[dim]To apply the migrations, run with --apply")
@@ -412,7 +519,7 @@ def _run_migrations(
         ):
             continue
         # By default, don't run migrations that depend on other non-applied migrations
-        dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
+        dependencies_met = _dependencies_met(_migration, completed_migrations, present)
 
         if not force:
             if not dependencies_met:
@@ -428,11 +535,23 @@ def _run_migrations(
             if _migration.destructive and not data_changes:
                 continue
 
+            # Evaluated here rather than trusted from the listing: a dependency
+            # applied earlier in this run can be what makes the conditions hold,
+            # or evaluable at all.
+            apply_status = _migration.should_apply(db)
+            if apply_status == ApplicationStatus.CANT_APPLY:
+                print(f"\n[dim]Skipping [cyan]{_name}[/]: preconditions not met[/]")
+                continue
+            if apply_status == ApplicationStatus.APPLIED and not reapply:
+                completed_migrations.append(_name)
+                continue
+
         # Hack to allow migrations to follow output mode
         _migration.output_mode = output_mode
 
         print(f"\nApplying migration [bold cyan]{_name}[/]...")
         _migration.apply(db)
+        _sync_after(db, _migration)
         run_counter += 1
         # After running migration, reload the database and confirm that application was sucessful
         db.refresh_schema()
@@ -465,10 +584,9 @@ def applyable_migrations(
     """Check if there are any migrations that can be applied"""
     _res = set()
     migrations = _get_all_migrations(legacy=legacy, readiness_level=readiness_level)
-    for _migration in migrations:
+    for _migration, apply_status in _evaluate(db, migrations):
         if _migration.destructive and not allow_destructive:
             continue
-        apply_status = _migration.should_apply(db)
         if apply_status == ApplicationStatus.CAN_APPLY:
             _res.add(_migration.name)
     return _res
@@ -496,10 +614,12 @@ def migration_has_been_run(*names: str):
 def _get_status(
     _migration: Migration,
     completed_migrations: set[str],
+    apply_status: Optional[ApplicationStatus],
     data_changes: bool = False,
     env: Optional[str] = None,
 ) -> MigrationState:
-    """Get the status of a migration"""
+    """Get the status of a migration. `apply_status` is None for one that was not
+    evaluated because a dependency has not applied."""
     name = _migration.name
     env = env or _get_active_env()
 
@@ -510,12 +630,14 @@ def _get_status(
         return MigrationState.NOT_ENV_READY
 
     # By default, don't run migrations that depend on other non-applied migrations
-    dependencies_met = all(d in completed_migrations for d in _migration.depends_on)
-    if not dependencies_met:
+    if apply_status is None:
         return MigrationState.UNMET_DEPENDENCIES
 
     if _migration.always_apply:
         return MigrationState.ALWAYS_APPLY
+
+    if apply_status == ApplicationStatus.CANT_APPLY:
+        return MigrationState.CANNOT_APPLY
 
     if _migration.destructive and not data_changes:
         return MigrationState.DISALLOWED
