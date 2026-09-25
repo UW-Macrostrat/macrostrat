@@ -273,6 +273,9 @@ def migrate(
     apply: bool = Option(False, "--apply/--no-apply"),
     force: bool = Option(False, "--force/--no-force"),
     data: bool = Option(False, "--data/--no-data"),
+    show_applied: bool = Option(
+        False, "--show-applied", help="List migrations that have already applied"
+    ),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
@@ -285,7 +288,13 @@ def migrate(
             WriteScope.Schema, assume_yes=yes, action="schema migration"
         )
     load_migrations()
-    run_migrations(apply=apply, name=name, force=force, data_changes=data)
+    run_migrations(
+        apply=apply,
+        name=name,
+        force=force,
+        data_changes=data,
+        show_applied=show_applied,
+    )
 
 
 @schema_app.command(name="scripts", rich_help_panel="Utils")
@@ -405,40 +414,34 @@ def sync(
     [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
     """
     from .composer import selected_chunks
-    from .grants import rebuild_grants
-    from .procedures import rebuild_procedures
-    from .seed_data import rebuild_seed_data
-    from .views import rebuild_views
+    from .sync import sync_schema_chunks
 
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
 
-    # Dependencies first (functions before views/seed that use them); permissions
-    # last — roles and grants are swept together, in the order the schema declares
-    # them, so each grant follows the role it names.
-    failures = []
-    if procedures:
-        r = rebuild_procedures(db, chunks)
-        failures += r.failed
-        _report("procedures", r.applied, len(r.failed))
-    if views:
-        r = rebuild_views(db, chunks)
+    res = sync_schema_chunks(
+        db,
+        chunks,
+        views=views,
+        procedures=procedures,
+        data=data,
+        permissions=permissions,
+    )
+    if res.procedures is not None:
+        _report("procedures", res.procedures.applied, len(res.procedures.failed))
+    if res.views is not None:
+        r = res.views
         extra = f", {len(r.recreated)} recreated" if r.recreated else ""
         print(f"[dim]{r.replaced} views replaced{extra}")
-    if data:
-        r = rebuild_seed_data(db, chunks)
-        failures += r.failed
-        _report("data statements", r.applied, len(r.failed))
-    if permissions:
-        r = rebuild_grants(db, chunks)
-        failures += r.failed
+    if res.data is not None:
+        _report("data statements", res.data.applied, len(res.data.failed))
+    if res.permissions is not None:
+        r = res.permissions
         _report("permission statements", r.applied, len(r.failed), len(r.skipped))
 
-    db.run_sql("NOTIFY pgrst, 'reload schema';")
-
-    if len(failures) > 0:
+    if len(res.failures) > 0:
         print("\n[red bold]Failures:")
-        for failure in failures:
+        for failure in res.failures:
             print(f"[red]  - {failure}")
 
 

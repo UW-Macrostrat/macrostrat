@@ -93,13 +93,14 @@ class MapTopoAdoptMigration(Migration):
     description = "Adopt existing topogeometries as piecewise-noded"
     readiness_state = "ga"
     destructive = True
-    depends_on = ["map-topo-pieces"]
+    depends_on = ["map-topo-pieces", "map-bounds-source-id"]
 
     preconditions = [
         _has_column("map_topo", "bounds_hash"),
         _has_column("map_topo", "noded"),
-        lambda db: _count(_UNADOPTED_PIECES)(db) > 0
-        or _count(_COMPILATION_TOPOS)(db) > 0,
+        lambda db: (
+            _count(_UNADOPTED_PIECES)(db) > 0 or _count(_COMPILATION_TOPOS)(db) > 0
+        ),
     ]
     postconditions = [
         _has_column("map_topo", "bounds_hash"),

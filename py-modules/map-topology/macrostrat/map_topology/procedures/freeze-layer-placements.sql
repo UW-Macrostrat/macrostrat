@@ -17,11 +17,10 @@
   being retired. An edge that already exists has been authored, and its priority
   is the authored one.
 
-  The predicates below are the sweep's own, preserved verbatim so the frozen
-  state matches what was being served the moment before. They do not survive as
-  rules: from here `superseded_by` and `geolayer` are checked when membership is
-  authored (`compilations add`, `compilations lint`), not enforced behind the
-  operator.
+  The predicates below are the sweep's own, so the frozen state matches what
+  was being served the moment before. They do not survive as rules: from here
+  `superseded_by` is checked when membership is authored (`compilations add`,
+  `compilations lint`), not enforced behind the operator.
 */
 INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
 SELECT ml.source_id, s.source_id, coalesce(s.new_priority, 0)
@@ -34,7 +33,6 @@ JOIN map_bounds.map_area a
   ON a.source_id = s.source_id
 WHERE s.scale IS NOT NULL
   AND ml.source_id IS NOT NULL
-  AND coalesce(s.geolayer, 'surface') = 'surface'
   AND s.superseded_by IS NULL
   /* A mosaic member reached a layer only by an authored edge, which is already
      present and must not be duplicated by a scale-derived one. */

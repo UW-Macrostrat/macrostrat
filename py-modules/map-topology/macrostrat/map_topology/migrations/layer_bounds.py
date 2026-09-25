@@ -54,7 +54,7 @@ class LayerBoundsMigration(Migration):
     description = "Open and build the registered compilations' bounds"
     readiness_state = "ga"
     destructive = True
-    depends_on = ["map-topo-pieces"]
+    depends_on = ["map-topo-pieces", "map-bounds-source-id"]
 
     preconditions = [
         _operations_declared,

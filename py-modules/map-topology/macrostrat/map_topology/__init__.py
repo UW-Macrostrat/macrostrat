@@ -1,15 +1,9 @@
-from os import environ
-from subprocess import run
-
-import typer
 from rich import print
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
 from macrostrat.core.environment import WriteScope
 from macrostrat.core.safety import require_write_access, writes
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.utils import working_directory
 
 from .config import get_topo_manager
 from .manager import (
@@ -149,13 +143,16 @@ def _update(
     maps: list[str] = Argument(None),
     *,
     bulk: bool = False,
+    verbose: bool = Option(
+        False, "--verbose", "-v", help="List maps already noded from current bounds"
+    ),
 ):
     """The one command after any edit to maps, bounds or compilations: node the
     maps whose bounds changed, recompile compilation bounds and priority paths,
     re-solve the faces whose owner changed, and rebuild member faces. `--bulk`
     re-nodes the selected maps from scratch."""
     mgr = get_topo_manager()
-    mgr.update_full(maps, bulk=bulk)
+    mgr.update_full(maps, bulk=bulk, verbose=verbose)
 
 
 @cli.command("summary")
@@ -238,22 +235,3 @@ def _fix_error(db, map_id: int, piece_id: int, tolerance: float = RETRY_TOLERANC
     ).scalar()
     db.session.commit()
     return err
-
-
-@cli.command(
-    "test", context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
-def test(ctx: typer.Context):
-    """Test topology fixtures"""
-    from macrostrat.core import app
-
-    db_url = raw_database_url(
-        get_database().engine.url.set(database="map_topology_test")
-    )
-
-    environ["TOPO_TESTING_DATABASE_URL"] = db_url
-
-    srcroot = app.settings.srcroot
-    topo_mgr = srcroot / "submodules/topology-manager"
-    with working_directory(topo_mgr):
-        run(["pytest", *ctx.args])

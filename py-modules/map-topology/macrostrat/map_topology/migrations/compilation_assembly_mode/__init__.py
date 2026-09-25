@@ -1,14 +1,10 @@
 """Name compilations by how their members' extents are settled."""
 
-from pathlib import Path
-
 from psycopg.errors import UndefinedTable
 from sqlalchemy.exc import ProgrammingError
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration
-
-FIXTURE = Path(__file__).parents[2] / "fixtures" / "04-compilation-tables.sql"
+from macrostrat.schema_management import Migration, exists
 
 _OLD_ROWS = """
 SELECT EXISTS (
@@ -70,8 +66,15 @@ class CompilationAssemblyMode(Migration):
     )
     readiness_state = "ga"
     destructive = False
+    # Restores `compilation_sync` and defines the new predicates straight away,
+    # so nothing reads a half-migrated schema until the next `schema sync`.
+    sync_chunks = ["map-topology"]
 
+    # The table comes from the compilation schema; until that has been applied
+    # there is nothing to migrate, and the checks below would read its absence
+    # as an old vocabulary.
     preconditions = [
+        exists("map_bounds", "compilation"),
         lambda db: (
             _scalar(db, _OLD_ROWS)
             or not _scalar(db, _NEW_CONSTRAINT)
@@ -106,20 +109,17 @@ class CompilationAssemblyMode(Migration):
               ADD CONSTRAINT compilation_assembly_mode_check
               CHECK (assembly_mode IN ('topological', 'mosaic'));
 
-            -- Replaced by `is_mosaic_member`; the fixture defines the new
+            -- Replaced by `is_mosaic_member`; the chunk defines the new
             -- predicates, and `schema sync` cannot drop the old one.
             DROP FUNCTION IF EXISTS map_bounds.is_documentary(integer);
 
             -- Whether polygons are a cache is no longer stored: it is read off
             -- the legend links (`map_bounds.is_materialized`). `compilation_sync`
-            -- reads the column; the fixture below recreates it.
+            -- reads the column; syncing the chunk recreates it.
             DROP VIEW IF EXISTS map_bounds.compilation_sync;
             ALTER TABLE map_bounds.compilation DROP COLUMN IF EXISTS content;
             """
         )
-        # Restore the view and define the new predicates now rather than at the
-        # next `schema sync`, so nothing reads a half-migrated schema in between.
-        database.run_sql(FIXTURE)
 
 
 def _scalar(db: Database, sql: str) -> bool:

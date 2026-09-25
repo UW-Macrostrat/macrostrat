@@ -68,29 +68,17 @@ def _refuse_if_ingested(db, source_id: int, slug: str, verb: str):
 
 #: What makes a member a poor candidate for a compilation.
 #:
-#: These used to be enforced by the layer sweep, which silently withdrew a
-#: superseded or non-surface map from every served layer on the next sync. That
-#: was the wrong moment and the wrong verb: it destroyed authored edges behind
-#: the operator, and a map going out of date is news, not a reason to rewrite
-#: somebody's curation. They are checked here instead -- when membership is
-#: authored -- so a dumb compilation is not created in the first place, and
-#: `lint` reports the ones that went stale afterwards without touching them.
-#:
-#: The geolayer test applies only where the compilation is a served layer, which
-#: is what the retired rule actually meant: a scale layer is a *surface* layer,
-#: so a Quaternary or basement map has no place directly in one. Inside an
-#: authored compilation the opposite is true -- drawing on several geolayers is
-#: the whole job. `ngs-surface` is built out of Quaternary sheets and
-#: `ngs-bedrock` out of pre-Quaternary ones, and neither is a mistake; what would
-#: be a mistake is placing either of *them* in `medium` while declaring something
-#: other than surface.
+#: This used to be enforced by the layer sweep, which silently withdrew a
+#: superseded map from every served layer on the next sync. That was the wrong
+#: moment and the wrong verb: it destroyed authored edges behind the operator,
+#: and a map going out of date is news, not a reason to rewrite somebody's
+#: curation. It is checked here instead -- when membership is authored -- so a
+#: dumb compilation is not created in the first place, and `lint` reports the
+#: ones that went stale afterwards without touching them.
 _MEMBER_CHECK = """
 SELECT
   s.slug,
   sup.slug AS superseded_by,
-  coalesce(s.geolayer, 'surface') AS member_geolayer,
-  coalesce(c.geolayer, 'surface') AS compilation_geolayer,
-  map_bounds.has_faces(c.source_id) AS compilation_is_layer,
   EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = s.source_id
@@ -133,14 +121,6 @@ def _member_problems(db, compilation_id: int, member_ids: list[int]):
     ):
         if r.superseded_by is not None:
             problems.append((r.slug, f"superseded by {r.superseded_by}"))
-        if r.compilation_is_layer and r.member_geolayer != r.compilation_geolayer:
-            problems.append(
-                (
-                    r.slug,
-                    f"depicts {r.member_geolayer}, the layer depicts"
-                    f" {r.compilation_geolayer}",
-                )
-            )
     return problems
 
 
@@ -592,9 +572,6 @@ def lint():
         """
         SELECT c.slug AS compilation, s.slug AS member,
                sup.slug AS superseded_by,
-               coalesce(s.geolayer, 'surface') AS member_geolayer,
-               coalesce(c.geolayer, 'surface') AS compilation_geolayer,
-               map_bounds.has_faces(c.source_id) AS compilation_is_layer,
                EXISTS (
                  SELECT 1 FROM map_bounds.map_area a
                  WHERE a.source_id = s.source_id
@@ -615,15 +592,6 @@ def lint():
         if r.superseded_by is not None:
             problems.append(
                 (r.compilation, r.member, f"superseded by {r.superseded_by}")
-            )
-        if r.compilation_is_layer and r.member_geolayer != r.compilation_geolayer:
-            problems.append(
-                (
-                    r.compilation,
-                    r.member,
-                    f"depicts {r.member_geolayer}, the layer depicts"
-                    f" {r.compilation_geolayer}",
-                )
             )
         if not r.has_boundary and not r.has_members:
             problems.append(
@@ -766,7 +734,6 @@ def freeze_placements(
         JOIN map_bounds.map_area a ON a.source_id = s.source_id
         WHERE s.scale IS NOT NULL
           AND ml.source_id IS NOT NULL
-          AND coalesce(s.geolayer, 'surface') = 'surface'
           AND s.superseded_by IS NULL
           AND NOT map_bounds.is_mosaic_member(s.source_id)
           AND NOT EXISTS (

@@ -34,34 +34,6 @@ CREATE FUNCTION maps.polygons_geom_is_valid(geom public.geometry) RETURNS boolea
     AS $$
   SELECT ST_IsValid(geom) AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon');
 $$;
-/** Which slice of the geologic record a map depicts.
-
-  An open lookup rather than an enum on purpose: the four values below are NGS's
-  seed vocabulary, and a geolayer is really any set of elements that mosaic in
-  time -- eventually a temporal selection predicate rather than four buckets. New
-  values must not need a migration.
-
-  NULL means unspecified, and is read as `surface`: every map Macrostrat served
-  before this column existed is a surface map, so the default preserves their
-  behaviour without asserting anything about them.
-*/
-CREATE TABLE maps.geolayer (
-  id          text PRIMARY KEY,
-  description text NOT NULL
-);
-
-INSERT INTO maps.geolayer (id, description) VALUES
-  ('surface', 'What is present at Earth''s surface.'),
-  ('quaternary',
-   'Quaternary geology, in many cases inclusive of units spanning the beginning '
-   'of the Quaternary.'),
-  ('pre-quaternary',
-   'Geology older than the Quaternary, including geology beneath Quaternary '
-   'deposits.'),
-  ('precambrian',
-   'Precambrian geology, typically where it is buried beneath younger cover.')
-ON CONFLICT (id) DO NOTHING;
-
 SET default_tablespace = '';
 
 CREATE TABLE maps.sources (
@@ -97,7 +69,6 @@ CREATE TABLE maps.sources (
   language text,
   description character varying,
   superseded_by integer REFERENCES maps.sources(source_id),
-  geolayer text REFERENCES maps.geolayer(id),
   is_served boolean NOT NULL DEFAULT true,
   CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
 );
@@ -111,17 +82,6 @@ COMMENT ON COLUMN maps.sources.is_served IS
   'not served still resolves inside every compilation it belongs to; a '
   'compilation that is not served exists to build others -- no faces are solved '
   'for it and it is skipped when naming the member a face belongs to. Authored.';
-
-COMMENT ON COLUMN maps.sources.geolayer IS
-  'Which slice of the geologic record this map depicts. NULL means unspecified '
-  'and is read as `surface`. Load-bearing for assembly: the scale layers '
-  '(`tiny`/`small`/`medium`/`large`) are *surface* layers, so a map depicting '
-  'something else -- Precambrian basement, Quaternary cover -- is a real map '
-  'with a real boundary that has no place in a surface stack. Checked when '
-  'membership is authored -- `macrostrat compilations add` refuses it, '
-  '`compilations lint` reports one that went stale -- rather than enforced on '
-  'sync: layer membership is curated, and withdrawing a map from a layer is a '
-  'decision somebody makes, not one a sweep makes behind them.';
 
 COMMENT ON COLUMN maps.sources.superseded_by IS
   'The map that replaces this one, where a better product covers the same '

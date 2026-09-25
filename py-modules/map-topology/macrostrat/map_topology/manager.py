@@ -1,10 +1,14 @@
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 
 from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.commands.update_faces import (
+    FaceUpdateStats,
+    update_faces,
+)
 from rich import print
 from rich.progress import Progress
 
@@ -26,12 +30,98 @@ RETRY_TOLERANCE = 0.00001
 PIECE_BATCH = 100
 
 
-@contextmanager
-def _timed(label: str):
-    """Print how long a phase of the update took, so a slow run says where."""
-    t0 = time.time()
-    yield
-    print(f"[dim]{label}: {time.time() - t0:.1f} s[/dim]")
+@dataclass
+class NodingResult:
+    noded: int = 0
+    failed: int = 0
+    recovered: int = 0
+
+
+@dataclass
+class UpdateSummary:
+    """What a `topo update` did, printed once at the end of the run."""
+
+    maps_checked: int = 0
+    maps_noded: int = 0
+    pieces: NodingResult = field(default_factory=NodingResult)
+    compilations_built: int = 0
+    compilation_errors: int = 0
+    marked_stale: int = 0
+    faces: FaceUpdateStats | None = None
+    units: int = 0
+    units_rebuilt: int = 0
+    phases: list[tuple[str, float]] = field(default_factory=list)
+
+    @contextmanager
+    def timed(self, label: str):
+        """Print how long a phase of the update took, so a slow run says where."""
+        t0 = time.time()
+        yield
+        dt = time.time() - t0
+        self.phases.append((label, dt))
+        print(f"[dim]{label}: {_duration(dt)}[/dim]")
+
+    def print(self):
+        f = self.faces
+        rows = [
+            (
+                "Maps",
+                f"{self.maps_checked:,} checked, {self.maps_noded:,} noded, "
+                f"{self.maps_checked - self.maps_noded:,} current",
+            ),
+        ]
+        if self.maps_noded:
+            p = self.pieces
+            rows.append(
+                (
+                    "Pieces",
+                    f"{p.noded:,} noded, {p.failed:,} failed, "
+                    f"{p.recovered:,} recovered at reduced tolerance",
+                )
+            )
+        rows.append(
+            (
+                "Compilations",
+                f"{self.compilations_built:,} bounds rebuilt, "
+                f"{self.compilation_errors:,} errors",
+            )
+        )
+        rows.append(("Stale identity", f"{self.marked_stale:,} faces marked dirty"))
+        if f is not None:
+            rows.append(
+                (
+                    "Faces",
+                    f"{f.seeds:,} dirty, {f.components:,} components: "
+                    f"{f.created:,} created, {f.updated:,} updated, "
+                    f"{f.deleted:,} deleted, {f.shed:,} shed "
+                    f"({f.reseeded:,} primitives re-seeded)",
+                )
+            )
+        rows.append(("Unit faces", f"{self.units_rebuilt:,} of {self.units:,} rebuilt"))
+
+        total = sum(dt for _, dt in self.phases)
+        slowest = sorted(self.phases, key=lambda x: x[1], reverse=True)[:3]
+        rows.append(
+            (
+                "Time",
+                f"{_duration(total)} "
+                f"[dim]({', '.join(f'{k}: {_duration(v)}' for k, v in slowest)})[/dim]",
+            )
+        )
+
+        print("\n[bold]Summary[/bold]")
+        for label, text in rows:
+            print(f"  {label:<16}{text}")
+
+
+def _duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f} s"
+    minutes, seconds = divmod(round(seconds), 60)
+    if minutes < 60:
+        return f"{minutes} m {seconds:02d} s"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours} h {minutes:02d} m"
 
 
 class MacrostratTopologyManager(TopologyManager):
@@ -43,12 +133,14 @@ class MacrostratTopologyManager(TopologyManager):
             release_map(db, _map.map_id)
         self.clean_topology()
 
-    def update_full(self, maps: list[str] = None, *, bulk: bool = False):
+    def update_full(
+        self, maps: list[str] = None, *, bulk: bool = False, verbose: bool = False
+    ) -> UpdateSummary:
         """The one command after any edit: node what needs it, then rebuild
         everything downstream -- compilation bounds, priority paths, the faces
         whose identity changed, and the member faces built from them."""
         db = self.database
-        update_maps(self, maps, bulk=bulk)
+        summary = update_maps(self, maps, bulk=bulk, verbose=verbose)
 
         res = db.run_query(
             """
@@ -73,22 +165,30 @@ class MacrostratTopologyManager(TopologyManager):
         # Boundary edits mark faces dirty on their own; identity can change with
         # no boundary moving (a membership or priority edit, a materialization),
         # so ask the resolver which faces it would no longer produce.
-        with _timed("Mark stale identity"):
+        with summary.timed("Mark stale identity"):
+            n_dirty = _count_dirty_faces(db)
             db.run_sql(proc("mark-stale-identity"))
             db.session.commit()
+            summary.marked_stale = _count_dirty_faces(db) - n_dirty
 
         # Composite layers are solved by the ordinary face pipeline now that the
         # flattened priority paths give them identity resolution, so the
         # painter's-algorithm overlay is no longer asked for. It stays in the
         # submodule for linework mode. Boundaries are noded above, piece by
-        # piece, so the library's whole-row pass is not run.
-        with _timed("Dissolve dirty faces"):
-            self.update(incremental=True, boundaries=False)
+        # piece, so the library's whole-row pass is not run. What follows is the
+        # faces half of the library's `update()`, called directly for its stats.
+        with summary.timed("Dissolve dirty faces"):
+            summary.faces = update_faces(self.ctx, incremental=True)
+        with summary.timed("Clean topology"):
+            self.clean_topology()
 
-        # Member faces are unions of the solved faces, so they come last.
-        with _timed("Sync member faces"):
-            db.run_sql(proc("sync-unit-faces"))
+        # Member faces are unions of the solved faces, so they come last. Units
+        # whose primitives did not change are kept, not rebuilt.
+        with summary.timed("Sync member faces"):
+            units = db.run_sql(proc("sync-unit-faces"))[-1].one()
             db.session.commit()
+            summary.units = units.units
+            summary.units_rebuilt = units.units - units.kept
 
         counts = db.run_query(
             """
@@ -100,6 +200,12 @@ class MacrostratTopologyManager(TopologyManager):
             f"[green]{counts.resolved}[/] resolutions across "
             f"[green]{counts.layers}[/] registered compilations"
         )
+        summary.print()
+        return summary
+
+
+def _count_dirty_faces(db) -> int:
+    return db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
 
 
 def release_map(db, map_id: int):
@@ -206,25 +312,45 @@ def update_maps(
     clean: bool = True,
     bulk: bool = False,
     subdivide_vertices: int = 256,
-):
-    """Node every selected map that needs it, then refresh what derives from it."""
+    verbose: bool = False,
+) -> UpdateSummary:
+    """Node every selected map that needs it, then refresh what derives from it.
+
+    Maps already noded from their current bounds are counted, not listed, unless
+    `verbose`."""
     from .bounds.compile import compile_bounds
 
     db = mgr.database
-    start_time = time.time()
+    summary = UpdateSummary()
 
     # Seed a boundary for any map that lacks one. Existing boundaries -- including
     # any composed from `boundary_op` -- are left untouched.
-    with _timed("Seed missing boundaries"):
+    with summary.timed("Seed missing boundaries"):
         db.run_sql(proc("copy-all-maps"))
 
     all_maps = get_map_list(db, maps)
+    summary.maps_checked = len(all_maps)
 
-    n_processed = 0
-    with _timed(f"Check {len(all_maps)} maps"):
+    with summary.timed(f"Check {len(all_maps)} maps"):
         for _map in all_maps:
-            if process_map(mgr, _map, bulk=bulk, subdivide_vertices=subdivide_vertices):
-                n_processed += 1
+            result = process_map(
+                mgr,
+                _map,
+                bulk=bulk,
+                subdivide_vertices=subdivide_vertices,
+                verbose=verbose,
+            )
+            if result is not None:
+                summary.maps_noded += 1
+                summary.pieces.noded += result.noded
+                summary.pieces.failed += result.failed
+                summary.pieces.recovered += result.recovered
+        n_current = summary.maps_checked - summary.maps_noded
+        if n_current:
+            print(
+                f"[dim]{n_current} maps already noded from their current bounds[/dim]"
+            )
+    n_processed = summary.maps_noded
 
     # Cleaning is whole-topology work: `RemoveUnusedPrimitives` visits every
     # primitive and the edge healer every node, whatever changed. Only noding
@@ -232,33 +358,35 @@ def update_maps(
     # reprioritization, say -- skips both passes.
     clean = clean and n_processed > 0
     if clean:
-        with _timed("Clean topology"):
+        with summary.timed("Clean topology"):
             mgr.clean_topology()
 
     # The face-based edge-relation cache is refreshed lazily, not per piece.
-    with _timed("Rebuild edge relations"):
+    with summary.timed("Rebuild edge relations"):
         db.run_query("SELECT map_bounds_topology.rebuild_dirty_edge_relations()")
         db.session.commit()
 
     # A compilation's bounds are the union of the noded sources below it, so
     # they follow the noding.
-    with _timed("Compile compilation bounds"):
+    with summary.timed("Compile compilation bounds"):
         for res in compile_bounds(db):
             if res.error:
+                summary.compilation_errors += 1
                 print(f"  [red]{res.slug}[/]: {res.error}")
             elif res.built:
+                summary.compilations_built += 1
                 print(f"  [green]{res.slug}[/] -- {res.area_km:,.0f} km²")
 
     # Flatten the membership tree into the priority paths identity resolution
     # orders by. After bounds: `map_priority` carries only sources with content.
-    with _timed("Sync priority paths"):
+    with summary.timed("Sync priority paths"):
         db.run_sql(proc("sync-priority-paths"))
 
     if clean:
-        with _timed("Clean topology"):
+        with summary.timed("Clean topology"):
             mgr.clean_topology()
 
-    print(f"Total time: {time.time() - start_time:.3f} seconds")
+    return summary
 
 
 def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
@@ -285,20 +413,14 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     ).all()
 
 
-@dataclass
-class NodingResult:
-    noded: int = 0
-    failed: int = 0
-    recovered: int = 0
-
-
 def process_map(
     mgr: MacrostratTopologyManager,
     map,
     *,
     bulk: bool = False,
     subdivide_vertices: int = 256,
-) -> bool:
+    verbose: bool = False,
+) -> NodingResult | None:
     """Node a map's bounds into its topogeometry, piece by piece.
 
     A map is current when `geometry_hash` matches its bounds (the library's
@@ -309,8 +431,9 @@ def process_map(
     retried once at a reduced tolerance, then left recorded. `bulk` re-nodes
     from scratch regardless.
 
-    Returns whether anything was noded, so the caller knows if the topology's
-    primitives may have changed.
+    Returns what was noded, or None for a map left as it was, so the caller
+    knows if the topology's primitives may have changed. A map left as it was is
+    only listed when `verbose`.
     """
     db = mgr.database
     # The bounds hash is computed once, in a materialized CTE. Written inline in
@@ -335,9 +458,10 @@ def process_map(
     ).one()
 
     if state.is_current and not bulk:
-        _print_map_info(map, prefix="  Skipping map ")
-        print("  Noded from the current bounds")
-        return False
+        if verbose:
+            _print_map_info(map, prefix="  Skipping map ")
+            print("  Noded from the current bounds")
+        return None
 
     _print_map_info(map, prefix="Processing map ")
 
@@ -390,7 +514,7 @@ def process_map(
     )
     db.session.commit()
     print()
-    return True
+    return result
 
 
 def cut_pieces(db, _map, *, subdivide_vertices: int = 256) -> int:
