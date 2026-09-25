@@ -56,8 +56,6 @@ AS $$
 DECLARE
   srid integer;
   features record;
-  mapsize text;
-  linesize text[];
   _source_id integer;
   mercator_bbox geometry;
   projected_bbox geometry;
@@ -82,39 +80,10 @@ BEGIN
     4326
                     );
 
-  -- Get map size. A source's features all live in a single scale partition,
-  -- and maps.sources records which one -- so read it there rather than probing
-  -- the partitions. maps.sources.scale is free-text varchar, so only trust it
-  -- when it names an actual partition; otherwise fall back to the probe. Retyping
-  -- that column to maps.map_scale would let both the guard and the fallback go.
-  SELECT s.scale
-  FROM maps.sources s
-  WHERE s.source_id = _source_id
-    AND s.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
-  INTO mapsize;
-
-  IF mapsize IS NULL THEN
-    SELECT scale
-    FROM tile_layers.map_units
-    WHERE source_id = _source_id
-    LIMIT 1
-    INTO mapsize;
-  END IF;
-
-  IF mapsize = 'tiny' THEN
-    linesize := ARRAY['tiny'];
-  ELSIF mapsize = 'small' THEN
-    linesize := ARRAY['tiny', 'small'];
-  ELSIF mapsize = 'medium' THEN
-    linesize := ARRAY['small', 'medium'];
-  ELSE
-    linesize := ARRAY['medium', 'large'];
-  END IF;
-
   -- Units. Which polygons a map shows is `map_bounds.polygons_of`'s question:
   -- an ordinary map's own, a mosaic member's parent's inside its footprint (an
   -- SGMC state map holds none itself). It prunes the partition by the content's
-  -- scale, so `mapsize` is only needed for the lines below.
+  -- scale itself, so no scale bucketing is needed here.
   WITH mvt_features AS (
     SELECT
       map_id,
@@ -137,30 +106,37 @@ BEGIN
   INTO bedrock
   FROM expanded;
 
-  -- LINES, likewise through `lines_of`.
+  -- LINES, likewise through `lines_of`. `lines_of` already returns full
+  -- `maps.lines` rows (name/descrip/direction/type/scale), so read them
+  -- straight off it -- same as `units` reads `maps.polygons` -- instead of
+  -- re-joining through `tile_layers.line_data` / `carto.lines`, which
+  -- requires a legacy post-processing step (`macrostrat v1 process
+  -- carto_lines`) the current ingestion pipeline never runs, and silently
+  -- drops every line for a map that step skipped.
   WITH mvt_features AS (
     SELECT
-      line_id,
-      source_id,
-      geom
-    FROM map_bounds.lines_of(_source_id, projected_bbox)
+      l.line_id,
+      l.source_id,
+      coalesce(l.descrip, '') AS descrip,
+      coalesce(l.name, '') AS name,
+      coalesce(l.direction, '') AS direction,
+      coalesce(l.type, '') AS "type",
+      l.geom
+    FROM map_bounds.lines_of(_source_id, projected_bbox) l
   ),
        expanded AS (
          SELECT
            z.line_id,
            z.source_id,
-           coalesce(q.descrip, '') AS descrip,
-           coalesce(q.name, '') AS name,
-           coalesce(q.direction, '') AS direction,
-           coalesce(q.type, '') AS "type",
+           z.descrip,
+           z.name,
+           z.direction,
+           z."type",
            sources.lines_oriented oriented,
            tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
          FROM mvt_features z
                 JOIN maps.sources ON z.source_id = sources.source_id
-                LEFT JOIN tile_layers.line_data q
-                          ON z.line_id = q.line_id
-         WHERE q.scale = ANY(linesize)
-         --AND ST_Length(geom) > tolerance
+         --WHERE ST_Length(geom) > tolerance
        )
   SELECT
     ST_AsMVT(expanded, 'lines') INTO lines
