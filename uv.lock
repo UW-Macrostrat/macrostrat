@@ -1241,7 +1241,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.6.1"
+version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1255,9 +1255,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/03/82fd804d899849981702388aad613315487891e481cf5019809d5c2ef088/macrostrat_database-4.6.1.tar.gz", hash = "sha256:35c636095016c42650d5301772c64d7608a572ce8448942f1d96986e83ccc0a1", size = 26921, upload-time = "2026-08-28T07:49:25.779Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/c5/4ca3cf28eba6eefbd6be68b7562c3fd08f312cf4cc74e580e25bfc8fb785/macrostrat_database-4.7.0.tar.gz", hash = "sha256:447cab4bb0aaf8e9376ebb9d85e4423871a5306dc7c3a1b51082bcfa16593083", size = 29189, upload-time = "2026-09-23T19:21:50.559Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/bf/685df168adff875c02b6735b11dffc9247e01e22d14803b111022264a2c3/macrostrat_database-4.6.1-py3-none-any.whl", hash = "sha256:ca971d909ab902614e43a7c4178d0391b808da82573da1e11c9328f519623f34", size = 34089, upload-time = "2026-08-28T07:49:24.852Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/33/1a0a05e2ee44a093794ace321f931e14e23726b4689ae77929294d19af26/macrostrat_database-4.7.0-py3-none-any.whl", hash = "sha256:15edca9851a27b8436338317b9b905fbd390f95e19f6dc91a00559ccbd0a9191", size = 36740, upload-time = "2026-09-23T19:21:49.505Z" },
 ]
 
 [[package]]
@@ -1673,6 +1673,7 @@ version = "0.0.1"
 source = { editable = "services/worker" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
+    { name = "sqlalchemy" },
 ]
 
 [package.optional-dependencies]
@@ -1685,6 +1686,7 @@ requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.3,<6" },
     { name = "macrostrat-column-ingestion", marker = "extra == 'columns'", editable = "py-modules/column-ingestion" },
     { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
+    { name = "sqlalchemy", specifier = "<2.1" },
 ]
 provides-extras = ["maps", "columns"]
 
@@ -1979,7 +1981,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
