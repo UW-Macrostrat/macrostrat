@@ -11,10 +11,10 @@
   boundaryless member is exactly as inert in an authored compilation as it is in
   a layer, so there is no reason to treat the two differently.
 
-  Compilations themselves are exempt. A compilation legitimately has no boundary
-  until `sync-compilation-bounds` builds one out of its members, so pruning on
-  that test would strip a composition on its first sync -- before it could ever
-  be assembled. "Is a compilation" is "has members", the same test used
+  Compilations themselves are exempt. A compilation legitimately has no bounds
+  until `topo update` compiles them out of its members, so pruning on that
+  test would strip a composition on its first update -- before it could ever be
+  built. "Is a compilation" is "has members", the same test used
   everywhere else here.
 */
 DELETE FROM map_bounds.compilation_member cm

@@ -53,8 +53,6 @@ class CartoV1Compilation(Migration):
     name = "carto-v1-compilation"
     subsystem = "maps"
 
-    # Deliberately empty. `depends_on` is matched against migrations completed in
-    # the same run, so naming one that is not loaded means this never applies.
     depends_on = []
     readiness_state = "ga"
 
@@ -77,4 +75,7 @@ class CartoV1Compilation(Migration):
     # be curated -- members will be added, removed and re-ranked -- so any
     # postcondition describing the membership would either fight that curation or
     # quietly re-impose the generated answer over it.
-    postconditions = [_slug_exists(UMBRELLA + "-v1")]
+    postconditions = [
+        _slug_exists(UMBRELLA + "-v1"),
+        _slug_exists(UMBRELLA + "-v1-small"),
+    ]

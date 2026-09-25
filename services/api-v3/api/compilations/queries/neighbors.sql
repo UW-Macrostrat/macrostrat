@@ -88,10 +88,10 @@ candidates AS (
   FROM scaled ma
   CROSS JOIN target t
   WHERE ma.source_id NOT IN (SELECT source_id FROM related)
-    /* Null `area_km` marks a boundary that is only an envelope -- the served
-       global layers -- which would overlap everything meaninglessly. */
+    /* A global source -- bounds spanning the world -- would overlap everything
+       meaninglessly. */
     AND ma.area_km IS NOT NULL
-    AND NOT map_bounds.is_served_layer(ma.source_id)
+    AND NOT map_bounds.is_global(ma.source_id)
     AND ST_Intersects(ma.geometry, t.geometry)
     AND (:include_coarser OR ma.scale_rank <= t.scale_rank)
   ORDER BY
@@ -134,7 +134,7 @@ SELECT
     AS overlap_fraction,
   (SELECT count(*) > 0 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = s.source_id) AS is_compilation,
-  map_bounds.holds_polygons(s.source_id) AS holds_polygons,
+  map_bounds.is_materialized(s.source_id) AS is_materialized,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
   /* The compilations this map belongs to, so the page can say "part of SGMC"
      rather than leaving the reader to guess why it is here. */

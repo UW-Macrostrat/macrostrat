@@ -202,9 +202,16 @@ from .stats import stats_router
 
 app.include_router(stats_router, tags=["Stats"], prefix="/stats")
 
-from .carto_new import router as carto_router
+from .map_tiles import legacy_router as carto_alias_router
+from .map_tiles import router as map_tiles_router
 
-app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
+# Any source by slug, `carto` included: `/map/{slug}/{z}/{x}/{y}`. Five segments,
+# so it never collides with the catalog's `/map/{z}/{x}/{y}?source_id=` above,
+# which stays as the v2 alias.
+app.include_router(map_tiles_router, tags=["Map tiles"], prefix="/map")
+app.include_router(
+    carto_alias_router, tags=["Map tiles"], prefix="/dev/carto", deprecated=True
+)
 
 from .topology import router as topo_router
 

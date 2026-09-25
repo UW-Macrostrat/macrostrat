@@ -1,6 +1,14 @@
 
 ## [Unreleased]
 
+- `/map/{slug}/{z}/{x}/{y}`: tiles for any source by slug or id, `carto` included,
+  resolved through `map_bounds.serving_source`; `/dev/carto` is a deprecated alias of
+  `/map/carto`; `sys:carto-legacy` addresses the materialized build the same way
+- Slugs other than `carto` require a delegated token with the `tiles:map` scope
+- Tile cache: `/map/carto` under a `map-carto` profile; other slugs uncached
+- Scale bands read from `map_bounds.scale_band` (cache manager)
+- Compilation tiles: faces collected per map and clipped to the tile, polygons clipped and simplified to tile resolution before the transform, ownership clip only for polygons straddling a face edge (a z6 Midwest tile from 28 s to 6 s uncached)
+- Removed the unmounted `single_map` module and the `carto_new` package
 - Prune `maps.polygons` / `maps.lines` scale partitions in single-map tile queries
   and in `tile_layers.map()`, which scanned all four for every tile
 - Fix: raster layers advertised tile URLs missing their mount prefix, so TileJSON

@@ -15,9 +15,9 @@ from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
 
-from ..manager import filter_maps, get_map_list
+from ..manager import filter_maps
 from . import build as build_mod
-from .operations import CLI_OPERATIONS, BoundaryOp
+from .operations import CLI_OPERATIONS, OPENING_OPERATIONS, BoundaryOp
 
 cli = Typer(no_args_is_help=True, short_help="Compose and edit map boundaries")
 
@@ -29,9 +29,21 @@ add_cli = Typer(
 cli.add_typer(add_cli, name="add")
 
 
+def _sources_with_bounds(db):
+    """Every source with a `map_area` row -- maps and compilations alike."""
+    return db.run_query(
+        """
+        SELECT a.source_id AS map_id, s.slug, s.scale, a.area_km
+        FROM map_bounds.map_area a
+        JOIN maps.sources s ON s.source_id = a.source_id
+        ORDER BY a.area_km DESC NULLS LAST
+        """
+    ).all()
+
+
 def _resolve(maps: list[str]) -> list:
     db = get_database()
-    all_maps = get_map_list(db, filter_by=maps)
+    all_maps = _sources_with_bounds(db)
     if maps:
         all_maps = list(filter_maps(all_maps, maps))
     if not all_maps:
@@ -94,7 +106,7 @@ def build_cmd(
         print("[red]Pass one or more maps, or --all[/]")
         raise typer.Exit(1)
     db = get_database()
-    targets = get_map_list(db) if all_maps else _resolve(maps)
+    targets = _sources_with_bounds(db) if all_maps else _resolve(maps)
 
     failures = 0
     for m in targets:
@@ -116,6 +128,30 @@ def build_cmd(
             print(f"  [green]{verb}[/] {label} -- {area} from {len(res.ops)} ops")
     if failures:
         raise typer.Exit(1)
+
+
+@cli.command("open")
+def open_cmd(
+    map: Annotated[str, Argument(help="Map or compilation slug or source id")],
+    operation: Annotated[
+        str, Argument(help="Opening operation: union, compile, world, adopt, init")
+    ],
+):
+    """Set how a boundary opens, replacing the existing opening operation.
+
+    `compile` unions the bounds of every noded source below a compilation;
+    `world` asserts the whole world. The cached geometry is cleared and
+    recomputed by the next `bounds build` or `topo update`.
+    """
+    if operation not in OPENING_OPERATIONS:
+        print(f"[red]{operation} cannot open a boundary[/]")
+        raise typer.Exit(1)
+    db = get_database()
+    m = _resolve([map])[0]
+    build_mod.set_opening(db, m.map_id, operation)
+    db.session.commit()
+    print(f"{m.slug} now opens with [bold]{operation}[/]")
+    print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
 @cli.command("rm")

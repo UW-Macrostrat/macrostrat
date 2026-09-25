@@ -65,6 +65,16 @@ def create_topo_fixtures(db: Database):
     mgr.create_tables(check=False)
 
 
+def seed_layer_bounds(db: Database):
+    """The registered compilations' openings: data, so it is a step of its own,
+    after every fixture pass. A fresh database is seeded here; an existing one by
+    the `compilation-layer-bounds` migration, which also builds the bounds."""
+    from .bounds.layers import seed_layer_openings
+
+    seed_layer_openings(db)
+    db.session.commit()
+
+
 # Importing the migrations package registers its `Migration` subclasses, which
 # are discovered by subclass lookup rather than by scanning a directory.
 from . import migrations  # noqa: E402,F401
@@ -80,6 +90,9 @@ TopologySchema = SchemaDefinition(
         __dir__ / "fixtures" / "01-create-tables.sql",
         __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
         __dir__ / "fixtures" / "04-compilation-tables.sql",
+        # Last: the seed inserts boundary rows, whose trigger needs every function
+        # above to exist. Host fixture 01 only fully applies on its second pass.
+        seed_layer_bounds,
     ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),

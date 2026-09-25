@@ -139,7 +139,7 @@ CREATE TABLE macrostrat_kg.entity_type (
     description text,
     id integer NOT NULL,
     color text,
-    source text NOT NULL
+    source text
 );
 
 CREATE VIEW macrostrat_kg.model_run AS

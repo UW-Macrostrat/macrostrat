@@ -1,8 +1,8 @@
 /** Flatten the composition DAG into the paths identity resolution orders by.
 
-  One recursion, because there is one edge table. A served layer is just a
-  compilation with a `map_layer` row, so the walk starts at each of those and
-  descends `compilation_member` until it reaches something with content. A
+  One recursion, because there is one membership table. The walk starts at each
+  registered compilation (one with a `map_layer` row) and descends
+  `compilation_member` until it reaches something with content. A
   *virtual* compilation is descended through, so a face resolves to whoever
   actually has the geometry; anything with content is a leaf -- a map, a
   materialized compilation, or a mosaic member placed here directly, which holds
@@ -20,7 +20,7 @@ WITH RECURSIVE paths AS (
     ml.id AS map_layer,
     ml.source_id,
     ARRAY[]::integer[] AS path,
-    NULL::integer AS via
+    NULL::integer AS member_id
   FROM map_bounds.map_layer ml
   WHERE ml.source_id IS NOT NULL
   UNION ALL
@@ -28,12 +28,12 @@ WITH RECURSIVE paths AS (
     p.map_layer,
     cm.member_id,
     p.path || coalesce(cm.priority, 0),
-    -- The unit a map is presented as: the first member on the way down that is
-    -- not a served layer. Layers are structural containers -- nobody means to
-    -- see `medium` -- so the meaningful ancestor is one level further.
+    -- The member of the registered compilation a map belongs to, skipping the
+    -- scale layers, which exist only to build others -- nobody means to see
+    -- `medium` -- so the meaningful member is one level further.
     coalesce(
-      p.via,
-      CASE WHEN map_bounds.is_served_layer(cm.member_id) THEN NULL
+      p.member_id,
+      CASE WHEN map_bounds.has_faces(cm.member_id) THEN NULL
            ELSE cm.member_id END
     )
   FROM paths p
@@ -44,15 +44,15 @@ WITH RECURSIVE paths AS (
 /** A map can be reachable under one layer by more than one route -- directly and
   again through a compilation, which is the state a half-migrated compilation is
   in. The winning route is the one that would win anyway. */
-leaves AS (
-  SELECT DISTINCT ON (map_layer, source_id) map_layer, source_id, path, via
+resolved AS (
+  SELECT DISTINCT ON (map_layer, source_id) map_layer, source_id, path, member_id
   FROM paths
   WHERE map_bounds.has_content(source_id)
   ORDER BY map_layer, source_id, path DESC
 )
-INSERT INTO map_bounds.map_priority (map_layer, source_id, priority_path, via)
-SELECT map_layer, source_id, path, coalesce(via, source_id)
-FROM leaves;
+INSERT INTO map_bounds.map_priority (map_layer, map_id, priority_path, member_id)
+SELECT map_layer, source_id, path, coalesce(member_id, source_id)
+FROM resolved;
 
 
 /** Project the layer-to-layer edges back into the submodule's own table.
@@ -144,11 +144,11 @@ UPDATE map_bounds.map_area ma
 SET map_layer = coalesce(base.map_layer, map_bounds.layer_id(s.scale))
 FROM maps.sources s
 LEFT JOIN (
-  SELECT source_id, min(map_layer) AS map_layer
+  SELECT map_id, min(map_layer) AS map_layer
   FROM map_bounds.map_priority
   WHERE NOT map_bounds.is_composite_layer(map_layer)
-  GROUP BY source_id
-) base ON base.source_id = s.source_id
+  GROUP BY map_id
+) base ON base.map_id = s.source_id
 WHERE ma.source_id = s.source_id
   AND (
     -- The map moved between layers.

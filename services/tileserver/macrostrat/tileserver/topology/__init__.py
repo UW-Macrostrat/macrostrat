@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from buildpg import render
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from macrostrat.tileserver_utils import VectorTileResponse
 
@@ -38,22 +38,23 @@ async def get_tile(
     x: int,
     y: int,
     map_layer: str = None,
-    expand: bool = False,
+    level: str = "member",
 ):
     """Solved faces for a compilation.
 
-    `map_layer` is any compilation slug, not only a served layer -- `bc-surface`
-    is as addressable as `carto-large`. Faces are attributed to the direct member
-    they are reached through; `expand=true` attributes them to the map that
-    actually owns them.
+    `map_layer` is any source slug -- `bc-surface` is as addressable as
+    `carto-large`. Faces are attributed to the member of the compilation they
+    belong to (`level=member`, the default) or to the map that actually owns them
+    (`level=map`).
     """
+    _check_level(level)
     sql = get_query("map-faces")
     if map_layer is None:
         sql = get_query("map-face-primitives")
         return await _render_tile(request, sql, z=z, x=x, y=y, map_layer=map_layer)
 
     return await _render_tile(
-        request, sql, z=z, x=x, y=y, map_layer=map_layer, expand=expand
+        request, sql, z=z, x=x, y=y, map_layer=map_layer, level=level
     )
 
 
@@ -65,20 +66,26 @@ async def get_tile(
     x: int,
     y: int,
     map_layer: str = None,
-    expand: bool = False,
+    level: str = "member",
 ):
-    """Footprints of a compilation's members.
+    """Bounds of a compilation's members.
 
-    Direct members by default -- what the compilation is assembled from --
-    or, with `expand=true`, the maps it ultimately resolves to.
+    The members the compilation presents (`level=member`, the default), or the
+    maps at the bottom that it ultimately resolves to (`level=map`).
     """
+    _check_level(level)
     if map_layer is None:
         return await _render_tile(
             request, get_query("all-maps"), z=z, x=x, y=y, map_layer=map_layer
         )
     return await _render_tile(
-        request, get_query("maps"), z=z, x=x, y=y, map_layer=map_layer, expand=expand
+        request, get_query("maps"), z=z, x=x, y=y, map_layer=map_layer, level=level
     )
+
+
+def _check_level(level: str):
+    if level not in ("member", "map"):
+        raise HTTPException(400, "level must be 'member' or 'map'")
 
 
 async def _render_tile(request: Request, sql: str, **query_params: Any):
@@ -121,24 +128,24 @@ async def get_info(
 ):
     """Get information about the maps and topological faces at a location.
 
-    Returns one row per node of the compilation hierarchy covering the point --
-    every compilation *and* every constituent, whether or not the compilation has
-    been materialized -- ordered by descending priority within each layer. Nothing
-    is chosen server-side; flags describe each row so a client can filter or build
-    the tree as it needs:
+    Returns one row per source of the membership tree covering the point --
+    every compilation *and* every member, whether or not the compilation has been
+    materialized -- ordered by descending priority within each registered
+    compilation. Nothing is chosen server-side; flags describe each row so a
+    client can filter or build the tree as it needs:
 
-    - ``is_composite`` -- the map is assembled from members.
-    - ``holds_polygons`` -- the map has polygons of its own, so resolution stops
-      here. True for an ordinary map, and for a compilation once it is solved.
-    - ``is_materialized`` -- a composite that holds polygons: the compilation that
-      *replaced* its constituents. This is the row to mark in a UI.
-    - ``is_unit`` -- the level the ``maps`` and ``faces`` tiles are drawn at by
-      default, so this is the row matching a clicked feature.
-    - ``is_constituent`` -- the map is presented as some compilation above it.
+    - ``is_compilation`` -- has members.
+    - ``is_materialized`` -- holds polygons of its own: an ordinary map, or a
+      compilation once materialized (or, as SGMC, holding them as originals).
+    - ``is_derived`` -- those polygons are a cache cut from its members'. This is
+      the row to mark in a UI. False for SGMC, whose polygons are originals.
+    - ``member_id`` -- the member of the registered compilation this row belongs
+      to; the level the ``maps`` and ``faces`` tiles draw by default, so the row
+      whose ``member_id`` is its own ``source_id`` matches a clicked feature.
 
     ``map_face_id`` is that row's own solved face, null where the location isn't
-    covered by a built face for the layer (as for the constituents of a
-    materialized compilation, which are no longer in the topology).
+    covered by a built face (as for the members of a materialized compilation,
+    which are no longer in the topology).
     """
     sql = get_query("info")
     # ``::layer_filter`` is a raw template slot filled in here, before buildpg

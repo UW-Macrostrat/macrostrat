@@ -1,23 +1,19 @@
-from os import environ
-from subprocess import run
-
-import typer
 from rich import print
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
 from macrostrat.core.environment import WriteScope
 from macrostrat.core.safety import require_write_access, writes
-from macrostrat.database.transfer.utils import raw_database_url
-from macrostrat.utils import working_directory
 
-from .config import get_topo_context, get_topo_manager
+from .config import get_topo_manager
 from .manager import (
+    RETRY_TOLERANCE,
     _print_map_info,
     filter_maps,
     get_map_list,
     get_maps_with_changed_geometries,
     proc,
+    release_map,
 )
 
 cli = Typer(no_args_is_help=True)
@@ -34,18 +30,6 @@ def status():
     print(f"Found {len(res)} maps with with geometry changes")
     for row in res:
         _print_map_info(row)
-
-
-@cli.command("reset")
-@writes(WriteScope.Data, action="topology reset")
-def reset(
-    yes: bool = Option(
-        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
-    ),
-):
-    """Reset topogeometry creation"""
-    ctx = get_topo_context()
-    ctx.database.run_fixtures(proc("reset-topology"))
 
 
 @cli.command("remove")
@@ -148,28 +132,10 @@ def _update_identity(db):
 
 
 def _set_dirty(db, map_id: int):
-    """Force a map to be reprocessed from its boundary.
-
-    Clearing `geometry_hash` now means "the parts came from no known boundary",
-    which makes `insert-map-topo-features` re-derive them -- the strongest form
-    of dirty, and the one `topo rebuild` wants.
-    """
-    db.run_query(
-        "UPDATE map_bounds.map_area SET geometry_hash = NULL WHERE source_id = :id",
-        dict(id=map_id),
-    )
-
-    # db.run_query(
-    #     """
-    #  INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
-    #  SELECT (topology.gettopogeomelements(topo))[1] eid, ma.map_layer
-    #  FROM map_bounds.map_area ma
-    #  WHERE id = :map_id
-    #  ON CONFLICT DO NOTHING;
-    #  """,
-    #     dict(map_id=map_id),
-    # )
-    #
+    """Force a map to be noded again from its bounds: drop its pieces and empty
+    its topogeometry, which releases the primitives and marks the faces it
+    covered dirty. The strongest form of dirty, and the one `topo rebuild` wants."""
+    release_map(db, map_id)
 
 
 @cli.command("update")
@@ -177,11 +143,16 @@ def _update(
     maps: list[str] = Argument(None),
     *,
     bulk: bool = False,
-    remove: bool = False,
+    verbose: bool = Option(
+        False, "--verbose", "-v", help="List maps already noded from current bounds"
+    ),
 ):
-    """Update topology fixtures"""
+    """The one command after any edit to maps, bounds or compilations: node the
+    maps whose bounds changed, recompile compilation bounds and priority paths,
+    re-solve the faces whose owner changed, and rebuild member faces. `--bulk`
+    re-nodes the selected maps from scratch."""
     mgr = get_topo_manager()
-    mgr.update_full(maps, bulk=bulk, remove=remove)
+    mgr.update_full(maps, bulk=bulk, verbose=verbose)
 
 
 @cli.command("summary")
@@ -194,70 +165,47 @@ def summary():
 
 @cli.command("errors")
 def errors(maps: list[str] = Argument(None), fix: bool = False):
-    """Show topology errors"""
+    """Show pieces that failed to node, per map; `--fix` retries them at the
+    reduced tolerance."""
     db = get_database()
 
-    # Get and fix errors
-    res = db.run_query(
-        """
-        SELECT
-            count(*)
-        FROM map_bounds.map_topo
-        WHERE topology_error IS NOT NULL
-    """
+    total = db.run_query(
+        "SELECT count(*) FROM map_bounds.map_topo WHERE topology_error IS NOT NULL"
     ).scalar()
-    print(f"Found {res} errors")
+    print(f"Found {total} failed pieces")
+    if not fix and total > 0:
+        print("Use --fix to retry them")
 
-    if not fix and res > 0:
-        print("Use --fix to attempt to fix them")
-
-    if fix:
-        print("Cleaning topology")
-        res = db.run_query(
-            "SELECT topology.RemoveUnusedPrimitives('map_bounds_topology', :bbox);",
-            dict(bbox=None),
-        ).scalar()
-        print(f"Removed {res} orphaned topology elements")
-        db.session.commit()
-
-    # Try to re-run errors
-    all_maps = db.run_query(
+    rows = db.run_query(
         """
-        SELECT t.id, t.source_id AS map_id, slug, area_km, t.topology_error
+        SELECT t.id, t.source_id AS map_id, s.slug, a.area_km, t.tolerance,
+               t.topology_error
         FROM map_bounds.map_topo t
-        JOIN maps.sources_metadata m
-          ON t.source_id = m.source_id
-        JOIN map_bounds.map_area
-          ON t.source_id = map_area.id
+        JOIN maps.sources s ON s.source_id = t.source_id
+        JOIN map_bounds.map_area a ON a.source_id = t.source_id
         WHERE t.topology_error IS NOT NULL
         ORDER BY t.source_id, ST_GeoHash(t.geometry::geography)
-    """
+        """
     ).all()
-
-    if maps is not None and len(maps) > 0:
-        all_maps = list(filter_maps(all_maps, maps))
+    if maps:
+        rows = list(filter_maps(rows, maps))
 
     curr_map_id = None
-    for row in all_maps:
+    for row in rows:
         if curr_map_id != row.map_id:
             print()
             _print_map_info(row, prefix="Source ")
             curr_map_id = row.map_id
         err = row.topology_error
-
-        print(f"[dim]- {row.id}: [/dim]", end="")
+        print(f"[dim]- {row.id} (at {row.tolerance}): [/dim]", end="")
         if fix:
-            res = _fix_error(row.id)
-            err = res
-
+            err = _fix_error(db, row.map_id, row.id)
         if err is None:
-            print(f"[green]fixed")
+            print("[green]fixed")
         else:
             print(f"[dim red]{err}")
 
     if fix:
-        # The deferred edge-relation trigger only marked rows dirty; rebuild the
-        # affected relations now that the retries are done.
         n = db.run_query(
             "SELECT map_bounds_topology.rebuild_dirty_edge_relations()"
         ).scalar()
@@ -266,41 +214,24 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
             print(f"[dim]Rebuilt edge relations for {n} topogeometries")
 
 
-def _fix_error(id: int, tolerance: float = 0.00001):
-    """Re-attempt a single errored map_topo row at a reduced snap tolerance
-    (below the 1e-4 global default). Empirically this recovers a meaningful
-    share of insertion-snapping failures (curve-not-simple, crosses-edge);
-    increasing tolerance or densifying does not. Returns None on success, or
-    the error text on failure."""
-    db = get_database()
+def _fix_error(db, map_id: int, piece_id: int, tolerance: float = RETRY_TOLERANCE):
+    """Retry one failed piece at the reduced tolerance. Returns None on success,
+    or the error text."""
     err = db.run_query(
         """
-          SELECT map_bounds.update_topogeom(m, :tolerance) res
-          FROM map_bounds.map_topo m
-          WHERE topo IS NULL
-            AND topology_error IS NOT NULL
-            AND id = :id
+        WITH outcome AS (
+          SELECT map_bounds_topology.update_boundary_topo(l, t.geometry, CAST(:tolerance AS numeric)) AS err
+          FROM map_bounds.map_topo t
+          JOIN map_bounds.map_area l ON l.id = t.source_id
+          WHERE t.id = :id AND t.source_id = :map_id
+        )
+        UPDATE map_bounds.map_topo t
+        SET noded = (o.err IS NULL), topology_error = o.err, tolerance = :tolerance
+        FROM outcome o
+        WHERE t.id = :id
+        RETURNING o.err
         """,
-        dict(id=id, tolerance=tolerance),
+        dict(id=piece_id, map_id=map_id, tolerance=tolerance),
     ).scalar()
     db.session.commit()
     return err
-
-
-@cli.command(
-    "test", context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
-)
-def test(ctx: typer.Context):
-    """Test topology fixtures"""
-    from macrostrat.core import app
-
-    db_url = raw_database_url(
-        get_database().engine.url.set(database="map_topology_test")
-    )
-
-    environ["TOPO_TESTING_DATABASE_URL"] = db_url
-
-    srcroot = app.settings.srcroot
-    topo_mgr = srcroot / "submodules/topology-manager"
-    with working_directory(topo_mgr):
-        run(["pytest", *ctx.args])

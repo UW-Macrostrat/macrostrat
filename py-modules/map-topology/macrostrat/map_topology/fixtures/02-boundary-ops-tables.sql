@@ -6,15 +6,19 @@
 /** Vocabulary of boundary operations. A lookup table rather than an enum so
   that new operations need no migration.
 
-  Three of them *open* a boundary, and which one is used records where the
+  Five of them *open* a boundary, and which one is used records where the
   starting geometry came from -- so provenance is carried by the operation's
   identity rather than by a separate column:
 
-    union   computed by us from the map''s own features
-    adopt   lifted from the source dataset and promoted without recomputation
-    init    supplied by hand
+    union    computed by us from the map''s own features
+    adopt    lifted from the source dataset and promoted without recomputation
+    init     supplied by hand
+    compile  the faces of every noded source below a compilation, merged from
+             the topology; recomputed when those sources or their noding change
+    world    the whole world, by assertion: a global compilation has no bounds
+             worth knowing, and a client does not zoom to it
 
-  All three are constrained to position 0 below.
+  All five are constrained to position 0 below.
 */
 CREATE TABLE IF NOT EXISTS map_bounds.boundary_operation (
   id text PRIMARY KEY,
@@ -25,6 +29,8 @@ VALUES
   ('union',            'Open the boundary with a union computed from the map''s own features. Parameters carry a working srid and a union approach. This is the implicit default when a map has no operations at all.'),
   ('adopt',            'Open the boundary with a geometry shipped by the source dataset, promoted as-is. Record which layer or file in parameters / note.'),
   ('init',             'Open the boundary with a hand-supplied geometry.'),
+  ('compile',          'Open a compilation''s boundary with the faces of every noded source below it, merged from the topology. Recomputed by `topo update` when those sources or their noding change; cached in geometry.'),
+  ('world',            'Open the boundary as the whole world. For global compilations, whose extent is not worth computing and which a client never zooms to.'),
   ('add',              'Union an operand polygon into the boundary'),
   ('subtract',         'Difference an operand polygon out of the boundary'),
   ('buffer',           'Dilate then erode by a given distance to close small gaps'),
@@ -68,9 +74,15 @@ CREATE TABLE IF NOT EXISTS map_bounds.boundary_op (
       *is*, so this isn't redundant. */
   CONSTRAINT boundary_op_unique_position UNIQUE (source_id, position)
     DEFERRABLE INITIALLY IMMEDIATE,
-  /** Position 0 _must_ holds an opening operation, and opening operations must appear
+  /** Position 0 _must_ hold an opening operation, and opening operations must appear
       nowhere else. */
   CONSTRAINT boundary_op_opening_position
-    CHECK ((operation IN ('union', 'adopt', 'init')) = (position = 0))
+    CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world')) = (position = 0))
 );
+
+/* The opening vocabulary grew (`compile`, `world`); restate the constraint so an
+   existing database picks it up. */
+ALTER TABLE map_bounds.boundary_op DROP CONSTRAINT IF EXISTS boundary_op_opening_position;
+ALTER TABLE map_bounds.boundary_op ADD CONSTRAINT boundary_op_opening_position
+  CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world')) = (position = 0));
 

@@ -55,6 +55,11 @@ And tiles:
 
 Macrostrat core layers:
 
+- https://localhost:8000/map/{slug}/{z}/{x}/{y} — any source by slug or id, drawn
+  through the compilation system; `carto` is the served map (`/dev/carto` is its
+  deprecated alias) and `sys:carto-legacy` the materialized build. Every slug other
+  than those two needs a delegated token with the `tiles:map` scope
+  (`macrostrat auth create-token --scope tiles:map`) in `Authorization: Bearer`.
 - https://localhost:8000/carto-slim/{z}/{x}/{y}
 - https://localhost:8000/carto/{z}/{x}/{y}
 - https://localhost:8000/map/{z}/{x}/{y}?source_id=<source_id>

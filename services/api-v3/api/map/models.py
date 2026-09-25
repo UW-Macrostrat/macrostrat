@@ -16,13 +16,11 @@ from pydantic import BaseModel
 class MapUnit(BaseModel):
     """One mapped polygon covering the requested location."""
 
-    #: The served layer this answer came from, null when the request named a map
-    #: or compilation directly rather than a layer.
+    #: The compilation with faces this answer came from -- for `carto`, the
+    #: member its scale band chose for the zoom. Null when the request named a
+    #: map, or a compilation without faces, which answers for itself.
     map_layer: Optional[str] = None
-    #: Whether this is the layer the request's zoom would have drawn. A request
-    #: against a stack gets every covering layer's answer; this marks the one
-    #: that matches, without hiding the others.
-    is_current_layer: bool = False
+    map_layer_id: Optional[int] = None
     #: The solved face the polygon's map owns here. Null outside a layer.
     map_face_id: Optional[int] = None
 
@@ -43,13 +41,12 @@ class MapUnit(BaseModel):
     #: drawn" answerable across levels.
     priority: Optional[str] = None
     priority_path: list[int] = []
-    #: The layer member this map is presented as. A face in `carto-large`
-    #: belongs to member `medium` from the layer's point of view even when the
-    #: map that owns it is two levels further down, and that is the level a UI
-    #: should name.
-    unit_id: Optional[int] = None
-    unit_slug: Optional[str] = None
-    unit_name: Optional[str] = None
+    #: The member of the layer this map belongs to, skipping intermediate scale
+    #: layers -- from `carto-large` British Columbia is `bc-surface` -- and the
+    #: level a UI should name. `unit_ids` below are Macrostrat units.
+    member_id: Optional[int] = None
+    member_slug: Optional[str] = None
+    member_name: Optional[str] = None
 
     legend_id: Optional[int] = None
     map_unit_name: Optional[str] = None

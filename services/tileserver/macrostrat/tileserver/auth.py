@@ -28,7 +28,7 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
-__all__ = ["require_scope", "hash_token", "clear_token_cache"]
+__all__ = ["require_scope", "hash_token", "clear_token_cache", "bearer"]
 
 # Tile traffic would otherwise put a query on every single request. The cost of
 # caching is revocation latency: a revoked token keeps working until its entry
@@ -42,6 +42,11 @@ NEGATIVE_TTL = 5
 _cache: dict[str, tuple[float, Optional[list[str]]]] = {}
 
 _bearer = HTTPBearer(auto_error=False)
+
+#: The credential scheme, for a route that decides per request whether a scope
+#: is needed (`map_tiles`: public for `carto`, guarded for any other slug) and
+#: so cannot use `require_scope` as a router-level dependency.
+bearer = _bearer
 
 # ── Contract shared with the minting side ────────────────────────────────────
 # Compared as an exact string against what `macrostrat/cli/auth.py` and

@@ -56,21 +56,43 @@ WHERE NOT EXISTS (
     AND topology.layer.feature_column = 'topo'
 );
 
-/**
-  Store polygonal parts of a map area. This exists to allow for more incremental
-  maintenance for map faces
+/** The pieces a map's bounds were cut into for noding.
+
+  A map's bounds can run to a million vertices, and noding them whole fails or
+  takes minutes, so they are simplified, subdivided into pieces of a few hundred
+  vertices, and each piece is noded into the map's *single* topogeometry
+  (`map_area.topo`) with the topology library's accumulating form of
+  `update_boundary_topo`. Nothing topological lives here: a piece is a record of
+  what was cut (`bounds_hash` says from which bounds), whether it noded, at what
+  tolerance, and the error if it did not. Succeeded rows stay so an interrupted
+  noding resumes and the parting is reproducible; failed rows are what gets
+  retried, inspected, or accepted by eye. Regenerated wholesale when the bounds
+  change.
 */
 CREATE TABLE IF NOT EXISTS map_bounds.map_topo (
   id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   source_id integer REFERENCES map_bounds.map_area(source_id) ON DELETE CASCADE,
   geometry Geometry(MultiPolygon, 4326) NOT NULL,
-  -- For tracking whether the geometry and topology are in sync
-  geometry_hash uuid,
+  /** The bounds these pieces were cut from: `md5(ST_AsBinary(map_area.geometry))`. */
+  bounds_hash uuid,
+  noded boolean NOT NULL DEFAULT false,
+  /** The snapping tolerance the last attempt used. */
+  tolerance double precision,
   topology_error text
 );
 
+/* Pieces were once topogeometries of their own, duplicating every primitive
+   reference the map's topogeometry holds. The `map-topo-pieces` migration drops
+   that layer; these keep the declarative definition in step on any database. */
+ALTER TABLE map_bounds.map_topo ADD COLUMN IF NOT EXISTS bounds_hash uuid;
+ALTER TABLE map_bounds.map_topo ADD COLUMN IF NOT EXISTS noded boolean NOT NULL DEFAULT false;
+ALTER TABLE map_bounds.map_topo ADD COLUMN IF NOT EXISTS tolerance double precision;
+ALTER TABLE map_bounds.map_topo DROP COLUMN IF EXISTS geometry_hash;
+DROP TRIGGER IF EXISTS update_map_area_from_topo ON map_bounds.map_topo;
+DROP FUNCTION IF EXISTS map_bounds.ensure_map_area_recalculation_on_topo_change();
+DROP FUNCTION IF EXISTS map_bounds.update_topogeom(map_bounds.map_topo, double precision, integer);
+DROP FUNCTION IF EXISTS map_bounds.update_topogeom(map_bounds.map_topo, double precision);
 
-/** map_topo */
 /** The identity column stays `map_id` rather than `source_id`: the
   topology-manager submodule already defines `map_face.source_id` as a
   self-reference (the face a composite face was derived from), so the name is
@@ -80,111 +102,9 @@ ALTER TABLE map_bounds_topology.map_face
 ALTER TABLE map_bounds_topology.face_identity
   ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 
-SELECT topology.AddTopoGeometryColumn('map_bounds_topology', 'map_bounds','map_topo', 'topo','POLYGON')
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM topology.topology
-  JOIN topology.layer
-  ON topology.topology.id = topology.layer.topology_id
-  WHERE topology.name = 'map_bounds_topology'
-    AND topology.layer.schema_name = 'map_bounds'
-    AND topology.layer.table_name = 'map_topo'
-    AND topology.layer.feature_column = 'topo'
-);
-
 CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_topo USING gist (geometry);
 -- Every per-map procedure filters on this; without it they seq-scan the table.
 CREATE INDEX IF NOT EXISTS map_bounds_map_topo_source_idx ON map_bounds.map_topo (source_id);
-
-/** Function to update topogeometry for a row, updating the geometry hash and setting/clearing
-  topology errors as appropriate.
- */
--- Drop the previous signature (which had an unused `densify` parameter) so the
--- replacement below doesn't leave an ambiguous overload behind.
-DROP FUNCTION IF EXISTS map_bounds.update_topogeom(map_bounds.map_topo, double precision, integer);
-
-CREATE OR REPLACE FUNCTION map_bounds.update_topogeom(
-  map_topo map_bounds.map_topo,
-  tolerance double precision DEFAULT 0.0001
-) RETURNS text AS
-$$
-  DECLARE
-    _layer_id integer;
-    _hash uuid;
-    _err_text text;
-  BEGIN
-    _hash := md5(ST_AsBinary(map_topo.geometry))::uuid;
-
-    -- Get the layer identifier to update
-    SELECT layer_id INTO _layer_id
-    FROM topology.layer
-    WHERE schema_name='map_bounds'
-      AND table_name='map_topo'
-      AND feature_column='topo';
-
-    IF (_hash = map_topo.geometry_hash) THEN
-      -- We already have a valid topogeometry representation
-      RETURN null;
-    END IF;
-    -- Set topogeometry
-    UPDATE map_bounds.map_topo l
-    SET
-      topo = topology.toTopoGeom(
-        map_topo.geometry,
-        'map_bounds_topology',
-        _layer_id,
-        tolerance
-             ),
-      geometry_hash = _hash,
-      topology_error = null
-    WHERE l.id = map_topo.id;
-    RETURN NULL;
-  EXCEPTION WHEN others THEN
-    _err_text := SQLSTATE || ': ' || SQLERRM;
-    -- Set the error
-    UPDATE map_bounds.map_topo l
-    SET
-      topology_error = _err_text
-    WHERE l.id = map_topo.id;
-    RETURN _err_text;
-  END;
-$$
-LANGUAGE plpgsql VOLATILE;
-
-/** Trigger to force map_area recalculation when a map_topo's topogeometry
-  is updated, or a map_topo row is deleted, for a given source_id. */
-CREATE OR REPLACE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change()
-RETURNS trigger
-AS $$
-DECLARE
-  _source_id integer;
-BEGIN
-  _source_id := NULL;
-  IF (TG_OP = 'DELETE' AND OLD.topo IS NOT NULL) THEN
-    -- No change to topology if the topo column is null, so we can ignore this change
-    _source_id := OLD.source_id;
-  ELSEIF (TG_OP = 'UPDATE' AND NOT topology.equals(OLD.topo, NEW.topo)) THEN
-    _source_id := NEW.source_id;
-  ELSEIF (TG_OP = 'INSERT' AND NEW.topo IS NOT NULL) THEN
-    _source_id := NEW.source_id;
-  END IF;
-  IF (_source_id IS NULL) THEN
-    -- No change to topology, so we can ignore this change
-    RETURN NULL;
-  END IF;
-  /** Nothing to mark. `geometry_hash` records which boundary the `map_topo`
-    parts were derived from (see `map_area_sync`), so clearing it here would
-    force a needless re-subdivision. That a part's topogeometry changed means
-    the *assembly* step is stale, which `map_area_sync.assembled` and the
-    element-count comparison in `mark-changed-areas` already derive. */
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
--- Add the trigger
-CREATE TRIGGER update_map_area_from_topo
-AFTER INSERT OR UPDATE OR DELETE ON map_bounds.map_topo
-FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_change();
 
 /** Keep `maps.sources.rgeom` in step with the composed boundary.
 
@@ -201,13 +121,14 @@ FOR EACH ROW EXECUTE FUNCTION map_bounds.ensure_map_area_recalculation_on_topo_c
 CREATE OR REPLACE FUNCTION map_bounds.sync_source_rgeom()
   RETURNS trigger AS $$
 BEGIN
-  -- A compilation's `map_area.geometry` is only an envelope, and `rgeom` is the
-  -- v2 compatibility mirror -- which knows nothing about compilations. Mirroring
-  -- them would put tens of megabytes into a table whose size already makes
-  -- client listings painful.
+  -- `rgeom` is the v2 compatibility mirror, which knows nothing about
+  -- compilations: it is a maps-only column. A compilation (has members, or is a
+  -- registered layer) is skipped, so a global one's world bounds never reach v2.
   IF EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = NEW.source_id
+  ) OR EXISTS (
+    SELECT 1 FROM map_bounds.map_layer ml WHERE ml.source_id = NEW.source_id
   ) THEN
     RETURN NULL;
   END IF;
@@ -225,71 +146,76 @@ CREATE OR REPLACE TRIGGER sync_source_rgeom
   FOR EACH ROW EXECUTE FUNCTION map_bounds.sync_source_rgeom();
 
 
-/** Synchronisation state of each map area, derived rather than flagged.
+/** Noding state of each map area, derived rather than flagged.
 
-  The pipeline has four stages, and only the first has an input that cannot be
-  recovered from the data: `map_topo` parts are a simplified, subdivided
-  transform of `map_area.geometry`, and that transform cannot be inverted. So
-  `map_area.geometry_hash` records the boundary those parts were built from --
-  exactly what `map_topo.geometry_hash` records one level down, for the geometry
-  its topogeometry was built from.
+  `map_area.geometry_hash` is the topology library's stamp: the topogeometry was
+  built from this geometry. The host sets it once every piece has been attempted
+  (a failed piece is accepted, recorded, and visible below), and the library's
+  boundary trigger clears it -- and empties the topogeometry -- when the bounds
+  change. Pieces report their own state.
 
-  Everything else is derivable:
-    parts_current  the parts still reflect the current boundary
-    parts_solved   every part has a topogeometry, or a recorded error
-    assembled      map_area.topo has been built from the parts
+    noded            the topogeometry was built from the current bounds
+    pending_pieces   pieces cut but not yet attempted
+    failed_pieces    pieces whose noding failed, with an error recorded
+    is_current       noded, and nothing pending
 */
-CREATE OR REPLACE VIEW map_bounds.map_area_sync AS
+DROP VIEW IF EXISTS map_bounds.map_area_sync;
+CREATE VIEW map_bounds.map_area_sync AS
 SELECT
   a.source_id,
-  a.geometry_hash IS NOT DISTINCT FROM md5(ST_AsBinary(a.geometry))::uuid
-    AS parts_current,
-  NOT EXISTS (
-    SELECT 1 FROM map_bounds.map_topo t
-    WHERE t.source_id = a.source_id
-      AND t.topo IS NULL
-      AND t.topology_error IS NULL
-  ) AS parts_solved,
-  a.topo IS NOT NULL AS assembled,
+  a.geometry_hash IS NOT DISTINCT FROM md5(ST_AsBinary(a.geometry))::uuid AS noded,
+  a.topo IS NOT NULL AS has_topo,
+  (SELECT count(*) FROM map_bounds.map_topo t
+    WHERE t.source_id = a.source_id AND NOT t.noded AND t.topology_error IS NULL)
+    AS pending_pieces,
+  (SELECT count(*) FROM map_bounds.map_topo t
+    WHERE t.source_id = a.source_id AND t.topology_error IS NOT NULL)
+    AS failed_pieces,
   (
     a.geometry_hash IS NOT DISTINCT FROM md5(ST_AsBinary(a.geometry))::uuid
-    AND a.topo IS NOT NULL
     AND NOT EXISTS (
       SELECT 1 FROM map_bounds.map_topo t
-      WHERE t.source_id = a.source_id
-        AND t.topo IS NULL
-        AND t.topology_error IS NULL
+      WHERE t.source_id = a.source_id AND NOT t.noded AND t.topology_error IS NULL
     )
   ) AS is_current
 FROM map_bounds.map_area a;
 
 
+/** The layer a boundary row is noded in, or NULL for a row the library must not
+  node whole: the host nodes maps piece by piece (`process_map`) and stamps
+  `geometry_hash` itself, and a compilation that is not a mosaic is never noded
+  at all -- its bounds are composed, and identity resolves it through its
+  members. Only the layer test is the library's; the compilation test keeps the
+  whole-row pass (`update_contacts`) away from rows it has no business with. */
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
   RETURNS integer AS $$
 SELECT ml.id
 FROM map_bounds.map_layer ml
 WHERE ml.id = $1.map_layer
   AND NOT map_bounds.is_composite_layer(ml.id)
-  AND ml.topological;
-$$ LANGUAGE SQL IMMUTABLE;
+  AND ml.topological
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.map_layer r WHERE r.source_id = $1.source_id
+  )
+  AND NOT (
+    EXISTS (
+      SELECT 1 FROM map_bounds.compilation_member cm
+      WHERE cm.compilation_id = $1.source_id
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM map_bounds.compilation c
+      WHERE c.source_id = $1.source_id AND c.assembly_mode = 'mosaic'
+    )
+  );
+$$ LANGUAGE SQL STABLE;
 
 
-/** Scale key for Carto compilations:
-      scaleIsIn = {
-        "tiny": ["tiny", "small"],
-        "small": ["small", "medium"],
-        "medium": ["medium", "large"],
-        "large": ["large"],
-    }
- */
-
+/** Derived: one row per registered compilation per resolved map. Rebuilt outright
+  by `sync-priority-paths`; the columns are declared in `04-compilation-tables.sql`. */
 CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
   map_layer integer REFERENCES map_bounds.map_layer(id) ON DELETE CASCADE,
-  source_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
-  priority integer,
-  /** Cached bounds for the map's contribution to the compilation. */
-  --geometry Geometry(MultiPolygon, 4326),
-  PRIMARY KEY (map_layer, source_id)
+  map_id integer REFERENCES maps.sources(source_id) ON DELETE CASCADE,
+  PRIMARY KEY (map_layer, map_id)
 );
 
 

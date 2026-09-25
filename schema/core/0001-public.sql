@@ -215,55 +215,6 @@ OPTIONS (
 );
 ALTER FOREIGN TABLE public.srtm1 OWNER TO macrostrat;
 
-CREATE TABLE public.temp_names (
-    strat_name_id integer,
-    strat_name character varying(100),
-    concept_id integer,
-    rank_name character varying(100),
-    bed_id integer,
-    bed_name character varying(100),
-    mbr_id integer,
-    mbr_name character varying(100),
-    fm_id integer,
-    fm_name character varying(100),
-    subgp_id integer,
-    subgp_name character varying(100),
-    gp_id integer,
-    gp_name character varying(100),
-    sgp_id integer,
-    sgp_name character varying(100),
-    early_age numeric(8,4),
-    late_age numeric(8,4),
-    gsc_lexicon character(15),
-    parent integer,
-    tree integer,
-    t_units integer,
-    b_period character varying(100),
-    t_period character varying(100),
-    name_no_lith character varying(100),
-    ref_id integer,
-    c_interval character varying(100),
-    map_id integer,
-    match_text text
-);
-ALTER TABLE public.temp_names OWNER TO macrostrat;
-
-CREATE TABLE public.temp_rocks (
-    map_ids integer[],
-    name text,
-    orig_strat_name text[],
-    strat_name text,
-    strat_name_clean text,
-    age character varying(255),
-    lith text,
-    descrip text,
-    comments text,
-    t_interval integer,
-    b_interval integer,
-    envelope public.geometry
-);
-ALTER TABLE public.temp_rocks OWNER TO macrostrat;
-
 CREATE TABLE public.units (
     mapunit text,
     description text
@@ -346,24 +297,6 @@ CREATE INDEX lookup_tiny_lith_ids_idx ON public.lookup_tiny USING gin (lith_ids)
 CREATE INDEX lookup_tiny_map_id_idx ON public.lookup_tiny USING btree (map_id);
 
 CREATE INDEX lookup_tiny_strat_name_children_idx ON public.lookup_tiny USING gin (strat_name_children);
-
-CREATE INDEX temp_names_name_no_lith_idx ON public.temp_names USING btree (name_no_lith);
-
-CREATE INDEX temp_names_rank_name_idx ON public.temp_names USING btree (rank_name);
-
-CREATE INDEX temp_names_strat_name_id_idx ON public.temp_names USING btree (strat_name_id);
-
-CREATE INDEX temp_names_strat_name_idx ON public.temp_names USING btree (strat_name);
-
-CREATE INDEX temp_rocks_b_interval_idx ON public.temp_rocks USING btree (b_interval);
-
-CREATE INDEX temp_rocks_envelope_idx ON public.temp_rocks USING gist (envelope);
-
-CREATE INDEX temp_rocks_strat_name_clean_idx ON public.temp_rocks USING btree (strat_name_clean);
-
-CREATE INDEX temp_rocks_strat_name_idx ON public.temp_rocks USING btree (strat_name);
-
-CREATE INDEX temp_rocks_t_interval_idx ON public.temp_rocks USING btree (t_interval);
 
 GRANT ALL ON FUNCTION public.current_app_role() TO macrostrat;
 
