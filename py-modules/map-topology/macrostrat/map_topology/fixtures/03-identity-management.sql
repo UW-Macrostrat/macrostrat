@@ -32,10 +32,32 @@ LIMIT 1;
 $$ LANGUAGE sql STABLE;
 
 
-/** TODO: this has to be recreated here because the types are wrong **/
+/** Whose topogeometry a candidate is found by. A map's own; a materialized
+  compilation's (which has no topogeometry) through every noded source below it,
+  so `bc-surface` is present wherever `bc_2017` or `bc_2017_quat` is. */
+CREATE OR REPLACE FUNCTION map_bounds.topology_sources_of(_source_id integer)
+  RETURNS TABLE (source_id integer) AS $$
+SELECT _source_id
+UNION
+SELECT m.source_id FROM map_bounds.members_of(_source_id, true) m;
+$$ LANGUAGE SQL STABLE;
+
+/** The candidates for a layer, each paired with the noded sources that stand for
+  it in the topology. Small: one row per resolved map, plus a handful for the
+  materialized compilations' members. */
+CREATE OR REPLACE FUNCTION map_bounds_topology.layer_candidates(_map_layer integer)
+  RETURNS TABLE (map_id integer, priority_path integer[], area_km double precision, noded_id integer) AS $$
+SELECT mc.map_id, mc.priority_path, ca.area_km, ts.source_id
+FROM map_bounds.map_priority mc
+JOIN map_bounds.map_area ca ON ca.source_id = mc.map_id
+CROSS JOIN LATERAL map_bounds.topology_sources_of(mc.map_id) ts
+WHERE mc.map_layer = _map_layer
+  AND map_bounds.has_content(mc.map_id);
+$$ LANGUAGE SQL STABLE;
+
 CREATE OR REPLACE FUNCTION map_bounds_topology.identity_for_face(face_id integer, map_layer integer)
   RETURNS integer AS $$
-SELECT mc.map_id
+SELECT c.map_id
 FROM map_bounds_topology.relation r
 JOIN map_bounds.map_area f
   -- A topogeometry id is only unique *within* a layer, so both halves are
@@ -43,24 +65,22 @@ JOIN map_bounds.map_area f
   -- otherwise collide with `map_area` ones by id alone.
   ON (f.topo).id = r.topogeo_id
  AND (f.topo).layer_id = r.layer_id
-JOIN map_bounds.map_priority mc
-  ON mc.map_id = f.source_id
- AND mc.map_layer = $2
-WHERE element_id = $1
-  AND element_type = 3
-  AND map_bounds.has_content(mc.map_id)
+JOIN map_bounds_topology.layer_candidates($2) c
+  ON c.noded_id = f.source_id
+WHERE r.element_id = $1
+  AND r.element_type = 3
 ORDER BY
-  mc.priority_path DESC,
-  f.area_km -- smaller areas first
+  c.priority_path DESC,
+  c.area_km -- smaller areas first
 LIMIT 1;
-$$ LANGUAGE SQL IMMUTABLE;
+$$ LANGUAGE SQL STABLE;
 
 /** The set-oriented form of `identity_for_face`, for a whole layer at once.
 
-  Must agree with `identity_for_face` exactly -- same candidate set, same ordering,
-  same `has_content` exclusion -- because the dissolve uses whichever is
-  available and the two must not disagree about which map owns a face. `DISTINCT ON`
-  is the bulk equivalent of that function's `LIMIT 1`.
+  Must agree with `identity_for_face` exactly -- same candidate set, same ordering
+  -- because the dissolve uses whichever is available and the two must not
+  disagree about which map owns a face. `DISTINCT ON` is the bulk equivalent of
+  that function's `LIMIT 1`.
 
   Identity is returned as text so the library can hold it without knowing the
   strategy's key type; joinability only ever tests equality.
@@ -69,17 +89,14 @@ CREATE OR REPLACE FUNCTION map_bounds_topology.resolve_layer_identity(_map_layer
   RETURNS TABLE (face_id integer, identity text) AS $$
 SELECT DISTINCT ON (r.element_id)
   r.element_id,
-  mc.map_id::text
-FROM map_bounds_topology.relation r
-JOIN map_bounds.map_area f
+  c.map_id::text
+FROM map_bounds_topology.layer_candidates(_map_layer) c
+JOIN map_bounds.map_area f ON f.source_id = c.noded_id AND f.topo IS NOT NULL
+JOIN map_bounds_topology.relation r
   ON (f.topo).id = r.topogeo_id
  AND (f.topo).layer_id = r.layer_id
-JOIN map_bounds.map_priority mc
-  ON mc.map_id = f.source_id
- AND mc.map_layer = _map_layer
 WHERE r.element_type = 3
-  AND map_bounds.has_content(mc.map_id)
-ORDER BY r.element_id, mc.priority_path DESC, f.area_km;
+ORDER BY r.element_id, c.priority_path DESC, c.area_km;
 $$ LANGUAGE SQL STABLE;
 
 
@@ -93,7 +110,7 @@ BEGIN
   id2 := map_bounds_topology.identity_for_face(f2, map_layer);
   RETURN id1 IS NOT DISTINCT FROM id2;
 END
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql STABLE;
 
 CREATE OR REPLACE FUNCTION {topo_schema}.map_face_is_identified(map_face {topo_schema}.map_face)
   RETURNS boolean AS $$

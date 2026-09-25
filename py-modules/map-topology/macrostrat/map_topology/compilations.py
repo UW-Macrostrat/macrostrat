@@ -352,7 +352,7 @@ def create(
     placed = f"in {layer}, priority {priority}" if layer else "[yellow]unplaced[/]"
     print(
         f"[green]{slug}[/] [dim]#{source_id}[/] created as {scale}, {placed}."
-        "\nRun [cyan]macrostrat compilations sync[/] to derive its boundary and paths."
+        "\nRun [cyan]macrostrat topo update[/] to derive its boundary and solve its faces."
     )
 
 
@@ -554,8 +554,8 @@ def materialize(
     ).scalar()
     print(
         f"[green]{n}[/] polygons written."
-        "\nRun [cyan]macrostrat compilations sync[/], then reprocess the topology"
-        " so faces resolve to it rather than its members."
+        "\nRun [cyan]macrostrat topo update[/] so faces resolve to it rather"
+        " than its members."
     )
 
 
@@ -573,50 +573,6 @@ def dematerialize(
     db.run_sql(proc("dematerialize-compilation"), dict(compilation_id=source_id))
     db.session.commit()
     print(f"[green]{slug}[/]: {n} derived polygons removed; now virtual.")
-
-
-@cli.command("sync")
-def sync():
-    """Rebuild everything derived from compilation membership.
-
-    Boundaries by reference, priority paths, stale-identity marking and unit
-    faces -- for picking up a membership edit, or for finishing a schema apply.
-    It does not dissolve faces: the faces it marks stale are solved by the next
-    `macrostrat topo update`, and unit faces are rebuilt from the constituents as
-    they stand, so after a membership or materialization change the order is
-    `compilations sync`, `topo update`, `compilations sync`.
-
-    Nothing here writes membership. `sync` derives boundaries, paths and faces
-    *from* the edges; the edges themselves are authored, by these commands or by
-    an ingestion pipeline, and no step will add or withdraw one behind you.
-    """
-    db = get_database()
-    # Order matters: `sync-priority-paths` empties `map_priority` and rebuilds it
-    # from the membership edges, keeping only members that have content -- and a
-    # compilation has no content until `sync-compilation-bounds` assembles a
-    # boundary for it out of its members. Run the other way round and a new
-    # compilation resolves to nothing on its first sync.
-    for step in (
-        "sync-compilation-bounds",
-        "sync-priority-paths",
-        # Identity can change without a boundary moving, and only boundary edits
-        # mark faces dirty -- so a resolution change would otherwise leave stale
-        # faces behind with nothing to notice.
-        "mark-stale-identity",
-        "sync-unit-faces",
-    ):
-        db.run_sql(proc(step))
-    db.session.commit()
-    counts = db.run_query(
-        """
-        SELECT count(*) AS resolved, count(DISTINCT map_layer) AS layers
-        FROM map_bounds.map_priority
-        """
-    ).first()
-    print(
-        f"[green]{counts.resolved}[/] resolutions across "
-        f"[green]{counts.layers}[/] registered compilations"
-    )
 
 
 @cli.command("lint")
@@ -888,6 +844,6 @@ def generate_carto_v1(
     # `write` commits its own work, so the migration path persists too.
     carto_v1.write(db, suffix, log=print)
     print(
-        "\nRun [cyan]macrostrat compilations sync[/] to assemble their boundaries."
+        "\nRun [cyan]macrostrat topo update[/] to assemble their boundaries."
         "\n[dim]They are served nowhere until they are given map_layer rows.[/]"
     )

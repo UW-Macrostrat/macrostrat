@@ -2,11 +2,10 @@ from dataclasses import dataclass
 
 from geoalchemy2.shape import from_shape
 from mapboard.topology_manager import TopologyInspector, TopologyManager
-from prompt_toolkit.styles.style import default_priority
 from pytest import approx, fixture, mark
 from shapely.geometry import Point
 
-from macrostrat.map_topology import _set_dirty, _update_identity
+from macrostrat.map_topology import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import (
     MacrostratTopologyManager,
@@ -72,9 +71,14 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
 
-        # Check that we have three dirty faces in the dirty_face table
+        # Every piece marks the faces it touched dirty: the two maps' faces and
+        # the universal face between them. Rows are per (face, layer) -- the
+        # marking reaches every layer a change in `large` invalidates -- so count
+        # faces, not rows.
         assert (
-            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
+            db.run_query(
+                "SELECT count(DISTINCT id) FROM map_bounds_topology.dirty_face"
+            ).scalar()
             == 3
         )
 
@@ -94,12 +98,16 @@ class TestMapTopology:
     def test_dirty_faces(self, ctx):
         db = ctx.database
 
-        assert (
-            db.run_query(
-                "SELECT count(topo) FROM map_bounds.map_area WHERE topo IS NOT NULL"
-            ).scalar()
-            == 2
-        )
+        with_topo = db.run_query(
+            """
+            SELECT a.source_id, s.slug, a.geometry_hash IS NOT NULL AS stamped,
+                   (SELECT count(*) FROM map_bounds_topology.relation r
+                     WHERE r.topogeo_id = (a.topo).id AND r.layer_id = (a.topo).layer_id) AS elements
+            FROM map_bounds.map_area a JOIN maps.sources s USING (source_id)
+            WHERE a.topo IS NOT NULL ORDER BY 1
+            """
+        ).all()
+        assert len(with_topo) == 2, [tuple(r) for r in with_topo]
 
     def test_topology_is_valid(self, ctx):
         insp = TopologyInspector(ctx)
@@ -273,15 +281,48 @@ class TestMapTopology:
         assert insp.n_faces(map_layer="Medium") == 1
         assert insp.n_faces(map_layer="Large") == 3
 
+    def test_pieces_are_a_record_not_a_layer(self, ctx):
+        """Pieces are cut, noded into the map's one topogeometry, and kept as a
+        record; nothing about them is topological."""
+        db = ctx.database
+        pieces = db.run_query(
+            """
+            SELECT count(*) AS n, count(*) FILTER (WHERE noded) AS noded,
+                   count(*) FILTER (WHERE topology_error IS NOT NULL) AS failed
+            FROM map_bounds.map_topo WHERE source_id = 1004
+            """
+        ).one()
+        assert pieces.n > 1
+        assert pieces.noded == pieces.n
+        assert pieces.failed == 0
+        # One topogeometry per map, stamped complete.
+        assert db.run_query(
+            """
+            SELECT topo IS NOT NULL AND geometry_hash = md5(ST_AsBinary(geometry))::uuid
+            FROM map_bounds.map_area WHERE source_id = 1004
+            """
+        ).scalar()
+        assert (
+            db.run_query(
+                """
+                SELECT count(*) FROM topology.layer
+                WHERE schema_name = 'map_bounds' AND table_name = 'map_topo'
+                """
+            ).scalar()
+            == 0
+        )
+
     def test_composite_layers(self, ctx):
         """A composite layer is solved like any other, not copied from its members.
 
         The flattened priority paths give it identity resolution, so the ordinary
         face pipeline dissolves it; nothing calls the painter's-algorithm overlay.
+        Runs through `update_full`, the one command an operator uses, so the
+        stale-identity marking and member-face sync run too.
         """
         db = ctx.database
         mgr = MacrostratTopologyManager(ctx)
-        mgr.update()
+        mgr.update_full()
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1
@@ -342,47 +383,31 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
 
-        # The stored geometry is only an envelope -- cheap, and enough to say
-        # roughly where the compilation is. The exact footprint stays in
-        # `composite_topo`, resolved on demand.
-        stored, exact, members, area_km = db.run_query(
+        # A compilation's bounds come from the `compile` opening operation: the
+        # union of the noded sources below it, composed like any map's bounds.
+        stored, members, area_km, opening = db.run_query(
             """
             SELECT
               ST_Area(a.geometry),
-              ST_Area(a.composite_topo::geometry),
               (SELECT ST_Area(ST_Union(geometry)) FROM map_bounds.map_area
                WHERE source_id IN (1001, 1002)),
-              a.area_km
+              a.area_km,
+              (SELECT operation FROM map_bounds.boundary_op
+               WHERE source_id = 1005 AND position = 0)
             FROM map_bounds.map_area a WHERE a.source_id = 1005
             """
         ).first()
-        # A region-scale compilation stores its real boundary, not an envelope.
-        assert stored == approx(exact, rel=1e-9)
-        assert exact == approx(members, rel=1e-9)
+        assert opening == "compile"
+        assert stored == approx(members, rel=1e-9)
         assert area_km is not None and area_km > 0
-
-        # It references its members' topogeometries rather than re-listing every
-        # face they cover -- one element per member, at any nesting depth.
-        assert set(
-            db.run_query(
-                """
-                SELECT a2.source_id
-                FROM map_bounds.map_area a
-                JOIN map_bounds_topology.relation r
-                  ON r.layer_id = (a.composite_topo).layer_id
-                 AND r.topogeo_id = (a.composite_topo).id
-                JOIN map_bounds.map_area a2
-                  ON (a2.topo).id = r.element_id
-                 AND (a2.topo).layer_id = r.element_type
-                WHERE a.source_id = 1005
-                """
-            ).scalars()
-        ) == {1001, 1002}
-
-        # A compilation lives in the composite layer, not the primitive one.
+        # A compilation has no topogeometry: it is never parted out, and identity
+        # resolves a materialized one through its members.
         assert db.run_query(
-            "SELECT topo IS NULL AND composite_topo IS NOT NULL"
-            " FROM map_bounds.map_area WHERE source_id = 1005"
+            "SELECT topo IS NULL FROM map_bounds.map_area WHERE source_id = 1005"
+        ).scalar()
+        # Its bounds are stamped complete, so it never reads as needing noding.
+        assert db.run_query(
+            "SELECT is_current FROM map_bounds.map_area_sync WHERE source_id = 1005"
         ).scalar()
 
         layer = insp.map_layer_id("Large")
@@ -434,7 +459,7 @@ class MapFaceTestCase:
 
 def n_map_areas(db):
     """Count maps, not compilations -- every compilation has a `map_area` row too,
-    assembled from its members' faces."""
+    composed from its members' bounds."""
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds.map_area a

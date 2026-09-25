@@ -5,7 +5,7 @@ from typing import Any
 
 from macrostrat.database import Database
 
-from .operations import OPENING_OPERATIONS, BoundaryOp, load
+from .operations import COMPUTED_OPENINGS, OPENING_OPERATIONS, BoundaryOp, load
 
 #: SQL yielding the running geometry inside the fold.
 _SEED = "SELECT geometry FROM map_bounds.boundary_op WHERE id = :opening_id"
@@ -92,32 +92,99 @@ def ensure_opening(db: Database, source_id: int) -> int | None:
     ).scalar()
 
 
-def recompute_union(db: Database, source_id: int) -> None:
-    """Rebuild the cached opening union from the map's own features."""
-    opening = db.run_query(
-        "SELECT id FROM map_bounds.boundary_op"
-        " WHERE source_id = :source_id AND position = 0 AND operation = 'union'",
+#: SQL for each computed opening's geometry, given `:source_id`.
+_OPENING_GEOMETRY = {
+    # The map's own features.
+    "union": """
+        SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(geom)), 3))
+        FROM maps.polygons
+        WHERE source_id = :source_id
+    """,
+    # The bounds of every noded source below the compilation. Unioning the noded
+    # sources rather than the direct members makes the result independent of the
+    # order nested compilations are built in.
+    "compile": """
+        SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(a.geometry)), 3))
+        FROM map_bounds.members_of(:source_id, true) m
+        JOIN map_bounds.map_area a ON a.source_id = m.source_id
+        WHERE NOT map_bounds.is_compilation(m.source_id)
+    """,
+}
+
+
+def opening_operation(db: Database, source_id: int) -> tuple[int, str] | None:
+    row = db.run_query(
+        "SELECT id, operation FROM map_bounds.boundary_op"
+        " WHERE source_id = :source_id AND position = 0",
         dict(source_id=source_id),
-    ).scalar()
-    if opening is None:
-        ensure_opening(db, source_id)
-        opening = db.run_query(
-            "SELECT id FROM map_bounds.boundary_op"
-            " WHERE source_id = :source_id AND position = 0",
-            dict(source_id=source_id),
+    ).first()
+    if row is None:
+        return None
+    return row.id, row.operation
+
+
+def set_opening(db: Database, source_id: int, operation: str) -> int:
+    """Make `operation` the map's opening operation, replacing any existing one.
+
+    The row's cached geometry is cleared; `build --init` (or `topo update`, for
+    `compile`) recomputes it.
+    """
+    if operation not in OPENING_OPERATIONS:
+        raise ValueError(f"{operation!r} cannot open a boundary")
+    existing = opening_operation(db, source_id)
+    if existing is None:
+        return db.run_query(
+            """
+            INSERT INTO map_bounds.boundary_op (source_id, position, operation)
+            VALUES (:source_id, 0, :operation)
+            RETURNING id
+            """,
+            dict(source_id=source_id, operation=operation),
         ).scalar()
     db.run_query(
-        """
+        "UPDATE map_bounds.boundary_op"
+        " SET operation = :operation, geometry = NULL, parameters = jsonb_build_object()"
+        " WHERE id = :id",
+        dict(id=existing[0], operation=operation),
+    )
+    return existing[0]
+
+
+def recompute_opening(db: Database, source_id: int) -> None:
+    """Rebuild the cached geometry of a computed opening (`union` or `compile`).
+
+    A map with no opening row is opened with `union`, as it always was.
+    """
+    opening = opening_operation(db, source_id)
+    if opening is None:
+        ensure_opening(db, source_id)
+        opening = opening_operation(db, source_id)
+        if opening is None:
+            # No boundary to snapshot: open from the features directly.
+            opening_id = db.run_query(
+                """
+                INSERT INTO map_bounds.boundary_op (source_id, position, operation)
+                VALUES (:source_id, 0, 'union')
+                RETURNING id
+                """,
+                dict(source_id=source_id),
+            ).scalar()
+            opening = (opening_id, "union")
+    opening_id, operation = opening
+    if operation not in COMPUTED_OPENINGS:
+        return
+    db.run_query(
+        f"""
         UPDATE map_bounds.boundary_op
-        SET geometry = (
-            SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(geom)), 3))
-            FROM maps.polygons
-            WHERE source_id = :source_id
-        )
+        SET geometry = ({_OPENING_GEOMETRY[operation]})
         WHERE id = :opening_id
         """,
-        dict(source_id=source_id, opening_id=opening),
+        dict(source_id=source_id, opening_id=opening_id),
     )
+
+
+# Kept under its old name for callers that only ever meant `union`.
+recompute_union = recompute_opening
 
 
 def _fold(
@@ -161,7 +228,7 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
     ).scalar()
 
     if init and not dry_run:
-        recompute_union(db, source_id)
+        recompute_opening(db, source_id)
 
     ops = load_ops(db, source_id)
 
@@ -173,6 +240,16 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
         return result
 
     seed = None
+    if (
+        ops[0].position == 0
+        and ops[0].operation in OPENING_OPERATIONS
+        and not ops[0].has_geometry
+        and ops[0].op.takes_geometry
+    ):
+        # A computed opening whose cache was never filled (`bounds open`, or a
+        # compilation seeded with `compile`): compute it now.
+        recompute_opening(db, source_id)
+        ops = load_ops(db, source_id)
     if ops[0].position != 0:
         # Operations authored outside the CLI -- QGIS edits `boundary_op`
         # directly -- have no opening row. Fill it from the current boundary

@@ -5,7 +5,11 @@ from psycopg.sql import Identifier
 from macrostrat.database import Database
 from macrostrat.schema_management import Migration, _any, _not, has_columns
 
-RENAMED = [("map_topo", "map_id"), ("map_priority", "map_id")]
+# `map_priority` is no longer listed: it was renamed here once, and then, by the
+# `map-priority-columns` migration, its map column was deliberately named `map_id`
+# again (one row per resolved map). Testing for that column would read the new
+# state as the old one and undo it.
+RENAMED = [("map_topo", "map_id")]
 
 
 class SourceIDRenameMigration(Migration):

@@ -70,12 +70,13 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
     rows themselves (`is_derived`), and `dematerialize` checks every polygon
     before it deletes anything. */
   member_hash uuid,
-  /** The member state the *bounds* were last assembled from. Separate from
-    `member_hash`: the bounds and the polygon cache are independent derived
-    things and go stale for different reasons. */
-  assembly_hash uuid,
   note text
 );
+/* Bounds are composed by the `compile` opening operation now, which keeps its own
+   staleness stamp in `boundary_op.parameters`. The view that read the column goes
+   first. */
+DROP VIEW IF EXISTS map_bounds.compilation_assembly;
+ALTER TABLE map_bounds.compilation DROP COLUMN IF EXISTS assembly_hash;
 
 /** THE FACE REGISTER
 
@@ -202,14 +203,15 @@ SELECT map_bounds.is_derived(_source_id)
   );
 $$ LANGUAGE SQL STABLE;
 
-/** Bounds spanning the whole world: a client does not zoom to it. Derived from
-  the geometry; the served layers carry a world envelope today. */
+/** Bounds that are the whole world, by assertion: the source opened its bounds
+  with the `world` operation. A client does not zoom to it, and overlap tests
+  leave it out. */
 CREATE OR REPLACE FUNCTION map_bounds.is_global(_source_id integer)
   RETURNS boolean AS $$
-SELECT ST_XMin(a.geometry) <= -179 AND ST_XMax(a.geometry) >= 179
-   AND ST_YMin(a.geometry) <= -60 AND ST_YMax(a.geometry) >= 75
-FROM map_bounds.map_area a
-WHERE a.source_id = _source_id;
+SELECT EXISTS (
+  SELECT 1 FROM map_bounds.boundary_op
+  WHERE source_id = _source_id AND position = 0 AND operation = 'world'
+);
 $$ LANGUAGE SQL STABLE;
 
 /** Resolve any source by slug. */
@@ -503,97 +505,47 @@ WHERE parent.source_id IS NOT NULL
 ON CONFLICT (compilation_id, member_id) DO NOTHING;
 
 /* ---------------------------------------------------------------------------
-   ASSEMBLED BOUNDS (interim: to be replaced by the `compile` opening operation)
+   BOUNDS
+
+   A compilation's bounds go through the same pipeline as a map's: a `compile`
+   opening operation (the union of every noded source below it) or `world`, then
+   ordinary boundary operations, composed by `bounds build` and refreshed by
+   `topo update`. A compilation has no topogeometry of its own -- it is not
+   parted out, and identity resolves a materialized one through its members
+   (`topology_sources_of`). The hierarchical `composite_topo` layer, the
+   `compilation_assembly` view and `compilation_face_elements` that did this by
+   reference are gone; the `map-topo-pieces` migration drops the layer.
    --------------------------------------------------------------------------- */
-
-/** A compilation's bounds are the union of its members', and both are already in
-  the topology -- so it references them, in a level-1 layer whose child is the
-  level-0 `map_area.topo` layer. `relationtrigger()` enforces that every element
-  comes from the child layer, so a compilation references its *resolved maps*
-  rather than its direct members, which works at any depth with a single layer. */
-SELECT topology.AddTopoGeometryColumn(
-  'map_bounds_topology',
-  'map_bounds',
-  'map_area',
-  'composite_topo',
-  'POLYGON',
-  (
-    SELECT layer_id FROM topology.layer
-    WHERE schema_name = 'map_bounds'
-      AND table_name = 'map_area'
-      AND feature_column = 'topo'
-  )
-)
-WHERE NOT EXISTS (
-  SELECT 1 FROM topology.layer
-  WHERE schema_name = 'map_bounds'
-    AND table_name = 'map_area'
-    AND feature_column = 'composite_topo'
-);
-
-/** What each compilation's bounds should be assembled from, and whether they
-  already have been. `current_hash` covers the member set and each member's
-  topogeometry id, so a member's bounds being rebuilt makes its parents stale. */
 DROP VIEW IF EXISTS map_bounds.compilation_assembly;
-CREATE VIEW map_bounds.compilation_assembly AS
-WITH RECURSIVE descendants AS (
-  -- A mosaic is not assembled from anything: its bounds are its own and its
-  -- members are never noded.
-  SELECT cm.compilation_id AS root, cm.member_id
-  FROM map_bounds.compilation_member cm
-  WHERE NOT map_bounds.is_mosaic(cm.compilation_id)
-  UNION
-  SELECT d.root, cm.member_id
-  FROM descendants d
-  JOIN map_bounds.compilation_member cm
-    ON cm.compilation_id = d.member_id
-  WHERE NOT map_bounds.has_content(d.member_id)
-)
-SELECT
-  d.root AS source_id,
-  array_agg(DISTINCT ARRAY[(a.topo).id, (a.topo).layer_id]) AS elements,
-  md5(string_agg(DISTINCT
-        d.member_id || '/' || (a.topo).id, ',')
-      )::uuid AS current_hash,
-  c.assembly_hash,
-  c.assembly_hash IS DISTINCT FROM
-    md5(string_agg(DISTINCT d.member_id || '/' || (a.topo).id, ','))::uuid
-    AS is_stale
-FROM descendants d
-JOIN map_bounds.map_area a
-  ON a.source_id = d.member_id
- AND a.topo IS NOT NULL
-LEFT JOIN map_bounds.compilation c ON c.source_id = d.root
-GROUP BY d.root, c.assembly_hash;
+DROP FUNCTION IF EXISTS map_bounds.compilation_face_elements(integer);
 
-/** The primitive faces a compilation's members cover, as `createTopoGeom`
-  elements: the level-0 topogeometry a materialized derived compilation needs so
-  `identity_for_face` can resolve it. Resolved per call, not in the view, because
-  it joins every member's face relations. */
-CREATE OR REPLACE FUNCTION map_bounds.compilation_face_elements(_source_id integer)
-  RETURNS integer[][] AS $$
-WITH RECURSIVE descendants AS (
-  SELECT cm.member_id
-  FROM map_bounds.compilation_member cm
-  WHERE cm.compilation_id = _source_id
-    AND NOT map_bounds.is_mosaic(cm.compilation_id)
-  UNION
-  SELECT cm.member_id
-  FROM descendants d
-  JOIN map_bounds.compilation_member cm
-    ON cm.compilation_id = d.member_id
-  WHERE NOT map_bounds.has_content(d.member_id)
-)
-SELECT array_agg(DISTINCT ARRAY[r.element_id, 3])
-FROM descendants d
-JOIN map_bounds.map_area a
-  ON a.source_id = d.member_id
- AND a.topo IS NOT NULL
-JOIN map_bounds_topology.relation r
-  ON r.layer_id = (a.topo).layer_id
- AND r.topogeo_id = (a.topo).id
- AND r.element_type = 3;
-$$ LANGUAGE sql STABLE;
+/** Every registered compilation gets a `map_area` row and an opening operation at
+  creation, so it has bounds before any sync: the global ones (`tiny`, `small`,
+  `carto-*`) open with `world`, the scale layers with `compile`. Compilations made
+  later get `compile` from `topo update`. */
+INSERT INTO map_bounds.map_area (id, geometry, map_layer)
+SELECT ml.source_id,
+  CASE WHEN ml.slug IN ('tiny', 'small', 'carto-small', 'carto-medium', 'carto-large')
+       THEN ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))
+       ELSE ST_GeomFromText('MULTIPOLYGON EMPTY', 4326) END,
+  NULL
+FROM map_bounds.map_layer ml
+WHERE ml.source_id IS NOT NULL
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO map_bounds.boundary_op (source_id, position, operation, note)
+SELECT ml.source_id, 0,
+  CASE WHEN ml.slug IN ('tiny', 'small', 'carto-small', 'carto-medium', 'carto-large')
+       THEN 'world' ELSE 'compile' END,
+  'Seeded with the compilation schema'
+FROM map_bounds.map_layer ml
+WHERE ml.source_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.boundary_op o
+    WHERE o.source_id = ml.source_id AND o.position = 0
+  );
+-- No ON CONFLICT: `boundary_op_unique_position` is deferrable, which ON CONFLICT
+-- cannot use as an arbiter; the NOT EXISTS above is the idempotence.
 
 /* ---------------------------------------------------------------------------
    STATE
