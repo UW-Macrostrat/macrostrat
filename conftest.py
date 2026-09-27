@@ -218,13 +218,14 @@ from macrostrat.core.defs_provider import (
 def data_provider(request):
     from macrostrat.core import get_database
     from macrostrat.core.config import settings
+    from macrostrat.core.exc import MacrostratError
 
     source_db = None
     log.info("Attempting to connect to database %s", settings.pg_database)
     if not request.config.getoption("--skip-env"):
         try:
             source_db = get_database()
-        except RuntimeError as e:
+        except (RuntimeError, MacrostratError) as e:
             log.warning("Could not connect to environment database: %s", e)
             log.warning("Defs will not be loaded from the API configuration")
 
