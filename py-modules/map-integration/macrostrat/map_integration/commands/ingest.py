@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Annotated, Iterable, List, Optional, Tuple
 
 import geopandas as G
 import pandas as P
@@ -11,6 +11,7 @@ from rich.progress import Progress
 from shapely import wkt
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import text
+from typer import Argument, Option
 
 from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
@@ -23,6 +24,7 @@ from macrostrat.map_integration.utils.gems_utils import (
 
 from ..database import get_database
 from ..errors import IngestError
+from ..package.load import ConflictAction
 from ..utils.ingestion_utils import map_t_b_standard
 from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_names
 
@@ -171,9 +173,20 @@ def strip_z(g: BaseGeometry | None):
     return wkt.loads(wkt.dumps(g, output_dimension=2))
 
 
+_PACKAGES = "Map packages"
+
+
 def ingest_map(
-    slug: str,
-    files: List[Path],
+    slug: Annotated[
+        str,
+        Argument(
+            help="Slug for the map, or a Macrostrat map package (.gpkg) to import"
+        ),
+    ],
+    files: Annotated[
+        Optional[List[Path]],
+        Argument(help="GIS files to ingest, or map packages to import `slug` from"),
+    ] = None,
     embed: bool = False,
     crs: str = None,
     pipeline: str = "",
@@ -184,12 +197,54 @@ def ingest_map(
     meta_table: str = "polygons",
     chunksize: int = 100,
     feature_types: List[str] = None,
+    on_conflict: Annotated[
+        ConflictAction,
+        Option(
+            help="For a slug that already exists: ask, overwrite, skip or stop",
+            rich_help_panel=_PACKAGES,
+        ),
+    ] = ConflictAction.ask,
+    sources_schema: Annotated[
+        bool,
+        Option(
+            help="Load the package's `sources.*` staging tables",
+            rich_help_panel=_PACKAGES,
+        ),
+    ] = True,
+    yes: Annotated[
+        bool,
+        Option(
+            "--yes",
+            "-y",
+            help="Skip the confirmation prompt where one is allowed",
+            rich_help_panel=_PACKAGES,
+        ),
+    ] = False,
 ) -> Tuple[str, str, str]:
     """Ingest general GIS data files into the database.
 
     This is similar to the macrostrat maps pipeline ingest-map command,
     but it doesn't upload files to S3 or check their existence.
+
+    A Macrostrat map package (from `macrostrat maps export`) is imported
+    instead: `ingest maps.gpkg` loads every map in it, and
+    `ingest 'ngs-*' maps.gpkg` only the slugs matching the pattern.
     """
+    files = list(files or [])
+    packages, only = _map_packages(slug, files)
+    if packages:
+        from ..package.cli import ingest_packages
+
+        return ingest_packages(
+            packages,
+            only=only,
+            on_conflict=on_conflict,
+            staging=sources_schema,
+            yes=yes,
+        )
+    if not files:
+        raise IngestError("No files to ingest")
+
     db = get_database()
 
     console.print("[bold]Ingesting map data for source [bold blue]" + slug)
@@ -404,6 +459,23 @@ def ingest_map(
 
             conn.commit()
     return ingest_results
+
+
+def _map_packages(slug: str, files: List[Path]):
+    """The map packages named on the command line, and the slugs to take.
+
+    Returns `(None, None)` for an ordinary ingest.
+    """
+    from ..package.format import is_map_package
+
+    slug_is_package = is_map_package(slug)
+    candidates = [Path(slug), *files] if slug_is_package else files
+    packages = [Path(f) for f in candidates if is_map_package(f)]
+    if not packages:
+        return None, None
+    if len(packages) != len(candidates):
+        raise IngestError("Map packages can't be ingested alongside other files")
+    return packages, None if slug_is_package else [slug]
 
 
 def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
