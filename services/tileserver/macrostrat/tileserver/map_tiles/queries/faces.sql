@@ -13,16 +13,20 @@
    2. Each map's content is resolved once (`content_of`: itself, or the mosaic
       holding its polygons).
    3. Polygons are fetched through the clipped faces (that is the index condition)
-      and immediately clipped to the tile and simplified to the tile's own
-      resolution. This is where the time was: a state-map polygon of 400k
-      vertices is a few hundred inside one tile, and transforming and snapping
-      the full thing cost 20 of the 28 seconds. Sub-pixel polygons collapse and
-      drop out.
+      and immediately clipped to the tile. Anything under a pixel and a half (on a
+      512 px tile) of area, or that long for a line, is weeded here.
    4. Ownership: a polygon whose bounding box the map's face covers is inside it
       and needs nothing more. Only the ones straddling a face edge -- a few
-      percent -- are repaired if simplification left them invalid (`ST_Buffer(0)`,
-      three times cheaper than `ST_MakeValid` here) and clipped to the face.
-   5. Then the legend and the tile encoding, over what survives.
+      percent -- are clipped to the face. This happens *before* simplification
+      on purpose: the clip leaves every polygon valid (0 of 19,553 invalid on the
+      z6 tile measured), and `ST_Simplify` does not, so intersecting first is
+      what lets the query carry no `ST_IsValid` / repair step at all.
+   5. One simplification pass, in world coordinates at half a pixel; `tile_geom`
+      then only snaps to its grid. This is where the time was: a state-map
+      polygon of 400k vertices is a few hundred inside one tile, and
+      transforming and snapping the full thing cost 20 of the 28 seconds.
+      Measured on that tile: 5.6 s and 1.7 MB before, 3.3 s and 0.7 MB now.
+   6. Then the legend and the tile encoding, over what survives.
 
    Every stage is a MATERIALIZED CTE on purpose: a subquery column referenced
    twice has its expression evaluated twice, and the geometry expressions here
@@ -31,8 +35,11 @@ WITH tile AS (
     SELECT
       ST_TileEnvelope(:z, :x, :y) AS mercator_bbox,
       tile_layers.geographic_envelope(:x, :y, :z, 0.01) AS projected_bbox,
-      -- Half a unit of the 2048-unit tile grid `tile_geom` encodes to.
-      360.0 / power(2, :z) / 4096 AS tolerance
+      -- Half a pixel on a 512 px tile (two units of the 2048 grid): the
+      -- simplification tolerance; a full pixel read as jagged. A pixel and a
+      -- half: what is weeded.
+      360.0 / power(2, :z) / 1024 AS tolerance,
+      360.0 / power(2, :z) / 341 AS weed
 ),
 map_bounds AS MATERIALIZED (
   SELECT
@@ -64,10 +71,7 @@ unit_clipped AS MATERIALIZED (
     p.map_id,
     b.source_id,
     b.geometry AS face,
-    ST_Simplify(
-      ST_ClipByBox2D(p.geom, (SELECT projected_bbox FROM tile)),
-      (SELECT tolerance FROM tile)
-    ) AS geom
+    ST_ClipByBox2D(p.geom, (SELECT projected_bbox FROM tile)) AS geom
   FROM map_content b
   JOIN maps.polygons p
     ON p.source_id = b.content_id
@@ -80,13 +84,13 @@ unit_owned AS MATERIALIZED (
   SELECT
     map_id,
     source_id,
-    CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
-         ELSE ST_Intersection(
-           CASE WHEN ST_IsValid(geom) THEN geom ELSE ST_Buffer(geom, 0) END,
-           face)
-    END AS geom
+    ST_Simplify(
+      CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
+           ELSE ST_Intersection(geom, face) END,
+      (SELECT tolerance FROM tile)) AS geom
   FROM unit_clipped
   WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
+    AND ST_Area(geom) > (SELECT weed * weed FROM tile)
 ),
 unit_features AS (
   SELECT
@@ -111,10 +115,7 @@ line_clipped AS MATERIALIZED (
     coalesce(l.name, '') AS name,
     coalesce(l.direction, '') AS direction,
     coalesce(l.type, '') AS "type",
-    ST_Simplify(
-      ST_ClipByBox2D(l.geom, (SELECT projected_bbox FROM tile)),
-      (SELECT tolerance FROM tile)
-    ) AS geom
+    ST_ClipByBox2D(l.geom, (SELECT projected_bbox FROM tile)) AS geom
   FROM map_content b
   JOIN maps.lines l
     ON l.source_id = b.content_id
@@ -132,11 +133,14 @@ line_features AS (
     "type",
     lines_oriented AS oriented,
     tile_layers.tile_geom(
-      CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
-           ELSE ST_Intersection(geom, face) END,
+      ST_Simplify(
+        CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
+             ELSE ST_Intersection(geom, face) END,
+        (SELECT tolerance FROM tile)),
       (SELECT mercator_bbox FROM tile)) AS geom
   FROM line_clipped
   WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
+    AND ST_Length(geom) > (SELECT weed FROM tile)
 ), units_tile AS (
   SELECT ST_AsMVT(unit_features, 'units') AS units
   FROM unit_features

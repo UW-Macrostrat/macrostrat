@@ -7,7 +7,7 @@
 - Slugs other than `carto` require a delegated token with the `tiles:map` scope
 - Tile cache: `/map/carto` under a `map-carto` profile; other slugs uncached
 - Scale bands read from `map_bounds.scale_band` (cache manager)
-- Compilation tiles: faces collected per map and clipped to the tile, polygons clipped and simplified to tile resolution before the transform, ownership clip only for polygons straddling a face edge (a z6 Midwest tile from 28 s to 6 s uncached)
+- Compilation tiles: faces collected per map and clipped to the tile, polygons clipped and simplified to tile resolution before the transform, ownership clip only for polygons straddling a face edge and before simplification so no validity repair is needed, one simplification pass at a pixel, features under two pixels weeded (a z6 Midwest tile from 28 s to 3 s uncached, 1.7 MB to 0.55 MB)
 - Removed the unmounted `single_map` module and the `carto_new` package
 - Prune `maps.polygons` / `maps.lines` scale partitions in single-map tile queries
   and in `tile_layers.map()`, which scanned all four for every tile
