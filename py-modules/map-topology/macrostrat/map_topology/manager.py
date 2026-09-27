@@ -43,6 +43,7 @@ class UpdateSummary:
 
     maps_checked: int = 0
     maps_noded: int = 0
+    maps_released: int = 0
     pieces: NodingResult = field(default_factory=NodingResult)
     compilations_built: int = 0
     compilation_errors: int = 0
@@ -70,6 +71,8 @@ class UpdateSummary:
                 f"{self.maps_checked - self.maps_noded:,} current",
             ),
         ]
+        if self.maps_released:
+            rows.append(("Released", f"{self.maps_released:,} maps no longer noded"))
         if self.maps_noded:
             p = self.pieces
             rows.append(
@@ -126,8 +129,10 @@ def _duration(seconds: float) -> str:
 
 class MacrostratTopologyManager(TopologyManager):
     def remove_maps(self, maps: list[str] = None):
+        """Release maps from the topology. Selects from every map holding
+        topology, not only the ones still noded, so a retired map can go too."""
         db = self.database
-        all_maps = get_map_list(db, filter_by=maps)
+        all_maps = get_held_maps(db, filter_by=maps)
         for _map in all_maps:
             _print_map_info(_map, prefix="Removing map ")
             release_map(db, _map.map_id)
@@ -142,16 +147,17 @@ class MacrostratTopologyManager(TopologyManager):
         db = self.database
         summary = update_maps(self, maps, bulk=bulk, verbose=verbose)
 
+        # Only maps the rule nodes: a retired map outside the selection keeps
+        # its pieces until it is released, and is not a noding failure.
         res = db.run_query(
-            """
+            f"""
             SELECT
               count(*) FILTER (WHERE NOT sync.is_current) AS incomplete,
               count(*) FILTER (WHERE sync.failed_pieces > 0) AS with_failures
             FROM map_bounds.map_area a
             JOIN map_bounds.map_area_sync sync ON sync.source_id = a.source_id
-            WHERE a.topo IS NOT NULL OR EXISTS (
-              SELECT 1 FROM map_bounds.map_topo t WHERE t.source_id = a.source_id
-            )
+            WHERE {HOLDS_TOPOLOGY}
+              AND {NODED_HERE}
             """
         ).first()
         if res.incomplete:
@@ -236,45 +242,74 @@ def _print_map_info(map, prefix=""):
     )
 
 
-def get_map_list(db, filter_by: list[str] = None):
-    all_maps = db.run_query(
-        """
-        SELECT
-            a.source_id AS map_id,
-            slug,
-            scale,
-            area_km
+# Which maps are noded into the topology, over `map_bounds.map_area a`. The one
+# statement of the rule: noding selects by it, and a map holding a topogeometry
+# it no longer passes is retired (see `get_retired_maps`).
+NODED_HERE = """
+NOT map_bounds.has_faces(a.source_id)
+-- A compilation is not parted out, materialized or not. Its bounds come from
+-- the `compile` opening operation, and identity resolves a materialized one
+-- through its members' topogeometries.
+--
+-- A *mosaic* is the other way round: its bounds are its own, not assembled
+-- from its members, so it is parted out like an ordinary map.
+AND NOT (
+  map_bounds.is_compilation(a.source_id)
+  AND NOT map_bounds.is_mosaic(a.source_id)
+)
+-- Its members have bounds but are never noded on the mosaic's account: their
+-- extent is their bounds. One that also belongs to a topological compilation
+-- is an ordinary map there and comes back in.
+AND NOT (
+  map_bounds.is_mosaic_member(a.source_id)
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.member_id = a.source_id
+      AND NOT map_bounds.is_mosaic(cm.compilation_id)
+  )
+)
+"""
+
+# Holds something in the topology: a topogeometry, or pieces cut for one.
+HOLDS_TOPOLOGY = """
+(a.topo IS NOT NULL OR EXISTS (
+  SELECT 1 FROM map_bounds.map_topo t WHERE t.source_id = a.source_id
+))
+"""
+
+
+def _select_maps(db, where: str, filter_by: list[str] = None):
+    rows = db.run_query(
+        f"""
+        SELECT a.source_id AS map_id, slug, scale, area_km
         FROM map_bounds.map_area a
-        JOIN maps.sources s
-        ON a.source_id = s.source_id
-        -- A compilation is not parted out, materialized or not. Its bounds come
-        -- from the `compile` opening operation, and identity resolves a
-        -- materialized one through its members' topogeometries.
-        --
-        -- A *mosaic* is the other way round: its bounds are its own, not
-        -- assembled from its members, so it is parted out like an ordinary map.
-        WHERE NOT map_bounds.has_faces(a.source_id)
-        AND NOT (
-          map_bounds.is_compilation(a.source_id)
-          AND NOT map_bounds.is_mosaic(a.source_id)
-        )
-        -- Its members have bounds but are never noded on the mosaic's account:
-        -- their extent is their bounds. One that also belongs to a topological
-        -- compilation is an ordinary map there and comes back in.
-        AND NOT (
-          map_bounds.is_mosaic_member(a.source_id)
-          AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.member_id = a.source_id
-              AND NOT map_bounds.is_mosaic(cm.compilation_id)
-          )
-        )
+        JOIN maps.sources s ON a.source_id = s.source_id
+        WHERE {where}
         ORDER BY area_km DESC
         """
     ).all()
     if filter_by is not None:
-        all_maps = list(filter_maps(all_maps, filter_by))
-    return all_maps
+        rows = list(filter_maps(rows, filter_by))
+    return rows
+
+
+def get_map_list(db, filter_by: list[str] = None):
+    """The maps noded into the topology."""
+    return _select_maps(db, NODED_HERE, filter_by)
+
+
+def get_held_maps(db, filter_by: list[str] = None):
+    """Every map holding a topogeometry or pieces, whether or not it is still
+    noded -- what `topo remove` can release."""
+    return _select_maps(db, HOLDS_TOPOLOGY, filter_by)
+
+
+def get_retired_maps(db, filter_by: list[str] = None):
+    """Maps holding topology that the rule no longer nodes: SGMC's mosaic-only
+    members, noded before mosaics existed, are the case. Nothing reads their
+    topogeometries, but their edges still split faces and their failed pieces
+    still count, so `topo update` releases them."""
+    return _select_maps(db, f"{HOLDS_TOPOLOGY} AND NOT ({NODED_HERE})", filter_by)
 
 
 def filter_maps(all_maps, map_ids: list[str]):
@@ -328,6 +363,17 @@ def update_maps(
     with summary.timed("Seed missing boundaries"):
         db.run_sql(proc("copy-all-maps"))
 
+    # Maps the rule no longer nodes give their topology back first, so their
+    # edges are gone before anything is noded against them. Released maps are
+    # listed: this deletes topology, even if only derived topology.
+    retired = get_retired_maps(db, maps)
+    if retired:
+        with summary.timed(f"Release {len(retired)} maps no longer noded"):
+            for _map in retired:
+                _print_map_info(_map, prefix="  Releasing map ")
+                release_map(db, _map.map_id)
+        summary.maps_released = len(retired)
+
     all_maps = get_map_list(db, maps)
     summary.maps_checked = len(all_maps)
 
@@ -350,7 +396,8 @@ def update_maps(
             print(
                 f"[dim]{n_current} maps already noded from their current bounds[/dim]"
             )
-    n_processed = summary.maps_noded
+    # Releasing leaves unused primitives for cleaning, as noding does.
+    n_processed = summary.maps_noded + summary.maps_released
 
     # Cleaning is whole-topology work: `RemoveUnusedPrimitives` visits every
     # primitive and the edge healer every node, whatever changed. Only noding
@@ -392,23 +439,19 @@ def update_maps(
 def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     """Maps whose topogeometry does not reflect their current bounds."""
     return mgr.db.run_query(
-        """
+        f"""
         SELECT
-            ma.source_id AS map_id,
+            a.source_id AS map_id,
             slug,
             area_km
-        FROM map_bounds.map_area ma
+        FROM map_bounds.map_area a
         JOIN maps.sources s
-          ON ma.source_id = s.source_id
+          ON a.source_id = s.source_id
         JOIN map_bounds.map_area_sync sync
-          ON sync.source_id = ma.source_id
-        WHERE ma.geometry IS NOT NULL
+          ON sync.source_id = a.source_id
+        WHERE a.geometry IS NOT NULL
           AND NOT sync.is_current
-          AND NOT map_bounds.has_faces(ma.source_id)
-          AND NOT (
-            map_bounds.is_compilation(ma.source_id)
-            AND NOT map_bounds.is_mosaic(ma.source_id)
-          )
+          AND {NODED_HERE}
         """
     ).all()
 

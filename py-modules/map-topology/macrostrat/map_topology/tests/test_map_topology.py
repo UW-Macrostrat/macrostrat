@@ -9,6 +9,9 @@ from macrostrat.map_topology import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import (
     MacrostratTopologyManager,
+    get_held_maps,
+    get_map_list,
+    get_retired_maps,
     proc,
     update_maps,
 )
@@ -536,6 +539,63 @@ class TestMapTopology:
         # Identity lands on a member, never on the virtual compilation.
         assert get_identity_for_area(db, layer, Point(0.5, 0.5)) == 1001
         assert get_identity_for_area(db, layer, Point(3.5, 0.5)) == 1002
+
+    def test_retired_mosaic_member(self, ctx):
+        """A noded map that becomes a mosaic-only member is released by update.
+
+        Its extent is its bounds from then on, so its topogeometry is dead weight
+        -- SGMC's members were noded before mosaics existed and kept theirs.
+        """
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1007, 'test_source_7', true, 'active', 'large')
+            """
+        )
+        add_polygons(db, {1007: "ST_MakeEnvelope(10, 10, 11, 11, 4326)"})
+        update_maps(mgr)
+
+        def held():
+            return db.run_query(
+                """
+                SELECT topo IS NOT NULL OR EXISTS (
+                  SELECT 1 FROM map_bounds.map_topo t WHERE t.source_id = 1007
+                ) FROM map_bounds.map_area WHERE source_id = 1007
+                """
+            ).scalar()
+
+        assert held()
+        assert 1007 in {m.map_id for m in get_map_list(db)}
+
+        for statement in (
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1008, 'test_source_8', false, 'active', 'large')
+            """,
+            """
+            INSERT INTO map_bounds.compilation (source_id, assembly_mode)
+            VALUES (1008, 'mosaic')
+            """,
+            """
+            INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
+            VALUES (1008, 1007, 0)
+            """,
+        ):
+            db.run_query(statement)
+        db.session.commit()
+
+        assert 1007 not in {m.map_id for m in get_map_list(db)}
+        assert 1007 in {m.map_id for m in get_retired_maps(db)}
+        # `topo remove` can still reach it.
+        assert 1007 in {m.map_id for m in get_held_maps(db)}
+
+        summary = update_maps(mgr)
+        assert summary.maps_released == 1
+        assert not held()
+        assert get_retired_maps(db) == []
 
 
 @dataclass
