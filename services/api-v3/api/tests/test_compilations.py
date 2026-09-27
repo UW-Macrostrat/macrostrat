@@ -66,6 +66,34 @@ class TestCompilations:
     def test_unknown_map(self, api_client: TestClient):
         assert api_client.get("/compilations/not-a-real-map").status_code == 404
 
+    def test_supersession_both_ways(self, api_client: TestClient):
+        """`superseded_by` names the replacing map, and that map lists this one."""
+        for node in api_client.get("/compilations/graph").json()["nodes"]:
+            if node["superseded_by"] is None:
+                continue
+            detail = api_client.get(f"/compilations/{node['slug']}").json()
+            assert detail["superseded_by"] == node["superseded_by"]
+            assert detail["superseded_by_slug"] is not None
+            superseder = api_client.get(f"/compilations/{node['superseded_by']}").json()
+            assert node["slug"] in [s["slug"] for s in superseder["supersedes"]]
+
+    def test_bounds_are_an_extent(self, api_client: TestClient):
+        detail = api_client.get(f"/compilations/{TEST_SOURCE_TABLE.slug}").json()
+        bounds = detail["bounds"]
+        if bounds is not None:
+            west, south, east, north = bounds
+            assert west <= east and south <= north
+
+
+class TestEditing:
+    """`PATCH /compilations` writes, so these check only that it is closed."""
+
+    def test_anonymous_edit_is_refused(self, api_client: TestClient):
+        response = api_client.patch(
+            "/compilations", json={"edits": [{"source_id": 1, "is_served": False}]}
+        )
+        assert response.status_code == 401
+
 
 class TestLocationFilter:
     """`lng`/`lat` prune the graph to the compilations covering a point."""

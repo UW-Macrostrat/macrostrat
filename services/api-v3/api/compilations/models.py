@@ -93,6 +93,12 @@ class MemberRef(MapNode):
     priority: Optional[int] = None
 
 
+class SourceRef(BaseModel):
+    source_id: int
+    slug: str
+    name: Optional[str] = None
+
+
 class ParentRef(BaseModel):
     source_id: int
     slug: str
@@ -124,6 +130,13 @@ class CompilationDetail(CompilationFacts):
     #: *why* something is stale.
     member_hash: Optional[str] = None
     current_member_hash: Optional[str] = None
+
+    #: The replacing map's slug, beside the inherited `superseded_by` id.
+    superseded_by_slug: Optional[str] = None
+    #: Maps this one supersedes -- the inverse of `superseded_by`.
+    supersedes: list[SourceRef] = []
+    #: `[west, south, east, north]` of the map's bounds, when it has any.
+    bounds: Optional[list[float]] = None
 
     parents: list[ParentRef] = []
     members: list[MemberRef] = []
@@ -167,6 +180,74 @@ class CompilationGraph(BaseModel):
 
     nodes: list[GraphNode] = []
     edges: list[GraphEdge] = []
+
+
+class MemberEdit(BaseModel):
+    """One membership as it should stand after the edit."""
+
+    member_id: int
+    priority: Optional[int] = None
+
+
+class CompilationEdit(BaseModel):
+    """What changes about one source. Omitted fields are left alone.
+
+    `assembly_mode` is not editable here: it is fixed by how the compilation's
+    contents were built, so changing it is restructuring, done with
+    `macrostrat compilations mode`.
+    """
+
+    source_id: int
+    #: The complete member list after the edit, replacing the current one: a
+    #: member left out is removed, a new one added, a changed priority rewritten.
+    #: Omitted, membership is untouched.
+    members: Optional[list[MemberEdit]] = None
+    is_served: Optional[bool] = None
+    name: Optional[str] = None
+    #: The map that replaces this one. Given as null, supersession is cleared;
+    #: omitted, it is left alone -- so presence, not value, is what counts.
+    superseded_by: Optional[int] = None
+
+
+class EditRequest(BaseModel):
+    """A batch of edits, applied in one transaction.
+
+    One batch rather than a request per compilation, because a move is two
+    edits -- out of one compilation, into another -- and half of one is a map
+    in both places or in neither.
+    """
+
+    edits: list[CompilationEdit]
+    #: Author memberships the checks would refuse (a superseded member), as
+    #: `macrostrat compilations add --force` does.
+    force: bool = False
+
+
+class EdgeChange(BaseModel):
+    compilation_id: int
+    compilation_slug: str
+    member_id: int
+    member_slug: str
+    #: `added`, `removed` or `reprioritized`.
+    change: str
+    priority: Optional[int] = None
+    previous_priority: Optional[int] = None
+
+
+class PropertyChange(BaseModel):
+    source_id: int
+    slug: str
+    field: str
+    value: Optional[str | bool | int] = None
+    previous: Optional[str | bool | int] = None
+
+
+class EditResult(BaseModel):
+    """What the batch changed. Nothing downstream has been rebuilt:
+    `macrostrat topo update` is what makes membership take effect."""
+
+    edges: list[EdgeChange] = []
+    properties: list[PropertyChange] = []
 
 
 class NeighborMap(BaseModel):

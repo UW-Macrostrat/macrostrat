@@ -66,6 +66,15 @@ SELECT
   cs.current_member_hash::text AS current_member_hash,
   ma.area_km::float AS area_km,
   ma.map_layer AS placed_in_layer_id,
+  /* Supersession both ways: what replaced this map, and what it replaced. */
+  s.superseded_by,
+  sup.slug AS superseded_by_slug,
+  coalesce(sps.supersedes, '[]'::jsonb) AS supersedes,
+  /* [west, south, east, north], for a client to fit the map to. */
+  CASE WHEN ma.geometry IS NOT NULL THEN jsonb_build_array(
+    ST_XMin(ma.geometry), ST_YMin(ma.geometry),
+    ST_XMax(ma.geometry), ST_YMax(ma.geometry))
+  END AS bounds,
   coalesce(par.parents, '[]'::jsonb) AS parents,
   coalesce(mem.members, '[]'::jsonb) AS members
 FROM target t
@@ -92,6 +101,14 @@ LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
 LEFT JOIN map_bounds.compilation c ON c.source_id = s.source_id
 LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
+LEFT JOIN maps.sources sup ON sup.source_id = s.superseded_by
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(jsonb_build_object(
+    'source_id', o.source_id, 'slug', o.slug, 'name', o.name
+  ) ORDER BY o.slug) AS supersedes
+  FROM maps.sources o
+  WHERE o.superseded_by = s.source_id
+) sps ON true
 CROSS JOIN LATERAL (
   SELECT count(*) AS n_sources
   FROM map_bounds.members_of(s.source_id, true) m
