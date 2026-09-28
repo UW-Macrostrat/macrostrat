@@ -5,6 +5,7 @@ from pytest import fixture
 from macrostrat.core.compose_env import (
     COMPOSE_COMMANDS,
     DATABASE_VARIABLES,
+    derive_tileserver_secret_key,
     export_compose_environment,
 )
 from macrostrat.core.connections import DatabaseRole, connections_for
@@ -95,7 +96,8 @@ def test_exports_everything_the_stack_reads_into_the_given_env(resolvers):
     assert env["SECRET_KEY"] == "signing-key"
     assert env["STORAGE_ACCESS_KEY"] == "ak"
     assert env["STORAGE_SECRET_KEY"] == "s3-secret"
-    assert len(exported) == 4
+    assert env["TILESERVER_SECRET_KEY"] == derive_tileserver_secret_key("signing-key")
+    assert len(exported) == 5
 
 
 def test_exported_urls_carry_no_cli_attribution(resolvers):
@@ -108,7 +110,12 @@ def test_exported_urls_carry_no_cli_attribution(resolvers):
 def test_variables_already_present_are_left_alone(resolvers):
     """The import-time export of a literal config wins; nothing is re-fetched."""
     env = {name: "already" for name in DATABASE_VARIABLES}
-    env.update(SECRET_KEY="already", STORAGE_ACCESS_KEY="a", STORAGE_SECRET_KEY="b")
+    env.update(
+        SECRET_KEY="already",
+        TILESERVER_SECRET_KEY="already",
+        STORAGE_ACCESS_KEY="a",
+        STORAGE_SECRET_KEY="b",
+    )
     exported = export_compose_environment(vaulted_settings(), env)
     assert exported == ["ELEVATION_DATABASE_URL"]
     assert env["SECRET_KEY"] == "already"
@@ -135,3 +142,21 @@ def test_absent_sources_are_simply_skipped(resolvers):
     assert exported == ["the database login"]
     assert "ELEVATION_DATABASE_URL" not in env
     assert "SECRET_KEY" not in env
+
+
+def test_the_tileserver_key_is_derived_from_the_signing_key(resolvers):
+    """Locally there is no second secret to manage; the web server derives the
+    same value. Derived, not copied: the tileserver never holds SECRET_KEY."""
+    env = {"SECRET_KEY": "a-local-signing-key"}
+    export_compose_environment(_Settings(), env)
+    derived = env["TILESERVER_SECRET_KEY"]
+    assert derived == derive_tileserver_secret_key("a-local-signing-key")
+    assert derived != "a-local-signing-key"
+    assert len(derived) == 64
+
+
+def test_an_explicit_tileserver_key_wins(resolvers):
+    env = {"SECRET_KEY": "k", "TILESERVER_SECRET_KEY": "explicit"}
+    exported = export_compose_environment(_Settings(), env)
+    assert env["TILESERVER_SECRET_KEY"] == "explicit"
+    assert "TILESERVER_SECRET_KEY" not in exported

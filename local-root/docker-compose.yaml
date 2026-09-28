@@ -150,6 +150,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - VARNISH_URL=http://tileserver_cache:8000
+      # Verifies the short-lived tile tokens the website mints. Derived from
+      # SECRET_KEY by `macrostrat up` when unset (see compose_env.py).
+      - TILESERVER_SECRET_KEY=${TILESERVER_SECRET_KEY}
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
@@ -205,6 +208,8 @@ services:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
       # Secret key must be shared with the API that mints the JWT (in this case, the Macrostrat dev API)
       - SECRET_KEY=${SECRET_KEY}
+      # Signs the short-lived tile tokens; must match the tileserver's.
+      - TILESERVER_SECRET_KEY=${TILESERVER_SECRET_KEY}
   # The map-cache service is a prototype caching layer for local map tiles.
   map-cache:
     build: ${MACROSTRAT_MAP_CACHE_SRC:-""}

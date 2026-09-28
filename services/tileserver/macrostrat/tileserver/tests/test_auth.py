@@ -157,3 +157,74 @@ class TestCache:
     def test_failures_expire_sooner_than_successes(self):
         """So a token minted after a failed guess isn't stranded for a minute."""
         assert NEGATIVE_TTL < POSITIVE_TTL
+
+
+class TestSignedTokens:
+    """Short-lived JWTs the website mints over `TILESERVER_SECRET_KEY`."""
+
+    KEY = "a-test-tileserver-secret-key-of-reasonable-length"
+
+    @pytest.fixture(autouse=True)
+    def _key(self, monkeypatch):
+        monkeypatch.setenv("TILESERVER_SECRET_KEY", self.KEY)
+        monkeypatch.delenv("TILESERVER_SECRET_KEY_PREVIOUS", raising=False)
+
+    def mint(self, *, key=None, scope=SCOPE, aud="tileserver", ttl=3600):
+        import time
+
+        import jwt
+
+        now = int(time.time())
+        claims = {"aud": aud, "scope": scope, "iat": now, "exp": now + ttl}
+        return jwt.encode(claims, key or self.KEY, algorithm="HS256")
+
+    def test_right_scope_passes_without_the_database(self):
+        client, pool = client_for({})
+        assert get(client, self.mint()).status_code == 200
+        assert pool.queries == 0
+
+    def test_scopes_are_space_separated(self):
+        client, _ = client_for({})
+        assert get(client, self.mint(scope=f"tiles:map {SCOPE}")).status_code == 200
+
+    def test_wrong_scope_is_403(self):
+        client, _ = client_for({})
+        assert get(client, self.mint(scope="tiles:map")).status_code == 403
+
+    def test_expired_is_401(self):
+        client, _ = client_for({})
+        response = get(client, self.mint(ttl=-120))
+        assert response.status_code == 401
+
+    def test_within_the_leeway_passes(self):
+        """A token a few seconds past `exp` is clock skew, not expiry."""
+        client, _ = client_for({})
+        assert get(client, self.mint(ttl=-10)).status_code == 200
+
+    def test_another_audience_is_401(self):
+        client, _ = client_for({})
+        assert get(client, self.mint(aud="api")).status_code == 401
+
+    def test_another_key_is_401(self):
+        client, _ = client_for({})
+        assert (
+            get(
+                client, self.mint(key="not-the-key-at-all-but-long-enough-for-hs256")
+            ).status_code
+            == 401
+        )
+
+    def test_the_previous_key_is_accepted_during_rotation(self, monkeypatch):
+        old = self.mint()
+        monkeypatch.setenv(
+            "TILESERVER_SECRET_KEY", "the-new-key-after-rotation-long-enough-for-hs256"
+        )
+        monkeypatch.setenv("TILESERVER_SECRET_KEY_PREVIOUS", self.KEY)
+        client, _ = client_for({})
+        assert get(client, old).status_code == 200
+
+    def test_no_key_configured_rejects_every_signed_token(self, monkeypatch):
+        monkeypatch.delenv("TILESERVER_SECRET_KEY")
+        client, pool = client_for({})
+        assert get(client, self.mint()).status_code == 401
+        assert pool.queries == 0

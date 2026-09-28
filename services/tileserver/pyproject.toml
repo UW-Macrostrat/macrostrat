@@ -31,6 +31,7 @@ dependencies = [
     "macrostrat.raster_index>=0.3.1,<1",
     "macrostrat.raster_layers>=0.3.2,<1",
     "pydantic>=2.11.7",
+    "pyjwt>=2.8.0,<3",
 ]
 
 [dependency-groups]

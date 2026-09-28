@@ -1,9 +1,17 @@
-"""Delegated-token auth for guarded layers.
+"""Token auth for guarded layers.
 
-A delegated token is an opaque credential minted by `macrostrat auth
-create-token` (or `POST /api/v3/security/tokens`) and handed to a third party.
-Only its sha256 digest is stored, so this module digests whatever arrives and
-looks that up.
+Two kinds of bearer token are accepted:
+
+- A *delegated* token: an opaque credential minted by `macrostrat auth
+  create-token` (or `POST /api/v3/security/tokens`) and handed to a third party.
+  Only its sha256 digest is stored, so this module digests whatever arrives and
+  looks that up.
+- A *signed* token: a short-lived JWT the website mints for its own visitors,
+  HS256 over `TILESERVER_SECRET_KEY`, audience `tileserver`, scopes in `scope`
+  (space-separated). Verified here with no database round trip. The key is the
+  tileserver's own -- never `SECRET_KEY`, which signs login sessions -- so this
+  process can check tile tokens and forge nothing else. During a rotation
+  `TILESERVER_SECRET_KEY_PREVIOUS` is accepted too, for one token lifetime.
 
 Plain sha256, unkeyed, deliberately. The tile server holds a database
 connection but no `SECRET_KEY`, and at ~190 bits of token entropy there is no
@@ -17,9 +25,11 @@ headers, and a credential in any of those is a credential to rotate.
 """
 
 import hashlib
+import os
 from time import monotonic
 from typing import Optional
 
+import jwt
 from buildpg import render
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -28,7 +38,13 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
-__all__ = ["require_scope", "hash_token", "clear_token_cache", "bearer"]
+__all__ = [
+    "require_scope",
+    "scopes_for_token",
+    "hash_token",
+    "clear_token_cache",
+    "bearer",
+]
 
 # Tile traffic would otherwise put a query on every single request. The cost of
 # caching is revocation latency: a revoked token keeps working until its entry
@@ -63,6 +79,46 @@ WHERE token = :token_hash
   AND token_type = :token_type
   AND expires_on > now()
 """
+
+
+#: The audience a signed token must name, so a JWT minted for another service
+#: under the same key is not a tile token.
+SIGNED_TOKEN_AUDIENCE = "tileserver"
+
+#: Clock difference tolerated between the minting web server and this process.
+SIGNED_TOKEN_LEEWAY = 30
+
+
+def _signing_keys() -> list[str]:
+    keys = [
+        os.environ.get("TILESERVER_SECRET_KEY"),
+        os.environ.get("TILESERVER_SECRET_KEY_PREVIOUS"),
+    ]
+    return [k for k in keys if k]
+
+
+def _scopes_from_signed(raw_token: str) -> Optional[list[str]]:
+    """A signed token's scopes, or None if it is not one this process can verify
+    -- malformed, expired, for another audience, or under an unknown key."""
+    for key in _signing_keys():
+        try:
+            claims = jwt.decode(
+                raw_token,
+                key,
+                algorithms=["HS256"],
+                audience=SIGNED_TOKEN_AUDIENCE,
+                leeway=SIGNED_TOKEN_LEEWAY,
+                options={"require": ["exp", "aud"]},
+            )
+        except jwt.InvalidTokenError:
+            continue
+        return str(claims.get("scope", "")).split()
+    return None
+
+
+def _looks_signed(raw_token: str) -> bool:
+    """A JWT is three dot-separated parts; a delegated token has no dots."""
+    return raw_token.count(".") == 2
 
 
 def hash_token(raw_token: str) -> str:
@@ -104,6 +160,14 @@ async def _scopes_for(pool, token_hash: str) -> Optional[list[str]]:
     return scopes
 
 
+async def scopes_for_token(pool, raw_token: str) -> Optional[list[str]]:
+    """The scopes a bearer token grants, or None if it is unknown or expired:
+    a signed token is verified in process, anything else is looked up."""
+    if _looks_signed(raw_token):
+        return _scopes_from_signed(raw_token)
+    return await _scopes_for(pool, hash_token(raw_token))
+
+
 def require_scope(scope: str):
     """Build a dependency requiring a delegated token that carries `scope`.
 
@@ -125,9 +189,7 @@ def require_scope(scope: str):
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        scopes = await _scopes_for(
-            request.app.state.pool, hash_token(credentials.credentials)
-        )
+        scopes = await scopes_for_token(request.app.state.pool, credentials.credentials)
 
         if scopes is None:
             raise HTTPException(
