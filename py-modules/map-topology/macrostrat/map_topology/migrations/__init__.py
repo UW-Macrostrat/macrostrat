@@ -14,6 +14,7 @@ from . import (  # noqa: F401
     carto_v1_compilation,
     compilation_assembly_mode,
     compilation_multiscale,
+    face_partitions,
     layer_bounds,
     map_priority_columns,
     map_topo_adopt,
@@ -24,6 +25,7 @@ from . import (  # noqa: F401
 
 __all__ = [
     "carto_v1_compilation",
+    "face_partitions",
     "source_id_rename",
     "relation_trigger_repair",
     "map_topo_pieces",

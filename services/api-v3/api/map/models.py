@@ -16,9 +16,9 @@ from pydantic import BaseModel
 class MapUnit(BaseModel):
     """One mapped polygon covering the requested location."""
 
-    #: The compilation with faces this answer came from -- for `carto`, the
-    #: member its scale band chose for the zoom. Null when the request named a
-    #: map, or a compilation without faces, which answers for itself.
+    #: The face layer this answer came from -- for `carto`, its layer for the
+    #: zoom's band (`carto@medium`). Null when the request named a map, or a
+    #: compilation without faces, which answers for itself.
     map_layer: Optional[str] = None
     map_layer_id: Optional[int] = None
     #: The solved face the polygon's map owns here. Null outside a layer.

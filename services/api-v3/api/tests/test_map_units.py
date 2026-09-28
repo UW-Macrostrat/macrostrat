@@ -15,14 +15,15 @@ from api.map import LEGACY_CARTO, MAX_BOUNDS_SPAN, MAX_LIMIT, _is_timeout
 
 from .test_database import TEST_SOURCE_TABLE, api_client
 
-# The member `carto` answers from at each zoom, per `map_bounds.scale_band`
-# (tiny below 3, then small / medium / large at 3 / 6 / 9) -- the same table the
-# tiles read, so a point query here agrees with what is drawn.
-CARTO_MEMBER_FOR_ZOOM = {
-    2: "tiny",
-    5: "carto-small",
-    8: "carto-medium",
-    14: "carto-large",
+# The face layer `carto` answers from at each zoom: its own, for the zoom's band
+# per `map_bounds.scale_band` (tiny below 3, then small / medium / large at 3 / 6
+# / 9) -- the same table the tiles read, so a point query here agrees with what
+# is drawn.
+CARTO_LAYER_FOR_ZOOM = {
+    2: "carto@tiny",
+    5: "carto@small",
+    8: "carto@medium",
+    14: "carto@large",
 }
 
 # South Dakota, where the carto layers have something to say.
@@ -30,32 +31,29 @@ SOMEWHERE = {"lng": -99, "lat": 43.5}
 
 
 class TestMapUnits:
-    def test_carto_answers_from_the_member_for_the_zoom(self, api_client: TestClient):
-        """`carto` is multiscale: the zoom picks one member, in the database,
-        and every unit comes back through that member's faces."""
-        for zoom, member in CARTO_MEMBER_FOR_ZOOM.items():
+    def test_carto_answers_from_the_band_for_the_zoom(self, api_client: TestClient):
+        """`carto` is multiscale: its faces are one layer per band, and the zoom
+        picks the band, in the database."""
+        for zoom, layer in CARTO_LAYER_FOR_ZOOM.items():
             response = api_client.get(
                 "/map/carto/units", params={**SOMEWHERE, "zoom": zoom}
             )
             assert response.status_code == 200
             for unit in response.json():
-                assert unit["map_layer"] == member
+                assert unit["map_layer"] == layer
                 assert unit["map_layer_id"] is not None
 
     def test_zoom_is_the_only_thing_that_changes_the_answer(
         self, api_client: TestClient
     ):
         """`lng`/`lat` means the point, not the tile around it, so asking twice
-        at one zoom is the same answer -- and the same as asking the member the
-        zoom resolves to by name."""
+        at one zoom is the same answer."""
         params = {**SOMEWHERE, "zoom": 8}
         once = api_client.get("/map/carto/units", params=params).json()
         twice = api_client.get("/map/carto/units", params=params).json()
-        direct = api_client.get("/map/carto-medium/units", params=params).json()
 
         ids = [unit["map_id"] for unit in once]
         assert ids == [unit["map_id"] for unit in twice]
-        assert ids == [unit["map_id"] for unit in direct]
 
     def test_the_legacy_build_is_addressable(self, api_client: TestClient):
         """`sys:carto-legacy` reads `carto.polygons` through the same route, so

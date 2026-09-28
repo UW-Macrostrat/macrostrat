@@ -42,9 +42,10 @@ async def get_tile(
 ):
     """Solved faces for a compilation.
 
-    `map_layer` is any source slug -- `bc-surface` is as addressable as
-    `carto-large`. Faces are attributed to the member of the compilation they
-    belong to (`level=member`, the default) or to the map that actually owns them
+    `map_layer` is any source slug; the faces are that source's own, for the
+    tile's zoom band when it is multiscale (`carto` at z8 draws `carto@medium`).
+    Faces are attributed to the member of the compilation they belong to
+    (`level=member`, the default) or to the map that actually owns them
     (`level=map`).
     """
     _check_level(level)

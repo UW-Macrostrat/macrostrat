@@ -183,6 +183,19 @@ class MacrostratTopologyManager(TopologyManager):
         # submodule for linework mode. Boundaries are noded above, piece by
         # piece, so the library's whole-row pass is not run. What follows is the
         # faces half of the library's `update()`, called directly for its stats.
+        # A registry is marked like any layer a boundary change touches -- that is
+        # how the marks reach the face layers composed of it -- but it is never
+        # solved: its faces belong to the served compilations. The library solves
+        # every layer with marks, so the registries' are dropped here, after the
+        # marks have propagated and before the dissolve.
+        db.run_query(
+            """
+            DELETE FROM map_bounds_topology.dirty_face d
+            USING map_bounds.map_layer ml
+            WHERE d.map_layer = ml.id AND ml.source_id IS NULL
+            """
+        )
+        db.session.commit()
         with summary.timed("Dissolve dirty faces"):
             summary.faces = update_faces(self.ctx, incremental=True)
         with summary.timed("Clean topology"):
@@ -246,7 +259,10 @@ def _print_map_info(map, prefix=""):
 # statement of the rule: noding selects by it, and a map holding a topogeometry
 # it no longer passes is retired (see `get_retired_maps`).
 NODED_HERE = """
-NOT map_bounds.has_faces(a.source_id)
+-- Something with content of its own: polygons, or (a mosaic member) its mosaic's
+-- inside its bounds. A compilation that has none yet -- `tiny` before anything is
+-- placed in it -- has bounds but nothing to node.
+map_bounds.has_content(a.source_id)
 -- A compilation is not parted out, materialized or not. Its bounds come from
 -- the `compile` opening operation, and identity resolves a materialized one
 -- through its members' topogeometries.

@@ -173,7 +173,10 @@ _FOOTPRINTS_ACTIVE = """
     JOIN map_bounds.map_layer ml ON f.map_layer = ml.id
     JOIN tile ON ST_Intersects(f.geometry, tile.projected_envelope)
     JOIN maps.sources s ON f.map_id = s.source_id
-    WHERE ml.slug = :band AND s.status_code = 'active'
+    -- `carto`'s faces for the band: what its tiles draw at those zooms.
+    WHERE ml.source_id = map_bounds.source_id('carto')
+      AND ml.band = CAST(:band AS maps.map_scale)
+      AND s.status_code = 'active'
 """
 
 

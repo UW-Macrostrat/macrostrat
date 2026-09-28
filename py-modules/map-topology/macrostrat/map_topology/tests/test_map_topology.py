@@ -88,6 +88,14 @@ class TestMapTopology:
         # Check that we have two maps in the map_area table
         assert n_map_areas(db) == 2
 
+        # `large` and `medium` are unserved in the carto tree -- solved only as
+        # part of `carto`. Served here, so each gets a face layer of its own and
+        # the layer-level assertions below have something to read.
+        db.run_query(
+            "UPDATE maps.sources SET is_served = true WHERE slug IN ('large', 'medium')"
+        )
+        db.session.commit()
+
         # Placement is authored. Nothing infers a layer from `scale` any more, so
         # a map that is never placed is ingested, assembled, and served nowhere --
         # which is why every test that adds a source also says where it goes.
@@ -126,16 +134,16 @@ class TestMapTopology:
                 """
                 SELECT count(*)
                 FROM map_bounds.compilation_member cm
-                JOIN map_bounds.map_layer ml ON ml.source_id = cm.compilation_id
-                WHERE ml.slug = 'large'
+                JOIN maps.sources c ON c.source_id = cm.compilation_id
+                WHERE c.slug = 'large'
                 """
             ).scalar()
             == 2
         )
 
-        # And they resolve in `large`, plus in `carto-large` by way of it --
-        # rows the flattening generates, which is what lets a composite layer be
-        # solved rather than copied.
+        # And they resolve in `large`, plus in `carto`'s large band by way of it
+        # -- rows the flattening generates from the band's member, `carto-large`,
+        # which has no face layer of its own.
         assert set(
             db.run_query(
                 """
@@ -144,18 +152,19 @@ class TestMapTopology:
                 JOIN map_bounds.map_layer ml ON ml.id = mp.map_layer
                 """
             ).scalars()
-        ) == {"large", "carto-large"}
+        ) == {"large", "carto@large"}
 
     def test_process_maps(self, ctx):
         # Check that we have the appropriate number of faces
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 2
-        mgr = TopologyManager(ctx)
 
-        # Update topology faces
-        mgr.update()
+        # Update topology faces. The host pipeline, not the library's `update()`:
+        # a face layer sync has just created is marked for the dissolve by
+        # `mark-stale-identity`, which only the host runs.
+        MacrostratTopologyManager(ctx).update_full()
 
-        assert insp.n_faces() == 2
+        assert insp.n_faces(map_layer="Large") == 2
 
         # Sanity check that faces have been correctly identified
         args = (ctx.database, insp.map_layer_id("Large"))
@@ -183,7 +192,7 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update()
+        MacrostratTopologyManager(ctx).update_full()
 
         map_layer = insp.map_layer_id("Large")
         cases = [
@@ -221,7 +230,7 @@ class TestMapTopology:
         # After reprioritization, the center face should be at priority 10, so it should occupy the two faces on either side of it
         # update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update()
+        MacrostratTopologyManager(ctx).update_full()
 
         # Check map identity for shared areas
 
@@ -277,7 +286,7 @@ class TestMapTopology:
         mgr = MacrostratTopologyManager(ctx)
         update_maps(mgr, subdivide_vertices=32)
         set_priority(db, "medium", [(1004, 0)])
-        mgr.update()
+        mgr.update_full()
 
         insp = TopologyInspector(ctx)
         assert n_base_faces(db) == 4
@@ -329,9 +338,13 @@ class TestMapTopology:
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1
-        assert insp.n_faces(map_layer="Carto large") == 4
-        assert insp.n_faces(map_layer="Carto medium") == 1
-        assert insp.n_faces(map_layer="Carto small") == 0
+        # `carto`'s bands, each solved from its member's subtree. Beside the map
+        # faces, a band holds a member face for each served member it presents:
+        # `large` and `medium`, served here (in the carto tree they are not, and
+        # are skipped).
+        assert n_faces(db, "carto@large") == (4, 2)
+        assert n_faces(db, "carto@medium") == (1, 1)
+        assert n_faces(db, "carto@small") == (0, 0)
 
         # Solved, not copied: an overlaid face carries a back-reference to the
         # member face it was cloned from.
@@ -416,6 +429,35 @@ class TestMapTopology:
             same == db.run_query("SELECT map_bounds.source_id('carto-large')").scalar()
         )
 
+        # Faces belong to `carto`, one layer per band; its members are unserved,
+        # solved only as part of it, and have no faces of their own.
+        bands = {
+            slug
+            for (slug,) in db.run_query(
+                """
+                SELECT slug FROM map_bounds.map_layer
+                WHERE source_id = map_bounds.source_id('carto')
+                """
+            ).all()
+        }
+        assert {"carto@small", "carto@medium", "carto@large"} <= bands
+        served, has_faces = db.run_query(
+            """
+            SELECT map_bounds.is_served(map_bounds.source_id('carto-large')),
+                   map_bounds.has_faces(map_bounds.source_id('carto-large'))
+            """
+        ).first()
+        assert (served, has_faces) == (False, False)
+        for z, band in [(5, "small"), (8, "medium"), (14, "large")]:
+            layer, expected = db.run_query(
+                """
+                SELECT map_bounds.face_layer_for(map_bounds.source_id('carto'), :z),
+                       map_bounds.layer_id(:slug)
+                """,
+                dict(z=z, slug=f"carto@{band}"),
+            ).first()
+            assert layer == expected, z
+
         # Bounds: global by definition, seeded beside the layers'.
         opening, xmin, xmax = db.run_query(
             """
@@ -479,9 +521,9 @@ class TestMapTopology:
         db.run_query(
             """
             DELETE FROM map_bounds.compilation_member cm
-            USING map_bounds.map_layer ml
-            WHERE ml.slug = 'large'
-              AND cm.compilation_id = ml.source_id
+            USING maps.sources c
+            WHERE c.slug = 'large'
+              AND cm.compilation_id = c.source_id
               AND cm.member_id IN (1001, 1002)
             """
         )
@@ -622,11 +664,12 @@ class MapFaceTestCase:
 
 def n_map_areas(db):
     """Count maps, not compilations -- every compilation has a `map_area` row too,
-    composed from its members' bounds."""
+    composed from its members' bounds, and the scale compilations have one before
+    they have members."""
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds.map_area a
-        WHERE NOT map_bounds.has_faces(a.source_id)
+        WHERE map_bounds.has_content(a.source_id)
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
             WHERE cm.compilation_id = a.source_id
@@ -662,9 +705,9 @@ def set_priority(
             """
             UPDATE map_bounds.compilation_member cm
             SET priority = :default_priority
-            FROM map_bounds.map_layer ml
-            WHERE ml.slug = :layer
-              AND cm.compilation_id = ml.source_id
+            FROM maps.sources c
+            WHERE c.slug = :layer
+              AND cm.compilation_id = c.source_id
             """,
             dict(default_priority=default, layer=map_layer),
         )
@@ -672,9 +715,9 @@ def set_priority(
         """
         INSERT INTO map_bounds.compilation_member
             (compilation_id, member_id, priority)
-        SELECT ml.source_id, :map_id, :priority
-        FROM map_bounds.map_layer ml
-        WHERE ml.slug = :layer
+        SELECT c.source_id, :map_id, :priority
+        FROM maps.sources c
+        WHERE c.slug = :layer
         ON CONFLICT (compilation_id, member_id)
         DO UPDATE SET priority = EXCLUDED.priority
         """,
@@ -687,13 +730,13 @@ def set_priority(
 
 
 def n_base_faces(db):
-    """Faces in ordinary layers. `TopologyInspector.n_faces()` counts every layer,
-    and composite layers are solved now, so a bare total no longer isolates the
-    base ones."""
+    """Faces in the served scale layers (`large`, `medium`), not `carto`'s bands.
+    `TopologyInspector.n_faces()` counts every layer."""
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds_topology.map_face mf
-        WHERE NOT map_bounds.is_composite_layer(mf.map_layer)
+        JOIN map_bounds.map_layer ml ON ml.id = mf.map_layer
+        WHERE ml.band IS NULL AND ml.source_id IS NOT NULL
         """
     ).scalar()
 
@@ -709,6 +752,23 @@ def add_polygons(db, geometries: dict[int, str], *, scale: str = "large"):
             dict(source_id=source_id, scale=scale),
         )
     db.session.commit()
+
+
+def n_faces(db, layer_slug: str) -> tuple[int, int]:
+    """A face layer's map faces and member faces, apart. A member face belongs to
+    a compilation (`sync-unit-faces`), which has no content of its own."""
+    row = db.run_query(
+        """
+        SELECT
+          count(*) FILTER (WHERE map_bounds.has_content(mf.map_id)),
+          count(*) FILTER (WHERE NOT map_bounds.has_content(mf.map_id))
+        FROM map_bounds_topology.map_face mf
+        JOIN map_bounds.map_layer ml ON ml.id = mf.map_layer
+        WHERE ml.slug = :slug
+        """,
+        dict(slug=layer_slug),
+    ).one()
+    return tuple(row)
 
 
 def get_identity_for_area(db, map_layer: int, geometry):

@@ -55,15 +55,19 @@ def plan(db: Database, suffix: str = "v1") -> dict[str, list]:
     }
 
 
-def _ensure_source(db: Database, slug: str, name: str, scale: str | None) -> int:
+def _ensure_source(
+    db: Database, slug: str, name: str, scale: str | None, *, served: bool = True
+) -> int:
+    """`served` is false for the tiers: they are solved only as part of the
+    umbrella, never requested by name."""
     db.run_query(
         """
         INSERT INTO maps.sources
-          (slug, name, scale, new_priority, status_code, is_finalized)
-        VALUES (:slug, :name, :scale::maps.map_scale, 0, 'active', false)
+          (slug, name, scale, new_priority, status_code, is_finalized, is_served)
+        VALUES (:slug, :name, :scale::maps.map_scale, 0, 'active', false, :served)
         ON CONFLICT (slug) DO NOTHING
         """,
-        dict(slug=slug, name=name, scale=scale),
+        dict(slug=slug, name=name, scale=scale, served=served),
     )
     return db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug", dict(slug=slug)
@@ -86,7 +90,9 @@ def write(db: Database, suffix: str = "v1", log=None) -> dict[str, int]:
 
     for tier, members in tiers.items():
         slug = slug_for(tier, suffix)
-        source_id = _ensure_source(db, slug, f"{tier.title()} (carto {suffix})", tier)
+        source_id = _ensure_source(
+            db, slug, f"{tier.title()} (carto {suffix})", tier, served=False
+        )
         ids[tier] = source_id
         db.run_query(
             """
@@ -110,7 +116,9 @@ def write(db: Database, suffix: str = "v1", log=None) -> dict[str, int]:
     composite_ids = {}
     for tier in COMPOSITES:
         slug = f"{UMBRELLA}-{tier}-{suffix}"
-        source_id = _ensure_source(db, slug, f"Carto {tier} ({suffix})", tier)
+        source_id = _ensure_source(
+            db, slug, f"Carto {tier} ({suffix})", tier, served=False
+        )
         composite_ids[tier] = source_id
         # Coarser member first, at the lower priority -- the composition the
         # served carto layers already use, and what legacy carto's two-pass fill

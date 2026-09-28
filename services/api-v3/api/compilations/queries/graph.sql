@@ -90,11 +90,10 @@ nodes AS (
   SELECT
     s.source_id,
     s.slug,
-    /* A served layer carries its name on `map_layer`; its `maps.sources` row is
-       a bridge minted by the schema and has none. */
+    /* The name is the source's; its face layer's is only a fallback. */
     coalesce(s.name, ml.name) AS name,
     s.scale,
-    ml.id IS NOT NULL AS has_faces,
+    map_bounds.has_faces(s.source_id) AS has_faces,
     map_bounds.is_served(s.source_id) AS is_served,
     map_bounds.is_global(s.source_id) AS is_global,
     ml.id AS map_layer_id,
@@ -137,7 +136,7 @@ nodes AS (
   LEFT JOIN member_counts mc ON mc.source_id = s.source_id
   LEFT JOIN source_counts lv ON lv.source_id = s.source_id
   LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
-  LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
+  LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id AND ml.band IS NULL
   LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
 )
 SELECT

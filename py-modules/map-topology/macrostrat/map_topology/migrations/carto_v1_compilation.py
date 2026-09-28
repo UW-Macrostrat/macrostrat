@@ -77,5 +77,6 @@ class CartoV1Compilation(Migration):
     # quietly re-impose the generated answer over it.
     postconditions = [
         _slug_exists(UMBRELLA + "-v1"),
-        _slug_exists(UMBRELLA + "-v1-small"),
+        # The tiers are slugged tier first, then the suffix (`carto_v1.write`).
+        _slug_exists(UMBRELLA + "-small-v1"),
     ]

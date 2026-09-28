@@ -104,7 +104,8 @@ def mark_all():
             INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
                 SELECT f.face_id, ml.id
                 FROM map_bounds_topology.face f
-                CROSS JOIN map_bounds.map_layer ml
+                -- Face layers only: a registry is never solved.
+                JOIN map_bounds.map_layer ml ON ml.source_id IS NOT NULL
                 ON CONFLICT DO NOTHING
                 RETURNING id
         )

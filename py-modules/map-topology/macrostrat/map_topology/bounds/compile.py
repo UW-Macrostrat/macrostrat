@@ -53,7 +53,7 @@ def compile_bounds(
         INSERT INTO map_bounds.map_area (id, geometry, map_layer)
         SELECT DISTINCT cm.compilation_id,
                ST_GeomFromText('MULTIPOLYGON EMPTY', 4326),
-               map_bounds.layer_id(s.scale)
+               map_bounds.registry_layer(s.scale)
         FROM map_bounds.compilation_member cm
         JOIN maps.sources s ON s.source_id = cm.compilation_id
         WHERE s.status_code = 'active'
@@ -106,7 +106,27 @@ def compile_bounds(
             if not force and not row.empty and current == row.recorded:
                 results.append(CompileResult(row.slug, built=False, skipped="current"))
                 continue
-            build_mod.recompute_opening(db, row.source_id)
+            # Recorded, not raised, as `build` records its own failures: one
+            # compilation whose opening cannot be computed keeps its old bounds and
+            # does not stop the others, or the update. The stamp is left alone, so
+            # the next run tries again.
+            try:
+                build_mod.recompute_opening(db, row.source_id)
+            except Exception as err:  # noqa: BLE001 -- recorded as data
+                db.session.rollback()
+                error = str(err).strip().splitlines()[0]
+                db.run_query(
+                    "UPDATE map_bounds.map_area SET boundary_error = :err"
+                    " WHERE source_id = :source_id",
+                    dict(source_id=row.source_id, err=error),
+                )
+                db.run_query(
+                    "UPDATE map_bounds.boundary_op SET error = :err WHERE id = :id",
+                    dict(id=row.op_id, err=error),
+                )
+                db.session.commit()
+                results.append(CompileResult(row.slug, built=False, error=error))
+                continue
             db.run_query(
                 """
                 UPDATE map_bounds.boundary_op

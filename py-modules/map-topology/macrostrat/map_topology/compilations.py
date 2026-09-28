@@ -645,9 +645,15 @@ def lint():
         SELECT c.slug, count(DISTINCT cm.member_id) AS members
         FROM maps.sources c
         JOIN map_bounds.compilation_member cm ON cm.compilation_id = c.source_id
-        WHERE NOT map_bounds.has_faces(c.source_id)
+        WHERE NOT map_bounds.is_multiscale(c.source_id)
+          -- Resolved somewhere: it, or something it resolves to, is ranked in a
+          -- face layer. Not `member_id`, which skips unserved compilations.
           AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.map_priority mp WHERE mp.member_id = c.source_id
+            SELECT 1 FROM map_bounds.map_priority mp
+            WHERE mp.map_id = c.source_id
+               OR mp.map_id IN (
+                 SELECT m.source_id FROM map_bounds.members_of(c.source_id, true) m
+               )
           )
         GROUP BY 1 ORDER BY 1
         """
@@ -730,23 +736,24 @@ def freeze_placements(
     db = get_database()
     pending = db.run_query(
         """
-        SELECT ml.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
+        SELECT ls.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
         FROM maps.sources s
-        JOIN map_bounds.map_layer ml ON ml.slug = s.scale
+        -- The scale compilation of the map's scale: `large` for a large map.
+        JOIN maps.sources ls ON ls.slug = s.scale
         JOIN map_bounds.map_area a ON a.source_id = s.source_id
         WHERE s.scale IS NOT NULL
-          AND ml.source_id IS NOT NULL
           AND s.superseded_by IS NULL
           AND NOT map_bounds.is_mosaic_member(s.source_id)
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
+            JOIN maps.sources c ON c.source_id = cm.compilation_id
             WHERE cm.member_id = s.source_id
-              AND NOT map_bounds.has_faces(cm.compilation_id)
+              AND NOT c.slug = ANY (enum_range(NULL::maps.map_scale)::text[])
               AND NOT map_bounds.is_mosaic(cm.compilation_id)
           )
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.compilation_id = ml.source_id AND cm.member_id = s.source_id
+            WHERE cm.compilation_id = ls.source_id AND cm.member_id = s.source_id
           )
         ORDER BY 1, 2
         """

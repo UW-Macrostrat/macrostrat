@@ -19,13 +19,25 @@ WORLD_LAYERS = ("tiny", "small", "carto-small", "carto-medium", "carto-large")
 
 _WORLD = "ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))"
 
-#: The compilations seeded here: the registered layers, plus every multiscale
-#: compilation, which has no `map_layer` row (it solves no faces) but bounds
-#: all the same. `sort_key` keeps the layers in register order, ahead of the rest.
-_SEEDED = """
-SELECT ml.source_id, ml.slug, ml.id AS sort_key, false AS is_multiscale
-FROM map_bounds.map_layer ml
-WHERE ml.source_id IS NOT NULL
+#: The compilations the carto tree is built from, which exist before they have
+#: members. Their face layers, if any, come from sync; their bounds come from here.
+SCALE_COMPILATIONS = (
+    "tiny",
+    "small",
+    "medium",
+    "large",
+    "carto-small",
+    "carto-medium",
+    "carto-large",
+)
+
+#: The compilations seeded here: the scale compilations, plus every multiscale
+#: compilation. `sort_key` keeps the scale compilations in order, ahead of the rest.
+_SEEDED = f"""
+SELECT s.source_id, s.slug, array_position(ARRAY{list(SCALE_COMPILATIONS)}, s.slug)
+  AS sort_key, false AS is_multiscale
+FROM maps.sources s
+WHERE s.slug IN {SCALE_COMPILATIONS}
 UNION ALL
 SELECT c.source_id, s.slug, 1000000 + c.source_id, true
 FROM map_bounds.compilation c

@@ -75,15 +75,17 @@ CACHE_PROFILES = {"carto": "map-carto", LEGACY_CARTO: "carto-slim"}
 _guard = require_scope(SCOPE)
 
 # Which source answers, and how it is drawn. `resolve_source` takes a slug or an
-# id as text; `serving_source` is the multiscale hop. A name that matches
-# nothing comes back as a NULL `source_id`.
+# id as text. The faces are the requested source's own -- for a multiscale one,
+# those of the zoom's band (`face_layer_for`); without faces, the source that
+# answers at the zoom (`serving_source`, the multiscale hop) draws its polygons.
+# Served-ness is the requested source's: `carto` is served though its tiers are
+# not. A name that matches nothing comes back as a NULL `source_id`.
 _RESOLVE = """
 SELECT
-  t.source_id,
-  ml.id AS layer_id,
-  map_bounds.is_served(t.source_id) AS is_served
-FROM map_bounds.serving_source(map_bounds.resolve_source(:slug), :z) AS t(source_id)
-LEFT JOIN map_bounds.map_layer ml ON ml.source_id = t.source_id
+  map_bounds.serving_source(r.source_id, :z) AS source_id,
+  map_bounds.face_layer_for(r.source_id, :z) AS layer_id,
+  map_bounds.is_served(r.source_id) AS is_served
+FROM (SELECT map_bounds.resolve_source(:slug) AS source_id) r
 """
 
 _FACES_SQL = get_sql(__here__ / "queries" / "faces.sql")

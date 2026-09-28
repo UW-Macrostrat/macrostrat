@@ -41,6 +41,6 @@ JOIN map_bounds_topology.relation r
   ON r.layer_id = (a.topo).layer_id
  AND r.topogeo_id = (a.topo).id
  AND r.element_type = 3
-JOIN map_bounds.map_priority mp ON mp.source_id = cm.member_id
+JOIN map_bounds.map_priority mp ON mp.map_id = cm.member_id
 WHERE cm.compilation_id = :compilation_id
 ON CONFLICT DO NOTHING;

@@ -5,9 +5,9 @@ classify a source and there are no names for their combinations: `is_compilation
 (has members), `is_materialized` (holds polygons), `is_derived` (those polygons are
 a cache cut from its members'), and `assembly_mode` (`topological` | `mosaic`). Two
 more are authored: `is_served` (may be requested by name) and `superseded_by`.
-`has_faces` says the compilation's faces are cached, which every served one will
-have once sync solves them all. The flags are derived in SQL so this module stays
-a description of the payload.
+`has_faces` says the compilation has faces of its own: a served one that draws
+through them. The flags are derived in SQL so this module stays a description of
+the payload.
 """
 
 from typing import Optional
@@ -23,9 +23,9 @@ class MapNode(BaseModel):
     name: Optional[str] = None
     scale: Optional[str] = None
 
-    #: The compilation's faces are cached in `map_face` (a `map_layer` row).
-    #: Today the seven scale and carto layers, which a client renders as
-    #: containers rather than as maps.
+    #: Has faces of its own in `map_face`: a served compilation with a face
+    #: layer -- one per scale band for a multiscale one such as `carto`. An
+    #: unserved compilation has none; it is solved only within a served one.
     has_faces: bool = False
     #: May be requested by name. Authored; a compilation that is not served
     #: exists to build others.
@@ -61,7 +61,8 @@ class MapNode(BaseModel):
 class CompilationFacts(MapNode):
     """A compilation's own state, shared by the index and the detail view."""
 
-    #: The `map_layer` id when the compilation has faces.
+    #: The face layer's id for a served topological compilation. Null for a
+    #: multiscale one, whose faces are per band.
     map_layer_id: Optional[int] = None
     #: The zoom band the compilation's `scale` answers for, from
     #: `map_bounds.scale_band`. `max_zoom` is null for the last band; both are

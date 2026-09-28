@@ -1,8 +1,7 @@
 /* Solved faces, attributed at the level the request asked about.
 
-   Faces are cached per registered compilation, so a compilation that is not one
-   borrows the faces of the registered compilation it belongs to, filtered to the
-   maps it resolves to (interim, until every served compilation has its own).
+   Faces are the served compilation's own, for the tile's band when it is
+   multiscale (`face_layer_for`); a source with no face layer draws none here.
 
    Ownership and attribution are two different levels, and only one of them is in
    `map_face`. A face is always owned by the map that was solved into the
@@ -22,7 +21,7 @@ WITH tile AS (
 ), root AS (
   SELECT
     map_bounds.source_id(:map_layer) AS source_id,
-    map_bounds.face_layer_for(map_bounds.source_id(:map_layer)) AS face_layer
+    map_bounds.face_layer_for(map_bounds.source_id(:map_layer), :z) AS face_layer
 ), resolved AS (
   /* Where resolution *stops* is where the faces are. A compilation with content
      of its own owns its faces directly -- its members own none, which is what

@@ -34,17 +34,20 @@ covering_face AS MATERIALIZED (
   WHERE ST_Intersects(mf.geometry, loc.geometry)
 ),
 nodes AS (
-  /* Roots are the registered compilations (those with faces) -- structural
-     containers, never emitted. */
+  /* Roots are the face layers, each walked from its partition's root: the served
+     compilation, or for a multiscale one the band's member. Never emitted. */
   SELECT
     ml.id AS map_layer,
-    ml.source_id AS source_id,
+    p.root_id AS source_id,
     ARRAY[]::integer[] AS path,
     NULL::integer AS parent_id,
     NULL::integer AS member_id,
     0 AS depth
   FROM map_bounds.map_layer ml
-  WHERE ml.source_id IN (SELECT source_id FROM covering)
+  JOIN map_bounds.solved_partitions() p
+    ON p.source_id = ml.source_id
+   AND p.band IS NOT DISTINCT FROM ml.band
+  WHERE p.root_id IN (SELECT source_id FROM covering)
     AND ::layer_filter
   UNION ALL
   SELECT
@@ -52,14 +55,13 @@ nodes AS (
     cm.member_id,
     n.path || coalesce(cm.priority, 0),
     n.source_id,
-    /* The member of the registered compilation this row belongs to, skipping
-       intermediate registered compilations (the scale layers). This is the level
+    /* The member of the served compilation this row belongs to, skipping
+       unserved compilations, which exist only to build others. This is the level
        the `maps` and `faces` tiles draw by default, so a row whose `member_id` is
        its own `source_id` is what matches a clicked feature. */
     coalesce(
       n.member_id,
-      CASE WHEN map_bounds.has_faces(cm.member_id) THEN NULL
-           ELSE cm.member_id END
+      CASE WHEN map_bounds.is_served(cm.member_id) THEN cm.member_id END
     ),
     n.depth + 1
   FROM nodes n
@@ -74,7 +76,8 @@ resolved AS (
   SELECT DISTINCT ON (map_layer, source_id) *
   FROM nodes
   WHERE depth > 0
-    AND NOT map_bounds.has_faces(source_id)
+    -- Unserved compilations are structure, not something anyone looks at.
+    AND NOT (map_bounds.is_compilation(source_id) AND NOT map_bounds.is_served(source_id))
   ORDER BY map_layer, source_id, path DESC
 )
 SELECT
@@ -88,7 +91,7 @@ SELECT
     array_to_string(n.path, '.') AS priority,
     n.path AS priority_path,
     n.depth,
-    /* The compilation this row was reached through. May be a registered
+    /* The compilation this row was reached through. May be an unserved
        compilation, in which case it has no row of its own. */
     n.parent_id,
     k.is_compilation,

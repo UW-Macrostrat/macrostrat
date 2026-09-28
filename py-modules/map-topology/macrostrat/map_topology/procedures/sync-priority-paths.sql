@@ -1,8 +1,93 @@
-/** Flatten the composition DAG into the paths identity resolution orders by.
+/** The face register, and the paths identity resolution orders by.
 
-  One recursion, because there is one membership table. The walk starts at each
-  registered compilation (one with a `map_layer` row) and descends
-  `compilation_member` until it reaches something with content. A
+  Four steps, each reading what the one before it wrote:
+
+  1. **Register.** One face layer per partition `solved_partitions` names -- a
+     served topological compilation, or a band of a served multiscale one. A
+     layer whose partition is gone is removed, and its faces with it.
+  2. **Barriers.** Every map registers its boundary in the registry for its
+     scale.
+  3. **Paths.** Each face layer's descent, from its partition's root down
+     `compilation_member` to whatever has content.
+  4. **Composition.** Each face layer is linked to the registries its maps
+     register in, which is how their boundaries become its barriers.
+
+  Everything here is derived. `map_priority` and `map_layer_composition` are
+  rebuilt outright; face layers are kept while their partition exists, so their
+  faces survive a sync that changes nothing.
+*/
+
+/* ---------------------------------------------------------------- register */
+
+DELETE FROM map_bounds.map_layer ml
+WHERE ml.source_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.solved_partitions() p
+    WHERE p.source_id = ml.source_id
+      AND p.band IS NOT DISTINCT FROM ml.band
+  );
+
+/* Topological and not editable: the library's terms for a layer that is solved
+   and composed of others. The slug names the partition -- the compilation's, with
+   the band after an `@` for a multiscale one. */
+INSERT INTO map_bounds.map_layer (slug, name, source_id, band, topological, editable)
+SELECT
+  s.slug || coalesce('@' || p.band::text, ''),
+  coalesce(s.name, s.slug) || coalesce(' (' || p.band::text || ')', ''),
+  p.source_id,
+  p.band,
+  true,
+  false
+FROM map_bounds.solved_partitions() p
+JOIN maps.sources s ON s.source_id = p.source_id
+ON CONFLICT (source_id, band) DO NOTHING;
+
+/* ---------------------------------------------------------------- barriers */
+
+/** Register each map's boundary in the registry for its scale.
+
+  `map_area.map_layer` is what `__edge_relation` keys on, so it decides which
+  layers see a map's footprint as a *barrier* during the dissolve: its registry,
+  and every face layer composed of that registry (step 4). A map missing from a
+  layer it is solved in is not a misranking but a hole -- `joinable_face_edges`
+  crosses any edge that is not a barrier regardless of identity, so the walk runs
+  through an unregistered footprint and merges the maps on either side (one face
+  once held 35,645 primitives of 42 maps). Step 4 closes that by construction:
+  every face layer composes the registry of every map it solves, whatever the
+  map's scale -- `ngs-oklahoma` is large-scale but solved in medium through
+  `ngs-bedrock`, and its registry is composed into `carto@medium`. A registry
+  composed into a layer brings the barriers of its other maps too, which costs a
+  few more identity checks and changes nothing: an edge with the same identity on
+  both sides is crossed anyway.
+
+  The update does double duty, so its guard has two arms.
+  `update_line_edge_relation` fires on *any* update of a `map_area` holding a
+  topogeometry and rebuilds that map's `__edge_relation` rows, so this statement
+  is also what populates the barriers on a database built from scratch. A
+  steady-state run touches nothing; `macrostrat topo rebuild` remains the repair
+  path for rows that are present but wrong, and `validate_edge_relations` the
+  check.
+*/
+UPDATE map_bounds.map_area ma
+SET map_layer = map_bounds.registry_layer(s.scale)
+FROM maps.sources s
+WHERE ma.source_id = s.source_id
+  AND (
+    ma.map_layer IS DISTINCT FROM map_bounds.registry_layer(s.scale)
+    OR (
+      ma.topo IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM map_bounds_topology.__edge_relation er WHERE er.line_id = ma.id
+      )
+    )
+  );
+
+/* ------------------------------------------------------------------- paths */
+
+/** Flatten each partition's membership into priority paths.
+
+  The walk starts at the partition's root -- the compilation, or the band's member
+  -- and descends `compilation_member` until it reaches something with content. A
   *virtual* compilation is descended through, so a face resolves to whoever
   actually has the geometry; anything with content is a leaf -- a map, a
   materialized compilation, or a mosaic member placed here directly, which holds
@@ -10,31 +95,30 @@
   Stopping at content is also what keeps a mosaic's members out of the walk: the
   mosaic itself is the leaf.
 
-  Every row here is derived -- the table is rebuilt outright.
+  `member_id` is the first *served* source below the root: unserved compilations
+  exist only to build others -- from `carto` British Columbia is `bc-surface`,
+  not `carto-large` or `medium`.
 */
-
 DELETE FROM map_bounds.map_priority;
 
 WITH RECURSIVE paths AS (
   SELECT
     ml.id AS map_layer,
-    ml.source_id,
+    p.root_id AS source_id,
     ARRAY[]::integer[] AS path,
     NULL::integer AS member_id
   FROM map_bounds.map_layer ml
-  WHERE ml.source_id IS NOT NULL
+  JOIN map_bounds.solved_partitions() p
+    ON p.source_id = ml.source_id
+   AND p.band IS NOT DISTINCT FROM ml.band
   UNION ALL
   SELECT
     p.map_layer,
     cm.member_id,
     p.path || coalesce(cm.priority, 0),
-    -- The member of the registered compilation a map belongs to, skipping the
-    -- scale layers, which exist only to build others -- nobody means to see
-    -- `medium` -- so the meaningful member is one level further.
     coalesce(
       p.member_id,
-      CASE WHEN map_bounds.has_faces(cm.member_id) THEN NULL
-           ELSE cm.member_id END
+      CASE WHEN map_bounds.is_served(cm.member_id) THEN cm.member_id END
     )
   FROM paths p
   JOIN map_bounds.compilation_member cm
@@ -54,111 +138,29 @@ INSERT INTO map_bounds.map_priority (map_layer, map_id, priority_path, member_id
 SELECT map_layer, source_id, path, coalesce(member_id, source_id)
 FROM resolved;
 
+/* ------------------------------------------------------------- composition */
 
-/** Project the layer-to-layer edges back into the submodule's own table.
+/** Link each face layer to the registries its maps register in.
 
-  `map_layer_composition` is the library's; Macrostrat's authored edges all live
-  in `compilation_member`, so this keeps the library's view of composition in
-  step without giving it a second source of truth. It is what `constraining_layers`
-  reads when deciding which boundaries constrain a dissolve, and what
-  `dirty_layers_for` reads when deciding which composites a change invalidates.
+  `map_layer_composition` is the library's: `constraining_layers` reads it to
+  decide which boundaries constrain a dissolve, and `dirty_layers_for` to decide
+  which face layers a change to a registry invalidates. The maps are taken
+  through `topology_sources_of`, so a materialized compilation contributes the
+  registries of the members its identity is found through. The library wants a
+  distinct priority per parent; nothing here ranks by it.
 */
 DELETE FROM map_bounds.map_layer_composition;
 
 INSERT INTO map_bounds.map_layer_composition (parent_id, member_id, priority)
-SELECT parent.id, member.id, coalesce(cm.priority, 0)
-FROM map_bounds.compilation_member cm
-JOIN map_bounds.map_layer parent ON parent.source_id = cm.compilation_id
-JOIN map_bounds.map_layer member ON member.source_id = cm.member_id;
-
-
-/* Placed at the end of this file because it reads two tables the file rebuilds:
-   `map_priority`, for where a map participates, and (through
-   `is_composite_layer`) `map_layer_composition`. Run it any earlier -- as it was
-   when it lived in the layer-membership sweep that ran before this step -- and
-   it sees the previous sync's answer, or on a fresh database no answer at all. */
-/** Register each map's footprint in the base layer it actually participates in.
-
-  `map_area.map_layer` is what `__edge_relation` keys on, so it decides where a
-  map's footprint acts as a *barrier* during the dissolve. That is a different
-  question from where the map ranks, which is `map_priority`'s job, and the two
-  agreed only for as long as layer membership was a function of scale.
-
-  Compilations broke that. A member participates in whatever layer its
-  compilation is served at, whatever its own scale: `ngs-oklahoma` is 1:250,000
-  and therefore `large`, but it reaches medium, carto-medium and carto-large
-  through `ngs-bedrock` and has no placement in `large` at all. Keyed on scale it
-  registered its boundary in `large` -- a layer it is not in -- and was invisible
-  as a barrier in all three layers where it is. 23 maps were in that state.
-
-  The cost is not a misranking, it is a hole. `joinable_face_edges` crosses any
-  edge that is not a barrier *regardless of identity* -- identity only rescues an
-  edge that is one -- so the walk runs straight through an unregistered footprint
-  and merges the maps on either side. One face ended up holding 35,645 primitive
-  faces spanning 42 different maps' territory, taking its name from whichever map
-  the merged geometry's `ST_PointOnSurface` happened to fall in.
-
-  The *base* layer is the right choice and keeps this a single column: every
-  composite layer containing a map lists its base layer in `constraining_layers`,
-  so one registration covers all of them. True of every participation pattern in
-  the corpus -- {4,7}->4, {3,6,7}->3, {2,5,6}->2, {1,5}->1.
-
-  `is_composite_layer` is the test, not the lowest id. Production ids happen to
-  run base-first (1-4 base, 5-7 carto) so `min()` gives the same answer there and
-  the wrong one wherever a composite layer was created first -- which the
-  submodule's own fixtures do, so `test_composite_layers` catches it.
-
-  Scale is deliberately not the key. It is the `maps.polygons` partition key, so
-  moving a map between layers by editing it would move its polygons between
-  partitions, and it is a real property of the work: `ngs-connecticut` is
-  1:125,000 whatever layer happens to serve it.
-
-  The update does double duty, so its guard has two arms. `update_line_edge_relation`
-  fires on *any* update of a `map_area` holding a topogeometry and rebuilds that
-  map's `__edge_relation` rows, so this statement is also what populates the
-  barrier registry on a database being built from scratch. Without any barriers the
-  dissolve merges everything it can reach and a composite layer collapses to a
-  single face.
-
-  It used to be unconditional for that reason, which made every run delete and
-  re-insert the whole registry: 457 maps, 720,556 rows, about 24 s, on a run where
-  no map had moved at all (measured 2026-09-18, where 0 of 469 rows changed layer
-  and 0 were missing barrier rows). So the two duties are now stated separately --
-  a map whose layer moved, or a map holding a topogeometry with no barrier rows
-  yet. A steady-state run touches nothing; a fresh database still populates.
-
-  The trade this makes is deliberate: the unconditional rebuild also repaired
-  `__edge_relation` rows that were present but *wrong*, on every run. The second
-  arm only catches rows that are missing. `macrostrat topo rebuild` remains the
-  repair path, and `validate_edge_relations` the check.
-
-  Scale remains the fallback, for a map with no placement to read. That is not
-  only the ~95 ingested maps that are in no layer -- where a stale registration
-  can at worst add a barrier, over-fragmenting a dissolve without misattributing
-  it, which is what they do today -- but any database whose layers have no
-  compilation behind them yet. The submodule's fixtures seed `map_layer` without
-  a `source_id`, so there is no placement to read at all there, and without the
-  fallback every map loses its layer.
-*/
-UPDATE map_bounds.map_area ma
-SET map_layer = coalesce(base.map_layer, map_bounds.layer_id(s.scale))
-FROM maps.sources s
-LEFT JOIN (
-  SELECT map_id, min(map_layer) AS map_layer
-  FROM map_bounds.map_priority
-  WHERE NOT map_bounds.is_composite_layer(map_layer)
-  GROUP BY map_id
-) base ON base.map_id = s.source_id
-WHERE ma.source_id = s.source_id
-  AND (
-    -- The map moved between layers.
-    ma.map_layer IS DISTINCT FROM coalesce(base.map_layer, map_bounds.layer_id(s.scale))
-    -- Or it holds a boundary whose barrier rows were never registered, which is
-    -- what the trigger on this statement is here to do.
-    OR (
-      ma.topo IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1 FROM map_bounds_topology.__edge_relation er WHERE er.line_id = ma.id
-      )
-    )
-  );
+SELECT
+  x.parent_id,
+  x.member_id,
+  row_number() OVER (PARTITION BY x.parent_id ORDER BY x.member_id)
+FROM (
+  SELECT DISTINCT mp.map_layer AS parent_id, ma.map_layer AS member_id
+  FROM map_bounds.map_priority mp
+  CROSS JOIN LATERAL map_bounds.topology_sources_of(mp.map_id) ts
+  JOIN map_bounds.map_area ma ON ma.source_id = ts.source_id
+  WHERE ma.map_layer IS NOT NULL
+    AND ma.map_layer <> mp.map_layer
+) x;
