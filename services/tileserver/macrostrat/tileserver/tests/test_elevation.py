@@ -137,6 +137,12 @@ class TestPoint:
         assert data["elevation"] is None
         assert data["source"] is None
 
+    def test_the_index_answers_once_it_holds_a_layer(
+        self, client, elevation_app, elevation_data
+    ):
+        data = client.get("/elevation/point/{},{}".format(*LAND)).json()
+        assert data["backend"] == "cog"
+
     def test_a_coarse_resolution_reads_the_coarse_product(
         self, client, elevation_app, elevation_data
     ):
@@ -210,3 +216,166 @@ class TestProfile:
             ),
         ).json()
         assert [s["raster"] for s in data["sources"]] == ["coarse"]
+
+
+class TestLegacyBackend:
+    """The legacy Postgres queries behind the same routes, and the choice between them.
+
+    The service can serve today's answers in an environment with no COG layer
+    registered, so the legacy API can move to it first and each environment
+    migrate by registering layers. Tiny PostGIS rasters stand in for
+    `sources.srtm1` / `sources.etopo1`.
+    """
+
+    @pytest.fixture(scope="class")
+    def legacy_tables(self, db):
+        from sqlalchemy import text
+
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis_raster"))
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS sources"))
+            # A 10×10 "SRTM" tile of 500 m at 0.01° over 20–20.1°E, 49.9–50°N,
+            # and a coarse "etopo1" of -3000 m over 19–21°E, 49–51°N.
+            conn.execute(
+                text(
+                    "CREATE TABLE sources.srtm1 AS SELECT ST_AddBand("
+                    "ST_MakeEmptyRaster(10, 10, 20.0, 50.0, 0.01, -0.01, 0, 0, 4326),"
+                    " '16BSI'::text, 500, -32767) AS rast"
+                )
+            )
+            conn.execute(
+                text(
+                    "CREATE TABLE sources.etopo1 AS SELECT ST_AddBand("
+                    "ST_MakeEmptyRaster(20, 20, 19.0, 51.0, 0.1, -0.1, 0, 0, 4326),"
+                    " '16BSI'::text, -3000, NULL) AS rast"
+                )
+            )
+        yield
+        with db.engine.begin() as conn:
+            conn.execute(text("DROP TABLE sources.srtm1"))
+            conn.execute(text("DROP TABLE sources.etopo1"))
+
+    @pytest.fixture(scope="class")
+    def legacy_client(self, legacy_tables, test_database_url, elevation_data):
+        """A fresh app with both backends, so selection can be tested in isolation."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from macrostrat.raster_index import RasterIndex
+        from macrostrat.tileserver.elevation import build_elevation_router
+        from macrostrat.tileserver.elevation.legacy import LegacyElevation
+
+        app = FastAPI()
+        app.include_router(
+            build_elevation_router(
+                RasterIndex(test_database_url), LegacyElevation(test_database_url)
+            ),
+            prefix="/elevation",
+        )
+        return TestClient(app)
+
+    def test_point_from_srtm(self, legacy_client):
+        data = legacy_client.get("/elevation/point/20.05,49.95?backend=legacy").json()
+        assert data["backend"] == "legacy"
+        assert data["elevation"] == 500
+        assert data["source"] == {
+            "layer": "legacy",
+            "raster": "srtm1",
+            "resolution": 30.0,
+        }
+
+    def test_point_falls_through_to_etopo(self, legacy_client):
+        data = legacy_client.get("/elevation/point/20.5,49.5?backend=legacy").json()
+        assert data["elevation"] == -3000
+        assert data["source"]["raster"] == "etopo1"
+
+    def test_point_outside_everything(self, legacy_client):
+        data = legacy_client.get("/elevation/point/0,0?backend=legacy").json()
+        assert data["elevation"] is None and data["source"] is None
+
+    def test_profile(self, legacy_client):
+        data = legacy_client.get(
+            "/elevation/profile",
+            params=dict(
+                start_lng=20.05,
+                start_lat=49.95,
+                end_lng=20.5,
+                end_lat=49.95,
+                samples=5,
+                backend="legacy",
+            ),
+        ).json()
+        assert data["backend"] == "legacy"
+        assert [s["elevation"] for s in data["samples"]] == [
+            500,
+            -3000,
+            -3000,
+            -3000,
+            -3000,
+        ]
+        assert data["samples"][0]["distance"] == 0
+        assert data["samples"][-1]["distance"] == data["length"] > 30000
+        assert [s["raster"] for s in data["sources"]] == ["srtm1", "etopo1"]
+
+    def test_the_index_wins_by_default_once_it_has_layers(self, legacy_client):
+        data = legacy_client.get("/elevation/point/{},{}".format(*LAND)).json()
+        assert data["backend"] == "cog"
+
+    def test_forcing_cog(self, legacy_client):
+        data = legacy_client.get("/elevation/point/20.05,49.95?backend=cog").json()
+        assert data["backend"] == "cog" and data["elevation"] is None
+
+    def test_unconfigured_backend_is_a_503(self, test_database_url):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from macrostrat.tileserver.elevation import build_elevation_router
+        from macrostrat.tileserver.elevation.legacy import LegacyElevation
+
+        app = FastAPI()
+        app.include_router(
+            build_elevation_router(None, LegacyElevation(test_database_url)),
+            prefix="/elevation",
+        )
+        client = TestClient(app)
+        assert client.get("/elevation/point/1,1?backend=cog").status_code == 503
+        assert client.get("/elevation/point/1,1").json()["backend"] == "legacy"
+
+
+class TestSelection:
+    """`ElevationBackends.choose`, without a database."""
+
+    class FakeLayer:
+        def __init__(self, slug):
+            self.slug = slug
+
+    class FakeIndex:
+        def __init__(self, slugs):
+            self.slugs = slugs
+            self.calls = 0
+
+        def layers(self):
+            self.calls += 1
+            return [TestSelection.FakeLayer(s) for s in self.slugs]
+
+    def test_legacy_until_the_index_has_a_layer(self):
+        from macrostrat.tileserver.elevation import ElevationBackends
+
+        backends = ElevationBackends(self.FakeIndex(["emit-minerals"]), legacy=object())
+        assert backends.choose(None) == "legacy"
+        backends = ElevationBackends(self.FakeIndex(["srtm15plus"]), legacy=object())
+        assert backends.choose(None) == "cog"
+
+    def test_readiness_is_remembered(self):
+        from macrostrat.tileserver.elevation import ElevationBackends
+
+        index = self.FakeIndex(["srtm-gl1"])
+        backends = ElevationBackends(index, legacy=object())
+        for _ in range(5):
+            backends.choose(None)
+        assert index.calls == 1
+
+    def test_index_alone_answers_even_when_empty(self):
+        from macrostrat.tileserver.elevation import ElevationBackends
+
+        assert ElevationBackends(self.FakeIndex([]), legacy=None).choose(None) == "cog"
