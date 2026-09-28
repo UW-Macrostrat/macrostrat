@@ -205,15 +205,6 @@ wheels = [
 ]
 
 [[package]]
-name = "boto"
-version = "2.49.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c8/af/54a920ff4255664f5d238b5aebd8eedf7a07c7a5e71e27afcfe840b82f51/boto-2.49.0.tar.gz", hash = "sha256:ea0d3b40a2d852767be77ca343b58a9e3a4b00d9db440efb8da74b4e58025e5a", size = 1478498, upload-time = "2018-07-11T20:58:58.057Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/23/10/c0b78c27298029e4454a472a1919bde20cb182dab1662cec7f2ca1dcc523/boto-2.49.0-py2.py3-none-any.whl", hash = "sha256:147758d41ae7240dc989f0039f27da8ca0d53734be0eb869ef16e3adcfa462e8", size = 1359202, upload-time = "2018-07-11T20:58:55.711Z" },
-]
-
-[[package]]
 name = "certifi"
 version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
@@ -567,6 +558,18 @@ wheels = [
 ]
 
 [[package]]
+name = "ecdsa"
+version = "0.19.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/25/ca/8de7744cb3bc966c85430ca2d0fcaeea872507c6a4cf6e007f7fe269ed9d/ecdsa-0.19.2.tar.gz", hash = "sha256:62635b0ac1ca2e027f82122b5b81cb706edc38cd91c63dda28e4f3455a2bf930", size = 202432, upload-time = "2026-03-26T09:58:17.675Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/79/119091c98e2bf49e24ed9f3ae69f816d715d2904aefa6a2baa039a2ba0b0/ecdsa-0.19.2-py2.py3-none-any.whl", hash = "sha256:840f5dc5e375c68f36c1a7a5b9caad28f95daa65185c9253c0c08dd952bb7399", size = 150818, upload-time = "2026-03-26T09:58:15.808Z" },
+]
+
+[[package]]
 name = "et-xmlfile"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -766,21 +769,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6fb3c75474d40b3052059d95df7e73351460c8588d963/h11-0.16.0.tar.gz", hash = "sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1", size = 101250, upload-time = "2025-04-24T03:35:25.427Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
-]
-
-[[package]]
-name = "htpheno-radosgw-admin-client"
-version = "0.8.2"
-source = { editable = "../../submodules/storage-admin" }
-dependencies = [
-    { name = "humanize" },
-    { name = "radosgw-admin" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "humanize", specifier = ">=4.11,<4.12" },
-    { name = "radosgw-admin", specifier = ">=1.7,<1.8" },
 ]
 
 [[package]]
@@ -996,7 +984,6 @@ dependencies = [
     { name = "fiona" },
     { name = "geopandas" },
     { name = "greenlet" },
-    { name = "htpheno-radosgw-admin-client" },
     { name = "ipython" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-column-ingestion" },
@@ -1007,16 +994,21 @@ dependencies = [
     { name = "macrostrat-map-integration" },
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-radosgw-admin" },
     { name = "macrostrat-schema-management" },
+    { name = "macrostrat-usage-stats" },
     { name = "macrostrat-utils" },
     { name = "numpy" },
     { name = "openpyxl" },
     { name = "paramiko" },
     { name = "pg-activity" },
+    { name = "polars" },
     { name = "pymysql" },
+    { name = "pyogrio" },
     { name = "pyproj" },
     { name = "pytest" },
     { name = "python-dotenv" },
+    { name = "python-jose", extra = ["cryptography"] },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "results" },
@@ -1026,7 +1018,6 @@ dependencies = [
     { name = "shapely" },
     { name = "spectra" },
     { name = "sqlalchemy" },
-    { name = "tileserver-stats" },
     { name = "tiletanic" },
     { name = "toml" },
     { name = "tqdm" },
@@ -1051,7 +1042,6 @@ requires-dist = [
     { name = "fiona", specifier = ">=1.8.22,<2" },
     { name = "geopandas", specifier = ">=1.1.3,<2" },
     { name = "greenlet", specifier = ">=3.0.3,<4" },
-    { name = "htpheno-radosgw-admin-client", editable = "../../submodules/storage-admin" },
     { name = "ipython", specifier = ">=8.5.0,<10" },
     { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-column-ingestion", editable = "../column-ingestion" },
@@ -1063,16 +1053,21 @@ requires-dist = [
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "../map-integration" },
     { name = "macrostrat-map-topology", editable = "../map-topology" },
     { name = "macrostrat-match-utils", editable = "../match-utils" },
+    { name = "macrostrat-radosgw-admin", editable = "../../submodules/storage-admin" },
     { name = "macrostrat-schema-management", editable = "../schema-management" },
+    { name = "macrostrat-usage-stats", editable = "../usage-stats" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
     { name = "numpy", specifier = ">=2.0.0,<3" },
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "paramiko", specifier = ">=3.4.0,<4" },
     { name = "pg-activity", specifier = ">=3.6.2" },
+    { name = "polars", specifier = ">=1.42.0,<2" },
     { name = "pymysql", specifier = ">=1.0.2,<2" },
+    { name = "pyogrio", specifier = ">=0.12.1,<1" },
     { name = "pyproj", specifier = ">=3.4.0,<4" },
     { name = "pytest", specifier = ">=8.3.4,<10" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
+    { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0,<4" },
     { name = "pyyaml", specifier = "~=6.0" },
     { name = "requests", specifier = ">=2.28.1,<3" },
     { name = "results", specifier = "==1.4.0" },
@@ -1082,7 +1077,6 @@ requires-dist = [
     { name = "shapely", specifier = ">=2.1.0,<3" },
     { name = "spectra", specifier = ">=0.0.11,<0.0.12" },
     { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
-    { name = "tileserver-stats", editable = "../tileserver-stats" },
     { name = "tiletanic", specifier = ">=1.1.0,<2" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
     { name = "tqdm", specifier = ">=4.65.0,<5" },
@@ -1103,7 +1097,7 @@ dependencies = [
     { name = "macrostrat-database" },
     { name = "macrostrat-utils" },
     { name = "openpyxl" },
-    { name = "polars" },
+    { name = "polars", extra = ["rtcompat"] },
     { name = "pydantic" },
     { name = "scipy" },
     { name = "typer" },
@@ -1114,10 +1108,10 @@ dependencies = [
 requires-dist = [
     { name = "fastexcel", specifier = ">=0.16.0" },
     { name = "macrostrat-core", editable = "../core" },
-    { name = "macrostrat-database", specifier = ">=4.3.1,<5.0.0" },
+    { name = "macrostrat-database", specifier = ">=4.6.1,<5.0.0" },
     { name = "macrostrat-utils", specifier = ">=1.3.1,<2.0.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "polars", specifier = ">=1.36.1" },
+    { name = "polars", extras = ["rtcompat"], specifier = ">=1.36.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "typer", specifier = ">=0.25.0,<0.27" },
@@ -1133,6 +1127,7 @@ dependencies = [
     { name = "dynaconf" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-database" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "sqlalchemy" },
     { name = "toml" },
@@ -1143,7 +1138,8 @@ requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
     { name = "macrostrat-app-frame", specifier = ">=3.1.0,<4" },
-    { name = "macrostrat-database", specifier = ">=4.4.0,<5" },
+    { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
+    { name = "pydantic", specifier = ">=2.5,<3" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
     { name = "sqlalchemy", specifier = ">=2.0.28,<3" },
     { name = "toml", specifier = ">=0.10.2,<0.11" },
@@ -1151,7 +1147,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.5.0"
+version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1165,9 +1161,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/1c/c6855cb11c05a80cab0eb2e788315ca0e3a173138f8b9d6d6c67322feb67/macrostrat_database-4.5.0.tar.gz", hash = "sha256:963d7531953a4ec8cb2fb3946ca897062f59e810c1c5d7a62c6710b9c975e969", size = 24940, upload-time = "2026-07-08T06:11:05.439Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/c5/4ca3cf28eba6eefbd6be68b7562c3fd08f312cf4cc74e580e25bfc8fb785/macrostrat_database-4.7.0.tar.gz", hash = "sha256:447cab4bb0aaf8e9376ebb9d85e4423871a5306dc7c3a1b51082bcfa16593083", size = 29189, upload-time = "2026-09-23T19:21:50.559Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/16/033caa3f4c0760c1f3d2770c998d4f0e2aed39c8d90cf93b58d835f5a0dc/macrostrat_database-4.5.0-py3-none-any.whl", hash = "sha256:d7d4f6426a761df3ccacfb52ca01182cc426540203280635413631388be468bc", size = 32095, upload-time = "2026-07-08T06:11:06.333Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/33/1a0a05e2ee44a093794ace321f931e14e23726b4689ae77929294d19af26/macrostrat_database-4.7.0-py3-none-any.whl", hash = "sha256:15edca9851a27b8436338317b9b905fbd390f95e19f6dc91a00559ccbd0a9191", size = 36740, upload-time = "2026-09-23T19:21:49.505Z" },
 ]
 
 [[package]]
@@ -1214,24 +1210,34 @@ name = "macrostrat-map-integration"
 version = "2.0.0"
 source = { editable = "../map-integration" }
 dependencies = [
+    { name = "fiona" },
+    { name = "geoalchemy2" },
     { name = "geopandas" },
     { name = "ipython" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
     { name = "macrostrat-map-utils" },
+    { name = "macrostrat-match-utils" },
     { name = "minio" },
     { name = "numpy" },
+    { name = "pandas" },
     { name = "psycopg" },
+    { name = "psycopg2-binary" },
+    { name = "pydantic" },
     { name = "pylibmagic" },
     { name = "pyogrio" },
     { name = "pyproj" },
     { name = "python-dotenv" },
     { name = "python-magic" },
     { name = "pyyaml" },
+    { name = "requests" },
     { name = "rich" },
     { name = "scipy" },
     { name = "shapely" },
+    { name = "spectra" },
+    { name = "sqlalchemy" },
     { name = "typer" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -1241,25 +1247,35 @@ gis = [
 
 [package.metadata]
 requires-dist = [
+    { name = "fiona", specifier = ">=1.9,<2" },
     { name = "gdal", marker = "extra == 'gis'", specifier = ">=3.10.0,<4" },
+    { name = "geoalchemy2", specifier = ">=0.14,<1" },
     { name = "geopandas", specifier = ">=1.1.3,<2" },
     { name = "ipython", specifier = ">=8.5.0,<10" },
     { name = "macrostrat-core", editable = "../core" },
-    { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
     { name = "macrostrat-map-utils", editable = "../map-utils" },
+    { name = "macrostrat-match-utils", editable = "../match-utils" },
     { name = "minio", specifier = ">=7.2.5,<8" },
     { name = "numpy", specifier = ">=2.0.0,<3" },
+    { name = "pandas", specifier = ">=2,<3" },
     { name = "psycopg", specifier = ">=3.0.0,<4" },
+    { name = "psycopg2-binary", specifier = ">=2.9,<3" },
+    { name = "pydantic", specifier = ">=2,<3" },
     { name = "pylibmagic", specifier = ">=0.5.0,<0.6" },
     { name = "pyogrio", specifier = ">=0.12.1,<0.13" },
     { name = "pyproj", specifier = ">=3.4.0,<4" },
     { name = "python-dotenv", specifier = ">=1,<2" },
     { name = "python-magic", specifier = ">=0.4.27,<0.5" },
     { name = "pyyaml", specifier = "~=6.0" },
+    { name = "requests", specifier = ">=2.28.1,<3" },
     { name = "rich", specifier = ">=13,<16.0" },
     { name = "scipy", specifier = ">=1.17.1,<2" },
     { name = "shapely", specifier = ">=2.1.2,<3" },
+    { name = "spectra", specifier = ">=0.0.11,<0.0.12" },
+    { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
     { name = "typer", specifier = ">=0.12,<0.26" },
+    { name = "typing-extensions", specifier = ">=4,<5" },
 ]
 provides-extras = ["gis"]
 
@@ -1328,6 +1344,36 @@ requires-dist = [
 ]
 
 [[package]]
+name = "macrostrat-radosgw-admin"
+version = "0.9.0"
+source = { editable = "../../submodules/storage-admin" }
+dependencies = [
+    { name = "humanize" },
+    { name = "rgwadmin" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "humanize", specifier = ">=4.11,<4.12" },
+    { name = "rgwadmin", specifier = ">=2.4.5" },
+    { name = "rich", specifier = ">=13.9.2" },
+    { name = "typer", specifier = ">=0.12,<0.28" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "bandit", specifier = ">=1.7,<1.8" },
+    { name = "black", specifier = ">=24.10,<24.11" },
+    { name = "isort", specifier = ">=5.13,<5.14" },
+    { name = "markdown", specifier = ">=3.7,<3.8" },
+    { name = "mypy", specifier = ">=1.12,<1.13" },
+    { name = "pre-commit", specifier = ">=4.0,<4.1" },
+    { name = "pylint", specifier = ">=3.3,<3.4" },
+]
+
+[[package]]
 name = "macrostrat-schema-management"
 version = "1.1.0"
 source = { editable = "../schema-management" }
@@ -1355,7 +1401,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
     { name = "macrostrat-core", editable = "../core" },
-    { name = "macrostrat-database", specifier = ">=4.5.0,<5" },
+    { name = "macrostrat-database", specifier = ">=4.6.0,<5" },
     { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
     { name = "macrostrat-map-topology", editable = "../map-topology" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
@@ -1365,6 +1411,54 @@ requires-dist = [
     { name = "testcontainers", specifier = ">=4.14.2" },
     { name = "typer", specifier = ">=0.22,<0.27" },
 ]
+
+[[package]]
+name = "macrostrat-usage-stats"
+version = "0.1.0"
+source = { editable = "../usage-stats" }
+dependencies = [
+    { name = "macrostrat-core" },
+    { name = "macrostrat-usage-stats-capture" },
+    { name = "matplotlib" },
+    { name = "polars" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-core", editable = "../core" },
+    { name = "macrostrat-usage-stats-capture", editable = "../usage-stats-capture" },
+    { name = "matplotlib", specifier = ">=3.9.2,<4" },
+    { name = "polars", specifier = ">=1.42.0,<2" },
+    { name = "rich", specifier = ">=13,<16" },
+    { name = "typer", specifier = ">=0.12,<0.27" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
+
+[[package]]
+name = "macrostrat-usage-stats-capture"
+version = "0.1.0"
+source = { editable = "../usage-stats-capture" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "minio" },
+    { name = "pydantic" },
+    { name = "zstandard" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-database", specifier = ">=4.4.1,<5" },
+    { name = "minio", specifier = ">=7.2.20" },
+    { name = "pydantic", specifier = ">=2,<3" },
+    { name = "zstandard", specifier = ">=0.25.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
 
 [[package]]
 name = "macrostrat-utils"
@@ -1787,6 +1881,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/08/4d/094819d251f2248999cb722125fd4e44ee79b753fe535338cbf442fbf45d/polars-1.42.0-py3-none-any.whl", hash = "sha256:ab10cac3f2d28a6e22e22bcac69c0e51fb33cd25aee1f45105782d4fe55a3e6a", size = 836855, upload-time = "2026-06-24T05:18:18.204Z" },
 ]
 
+[package.optional-dependencies]
+rtcompat = [
+    { name = "polars-runtime-compat" },
+]
+
 [[package]]
 name = "polars-runtime-32"
 version = "1.42.0"
@@ -1801,6 +1900,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b2/a5/d1133ba9d005532a6fb94544f5da09e497a8fe42c04e37c3da6faa80bd67/polars_runtime_32-1.42.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:a13949abfce319de7fc4c1abee43bc9d4a4ed4d96bcc1a6037d022e4e9561d9f", size = 55214521, upload-time = "2026-06-24T05:18:43.916Z" },
     { url = "https://files.pythonhosted.org/packages/bd/54/0b8355ab29669560608b2864a5e54674dd78bbd48c04976607516e081107/polars_runtime_32-1.42.0-cp310-abi3-win_amd64.whl", hash = "sha256:91a07bd852c1d1ea19b3e27c974bc7b1b29ac948fdb2e785da3a6ec0f0683cad", size = 52718509, upload-time = "2026-06-24T05:18:48.202Z" },
     { url = "https://files.pythonhosted.org/packages/bf/b9/7c46fdbd1dbbaaf77f9512d7665609d7e4c4d8c8849edb9a16c471041075/polars_runtime_32-1.42.0-cp310-abi3-win_arm64.whl", hash = "sha256:b7c5d7721b7bb2563d72785050ac099da1e2000d412f9c72a0cfb7b07779e75d", size = 46728464, upload-time = "2026-06-24T05:18:52.505Z" },
+]
+
+[[package]]
+name = "polars-runtime-compat"
+version = "1.42.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/b7/044b155cdac3665ba72f964e83fc2d3eb6ad8acc85bff1742e98dabde9d0/polars_runtime_compat-1.42.0.tar.gz", hash = "sha256:5538f2003f03850033ced9937402b8fce7b3944b4cf127e77fc85b74243505f5", size = 3042432, upload-time = "2026-06-24T05:20:19.965Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/b0/1040adafbcaeca35f6725fe59da81b3c8eac287d62d2d04da6e5a58ebb17/polars_runtime_compat-1.42.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:6e875c08b1c0184dc8dead8afd0166a94580e9bb176d37a3944bca156a057823", size = 53123948, upload-time = "2026-06-24T05:19:36.083Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/ae/a783f98a29b0072c26609bb80c55d704d322190c8f41f197a395cdfd3755/polars_runtime_compat-1.42.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:e222d00e196b22cd77123c01b714234fec4b7b57c8c0c4c6e91e3166c16195a2", size = 47338082, upload-time = "2026-06-24T05:19:41.757Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/00/1a584f0918c040ab93bbd8049d6b824aaa826f6965be749de3459d50df69/polars_runtime_compat-1.42.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3fdea4c5446e460db8d41a1c89ee2d797d766075e9cba7e9781ef6a38fe7b810", size = 51229536, upload-time = "2026-06-24T05:19:46.751Z" },
+    { url = "https://files.pythonhosted.org/packages/43/13/664bdf0ddef519f7e73d9493f04c9d9f4f52b2e72035561f9369725c0497/polars_runtime_compat-1.42.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b588a112f8eb20539f43496fb62a23e13fc3501a921fbc9ebee3c697f93270e5", size = 56966220, upload-time = "2026-06-24T05:19:51.554Z" },
+    { url = "https://files.pythonhosted.org/packages/71/86/ef511203314c10ef8bebde138b159831c27a955e3146b0e069d2b60dded1/polars_runtime_compat-1.42.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:d81b4f841a31d1a78c6646eb3176ae058209e54dfc550702d2f08e346a1192fd", size = 51404553, upload-time = "2026-06-24T05:19:56.341Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/d3/7ac26c1cd89a166427f550beb330d2defa09541f928a5decac91e5082955/polars_runtime_compat-1.42.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:919283e3d6d8cab85133bf0683e8a19755b19b98a5f746b97e4e017ca6be8175", size = 54873291, upload-time = "2026-06-24T05:20:01.286Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/9f/f694f64741213f7e9e8e369bd58faa8e50daa6875b22b748dbad2df9d1e2/polars_runtime_compat-1.42.0-cp310-abi3-win_amd64.whl", hash = "sha256:87e18855f47e84f6eebad873e07e6950e306d6702f8d14a1b4fb1c1584e68a2e", size = 52633394, upload-time = "2026-06-24T05:20:06.349Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/c9/433561dfcd9881646f90598f1170dee5e4b11a9a01d7abf9c9bebcff2dde/polars_runtime_compat-1.42.0-cp310-abi3-win_arm64.whl", hash = "sha256:9a4dc86c0ae0c34194fd976e74d277170dc8fa517b9791ad38f0e9b485194871", size = 46605657, upload-time = "2026-06-24T05:20:10.862Z" },
 ]
 
 [[package]]
@@ -1928,6 +2043,58 @@ wheels = [
 ]
 
 [[package]]
+name = "psycopg2-binary"
+version = "2.9.13"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/76/7b4383014be0fcc6c1c0e24292845a14e1672cf17fca62ca0a2bd5f4563d/psycopg2_binary-2.9.13.tar.gz", hash = "sha256:e324ecf60f952d21dd11413b8bbed0951bbd99579a06fd06f28bfc37737cd373", size = 378112, upload-time = "2026-09-10T00:06:12.199Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/d1/d0125c56b865e3bc9f318d84930b2df71a729229dbb0ce12de748a82a6d7/psycopg2_binary-2.9.13-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:2bf9f97a6df69a5d89d054b8cf5257a0916096c479800715fbfe7974dbcb3a26", size = 3725735, upload-time = "2026-09-09T23:54:51.182Z" },
+    { url = "https://files.pythonhosted.org/packages/54/a5/b5a73d0910555e38ee12c49c1740855f8a1e9776e87d65f0c51e1bab762a/psycopg2_binary-2.9.13-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:07b7bd9f410650c34c3532162cc329f112368d78a3fc8668cb1ea9df61bc11bf", size = 3818000, upload-time = "2026-09-09T23:54:53.229Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/43/3e4783f62ae3f4fc19a5acf8d1c394df54458f1336febe188f317556d2a7/psycopg2_binary-2.9.13-cp312-cp312-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:0463c00f946517f3e69192a59e6601e023ff9de45ad0a875eda3d6b1bebeb7ce", size = 4585760, upload-time = "2026-09-09T23:54:55.313Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/c4/a9a67ae65ad3d567eb0fc9cdf9a5a2783b779aecdcdc8945f1807b13d99e/psycopg2_binary-2.9.13-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e3861eba31f8ea8663fd876166b032fd89179e42aa63764d6feb281f13f9eb60", size = 4282380, upload-time = "2026-09-09T23:54:57.362Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/db/9d459d3da12e0b841cf1596579455aaa27e9e593e3e9a5a4ded5a55a7c15/psycopg2_binary-2.9.13-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:3dc3372b3731b3ef23407fe06b94f640ef87a2bda242fa386033d5589c87514a", size = 5902039, upload-time = "2026-09-09T23:55:01.955Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/53/21079c10a581c50b6817498eda7c3481c1b3cdb41482bd08ebfccd3664c4/psycopg2_binary-2.9.13-cp312-cp312-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:0405dd4d97720e7ab177aa02e493f524907c4cb3c445ac173e2627948d3d0528", size = 4119840, upload-time = "2026-09-09T23:55:04.336Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/ce/71e8d9e1b4f3e78157b49a5abdff50d915e95f2812550f6c9b4f2e4d5e94/psycopg2_binary-2.9.13-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:b6ae51708201f501a171b02419d0c30878a743c369c9054eb1289f0f8d5979e2", size = 3661077, upload-time = "2026-09-09T23:55:06.118Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/54/b17616472f09a0fae96f8852692948b7eaa7c971d7629696da0e5932d996/psycopg2_binary-2.9.13-cp312-cp312-musllinux_1_2_ppc64le.whl", hash = "sha256:81682c227cc1849c4a6adf7b85274229073bb4c9d6ad5697222c695dcea5a8a7", size = 3307202, upload-time = "2026-09-09T23:55:08.061Z" },
+    { url = "https://files.pythonhosted.org/packages/77/c7/d9737e222a377dac67a0ce0a2c73e7231a57f5cf18bb35a65d5c8d45d5d2/psycopg2_binary-2.9.13-cp312-cp312-musllinux_1_2_riscv64.whl", hash = "sha256:13d955f6054a705a19554364fe9888d0a6e8b0746dc7ebc08a447c7b4fd4145c", size = 3052893, upload-time = "2026-09-09T23:55:10.209Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/3d/c406c9f698f518c264381192c2bdf8952ee84e469ffa9f82db1411f57385/psycopg2_binary-2.9.13-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:7e2405196a8cfe6cd3e54172a54452dcf85c241eaf2e9dde7190d7469f7f5ef7", size = 3355210, upload-time = "2026-09-09T23:55:11.883Z" },
+    { url = "https://files.pythonhosted.org/packages/27/64/6e3a96699770af2d0d49a2002f722c69b656fc27623ff89281cf2b109644/psycopg2_binary-2.9.13-cp312-cp312-win_amd64.whl", hash = "sha256:376ebf7d8aee4b7386b2bac31fdc27911e7e57cd0a88f1e038b8b149398ac008", size = 2767784, upload-time = "2026-09-09T23:55:13.823Z" },
+    { url = "https://files.pythonhosted.org/packages/82/0a/795f2869788373cf7d08410341a444196e8ccebbac07a70a8f9a1f60e72f/psycopg2_binary-2.9.13-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:4d66bfd44a46eb88cff0287929a4193fb45166b6c1f84bb1b233cc17ece0813c", size = 3725723, upload-time = "2026-09-09T23:55:15.887Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/63/5a9633f4563a73beba69b20a846ddd14c1c6ac072f5e8aab0da97ffabc2a/psycopg2_binary-2.9.13-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f818161d2302b3b3e9c75d5a1d0a5c5679e92e45cfec6432b9d5432dde5ff1f1", size = 3817976, upload-time = "2026-09-09T23:55:18.025Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/e2/b2e3b3a4331dc8b58e328cda30f3d0cc43a94b7aaf0c8383efd53dd10e95/psycopg2_binary-2.9.13-cp313-cp313-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:31db6cba66df5231dfd91d9f69188bec3fe6c8baae384e93a0ce792067ee2d98", size = 4585813, upload-time = "2026-09-09T23:55:20.112Z" },
+    { url = "https://files.pythonhosted.org/packages/56/5c/87daea77c4132114d1a5da3a4928dd59446c3b3cc73d288cae08cf0b91a6/psycopg2_binary-2.9.13-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:f04ada42bcd537adbaf8b7f3140237a204e452a88d0c1831cfce69f7d2e59f4e", size = 4282438, upload-time = "2026-09-09T23:55:22.329Z" },
+    { url = "https://files.pythonhosted.org/packages/91/e5/56f9efdc9337acbd1a75798d97163183b63a1babc17602f7163009506c96/psycopg2_binary-2.9.13-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:aa37089795bd9701576edc2eb5849ce77a439eda9dfdfa47857449332cfa5292", size = 5902064, upload-time = "2026-09-09T23:55:24.37Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/15/f7ed0b90b47b73a9087306b42267eccfd919f92c0fb057e46bd2fa2efa4d/psycopg2_binary-2.9.13-cp313-cp313-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:41c2eb569ebd0e1b02d30d361a46932923b193fe1b5e641fb4d547c75e218955", size = 4119848, upload-time = "2026-09-09T23:55:26.433Z" },
+    { url = "https://files.pythonhosted.org/packages/42/08/3091347b9fc5766e979aba6b0756ad14ce867a6bb245f3d69ac71fb768c6/psycopg2_binary-2.9.13-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:3f699a5225094a5c61402984e2fc1eca20e940223e76767c88189efb0c313f69", size = 3661129, upload-time = "2026-09-09T23:55:28.449Z" },
+    { url = "https://files.pythonhosted.org/packages/34/c4/4f9a84d55484c9794b364548eb6e1fe10a57f123afd19729e5a1cc8ad7fc/psycopg2_binary-2.9.13-cp313-cp313-musllinux_1_2_ppc64le.whl", hash = "sha256:5f04ae99c9fbb94c3197ec88599ed7db921f6adcddfe83687a74c7ead4037c22", size = 3307262, upload-time = "2026-09-09T23:55:30.384Z" },
+    { url = "https://files.pythonhosted.org/packages/83/42/6eba8306a61dc890805ae475a9e71790a1c5461ccacbd4f0a1f3f57b40f0/psycopg2_binary-2.9.13-cp313-cp313-musllinux_1_2_riscv64.whl", hash = "sha256:81404c37e0344ebcf10aac127d33d35137e5dbab1daf9f3deee46188fd5879c2", size = 3052898, upload-time = "2026-09-09T23:55:32.961Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/5d/42a8935ab280e8dcd7c07a655c0c3d25d62e9e242be1961ac14630f1294a/psycopg2_binary-2.9.13-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:feb7b1856f6ca805cc0e08739858f6cdfed8ce903390126af30343c62899a389", size = 3355265, upload-time = "2026-09-09T23:55:35.071Z" },
+    { url = "https://files.pythonhosted.org/packages/87/c2/0e0ffb4caeb651631cbc6c8ead83e2a16457750b1d2eb7f5ef111c1f4d36/psycopg2_binary-2.9.13-cp313-cp313-win_amd64.whl", hash = "sha256:691da68ae5dd7c3ac77514357d35ece7b1ba8b5f3e6c92735198aa6159c355c8", size = 2767914, upload-time = "2026-09-09T23:55:37.14Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/32/897c074cb99fbdda7d34b0a2546097a59162bb3d04c0d546ae4ec82345e3/psycopg2_binary-2.9.13-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:2ca263643ae37998ae04d18e431df34d0d61f12b47640dab585f14b6dbe00798", size = 3725788, upload-time = "2026-09-09T23:55:39.04Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/f4/e3a789de34c9ac25d20b25c2be583da16394a2ba0926da1c863653831f41/psycopg2_binary-2.9.13-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:4c0214c7da18a28d108aa7108c8a3cca8035c7911ec97ef9ec0827569c9a2720", size = 3818111, upload-time = "2026-09-09T23:55:40.979Z" },
+    { url = "https://files.pythonhosted.org/packages/72/29/647724c43ac510dbc59b80e20e85d439deb94f5d5a024153c32330fa041d/psycopg2_binary-2.9.13-cp314-cp314-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:5d89e064bb12b40cad696cf4975e6da86f8c60f14cd06cb6c1bc0a7f5d01761f", size = 4586235, upload-time = "2026-09-09T23:55:43.012Z" },
+    { url = "https://files.pythonhosted.org/packages/91/ad/7f52f92cc65c23778daff7eec4ee2099236694a0a4723a5f180d0708b607/psycopg2_binary-2.9.13-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:190c18b97d9ef72f2e88c451b6588af90d6bd7bf54cb94b963280dc86a2c7076", size = 4282424, upload-time = "2026-09-09T23:55:44.843Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/2a/1a472059b198942d99651656e2bc610575584478bfe68d297ecabbd4887f/psycopg2_binary-2.9.13-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:c00ebe9a2f31151aade0db233dc1446513a95e92c39ce055ee097af0ae86be1c", size = 5902365, upload-time = "2026-09-09T23:55:46.619Z" },
+    { url = "https://files.pythonhosted.org/packages/91/1a/171ea5dac7b3a0fa57b3cb59c2ad6d7b8bc60732368fecfd2ed1f1288392/psycopg2_binary-2.9.13-cp314-cp314-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:5085f7ff7b1e890f279577cedeb8c628957869a340fa34a39f7f406500b3c916", size = 4119938, upload-time = "2026-09-09T23:55:49.381Z" },
+    { url = "https://files.pythonhosted.org/packages/41/ce/3c6d4ad71853a59eee6a575fe36df4bb40752a9735a27bd62af66b454ed5/psycopg2_binary-2.9.13-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:4e55357d1943673d491bbabb171c891704fc6a22441fea539e05a5c27a79ea3c", size = 3661557, upload-time = "2026-09-09T23:55:51.269Z" },
+    { url = "https://files.pythonhosted.org/packages/10/a3/1819a01bf951eab2afb5ca2a3d11f50500bf536fecff088154372a8d1985/psycopg2_binary-2.9.13-cp314-cp314-musllinux_1_2_ppc64le.whl", hash = "sha256:3e60b06ec7f9dc3e5f1106d12706514b6d6b92c3dc438fcdf4e43e65cc660d1b", size = 3307770, upload-time = "2026-09-09T23:55:53.196Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/df/22f4aec952cd5b2dd02f438399583ed69f7d04b90e7c31659d9571bbe188/psycopg2_binary-2.9.13-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:dde942b46ce20f6c4464cdf551f3293207f803f4e4354454eb1f5599c3eb1fa1", size = 3052935, upload-time = "2026-09-09T23:55:55.117Z" },
+    { url = "https://files.pythonhosted.org/packages/95/42/aab651bc22bafa961806ca3b21027bb0739a2730b0e6f7f0778baeb95e67/psycopg2_binary-2.9.13-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:215777c62ce81c3b487cefdb6a41969944eb982309f91349ff3ca0323d6f17ed", size = 3355387, upload-time = "2026-09-09T23:55:57.366Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/af/3b8220633eaf955e95ea7be67d76e81a0d1cd3c76362ea504b91ffa079db/psycopg2_binary-2.9.13-cp314-cp314-win_amd64.whl", hash = "sha256:f3088eb80f58ed933c62d87128741d31e786edc862e23266d3c286763d646de0", size = 2863890, upload-time = "2026-09-09T23:55:59.056Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/f1/377d17fc8425220d17552691cd2b97aa232da92173f5dead71278b83f8ab/psycopg2_binary-2.9.13-cp315-cp315-macosx_10_15_x86_64.whl", hash = "sha256:38397def2d794ffde9db80f63d6820253e61b17483112652a318355f51a56f50", size = 3725913, upload-time = "2026-09-09T23:56:00.736Z" },
+    { url = "https://files.pythonhosted.org/packages/67/64/27208e67cd6e663f69bf7bf905cf69db066a015c90ac9ca948a56a8e9d78/psycopg2_binary-2.9.13-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:dff5c70ed9789ccb0d97ff4a7da51dc523a255c4ec95df188fa5d44adcae4ea8", size = 3818303, upload-time = "2026-09-09T23:56:02.551Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/98/67d2f34a1d18367b5f655bdd101759f8474286c74ffe701b7d6e3abd7fda/psycopg2_binary-2.9.13-cp315-cp315-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:08d3b81a6a91775c937abf97d4c58fc9142e8e35fb91c387d24f81d15c98e6cf", size = 4586508, upload-time = "2026-09-09T23:56:04.706Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/47/46c227deaf322dceafa0b7b321b4e5de9cc797014b7a353349b2e09b1118/psycopg2_binary-2.9.13-cp315-cp315-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:541a487a9ccd72b5e38f37f27b0ce78cb7eb3e336e7b5277d45463010c03a7a8", size = 4282383, upload-time = "2026-09-09T23:56:06.678Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/3c/e8705ffa381160d842eaf06a8446e8416f1a2497dd70a7e62277f3be6e7a/psycopg2_binary-2.9.13-cp315-cp315-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:562fe2a43b30e781848dce63d9080c15414c777c96df348c4342558338cc7bf3", size = 5902765, upload-time = "2026-09-09T23:56:08.634Z" },
+    { url = "https://files.pythonhosted.org/packages/53/cc/359821c18317228b8032456a3740c98045b719ed003a594b9ebac9330b86/psycopg2_binary-2.9.13-cp315-cp315-manylinux_2_38_riscv64.manylinux_2_39_riscv64.whl", hash = "sha256:dddfe650e7dda464d676c27fbedb5061f1ad05e1604627f54c770d7f799d36e9", size = 4122849, upload-time = "2026-09-09T23:56:10.671Z" },
+    { url = "https://files.pythonhosted.org/packages/17/e5/4d935acb6d3258c7a767b3d527e54c0b537649101b55002a5dbcfe747e2a/psycopg2_binary-2.9.13-cp315-cp315-musllinux_1_2_aarch64.whl", hash = "sha256:4ff0f575cbb14f30445858dcfdd751e043486f5290915df78a9818bc74042eff", size = 3662084, upload-time = "2026-09-09T23:56:12.316Z" },
+    { url = "https://files.pythonhosted.org/packages/89/56/9e9bbc7c773c5de7bb25dd35d7f041c2a6f0fcfa9207a1ceaf01a1bc687c/psycopg2_binary-2.9.13-cp315-cp315-musllinux_1_2_ppc64le.whl", hash = "sha256:d79530b4c1af657d5620a1d21b8e39f2996aa06821d5564d05b22d6b8cd413d0", size = 3308077, upload-time = "2026-09-09T23:56:15.262Z" },
+    { url = "https://files.pythonhosted.org/packages/36/fa/ed742cd4e5dbddcb44702f9c4a97f7f5b62d97e3d9d00907ecc8ac750ef4/psycopg2_binary-2.9.13-cp315-cp315-musllinux_1_2_riscv64.whl", hash = "sha256:6ede8595767e19d30a7e8a84a7d47bfde6176d45d194fed08dbb68d1584a780b", size = 3055143, upload-time = "2026-09-09T23:56:17.168Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/3a/5c2cb71a844ee236be2ce91b286d797e34a21489909357c7cfba0f5c0197/psycopg2_binary-2.9.13-cp315-cp315-musllinux_1_2_x86_64.whl", hash = "sha256:0ebcf3c4266a695df9d0ef51296155f60c86ac51cf82f0d0dd2e827255a891c5", size = 3355374, upload-time = "2026-09-09T23:56:18.793Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/30/3991c9fdcca90a5a1e55435292f4d74d176da2be15f3998f6858da3658cc/psycopg2_binary-2.9.13-cp315-cp315-win_amd64.whl", hash = "sha256:1752b9821f1377404d65ac43af03d59a1eccc57fb2c1eb8305f9a3fe8eb7a8ba", size = 2867246, upload-time = "2026-09-09T23:56:20.501Z" },
+]
+
+[[package]]
 name = "ptyprocess"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1943,6 +2110,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42", size = 19752, upload-time = "2024-07-21T12:58:21.801Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
+]
+
+[[package]]
+name = "pyasn1"
+version = "0.6.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/9a/23310166d960def5897e91fe20e5b724601b02a22e84ba1f94232c0b7f67/pyasn1-0.6.4.tar.gz", hash = "sha256:9c447d8431c947fe4c8febc4ed9e760bc29011a5b01e5c74b67025bd9fb8ce81", size = 151262, upload-time = "2026-07-09T01:12:33.988Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/3b/6163796d69c3977d1e4287bea4a6979161cbbdd170ebb430511e8e1999ce/pyasn1-0.6.4-py3-none-any.whl", hash = "sha256:deda9277cfd454080ec40b207fb6df82206a3a2688735233cdcd8d3d565f088b", size = 84410, upload-time = "2026-07-09T01:12:32.92Z" },
 ]
 
 [[package]]
@@ -2303,6 +2479,25 @@ wheels = [
 ]
 
 [[package]]
+name = "python-jose"
+version = "3.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ecdsa" },
+    { name = "pyasn1" },
+    { name = "rsa" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/77/3a1c9039db7124eb039772b935f2244fbb73fc8ee65b9acf2375da1c07bf/python_jose-3.5.0.tar.gz", hash = "sha256:fb4eaa44dbeb1c26dcc69e4bd7ec54a1cb8dd64d3b4d81ef08d90ff453f2b01b", size = 92726, upload-time = "2025-05-28T17:31:54.288Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/c3/0bd11992072e6a1c513b16500a5d07f91a24017c5909b02c72c62d7ad024/python_jose-3.5.0-py2.py3-none-any.whl", hash = "sha256:abd1202f23d34dfad2c3d28cb8617b90acf34132c7afd60abd0b0b7d3cb55771", size = 34624, upload-time = "2025-05-28T17:31:52.802Z" },
+]
+
+[package.optional-dependencies]
+cryptography = [
+    { name = "cryptography" },
+]
+
+[[package]]
 name = "python-magic"
 version = "0.4.27"
 source = { registry = "https://pypi.org/simple" }
@@ -2383,18 +2578,6 @@ wheels = [
 ]
 
 [[package]]
-name = "radosgw-admin"
-version = "1.7.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "boto" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/42/a7/b147fb5faac7f3c832652a599110c6c6764577f2ac5429a18d73b4440491/radosgw-admin-1.7.2.tar.gz", hash = "sha256:ac05f78ec41caaef4209f90932b857704aa031017bf31faa7f30ec0d7fc80471", size = 23783, upload-time = "2020-10-07T08:32:53.732Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/89/9b/f6fdc067eccd61f1147e778327a8ffd0052c28d3a57dd79b8465bd28b364/radosgw_admin-1.7.2-py2.py3-none-any.whl", hash = "sha256:c22ade8e75397717a37ffa9277be2658d2e71c09942eac8eb9d5807a751abf30", size = 25549, upload-time = "2020-10-07T08:32:52.329Z" },
-]
-
-[[package]]
 name = "requests"
 version = "2.32.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2407,6 +2590,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
+]
+
+[[package]]
+name = "requests-aws4auth"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/fd/796afb1c08e6332da9200bc530bcd869a17cecf93c4d9355d9af8c263eea/requests_aws4auth-1.3.2.tar.gz", hash = "sha256:7a697bf3c7a66d82980ad3348a2539403870d5c1f1e313f5676fb11e6793eef8", size = 26216, upload-time = "2026-05-01T17:14:59.765Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/d5/e8633053ff50ade180c8f35ac069539be344d3f025759af589b6bb96278f/requests_aws4auth-1.3.2-py3-none-any.whl", hash = "sha256:c6cbf45f17119af926e3cb77acfeed083d1cf9580d893ee6c0ecf01088fd34e5", size = 24767, upload-time = "2026-05-01T17:14:58.459Z" },
 ]
 
 [[package]]
@@ -2423,6 +2618,19 @@ wheels = [
 ]
 
 [[package]]
+name = "rgwadmin"
+version = "2.4.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "requests-aws4auth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/72/50/fd15c92cece2268256cc10fac8f1f6290b4bfd7fe2085c54ccf96e12b43c/rgwadmin-2.4.6.tar.gz", hash = "sha256:65a24d0b0c633374fc6595df390fb674f760a206880941bcc854a9c6eac38730", size = 30830, upload-time = "2026-07-15T21:53:34.948Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/e6/f74cb716f5babc8a8c2ee887586a18f134eb46430f46ef54a3325a33e830/rgwadmin-2.4.6-py3-none-any.whl", hash = "sha256:8ebe987df1edfe3e522a27452867370e29d46c1dff4bca5944d6fe3187e07cce", size = 21070, upload-time = "2026-07-15T21:53:34.088Z" },
+]
+
+[[package]]
 name = "rich"
 version = "15.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2433,6 +2641,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb", size = 310654, upload-time = "2026-04-12T08:24:02.83Z" },
+]
+
+[[package]]
+name = "rsa"
+version = "4.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyasn1" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/da/8a/22b7beea3ee0d44b1916c0c1cb0ee3af23b700b6da9f04991899d0c555d4/rsa-4.9.1.tar.gz", hash = "sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75", size = 29034, upload-time = "2025-04-16T09:51:18.218Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/8d/0133e4eb4beed9e425d9a98ed6e081a55d195481b7632472be1af08d2f6b/rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762", size = 34696, upload-time = "2025-04-16T09:51:17.142Z" },
 ]
 
 [[package]]
@@ -2670,38 +2890,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/ca/ac/a597c3a0e02b26cbe
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/2d/26b8b30067d94339afee62c3edc9b803a6eb9332f521ba77d8aaab5de873/testcontainers-4.14.2-py3-none-any.whl", hash = "sha256:0d0522c3cd8f8d9627cda41f7a6b51b639fa57bdc492923c045117933c668d68", size = 125712, upload-time = "2026-03-18T05:19:15.29Z" },
 ]
-
-[[package]]
-name = "tileserver-stats"
-version = "0.1.0"
-source = { editable = "../tileserver-stats" }
-dependencies = [
-    { name = "macrostrat-core" },
-    { name = "macrostrat-database" },
-    { name = "matplotlib" },
-    { name = "minio" },
-    { name = "polars" },
-    { name = "python-dotenv" },
-    { name = "rich" },
-    { name = "typer" },
-    { name = "zstandard" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "macrostrat-core", editable = "../core" },
-    { name = "macrostrat-database", specifier = ">=4.4.1,<5" },
-    { name = "matplotlib", specifier = ">=3.9.2,<4" },
-    { name = "minio", specifier = ">=7.2.20" },
-    { name = "polars", specifier = ">=1.42.0,<2" },
-    { name = "python-dotenv", specifier = ">=1.0.0,<2" },
-    { name = "rich", specifier = ">=13,<16" },
-    { name = "typer", specifier = ">=0.12,<0.27" },
-    { name = "zstandard", specifier = ">=0.25.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
 
 [[package]]
 name = "tiletanic"
