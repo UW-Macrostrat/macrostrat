@@ -71,9 +71,7 @@ def ingest_columns_from_file(
     if project is None:
         raise ValueError("Project not found in the data file")
 
-    ingest_columns(
-        db, columns, project=project, references=references, dry_run=dry_run
-    )
+    ingest_columns(db, columns, project=project, references=references, dry_run=dry_run)
 
 
 def ingest_columns(
