@@ -10,7 +10,10 @@ VALUES
   -- `/map/carto/{z}/{x}/{y}`, drawn from the compilation system. Its own
   -- profile, not `carto`'s: the two builds differ tile for tile while both are
   -- served, and the legacy rows go with Stage D.
-  ('map-carto', 'pbf', 'application/x-protobuf', 0, 14)
+  ('map-carto', 'pbf', 'application/x-protobuf', 0, 14),
+  -- `/map/carto/{z}/{x}/{y}?detail=full`, which `/carto` redirects to: the same
+  -- tiles with the legend text and reference, so cached apart.
+  ('map-carto-full', 'pbf', 'application/x-protobuf', 0, 14)
 ON CONFLICT (name) DO NOTHING;
 
 /* This view is a little slow. We could speed things up by unifying the table perhaps */

@@ -58,8 +58,8 @@ def plan(db: Database, suffix: str = "v1") -> dict[str, list]:
 def _ensure_source(
     db: Database, slug: str, name: str, scale: str | None, *, served: bool = True
 ) -> int:
-    """`served` is false for the tiers: they are solved only as part of the
-    umbrella, never requested by name."""
+    """`served` is false for the tiers: they exist to build the umbrella, which
+    is what is requested by name."""
     db.run_query(
         """
         INSERT INTO maps.sources

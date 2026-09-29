@@ -1,6 +1,7 @@
 /* Topology-solving errors as a GeoJSON FeatureCollection. Each feature is a
    map_topo face whose insertion into the topology failed (topology_error set).
-   Optionally filtered to one map layer via the ::map_layer_filter slot. */
+   Optionally filtered, via the ::map_layer_filter slot, to the maps ranked in
+   one compilation's layers. */
 WITH errors AS (
   SELECT
     t.id,
@@ -11,8 +12,6 @@ WITH errors AS (
     t.geometry
   FROM map_bounds.map_topo t
   JOIN maps.sources s ON s.source_id = t.source_id
-  LEFT JOIN map_bounds.map_area ma ON ma.source_id = t.source_id
-  LEFT JOIN map_bounds.map_layer ml ON ml.id = ma.map_layer
   WHERE t.topology_error IS NOT NULL
     AND ::map_layer_filter
 )

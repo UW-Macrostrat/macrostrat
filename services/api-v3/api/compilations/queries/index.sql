@@ -66,7 +66,7 @@ SELECT
 FROM nodes n
 JOIN maps.sources s USING (source_id)
 JOIN map_bounds.compilation_sync cs USING (source_id)
-LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id AND ml.band IS NULL
+LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
 /* The zoom band the compilation's `scale` answers for, from `map_bounds.scale_band`
    (the one home for the thresholds): `max_zoom` is null for the last band, and both
    are null for a compilation without a scale, such as the multiscale `carto`. */

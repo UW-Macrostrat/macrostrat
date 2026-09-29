@@ -33,7 +33,7 @@ SELECT
   m.source_id,
   u.geometry,
   ST_Area(ST_Segmentize(u.geometry, 90)::geography) / 1e6,
-  map_bounds.registry_layer(m.scale::text)
+  map_bounds.barrier_layer()
 FROM missing m
 CROSS JOIN LATERAL (
   SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(p.geom)), 3)) AS geometry

@@ -136,7 +136,7 @@ nodes AS (
   LEFT JOIN member_counts mc ON mc.source_id = s.source_id
   LEFT JOIN source_counts lv ON lv.source_id = s.source_id
   LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
-  LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id AND ml.band IS NULL
+  LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
   LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
 )
 SELECT

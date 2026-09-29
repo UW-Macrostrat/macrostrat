@@ -7,10 +7,6 @@ ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS min_zoom integer;
 ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS max_zoom integer;
 -- Approximate bounds for the layer
 ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS bounds Geometry(MultiPolygon, 4326);
-/* The scale band a row answers for. On a *registry* row (no `source_id`) it is
-   the scale whose maps register their boundaries there; on a face layer it is the
-   band of a multiscale compilation, NULL for any other. See `04-compilation-tables.sql`. */
-ALTER TABLE map_bounds.map_layer ADD COLUMN IF NOT EXISTS band maps.map_scale;
 
 SELECT topology.CreateTopology('map_bounds_topology', 4326, 0.0001)
 WHERE NOT EXISTS (
@@ -190,13 +186,15 @@ FROM map_bounds.map_area a;
   `geometry_hash` itself, and a compilation that is not a mosaic is never noded
   at all -- its bounds are composed, and identity resolves it through its
   members. Only the layer test is the library's; the compilation test keeps the
-  whole-row pass (`update_contacts`) away from rows it has no business with. */
+  whole-row pass (`update_contacts`) away from rows it has no business with.
+
+  No composite test: a map's boundary is only ever recorded in the barrier
+  layer (`barrier_layer`), which is never composite. */
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
   RETURNS integer AS $$
 SELECT ml.id
 FROM map_bounds.map_layer ml
 WHERE ml.id = $1.map_layer
-  AND NOT map_bounds.is_composite_layer(ml.id)
   AND ml.topological
   AND NOT EXISTS (
     SELECT 1 FROM map_bounds.map_layer r WHERE r.source_id = $1.source_id
@@ -236,21 +234,6 @@ CREATE INDEX IF NOT EXISTS map_area_topogeom_id_idx
   ON map_bounds.map_area (((topo).id));
 
 
-CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
-  RETURNS integer AS $$
-SELECT id FROM map_bounds.map_layer WHERE slug = _slug;
-$$ LANGUAGE SQL IMMUTABLE;
-
-/** The registry a map of `_scale` registers its boundary in: where its linework
-  acts as a barrier. Registries are never solved; a face layer reaches their
-  barriers through `map_layer_composition`, which sync derives from the maps
-  solved in it. */
-CREATE OR REPLACE FUNCTION map_bounds.registry_layer(_scale text)
-  RETURNS integer AS $$
-SELECT id FROM map_bounds.map_layer
-WHERE source_id IS NULL AND band::text = _scale;
-$$ LANGUAGE SQL STABLE;
-
 /** View to adjust map priority based on scales
   (higher-scale maps are always higher priority)
  */
@@ -269,18 +252,6 @@ SELECT
 FROM maps.sources_metadata m
 WHERE is_finalized
   AND status_code = 'active';
-
-/** Registries: one per scale, where maps of that scale register their
-  boundaries as barriers. Slugged apart from the compilations of the same name,
-  so a served `large` could still have a face layer called `large`. Not compilations and never solved -- the faces belong
-  to the served compilations, whose layers sync creates (`sync-priority-paths`). */
-INSERT INTO map_bounds.map_layer (slug, name, band, min_zoom, max_zoom, bounds, topological)
-VALUES
-  ('tiny-registry', 'Tiny (registry)', 'tiny', 0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('small-registry', 'Small (registry)', 'small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('medium-registry', 'Medium (registry)', 'medium', 8, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('large-registry', 'Large (registry)', 'large', 12, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true)
-ON CONFLICT (slug) DO NOTHING;
 
 /** Carto layer membership. `carto-large` is the compilation of `medium` and
   `large`; higher priority wins where they overlap. These are ordinary

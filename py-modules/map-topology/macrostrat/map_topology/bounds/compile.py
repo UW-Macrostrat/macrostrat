@@ -53,7 +53,7 @@ def compile_bounds(
         INSERT INTO map_bounds.map_area (id, geometry, map_layer)
         SELECT DISTINCT cm.compilation_id,
                ST_GeomFromText('MULTIPOLYGON EMPTY', 4326),
-               map_bounds.registry_layer(s.scale)
+               map_bounds.barrier_layer()
         FROM map_bounds.compilation_member cm
         JOIN maps.sources s ON s.source_id = cm.compilation_id
         WHERE s.status_code = 'active'

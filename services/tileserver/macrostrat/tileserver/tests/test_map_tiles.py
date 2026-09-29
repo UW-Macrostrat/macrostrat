@@ -16,7 +16,9 @@ from macrostrat.tileserver.map_tiles import (
     LEGACY_CARTO,
     PUBLIC_SLUGS,
     SCOPE,
+    Detail,
     cache_profile,
+    faces_sql,
     is_public,
 )
 
@@ -53,6 +55,19 @@ class TestPolicy:
         assert cache_profile("bc-surface") is None
         assert set(CACHE_PROFILES) == PUBLIC_SLUGS
 
+    def test_full_detail_is_cached_apart(self):
+        # The same tile with more properties: sharing rows would serve either
+        # set to both.
+        assert cache_profile("carto", Detail.full) == "map-carto-full"
+        assert cache_profile("bc-surface", Detail.full) is None
+
+    def test_detail_fills_both_slots(self):
+        slim = faces_sql(Detail.slim)
+        full = faces_sql(Detail.full)
+        for sql in (slim, full):
+            assert "::detail" not in sql
+        assert "ref_title" in full and "ref_title" not in slim
+
     def test_scope_is_a_valid_delegated_token_scope(self):
         import re
 
@@ -79,3 +94,38 @@ class TestRouting:
 
     def test_nontile_tail_is_not_a_tile(self, client):
         assert client.get("/map/carto/1/0/notatile").status_code == 404
+
+
+class TestLegacyCartoRedirect:
+    """`/carto-slim` and `/carto` tiles go to `/map/carto` once an environment
+    switches `redirect_legacy_carto` on; before that they are the legacy build."""
+
+    @fixture
+    def redirecting(self, app):
+        from macrostrat.tileserver import db_settings
+
+        db_settings.redirect_legacy_carto = True
+        yield
+        db_settings.redirect_legacy_carto = False
+
+    def test_slim_goes_to_the_compilation_build(self, client, redirecting):
+        res = client.get("/carto-slim/3/1/2", follow_redirects=False)
+        assert res.status_code == 307
+        assert res.headers["location"].endswith("/map/carto/3/1/2")
+
+    def test_full_keeps_its_properties_and_query(self, client, redirecting):
+        res = client.get("/carto/3/1/2?cache=bypass", follow_redirects=False)
+        assert res.status_code == 307
+        assert res.headers["location"].endswith(
+            "/map/carto/3/1/2?cache=bypass&detail=full"
+        )
+
+    def test_only_tiles_are_redirected(self, client, redirecting):
+        # The layer's other routes (its TileJSON) are not tiles.
+        res = client.get("/carto-slim/tilejson.json", follow_redirects=False)
+        assert res.status_code != 307
+
+    def test_off_by_default(self, client):
+        from macrostrat.tileserver import db_settings
+
+        assert db_settings.redirect_legacy_carto is False

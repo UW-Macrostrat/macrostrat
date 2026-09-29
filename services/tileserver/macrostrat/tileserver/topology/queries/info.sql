@@ -34,20 +34,17 @@ covering_face AS MATERIALIZED (
   WHERE ST_Intersects(mf.geometry, loc.geometry)
 ),
 nodes AS (
-  /* Roots are the face layers, each walked from its partition's root: the served
-     compilation, or for a multiscale one the band's member. Never emitted. */
+  /* Roots are the face layers, each walked from its compilation. Never
+     emitted. */
   SELECT
     ml.id AS map_layer,
-    p.root_id AS source_id,
+    ml.source_id,
     ARRAY[]::integer[] AS path,
     NULL::integer AS parent_id,
     NULL::integer AS member_id,
     0 AS depth
   FROM map_bounds.map_layer ml
-  JOIN map_bounds.solved_partitions() p
-    ON p.source_id = ml.source_id
-   AND p.band IS NOT DISTINCT FROM ml.band
-  WHERE p.root_id IN (SELECT source_id FROM covering)
+  WHERE ml.source_id IN (SELECT source_id FROM covering)
     AND ::layer_filter
   UNION ALL
   SELECT
@@ -85,7 +82,8 @@ SELECT
     s.slug,
     s.name,
     s.scale,
-    ml.slug AS map_layer,
+    -- A layer is named by its compilation.
+    mls.slug AS map_layer,
     ml.id AS map_layer_id,
     ml.name AS layer_name,
     array_to_string(n.path, '.') AS priority,
@@ -114,6 +112,7 @@ CROSS JOIN LATERAL (
     map_bounds.is_derived(n.source_id) AS is_derived
 ) k
 JOIN map_bounds.map_layer ml ON ml.id = n.map_layer
+LEFT JOIN maps.sources mls ON mls.source_id = ml.source_id
 JOIN maps.sources s ON s.source_id = n.source_id
 LEFT JOIN maps.sources v ON v.source_id = n.member_id
 LEFT JOIN covering_face mf

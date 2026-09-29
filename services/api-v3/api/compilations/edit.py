@@ -79,6 +79,8 @@ async def apply_edits(conn: AsyncConnection, request: EditRequest) -> EditResult
             raise HTTPException(409, str(err.orig).splitlines()[0])
         raise
 
+    await _refuse_crowded_scales(conn, added)
+
     return EditResult(edges=removed + changed + added, properties=properties)
 
 
@@ -233,6 +235,55 @@ async def _membership_changes(conn: AsyncConnection, request: EditRequest, sourc
                 added.append(change(member_id, "added", priority))
 
     return removed, changed, added
+
+
+async def _refuse_crowded_scales(conn: AsyncConnection, added: list[EdgeChange]):
+    """A multiscale compilation has at most one member per scale, which
+    `serving_source` hands a zoom to. Checked against the added edges once they
+    are written, so a batch may swap a scale's member in one go; a conflict that
+    already stood is `lint`'s to report, not a reason to refuse other edits."""
+    if not added:
+        return
+    res = await conn.execute(
+        text(
+            """
+            SELECT c.slug AS compilation, m.scale,
+              string_agg(o.slug, ', ' ORDER BY o.slug) AS members
+            FROM unnest(CAST(:compilations AS integer[]), CAST(:members AS integer[]))
+              AS a(compilation_id, member_id)
+            JOIN maps.sources c ON c.source_id = a.compilation_id
+            JOIN maps.sources m ON m.source_id = a.member_id
+            JOIN map_bounds.compilation_member cm
+              ON cm.compilation_id = a.compilation_id
+            JOIN maps.sources o
+              ON o.source_id = cm.member_id AND o.scale IS NOT DISTINCT FROM m.scale
+            WHERE map_bounds.is_multiscale(a.compilation_id)
+            GROUP BY c.slug, m.scale
+            HAVING count(*) > 1 OR m.scale IS NULL
+            """
+        ),
+        {
+            "compilations": [c.compilation_id for c in added],
+            "members": [c.member_id for c in added],
+        },
+    )
+    problems = []
+    for r in res.mappings():
+        if r["scale"] is None:
+            reason = "a member of a multiscale compilation needs a scale"
+        else:
+            reason = f"more than one member at scale {r['scale']}"
+        problems.append(
+            {"compilation": r["compilation"], "member": r["members"], "reason": reason}
+        )
+    if problems:
+        raise HTTPException(
+            409,
+            {
+                "message": "A multiscale compilation takes one member per scale.",
+                "problems": problems,
+            },
+        )
 
 
 def _refuse_superseded(added: list[EdgeChange], sources: dict[int, dict]):

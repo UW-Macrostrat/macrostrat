@@ -1,7 +1,7 @@
 /* Solved faces, attributed at the level the request asked about.
 
-   Faces are the served compilation's own, for the tile's band when it is
-   multiscale (`face_layer_for`); a source with no face layer draws none here.
+   Faces are the source's own, or for a multiscale one its member's at the
+   tile's zoom (`face_layer_for`); a source with no face layer draws none here.
 
    Ownership and attribution are two different levels, and only one of them is in
    `map_face`. A face is always owned by the map that was solved into the
@@ -56,7 +56,7 @@ WITH tile AS (
     CASE WHEN :level = 'map' THEN s.name ELSE v.name END AS name,
     CASE WHEN :level = 'map' THEN s.slug ELSE v.slug END AS slug,
     s.scale,
-    ml.slug AS map_layer,
+    mls.slug AS map_layer,
     f.map_layer AS map_layer_id,
     tile_layers.tile_geom(
       ST_Intersection(f.geometry, tile.projected_bbox),
@@ -65,6 +65,7 @@ WITH tile AS (
   FROM root
   JOIN map_bounds_topology.map_face f ON f.map_layer = root.face_layer
   JOIN map_bounds.map_layer ml ON ml.id = f.map_layer
+  LEFT JOIN maps.sources mls ON mls.source_id = ml.source_id
   JOIN tile ON ST_Intersects(f.geometry, tile.projected_bbox)
   -- The owner, always: the member is an attribution level and a nested
   -- compilation owns no faces of its own.
@@ -82,7 +83,7 @@ WITH tile AS (
     s.name,
     s.slug,
     s.scale,
-    ml.slug AS map_layer,
+    mls.slug AS map_layer,
     ma.map_layer AS map_layer_id,
     tile_layers.tile_geom(
       ST_Intersection(ma.geometry, tile.projected_bbox),
@@ -92,6 +93,7 @@ WITH tile AS (
   JOIN maps.sources s ON s.source_id = root.source_id
   JOIN map_bounds.map_area ma ON ma.source_id = root.source_id
   LEFT JOIN map_bounds.map_layer ml ON ml.id = ma.map_layer
+  LEFT JOIN maps.sources mls ON mls.source_id = ml.source_id
   JOIN tile ON ST_Intersects(ma.geometry, tile.projected_bbox)
   WHERE map_bounds.is_mosaic_member(root.source_id)
     AND NOT EXISTS (

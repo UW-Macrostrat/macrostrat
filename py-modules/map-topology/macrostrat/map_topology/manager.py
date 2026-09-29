@@ -183,16 +183,17 @@ class MacrostratTopologyManager(TopologyManager):
         # submodule for linework mode. Boundaries are noded above, piece by
         # piece, so the library's whole-row pass is not run. What follows is the
         # faces half of the library's `update()`, called directly for its stats.
-        # A registry is marked like any layer a boundary change touches -- that is
-        # how the marks reach the face layers composed of it -- but it is never
-        # solved: its faces belong to the served compilations. The library solves
-        # every layer with marks, so the registries' are dropped here, after the
-        # marks have propagated and before the dissolve.
+        # The barrier layer is marked like any layer a boundary change touches;
+        # that is how the marks reach the solved layers composed of it. The
+        # library solves every layer with marks, so the marks on any layer
+        # without rankings -- the barrier layer -- are dropped here, after they
+        # have propagated and before the dissolve.
         db.run_query(
             """
             DELETE FROM map_bounds_topology.dirty_face d
-            USING map_bounds.map_layer ml
-            WHERE d.map_layer = ml.id AND ml.source_id IS NULL
+            WHERE NOT EXISTS (
+              SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = d.map_layer
+            )
             """
         )
         db.session.commit()

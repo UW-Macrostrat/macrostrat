@@ -173,9 +173,12 @@ _FOOTPRINTS_ACTIVE = """
     JOIN map_bounds.map_layer ml ON f.map_layer = ml.id
     JOIN tile ON ST_Intersects(f.geometry, tile.projected_envelope)
     JOIN maps.sources s ON f.map_id = s.source_id
-    -- `carto`'s faces for the band: what its tiles draw at those zooms.
-    WHERE ml.source_id = map_bounds.source_id('carto')
-      AND ml.band = CAST(:band AS maps.map_scale)
+    -- The faces `carto` draws for the band: its member's at that scale.
+    WHERE ml.id = map_bounds.face_layer_for(
+        map_bounds.source_id('carto'),
+        (SELECT min_zoom FROM map_bounds.scale_band
+         WHERE scale = CAST(:band AS maps.map_scale))
+      )
       AND s.status_code = 'active'
 """
 
@@ -228,7 +231,14 @@ async def _bbox_for_layer(pool, layer_slug: str):
             FROM (
                 SELECT ST_Extent(geometry) AS ext
                 FROM map_bounds_topology.map_face
-                WHERE map_layer = map_bounds.layer_id(:slug)
+                -- The layers the source named by `slug` draws at any zoom: its
+                -- own, or a multiscale one's members'.
+                WHERE map_layer IN (
+                    SELECT map_bounds.face_layer_for(
+                        map_bounds.source_id(:slug), sb.min_zoom
+                    )
+                    FROM map_bounds.scale_band sb
+                )
             ) t""",
         slug=layer_slug,
     )

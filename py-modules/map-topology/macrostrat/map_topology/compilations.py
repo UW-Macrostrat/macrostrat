@@ -638,6 +638,36 @@ def lint():
         print(table)
         print("[dim]`compilations rm <layer> <member>` keeps only the nested route.[/]")
 
+    # A multiscale compilation answers a zoom with its one member at that scale
+    # (`serving_source`); two leave the answer to chance. The rule reads the
+    # members' own `scale`, which can change without the membership changing,
+    # so it is checked here as well as by the editor.
+    crowded = db.run_query(
+        """
+        SELECT c.slug AS compilation, coalesce(m.scale, 'none') AS scale,
+               string_agg(m.slug, ', ' ORDER BY m.slug) AS members
+        FROM map_bounds.compilation_member cm
+        JOIN maps.sources c ON c.source_id = cm.compilation_id
+        JOIN maps.sources m ON m.source_id = cm.member_id
+        WHERE map_bounds.is_multiscale(cm.compilation_id)
+        GROUP BY c.slug, m.scale
+        -- More than one, or a scale no zoom maps to, so never answered.
+        HAVING count(*) > 1
+            OR m.scale IS NULL
+            OR NOT m.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
+        ORDER BY 1, 2
+        """
+    ).all()
+    if crowded:
+        found = True
+        table = Table(title="Multiscale compilations without one member per scale")
+        table.add_column("Compilation")
+        table.add_column("Scale")
+        table.add_column("Members")
+        for r in crowded:
+            table.add_row(r.compilation, r.scale, f"[yellow]{r.members}[/]")
+        print(table)
+
     # Authored, assembled, and resolved nowhere. Reads `map_priority`, so it is
     # only meaningful after a sync.
     orphaned = db.run_query(
@@ -666,7 +696,7 @@ def lint():
         for r in orphaned:
             table.add_row(r.slug, str(r.members))
         print(table)
-        print("[dim]Expected for a compilation held deliberately out of service.[/]")
+        print("[dim]A mosaic or materialized compilation in no solved compilation.[/]")
 
     if not found:
         print("[green]No problems found.[/]")

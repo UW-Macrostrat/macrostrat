@@ -103,10 +103,12 @@ SELECT ml.id,
     ml.description,
     ml.parent,
     map_bounds.composite_layer_members(ml.id) AS composited_from,
-    ml.slug,
+    -- A layer is named by its compilation.
+    s.slug,
     ml.min_zoom,
     ml.max_zoom
 FROM map_bounds.map_layer ml
+LEFT JOIN maps.sources s ON s.source_id = ml.source_id
 """
 
 
@@ -155,7 +157,15 @@ async def get_info(
     if map_layer is None:
         sql = sql.replace("::layer_filter", "true")
     else:
-        sql = sql.replace("::layer_filter", "ml.slug = :map_layer")
+        # The layers the compilation named by slug draws at any zoom: its own,
+        # or for `carto` its members'.
+        sql = sql.replace(
+            "::layer_filter",
+            """ml.id IN (
+      SELECT map_bounds.face_layer_for(map_bounds.source_id(:map_layer), sb.min_zoom)
+      FROM map_bounds.scale_band sb
+    )""",
+        )
 
     query, params = render(sql, lng=lng, lat=lat, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:
@@ -169,7 +179,8 @@ async def get_errors(request: Request, map_layer: str = None):
 
     Each feature is a `map_topo` face whose insertion into the topology failed
     (``topology_error`` is set); properties carry the source map id/name/slug
-    and the error text. Optionally filtered to a single map layer by slug.
+    and the error text. Optionally filtered to the maps ranked in one
+    compilation's layers, by the compilation's slug.
     """
     sql = get_query("errors")
     # ``::map_layer_filter`` is a raw template slot filled before buildpg renders
@@ -177,7 +188,18 @@ async def get_errors(request: Request, map_layer: str = None):
     if map_layer is None:
         sql = sql.replace("::map_layer_filter", "true")
     else:
-        sql = sql.replace("::map_layer_filter", "ml.slug = :map_layer")
+        sql = sql.replace(
+            "::map_layer_filter",
+            """t.source_id IN (
+    SELECT ts.source_id
+        FROM map_bounds.map_priority mp
+        CROSS JOIN LATERAL map_bounds.topology_sources_of(mp.map_id) ts
+        WHERE mp.map_layer IN (
+          SELECT map_bounds.face_layer_for(map_bounds.source_id(:map_layer), sb.min_zoom)
+          FROM map_bounds.scale_band sb
+        )
+  )""",
+        )
 
     query, params = render(sql, map_layer=map_layer)
     async with request.app.state.pool.acquire() as con:

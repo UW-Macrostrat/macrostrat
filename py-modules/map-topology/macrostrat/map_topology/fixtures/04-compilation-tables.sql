@@ -60,10 +60,12 @@ CREATE TABLE IF NOT EXISTS map_bounds.compilation (
     mosaic (two South Carolina maps as one unit) is the same thing one level down.
 
     `multiscale`: members are alternatives by scale, not overlapping layers of
-    one surface. A request at a zoom is answered by the member whose scale band
-    contains it (`serving_source`); nothing is noded, no faces are solved, and
-    priority is meaningless (NULL). `carto` is the case: one source naming the
-    whole tree `tiny` / `carto-small` / `carto-medium` / `carto-large`, so a
+    one surface -- at most one member per scale. A request at a zoom is answered
+    by the member whose scale band contains it (`serving_source`); nothing is
+    noded, no faces are solved, and priority is meaningless (NULL). Laying out
+    faces within a scale is the member's job, so that member is a topological
+    compilation of its own. `carto` is the case: one source naming the whole
+    tree `tiny` / `carto-small` / `carto-medium` / `carto-large`, so a
     compilation stays a zoom-independent identity and only this mode delegates
     by zoom.
 
@@ -88,30 +90,47 @@ ALTER TABLE map_bounds.compilation DROP COLUMN IF EXISTS assembly_hash;
 
 /** THE FACE REGISTER
 
-  `map_layer` is the topology library's register: one row per partition of
-  primitives it solves, and one per registry its barriers are read from.
+  `map_layer` is the topology library's register: one row per solved layer,
+  keyed by the compilation it belongs to. Every topological compilation with
+  members and no content of its own is solved, served or not
+  (`solved_compilations`); sync creates and removes the rows. A multiscale
+  compilation has no layer: its faces at a zoom are those of its member at that
+  scale (`face_layer_for`).
 
-  - A *face layer* belongs to a served compilation (`source_id`): one for a
-    topological compilation (`band` NULL), one per scale band for a multiscale
-    one, keyed (compilation, band). An unserved compilation has none; it is
-    solved only within the served compilations containing it. Face layers are
-    created and removed by sync (`sync-priority-paths`), never seeded.
-  - A *registry* has no `source_id`: `band` names the scale whose maps register
-    their boundaries there (`registry_layer`). It is never solved; a face layer
-    reaches its barriers through `map_layer_composition`.
+  One more row has no compilation: the *barrier layer* (`barrier_layer`), in
+  which every noded map's boundary is recorded (`map_area.map_layer`). It is
+  never solved, and every solved layer composes it, which is how a map's bounds
+  are a barrier in each layer that solves it.
 
   The key stays `id` (the library's `map_face`, `face_identity` and `dirty_face`
-  reference it).
+  reference it). A layer is named by its compilation; the `slug` column is no
+  longer read.
 */
+/* A layer goes with its compilation, and its faces, rankings and composition
+   with it -- what sync would remove anyway. Setting the source NULL instead
+   would collide with the barrier layer's, the one row the key allows without a
+   compilation. */
 ALTER TABLE map_bounds.map_layer
   ADD COLUMN IF NOT EXISTS source_id integer
-    REFERENCES maps.sources(source_id) ON DELETE SET NULL;
+    REFERENCES maps.sources(source_id) ON DELETE CASCADE;
 ALTER TABLE map_bounds.map_layer
-  ADD CONSTRAINT map_layer_source_band_key UNIQUE NULLS NOT DISTINCT (source_id, band);
+  ADD CONSTRAINT map_layer_source_id_key UNIQUE NULLS NOT DISTINCT (source_id);
 
-/** The compilations the carto tree is built from. Unserved: each is solved only
-  as part of `carto` (below), so none is requested by name or has faces of its
-  own. Inserted once; `is_served` is authored from then on. */
+/** The barrier layer: the one row without a compilation, which the key allows
+  only once. Topological, because the library keeps
+  barriers only for topological layers. */
+INSERT INTO map_bounds.map_layer (name, topological)
+VALUES ('Boundaries', true)
+ON CONFLICT (source_id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION map_bounds.barrier_layer()
+  RETURNS integer AS $$
+SELECT id FROM map_bounds.map_layer WHERE source_id IS NULL;
+$$ LANGUAGE SQL STABLE;
+
+/** The compilations the carto tree is built from. Unserved: each exists to
+  build `carto`, which is what is requested by name, and each is solved as a
+  layer of its own. Inserted once; `is_served` is authored from then on. */
 INSERT INTO maps.sources (slug, name, status_code, is_finalized, is_served)
 VALUES
   ('tiny', 'Tiny', 'active', false, false),
@@ -135,12 +154,14 @@ SELECT EXISTS (
 );
 $$ LANGUAGE SQL STABLE;
 
-/** Has faces of its own in `map_face`: a served compilation with a face layer
-  (one per band, for a multiscale one). */
+/** Has faces of its own: a solved layer, which is one with rankings. */
 CREATE OR REPLACE FUNCTION map_bounds.has_faces(_source_id integer)
   RETURNS boolean AS $$
 SELECT EXISTS (
-  SELECT 1 FROM map_bounds.map_layer WHERE source_id = _source_id
+  SELECT 1
+  FROM map_bounds.map_layer ml
+  JOIN map_bounds.map_priority mp ON mp.map_layer = ml.id
+  WHERE ml.source_id = _source_id
 );
 $$ LANGUAGE SQL STABLE;
 
@@ -580,6 +601,47 @@ ORDER BY min_zoom DESC
 LIMIT 1;
 $$ LANGUAGE SQL STABLE;
 
+/** The zooms a source is drawn at when requested by name: from its scale
+  band's first zoom to two past its last, beyond which a client overzooms the
+  last tiles. Below the band a tile holds far more detail than it can show -- a
+  z2 tile of the NGS state maps is every one of them at full resolution -- so
+  none is drawn there.
+
+  A compilation's range is its own designated scale's, whatever its members'
+  are: `large` is drawn from z9, its medium-scale gap-filler with it, and that
+  map is seen at lower zooms by requesting it directly or through a compilation
+  drawn there. Only a source without a scale -- `carto`, which is multiscale --
+  spans its members'.
+  `max_zoom` is NULL for the last band, which runs to any zoom; both are NULL
+  for a source with no scale anywhere below it, which is drawn at every zoom. */
+CREATE OR REPLACE FUNCTION map_bounds.zoom_range(_source_id integer)
+  RETURNS TABLE (min_zoom integer, max_zoom integer) AS $$
+WITH RECURSIVE down AS (
+  SELECT _source_id AS id, ARRAY[_source_id] AS seen
+  UNION ALL
+  SELECT cm.member_id, d.seen || cm.member_id
+  FROM down d
+  JOIN maps.sources s ON s.source_id = d.id
+  JOIN map_bounds.compilation_member cm ON cm.compilation_id = d.id
+  WHERE NOT coalesce(s.scale = ANY (enum_range(NULL::maps.map_scale)::text[]), false)
+    AND NOT cm.member_id = ANY (d.seen)
+),
+bands AS (
+  SELECT
+    sb.min_zoom,
+    (SELECT min(nb.min_zoom) - 1
+     FROM map_bounds.scale_band nb
+     WHERE nb.min_zoom > sb.min_zoom) AS max_zoom
+  FROM down d
+  JOIN maps.sources s ON s.source_id = d.id
+  JOIN map_bounds.scale_band sb ON sb.scale::text = s.scale
+)
+SELECT
+  min(min_zoom),
+  CASE WHEN bool_or(max_zoom IS NULL) THEN NULL ELSE max(max_zoom) + 2 END
+FROM bands;
+$$ LANGUAGE SQL STABLE;
+
 /* ---------------------------------------------------------------------------
    SERVING -- what a request for a source, at a zoom, is answered from.
 
@@ -590,10 +652,12 @@ $$ LANGUAGE SQL STABLE;
    --------------------------------------------------------------------------- */
 
 /** The source that answers for `_source_id` at `_zoom`: a multiscale
-  compilation delegates to the member whose scale band contains the zoom,
-  recursively; anything else answers for itself. A multiscale compilation with
-  no member for the band answers for itself, and as a virtual compilation with
-  no faces that is nothing -- `lint` is where that misconfiguration is caught. */
+  compilation delegates to its member at the zoom's scale, recursively; anything
+  else answers for itself. A multiscale compilation has at most one member per
+  scale -- checked where membership is written (the compilation editor) and by
+  `lint`, since the rule reads the members' own `scale`, which changes without
+  the membership changing. One with no member for the scale answers for itself,
+  and as a virtual compilation without faces that is nothing. */
 CREATE OR REPLACE FUNCTION map_bounds.serving_source(_source_id integer, _zoom integer)
   RETURNS integer AS $$
 WITH RECURSIVE down AS (
@@ -609,42 +673,22 @@ WITH RECURSIVE down AS (
 SELECT id FROM down ORDER BY depth DESC LIMIT 1;
 $$ LANGUAGE SQL STABLE;
 
-/** The partitions sync solves, each one face layer: every served topological
-  compilation without content of its own, and every band of a served multiscale
-  compilation whose member for that band is one. `root_id` is where the
-  partition's descent starts -- the compilation itself, or the band's member,
-  which is solved only as part of it.
-
-  A band answered by a map, a materialized compilation or a mosaic draws that
-  source's own polygons, so it needs no faces; neither does a served mosaic or a
-  materialized compilation. */
-CREATE OR REPLACE FUNCTION map_bounds.solved_partitions()
-  RETURNS TABLE (source_id integer, band maps.map_scale, root_id integer) AS $$
-SELECT s.source_id, NULL::maps.map_scale, s.source_id
-FROM maps.sources s
-WHERE map_bounds.is_served(s.source_id)
-  AND map_bounds.is_compilation(s.source_id)
-  AND NOT map_bounds.is_mosaic(s.source_id)
-  AND NOT map_bounds.is_multiscale(s.source_id)
-  AND NOT map_bounds.has_content(s.source_id)
-UNION ALL
-SELECT c.source_id, sb.scale, r.root_id
-FROM map_bounds.compilation c
-CROSS JOIN map_bounds.scale_band sb
-CROSS JOIN LATERAL (
-  SELECT map_bounds.serving_source(c.source_id, sb.min_zoom) AS root_id
-) r
-WHERE c.assembly_mode = 'multiscale'
-  AND map_bounds.is_served(c.source_id)
-  AND r.root_id <> c.source_id
-  AND map_bounds.is_compilation(r.root_id)
-  AND NOT map_bounds.is_mosaic(r.root_id)
-  AND NOT map_bounds.has_content(r.root_id);
+/** Solved into a layer of its own: a topological compilation with members and
+  no content of its own, served or not. A mosaic's content is its members'
+  polygons and a materialized compilation's is its own, so neither needs faces;
+  a multiscale compilation draws its members' (`face_layer_for`). */
+CREATE OR REPLACE FUNCTION map_bounds.is_solved(_source_id integer)
+  RETURNS boolean AS $$
+SELECT map_bounds.is_compilation(_source_id)
+  AND NOT map_bounds.is_mosaic(_source_id)
+  AND NOT map_bounds.is_multiscale(_source_id)
+  AND NOT map_bounds.has_content(_source_id);
 $$ LANGUAGE SQL STABLE;
 
-/** The face layer that answers for a source at a zoom: its own, or for a
-  multiscale compilation the one for the zoom's band. NULL for a source without
-  faces -- a map, a materialized or unserved compilation, a mosaic. */
+/** The layer whose faces are drawn for a source at a zoom: that of the source
+  answering at the zoom (`serving_source`) -- the source's own, or for a
+  multiscale compilation its member's at the zoom's scale. NULL for a source
+  without faces: a map, a materialized compilation, a mosaic. */
 DROP FUNCTION IF EXISTS map_bounds.face_layer_for(integer);
 CREATE OR REPLACE FUNCTION map_bounds.face_layer_for(
   _source_id integer,
@@ -653,11 +697,9 @@ CREATE OR REPLACE FUNCTION map_bounds.face_layer_for(
   RETURNS integer AS $$
 SELECT ml.id
 FROM map_bounds.map_layer ml
-WHERE ml.source_id = _source_id
-  AND ml.band IS NOT DISTINCT FROM (
-    CASE WHEN map_bounds.is_multiscale(_source_id)
-      THEN map_bounds.scale_for_zoom(_zoom) END
-  );
+WHERE ml.source_id = map_bounds.serving_source(_source_id, _zoom)
+  -- Solved: a layer without rankings has no faces.
+  AND EXISTS (SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = ml.id);
 $$ LANGUAGE SQL STABLE;
 
 
@@ -670,8 +712,8 @@ $$ LANGUAGE SQL STABLE;
       compilation system can be measured against the materialized build on the
       same routes while both are served, and goes with Stage D.
     - otherwise `_ident` (slug or id) is resolved;
-    - a source with faces -- for a multiscale one, its faces for the zoom's
-      band (`face_layer_for`) -- resolves in two phases: its `map_face` coverage,
+    - a source with faces -- for a multiscale one, its member's at the zoom
+      (`face_layer_for`) -- resolves in two phases: its `map_face` coverage,
       then one indexed lookup per face for that map's content -- exactly the
       shape `carto-dynamic.sql` and v3's `units.sql` had inline;
     - anything else reads `polygons_of` of the source answering at the zoom
@@ -725,8 +767,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- The faces are the requested source's, for the zoom's band if multiscale;
-  -- `_target` is what answers where there are none.
+  -- The faces are `_target`'s; without faces, its own polygons (or lines) are
+  -- read.
   _layer := map_bounds.face_layer_for(_source, _zoom);
 
   IF _layer IS NULL THEN
@@ -834,8 +876,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- The faces are the requested source's, for the zoom's band if multiscale;
-  -- `_target` is what answers where there are none.
+  -- The faces are `_target`'s; without faces, its own polygons (or lines) are
+  -- read.
   _layer := map_bounds.face_layer_for(_source, _zoom);
 
   IF _layer IS NULL THEN
@@ -906,12 +948,17 @@ JOIN maps.sources m
 WHERE c.slug = 'carto'
 ON CONFLICT (compilation_id, member_id) DO NOTHING;
 
-/** The band each member answers for. Only filled where unset: the `-v1`
-  snapshot's members already carry theirs. */
+/** The scale each compilation of the carto tree is designated: the band a
+  member of `carto` answers for, and for every one the zooms it is drawn at when
+  requested by name (`zoom_range`). Only filled where unset: the `-v1`
+  snapshot's already carry theirs. */
 UPDATE maps.sources s
 SET scale = v.scale
 FROM (VALUES
   ('tiny',         'tiny'),
+  ('small',        'small'),
+  ('medium',       'medium'),
+  ('large',        'large'),
   ('carto-small',  'small'),
   ('carto-medium', 'medium'),
   ('carto-large',  'large')

@@ -97,7 +97,10 @@ def test_exports_everything_the_stack_reads_into_the_given_env(resolvers):
     assert env["STORAGE_ACCESS_KEY"] == "ak"
     assert env["STORAGE_SECRET_KEY"] == "s3-secret"
     assert env["TILESERVER_SECRET_KEY"] == derive_tileserver_secret_key("signing-key")
-    assert len(exported) == 5
+    assert env["S3_HOST"] == "localhost:9000"
+    assert env["S3_ACCESS_KEY"] == "ak"
+    assert env["S3_SECRET_KEY"] == "s3-secret"
+    assert len(exported) == 6
 
 
 def test_exported_urls_carry_no_cli_attribution(resolvers):
@@ -115,6 +118,9 @@ def test_variables_already_present_are_left_alone(resolvers):
         TILESERVER_SECRET_KEY="already",
         STORAGE_ACCESS_KEY="a",
         STORAGE_SECRET_KEY="b",
+        S3_HOST="already",
+        S3_ACCESS_KEY="already",
+        S3_SECRET_KEY="already",
     )
     exported = export_compose_environment(vaulted_settings(), env)
     assert exported == ["ELEVATION_DATABASE_URL"]
@@ -160,3 +166,40 @@ def test_an_explicit_tileserver_key_wins(resolvers):
     exported = export_compose_environment(_Settings(), env)
     assert env["TILESERVER_SECRET_KEY"] == "explicit"
     assert "TILESERVER_SECRET_KEY" not in exported
+
+
+def test_s3_variables_fall_back_to_storage_with_a_warning(resolvers, caplog):
+    """api_v3 and the worker still read S3_*; a stack that sets only the
+    storage config gets them from it, and is told so."""
+    env = {"STORAGE_ACCESS_KEY": "a", "STORAGE_SECRET_KEY": "b"}
+    exported = export_compose_environment(vaulted_settings(), env)
+    assert env["S3_ACCESS_KEY"] == "a"
+    assert env["S3_SECRET_KEY"] == "b"
+    assert env["S3_HOST"] == "localhost:9000"
+    assert "S3_*" in exported
+    assert "S3_ACCESS_KEY, S3_SECRET_KEY, S3_HOST not set" in caplog.text
+
+
+def test_s3_fallback_works_on_the_real_environ(resolvers, monkeypatch):
+    """`os.environ` rejects non-str membership tests that a dict allows."""
+    import os
+
+    for name in ("S3_HOST", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("STORAGE_ACCESS_KEY", "a")
+    monkeypatch.setenv("STORAGE_SECRET_KEY", "b")
+    for name in DATABASE_VARIABLES + ("SECRET_KEY", "ELEVATION_DATABASE_URL"):
+        monkeypatch.setenv(name, "already")
+    exported = export_compose_environment(vaulted_settings())
+    assert os.environ["S3_HOST"] == "localhost:9000"
+    assert os.environ["S3_ACCESS_KEY"] == "a"
+    assert "S3_*" in exported
+
+
+def test_explicit_s3_variables_win(resolvers, caplog):
+    env = {"S3_HOST": "s3.example", "S3_ACCESS_KEY": "x", "S3_SECRET_KEY": "y"}
+    exported = export_compose_environment(vaulted_settings(), env)
+    assert env["S3_HOST"] == "s3.example"
+    assert env["S3_ACCESS_KEY"] == "x"
+    assert "S3_*" not in exported
+    assert "falling back" not in caplog.text

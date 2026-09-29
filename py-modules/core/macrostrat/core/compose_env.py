@@ -45,6 +45,14 @@ DATABASE_VARIABLES = (
 )
 
 
+#: The legacy `S3_*` credentials api_v3 and the worker read, and the `STORAGE_*`
+#: variable each falls back to. `S3_HOST` falls back to the storage endpoint.
+S3_CREDENTIALS = {
+    "S3_ACCESS_KEY": "STORAGE_ACCESS_KEY",
+    "S3_SECRET_KEY": "STORAGE_SECRET_KEY",
+}
+
+
 #: The label `TILESERVER_SECRET_KEY` is derived under. Changing it is a rotation.
 TILESERVER_KEY_LABEL = "macrostrat:tileserver-secret-key:v1"
 
@@ -139,6 +147,30 @@ def export_compose_environment(settings, env: Optional[Dict[str, str]] = None):
             return True
 
         attempt("STORAGE_*", storage)
+
+    if any(name not in env for name in ("S3_HOST", *S3_CREDENTIALS)):
+
+        def s3_from_storage():
+            filled = []
+            for name, source in S3_CREDENTIALS.items():
+                if name in env or source not in env:
+                    continue
+                env[name] = env[source]
+                filled.append(name)
+            if "S3_HOST" not in env:
+                endpoint = settings.storage_endpoint()
+                if endpoint is not None:
+                    env["S3_HOST"] = endpoint.host
+                    filled.append("S3_HOST")
+            if filled:
+                log.warning(
+                    "%s not set; falling back to the storage endpoint and STORAGE_* "
+                    "credentials. Set them in local-root/.env to use a different store.",
+                    ", ".join(filled),
+                )
+            return bool(filled)
+
+        attempt("S3_*", s3_from_storage)
 
     if exported:
         log.info(

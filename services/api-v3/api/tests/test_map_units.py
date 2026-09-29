@@ -15,15 +15,13 @@ from api.map import LEGACY_CARTO, MAX_BOUNDS_SPAN, MAX_LIMIT, _is_timeout
 
 from .test_database import TEST_SOURCE_TABLE, api_client
 
-# The face layer `carto` answers from at each zoom: its own, for the zoom's band
-# per `map_bounds.scale_band` (tiny below 3, then small / medium / large at 3 / 6
-# / 9) -- the same table the tiles read, so a point query here agrees with what
-# is drawn.
+# The layer `carto` reads at each zoom: its member's at the zoom's scale, per
+# `map_bounds.scale_band` (small / medium / large from 3 / 6 / 9) -- the same
+# table the tiles read, so a point query here agrees with what is drawn.
 CARTO_LAYER_FOR_ZOOM = {
-    2: "carto@tiny",
-    5: "carto@small",
-    8: "carto@medium",
-    14: "carto@large",
+    5: "carto-small",
+    8: "carto-medium",
+    14: "carto-large",
 }
 
 # South Dakota, where the carto layers have something to say.
@@ -31,9 +29,9 @@ SOMEWHERE = {"lng": -99, "lat": 43.5}
 
 
 class TestMapUnits:
-    def test_carto_answers_from_the_band_for_the_zoom(self, api_client: TestClient):
-        """`carto` is multiscale: its faces are one layer per band, and the zoom
-        picks the band, in the database."""
+    def test_carto_reads_the_layer_for_the_zoom(self, api_client: TestClient):
+        """`carto` is multiscale: it has no faces of its own, and the zoom picks
+        the member whose faces are read, in the database."""
         for zoom, layer in CARTO_LAYER_FOR_ZOOM.items():
             response = api_client.get(
                 "/map/carto/units", params={**SOMEWHERE, "zoom": zoom}

@@ -97,7 +97,7 @@ CROSS JOIN LATERAL (
     (SELECT count(*) FROM map_bounds.compilation_member cm
       WHERE cm.compilation_id = s.source_id) AS n_members
 ) n
-LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id AND ml.band IS NULL
+LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
 LEFT JOIN map_bounds.compilation c ON c.source_id = s.source_id
 LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
@@ -125,7 +125,7 @@ LEFT JOIN LATERAL (
   ) ORDER BY p.slug) AS parents
   FROM map_bounds.compilation_member cm
   JOIN maps.sources p ON p.source_id = cm.compilation_id
-  LEFT JOIN map_bounds.map_layer pl ON pl.source_id = p.source_id AND pl.band IS NULL
+  LEFT JOIN map_bounds.map_layer pl ON pl.source_id = p.source_id
   WHERE cm.member_id = s.source_id
 ) par ON true
 LEFT JOIN LATERAL (
@@ -155,7 +155,7 @@ LEFT JOIN LATERAL (
       (SELECT count(*) FROM map_bounds.compilation_member c2
         WHERE c2.compilation_id = m.source_id) AS n_members
   ) mn
-  LEFT JOIN map_bounds.map_layer mlr ON mlr.source_id = m.source_id AND mlr.band IS NULL
+  LEFT JOIN map_bounds.map_layer mlr ON mlr.source_id = m.source_id
   LEFT JOIN map_bounds.map_area mma ON mma.source_id = m.source_id
   WHERE cm.compilation_id = s.source_id
     AND (

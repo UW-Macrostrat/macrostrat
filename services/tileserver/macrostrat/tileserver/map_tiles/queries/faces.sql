@@ -97,12 +97,15 @@ unit_features AS (
     u.map_id,
     u.source_id,
     l.*, -- legend info
+    -- `detail=full`: the legend's text and reference (`map_tiles.Detail`).
     tile_layers.tile_geom(u.geom, (SELECT mercator_bbox FROM tile)) AS geom
+    ::detail_columns
   FROM unit_owned u
   JOIN maps.map_legend
     ON u.map_id = map_legend.map_id
   JOIN tile_layers.map_legend_info AS l
     ON l.legend_id = map_legend.legend_id
+  ::detail_joins
 ),
 -- Lines, the same way; a line needs no validity repair.
 line_clipped AS MATERIALIZED (

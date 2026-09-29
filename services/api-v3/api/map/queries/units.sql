@@ -31,7 +31,8 @@ WITH units AS (
   LIMIT :limit
 )
 SELECT
-  ml.slug AS map_layer,
+  -- A layer is named by its compilation.
+  mls.slug AS map_layer,
   u.map_layer_id,
   u.map_face_id,
   p.map_id,
@@ -76,6 +77,7 @@ FROM units u
 JOIN maps.polygons p ON p.map_id = u.map_id AND p.scale = u.scale
 JOIN maps.sources s ON s.source_id = u.source_id
 LEFT JOIN map_bounds.map_layer ml ON ml.id = u.map_layer_id
+LEFT JOIN maps.sources mls ON mls.source_id = ml.source_id
 LEFT JOIN maps.sources v ON v.source_id = u.member_id
 LEFT JOIN maps.map_legend ON map_legend.map_id = u.map_id
 LEFT JOIN maps.legend l ON l.legend_id = map_legend.legend_id

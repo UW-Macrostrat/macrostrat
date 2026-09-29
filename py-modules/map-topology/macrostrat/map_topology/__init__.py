@@ -104,8 +104,10 @@ def mark_all():
             INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
                 SELECT f.face_id, ml.id
                 FROM map_bounds_topology.face f
-                -- Face layers only: a registry is never solved.
-                JOIN map_bounds.map_layer ml ON ml.source_id IS NOT NULL
+                -- Solved layers only: those with rankings.
+                JOIN map_bounds.map_layer ml ON EXISTS (
+                    SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = ml.id
+                )
                 ON CONFLICT DO NOTHING
                 RETURNING id
         )
