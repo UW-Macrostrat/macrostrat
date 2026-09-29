@@ -17,7 +17,7 @@ from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementResult
 
 from .chunks import chunks_for_environment
-from .composer import dependency_closure, order_chunks
+from .composer import dependency_closure, order_chunks, set_applying_role
 
 
 def optimize_transform(ctx: StatementContext) -> Optional[list[StatementResult]]:
@@ -30,7 +30,6 @@ def optimize_transform(ctx: StatementContext) -> Optional[list[StatementResult]]
         stmt.startswith("create index")
         or stmt.startswith("create unique index")
         or stmt.startswith("alter index")
-        or stmt.startswith("grant")
         or (stmt.startswith("alter table") and "owner to" in stmt)
     ):
         return []
@@ -79,9 +78,16 @@ class DatabaseTestHarness:
             keep = dependency_closure(chunks, target)
             chunks = [c for c in chunks if c.name in keep]
 
-        for chunk in chunks:
-            if chunk.name in self._applied_chunks:
-                continue
-            chunk.apply(self.db, transform_statement=self.transform_statement)
-            self._applied_chunks.add(chunk.name)
+        # Apply each chunk as its owner, as `build_schema` does, so objects are
+        # owned the way `sync`'s rebuild passes (which switch to the same role)
+        # expect.
+        try:
+            for chunk in chunks:
+                if chunk.name in self._applied_chunks:
+                    continue
+                set_applying_role(self.db, chunk.owner)
+                chunk.apply(self.db, transform_statement=self.transform_statement)
+                self._applied_chunks.add(chunk.name)
+        finally:
+            self.db.run_sql("RESET ROLE", raise_errors=True)
         return self.db
