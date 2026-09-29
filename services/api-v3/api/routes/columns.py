@@ -17,6 +17,8 @@ from uuid import uuid4
 import minio
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
+from minio.error import S3Error
 
 from api.celery_app import celery_app
 from api.routes.security import TokenData, get_user_token_from_cookie, has_access
@@ -56,8 +58,25 @@ def _format_task_error(error) -> str:
 
 # Object-storage bucket that column-ingest uploads are written to (and the worker
 # pulls from). Hardcoded — not read from S3_BUCKET — so the API and worker always
-# agree on one location.
+# agree on one location. Every storage call in this module is pinned to this
+# bucket; nothing here touches any other bucket.
 BUCKET = "temp-storage"
+
+# Prefix under `temp-storage` holding the downloadable example spreadsheet(s) the
+# /columns/ingestion page offers. Downloads are restricted to this prefix so the
+# endpoint can never serve another user's in-flight upload elsewhere in the bucket.
+EXAMPLE_PREFIX = "column-ingest/ff5d060b-36f4-4bf7-888b-e2c075822d9d/"
+
+
+def _storage_client() -> minio.Minio:
+    """MinIO client for the temp-storage bucket (api-v3's S3 credentials)."""
+    return minio.Minio(
+        endpoint=os.environ["S3_HOST"],
+        access_key=os.environ["S3_ACCESS_KEY"],
+        secret_key=os.environ["S3_SECRET_KEY"],
+        secure=True,
+    )
+
 
 router = APIRouter(
     prefix="/columns",
@@ -92,15 +111,7 @@ async def ingest_columns(
     if not user_has_access:
         dry_run = True
 
-    # TODO this uses the api/routes/ingest.py::create_object credentials for maps. We need to update this
-    # to where the columns are stored.
-    # or should we store the file as a blob? i don't think this is possible since the worker is in a different container
-    client = minio.Minio(
-        endpoint=os.environ["S3_HOST"],
-        access_key=os.environ["S3_ACCESS_KEY"],
-        secret_key=os.environ["S3_SECRET_KEY"],
-        secure=True,
-    )
+    client = _storage_client()
     bucket = BUCKET
     key = f"column-ingest/{uuid4()}/{file.filename}"
     client.put_object(
@@ -148,3 +159,68 @@ async def ingest_status(
     elif result.successful():
         body["result"] = result.result
     return body
+
+
+@router.get("/examples")
+async def list_examples(
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+):
+    """List the example spreadsheets offered on the ingestion page.
+
+    Signed-in users only. Reads only the fixed example prefix within
+    ``temp-storage``; it never lists any other bucket or prefix.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    client = _storage_client()
+    examples = []
+    for obj in client.list_objects(BUCKET, prefix=EXAMPLE_PREFIX, recursive=True):
+        filename = obj.object_name.rsplit("/", 1)[-1]
+        if not filename:
+            continue
+        examples.append(
+            {"key": obj.object_name, "filename": filename, "size": obj.size}
+        )
+    return {"examples": examples}
+
+
+@router.get("/examples/download")
+async def download_example(
+    key: str,
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+):
+    """Stream one example spreadsheet from ``temp-storage``.
+
+    Signed-in users only, and confined to the example prefix — an arbitrary key
+    (e.g. another user's upload elsewhere in the bucket) is refused. Streams
+    through the API so the browser never needs credentials for object storage.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not key.startswith(EXAMPLE_PREFIX):
+        raise HTTPException(
+            status_code=400, detail="Only example files may be downloaded"
+        )
+
+    client = _storage_client()
+    try:
+        response = client.get_object(BUCKET, key)
+    except S3Error:
+        raise HTTPException(status_code=404, detail="Example not found")
+
+    def stream():
+        try:
+            yield from response.stream(32 * 1024)
+        finally:
+            response.close()
+            response.release_conn()
+
+    filename = key.rsplit("/", 1)[-1] or "example.xlsx"
+    return StreamingResponse(
+        stream(),
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
