@@ -84,11 +84,11 @@ services:
       - VARNISH_URL=http://tileserver_cache:8000
       - TILESERVER_URL=http://tileserver_core:8000
       # Object storage for the column-ingest upload. Values come from local-root/.env
-      # (gitignored) — never hardcode them here. `access_key`/`secret_key` are the
-      # var names api/routes/columns.py (and create_object) read.
+      # (gitignored) — never hardcode them here. `S3_ACCESS_KEY`/`S3_SECRET_KEY` are
+      # the var names api/routes/columns.py (and create_object) read.
       - S3_HOST=${S3_HOST}
-      - access_key=${S3_ACCESS_KEY}
-      - secret_key=${S3_SECRET_KEY}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
   # Celery worker for background tasks. Lightweight image and does NOT bundle the GIS stack.
   # This is a long-running worker that stays up with the stack and picks up
   # tasks as they arrive. docker-compose can't spin a container up per-task.
