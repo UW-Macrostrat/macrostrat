@@ -19,7 +19,7 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 
 from api.celery_app import celery_app
-from api.routes.security import has_access
+from api.routes.security import TokenData, get_user_token_from_cookie, has_access
 
 
 def _format_task_error(error) -> str:
@@ -70,19 +70,27 @@ router = APIRouter(
 async def ingest_columns(
     file: UploadFile,
     dry_run: bool = Form(True),
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
     user_has_access: bool = Depends(has_access),
 ):
     """Upload a column spreadsheet and enqueue its ingestion.
 
+    Any signed-in user may submit, but only admins may persist. For a non-admin
+    (web_user) ``dry_run`` is forced on regardless of the submitted value, so a
+    web_user can only ever validate — never write. This server-side enforcement
+    is the real boundary; the web checkbox is only a convenience mirror of it.
+
     Stores the file in object storage and hands the worker a reference, then
     returns the Celery task id to poll via ``GET /columns/ingest/{task_id}``.
-    ``dry_run`` (default on) is forwarded to the worker, which validates the file
-    without persisting.
+    ``dry_run`` is forwarded to the worker, which validates the file without
+    persisting.
     """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Non-admins are confined to dry runs — ignore whatever the form submitted.
     if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="User does not have access to ingest columns"
-        )
+        dry_run = True
 
     # TODO this uses the api/routes/ingest.py::create_object credentials for maps. We need to update this
     # to where the columns are stored.
@@ -122,18 +130,16 @@ async def ingest_columns(
 @router.get("/ingest/{task_id}")
 async def ingest_status(
     task_id: str,
-    user_has_access: bool = Depends(has_access),
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
 ):
     """Report the status/result of a column-ingestion task for the web poller.
 
-    Admin-only, matching ``POST /ingest`` and the web column-editor guard: the
-    body can carry the worker's error and traceback, which must not be exposed to
-    non-admins.
+    Requires a signed-in user (web_user or web_admin) so a submitter can poll
+    their own task; anonymous callers are rejected. Matches ``POST /ingest``,
+    which any signed-in user may call.
     """
-    if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="User does not have access to ingest columns"
-        )
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     result = AsyncResult(task_id, app=celery_app)
     body: dict = {"task_id": task_id, "state": result.state}
     if result.failed():
