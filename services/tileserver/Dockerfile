@@ -48,4 +48,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "--host", "0.0.0.0", "--port", "8000", "macrostrat.tileserver:app" ]
+# Trust X-Forwarded-Proto from the proxy in front (Varnish, then the ingress), so
+# URLs built from the request (tilejson `tiles`) keep the client's https scheme.
+CMD ["uv", "run", "uvicorn", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*", "macrostrat.tileserver:app" ]

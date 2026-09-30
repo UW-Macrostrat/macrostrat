@@ -6,6 +6,7 @@ flag -- "is a compilation" means *has members*, and "is a constituent" means
 and derives the rest.
 """
 
+from fnmatch import fnmatch
 from typing import Annotated, Optional
 
 import typer
@@ -16,7 +17,7 @@ from typer import Argument, Option, Typer
 from macrostrat.core.database import get_database
 
 from . import carto_v1
-from .manager import proc
+from .manager import filter_maps, proc
 
 cli = Typer(no_args_is_help=True, short_help="Assemble maps out of other maps")
 
@@ -739,68 +740,125 @@ def prune(
     print(f"[green]{len(doomed)}[/] edges withdrawn")
 
 
-@cli.command("freeze-placements")
-def freeze_placements(
+#: Every map a scale compilation would take: one with bounds and a usable
+#: scale, not superseded, not a mosaic member (which reaches a compilation only
+#: by an authored edge), and in no compilation yet. A scale compilation is never
+#: placed in itself, which `tiny` would be while it has no members.
+#:
+#: By default only materialized maps -- sources holding their own polygons --
+#: and nothing registered as a compilation, memberless or not: carto's tiers and
+#: the `carto-v1` snapshot carry a scale too, and an unplaced compilation is a
+#: curatorial product (NGS's four) rather than a map awaiting a layer.
+#: `:include_compilations` lifts both. `:state`, when given, keeps maps whose
+#: `ingest_process.state` matches, as `--state` does for the processing commands.
+_PENDING_PLACEMENTS = """
+SELECT
+  map_bounds.source_id(s.scale) AS compilation_id,
+  s.scale AS compilation,
+  s.source_id AS map_id,
+  s.slug,
+  coalesce(s.new_priority, 0) AS priority
+FROM maps.sources s
+JOIN map_bounds.map_area a ON a.source_id = s.source_id
+WHERE map_bounds.source_id(s.scale) IS NOT NULL
+  AND map_bounds.source_id(s.scale) <> s.source_id
+  AND s.superseded_by IS NULL
+  AND NOT map_bounds.is_mosaic_member(s.source_id)
+  AND (
+    CAST(:include_compilations AS boolean)
+    OR (
+      map_bounds.is_materialized(s.source_id)
+      AND NOT map_bounds.is_compilation(s.source_id)
+      AND NOT EXISTS (
+        SELECT 1 FROM map_bounds.compilation c WHERE c.source_id = s.source_id
+      )
+    )
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.member_id = s.source_id
+  )
+  AND (
+    CAST(:state AS text) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM maps_metadata.ingest_process ip
+      WHERE ip.source_id = s.source_id AND ip.state::text = CAST(:state AS text)
+    )
+  )
+"""
+
+
+@cli.command("place-by-scale")
+def place_by_scale(
+    maps: Annotated[
+        Optional[list[str]],
+        Argument(
+            help="Map slugs, source ids, or slug globs (e.g. 'ngs-*'); all maps if omitted"
+        ),
+    ] = None,
+    exclude: Annotated[
+        Optional[list[str]],
+        Option("--exclude", help="Slug globs to leave out of the selection"),
+    ] = None,
+    state: Annotated[
+        Optional[str],
+        Option(
+            "--state",
+            help="Only include maps whose maps_metadata.ingest_process.state"
+            " equals this (e.g. 'ready')",
+        ),
+    ] = None,
+    include_compilations: Annotated[
+        bool,
+        Option(
+            "--include-compilations",
+            help="Also place compilations and maps without polygons of their own",
+        ),
+    ] = False,
     apply: Annotated[
         bool, Option("--apply/--dry-run", help="Write the changes")
     ] = False,
 ):
-    """Check for layer placements the retired `scale` sweep left unwritten.
+    """Place uncategorized maps in the scale compilation for their scale.
 
-    Mostly a safety net, and usually a no-op. The sweep wrote ordinary
-    `compilation_member` rows, and those persist, so any database that ever ran
-    `compilations sync` or `topo update` under the old code already holds every
-    placement it would have made -- there is no gap to fill.
+    The rule the retired `scale` sweep applied on every sync, run on request and
+    written down as ordinary membership: a map with bounds and a `scale` of
+    `tiny`, `small`, `medium` or `large` joins that compilation at its
+    `new_priority`. Only maps in no compilation at all are placed, so a map
+    already curated -- in `ngs-bedrock`, say, or placed by hand -- is left where
+    it is, as is any map placed once before. Only materialized maps are
+    placed unless `--include-compilations` is given.
 
-    Not a migration, for the same reason. The one database where this writes
-    anything is one with boundaries and layers that never ran the sweep at all,
-    which is a database built fresh under authored membership -- exactly where
-    placing every map by its scale is the behaviour being retired. Nothing in the
-    database distinguishes that from a genuine upgrade, so the choice belongs to
-    an operator who knows which one they have.
-
-    Safe to repeat: it only adds a missing edge, and never rewrites the priority
-    on one that already exists. Run it as a dry run when upgrading, to confirm
-    nothing was left behind.
+    Selects maps as the processing commands do: slugs, source ids or slug globs,
+    narrowed by `--exclude` and `--state`. Safe to repeat: it only adds edges.
+    Run `topo update` afterwards to solve the new members into their layers.
     """
     db = get_database()
-    pending = db.run_query(
-        """
-        SELECT ls.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
-        FROM maps.sources s
-        -- The scale compilation of the map's scale: `large` for a large map.
-        JOIN maps.sources ls ON ls.slug = s.scale
-        JOIN map_bounds.map_area a ON a.source_id = s.source_id
-        WHERE s.scale IS NOT NULL
-          AND s.superseded_by IS NULL
-          AND NOT map_bounds.is_mosaic_member(s.source_id)
-          AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.compilation_member cm
-            JOIN maps.sources c ON c.source_id = cm.compilation_id
-            WHERE cm.member_id = s.source_id
-              AND NOT c.slug = ANY (enum_range(NULL::maps.map_scale)::text[])
-              AND NOT map_bounds.is_mosaic(cm.compilation_id)
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.compilation_id = ls.source_id AND cm.member_id = s.source_id
-          )
-        ORDER BY 1, 2
-        """
-    ).all()
+    params = dict(state=state, include_compilations=include_compilations)
+    pending = db.run_query(_PENDING_PLACEMENTS + " ORDER BY 2, 4", params).all()
+    if maps:
+        pending = list(filter_maps(pending, maps))
+    if exclude:
+        pending = [r for r in pending if not any(fnmatch(r.slug, p) for p in exclude)]
     if not pending:
-        print("[green]Every map is already in a compilation.[/]")
+        print("[green]No uncategorized maps in the selection.[/]")
         return
     for r in pending:
         print(
-            f"[green]+[/] {r.compilation} <- {r.member} [dim](priority {r.priority})[/]"
+            f"[green]+[/] {r.compilation} <- {r.slug} [dim](priority {r.priority})[/]"
         )
     if not apply:
         print(
             f"[yellow]{len(pending)}[/] placements would be written [dim](--apply)[/]"
         )
         return
-    db.run_sql(proc("freeze-layer-placements"))
+    db.run_query(
+        "INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)"
+        f" SELECT compilation_id, map_id, priority FROM ({_PENDING_PLACEMENTS}) p"
+        " WHERE p.map_id = ANY(CAST(:ids AS integer[]))"
+        " ON CONFLICT (compilation_id, member_id) DO NOTHING",
+        dict(params, ids=[r.map_id for r in pending]),
+    )
     db.session.commit()
     print(f"[green]{len(pending)}[/] placements written")
 
