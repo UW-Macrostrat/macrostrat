@@ -6,12 +6,14 @@ flag -- "is a compilation" means *has members*, and "is a constituent" means
 and derives the rest.
 """
 
+import time
 from fnmatch import fnmatch
 from typing import Annotated, Optional
 
 import typer
 from rich import print
 from rich.table import Table
+from sqlalchemy.exc import DBAPIError
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
@@ -465,18 +467,37 @@ def mode(
     print(f"[green]{slug}[/] is {assembly_mode}")
 
 
+#: Member polygons per `materialize` batch: ~7 s each against British Columbia's
+#: faces on dev, so a stopped run loses little and progress is steady.
+MATERIALIZE_BATCH = 2000
+
+#: Degrees a polygon's box is padded by when its map's faces are windowed to it,
+#: so no clip edge falls on the polygon itself.
+MATERIALIZE_PAD = 0.01
+
+
 @cli.command("materialize")
 def materialize(
     compilation: Annotated[str, Argument(help="Slug or source id")],
     apply: Annotated[
         bool, Option("--apply/--dry-run", help="Write the polygons")
     ] = False,
+    batch_size: Annotated[
+        int, Option("--batch-size", help="Member polygons per committed batch")
+    ] = MATERIALIZE_BATCH,
 ):
     """Give a compilation polygons of its own, clipped from its members'.
 
     Turns a virtual compilation into one that holds the assembled surface
-    directly, so resolution stops at it instead of descending. Members keep
-    their own polygons, so this is reversible with `dematerialize`.
+    directly, so resolution stops at it instead of descending. Each member
+    polygon is clipped to the faces its map owns in the compilation's solved
+    layer -- the priority, already resolved -- so the compilation must have been
+    solved (`topo update`) with no faces left stale.
+
+    Written in committed batches, and invisible until the last one: the
+    compilation is only marked materialized once every polygon is in. A stopped
+    run is resumed by running it again. Members keep their own polygons, so this
+    is reversible with `dematerialize`.
     """
     db = get_database()
     source_id, slug = _resolve(compilation)
@@ -486,57 +507,119 @@ def materialize(
         "SELECT scale FROM maps.sources WHERE source_id = :id", dict(id=source_id)
     ).scalar()
 
-    estimate = db.run_query(
-        """
-        WITH member AS (
-          SELECT cm.member_id, cm.priority
-          FROM map_bounds.compilation_member cm
-          WHERE cm.compilation_id = :source_id
-        ), covered_by AS (
-          SELECT m.member_id, ST_Union(a.geometry) AS geometry
-          FROM member m
-          JOIN member higher ON higher.priority > m.priority
-          JOIN map_bounds.map_area a ON a.source_id = higher.member_id
-          GROUP BY m.member_id
+    layer = db.run_query(
+        # Both arguments: a database synced from before the zoom argument
+        # still has the one-argument form beside it.
+        "SELECT map_bounds.face_layer_for(CAST(:id AS integer), CAST(NULL AS integer))",
+        dict(id=source_id),
+    ).scalar()
+    if layer is None:
+        print(
+            f"[red]{slug}[/] has no solved faces to clip its members to."
+            "\n[dim]Run [cyan]macrostrat topo update[/] first.[/]"
         )
-        SELECT
-          count(*) AS polygons,
-          count(*) FILTER (
-            WHERE c.geometry IS NOT NULL AND ST_Intersects(p.geom, c.geometry)
-          ) AS need_clipping
-        FROM member m
-        -- Wherever the member's content is: its own, or its mosaic parent's
-        -- inside its footprint.
-        CROSS JOIN LATERAL map_bounds.polygons_of(m.member_id) p
-        LEFT JOIN covered_by c ON c.member_id = m.member_id
-        """,
-        dict(source_id=source_id),
-    ).first()
+        raise typer.Exit(1)
+    stale = db.run_query(
+        "SELECT count(*) FROM map_bounds_topology.dirty_face WHERE map_layer = :layer",
+        dict(layer=layer),
+    ).scalar()
+    if stale:
+        print(
+            f"[red]{slug}[/] has {stale} faces waiting to be re-solved, so its"
+            " members' territory is not settled."
+            "\n[dim]Run [cyan]macrostrat topo update[/] first.[/]"
+        )
+        raise typer.Exit(1)
 
-    if not estimate or not estimate.polygons:
+    counts = db.run_query(
+        """
+        SELECT
+          (SELECT count(*)
+           FROM map_bounds.compilation_member cm
+           CROSS JOIN LATERAL map_bounds.content_of(cm.member_id) c
+           JOIN maps.sources cs ON cs.source_id = c.source_id
+           JOIN maps.polygons p
+             ON p.source_id = c.source_id AND p.scale::text = cs.scale
+           WHERE cm.compilation_id = :id
+             AND (c.footprint IS NULL
+                  OR ST_Contains(c.footprint, ST_PointOnSurface(p.geom)))
+          ) AS polygons,
+          (SELECT count(*) FROM maps.polygons WHERE source_id = :id) AS written,
+          (SELECT max(CAST(orig_id AS integer))
+           FROM maps.polygons WHERE source_id = :id) AS resume_after
+        """,
+        dict(id=source_id),
+    ).first()
+    if not counts.polygons:
         print(f"[red]{slug}[/] has no member polygons to assemble")
         raise typer.Exit(1)
 
+    resuming = ""
+    if counts.written:
+        resuming = f", resuming after {counts.written} already written"
     print(
-        f"[bold]{slug}[/] [dim]#{source_id}[/]: {estimate.polygons} polygons, "
-        f"{estimate.need_clipping} needing clipping "
-        f"({estimate.polygons - estimate.need_clipping} copied as-is)"
+        f"[bold]{slug}[/] [dim]#{source_id}[/]: {counts.polygons} member polygons,"
+        f" clipped to layer {layer}'s faces in batches of {batch_size}{resuming}"
     )
     if not apply:
         print("[dim]Dry run. Pass --apply to write.[/]")
         return
+
+    after = counts.resume_after or 0
+    read = 0
+    written = counts.written
+    started = time.time()
+    # The compilation's scale partition, which only a valid scale names.
+    if scale not in ("tiny", "small", "medium", "large"):
+        print(f"[red]{slug}[/] has no usable scale ({scale!r}) to write polygons at")
+        raise typer.Exit(1)
+    batch_sql = (
+        proc("materialize-batch")
+        .read_text()
+        .replace("::polygons_table", f"maps.polygons_{scale}")
+    )
+    while True:
+        try:
+            batch = db.run_query(
+                batch_sql,
+                dict(
+                    compilation_id=source_id,
+                    scale=scale,
+                    layer=layer,
+                    after=after,
+                    limit=batch_size,
+                    pad=MATERIALIZE_PAD,
+                ),
+            ).first()
+        except DBAPIError as err:
+            # The batch rolled back; everything before it is committed.
+            db.session.rollback()
+            reason = str(err.orig).splitlines()[0]
+            print(
+                f"[red]A batch failed[/] after source polygon {after}"
+                f" ({read} read, {written} written so far): {reason}"
+                "\n[dim]Nothing from this batch was kept. Running the command again"
+                " resumes here; a smaller [cyan]--batch-size[/] narrows down which"
+                " polygon is failing.[/]"
+            )
+            raise typer.Exit(1)
+        db.session.commit()
+        if not batch.read:
+            break
+        after = batch.last_map_id
+        read += batch.read
+        written += batch.written
+        print(
+            f"  {read} read, {written} written [dim]({time.time() - started:.0f} s)[/]"
+        )
 
     db.run_sql(
         proc("materialize-compilation"),
         dict(compilation_id=source_id, scale=scale),
     )
     db.session.commit()
-    n = db.run_query(
-        "SELECT count(*) FROM maps.polygons WHERE source_id = :id",
-        dict(id=source_id),
-    ).scalar()
     print(
-        f"[green]{n}[/] polygons written."
+        f"[green]{written}[/] polygons written; {slug} is materialized."
         "\nRun [cyan]macrostrat topo update[/] so faces resolve to it rather"
         " than its members."
     )
