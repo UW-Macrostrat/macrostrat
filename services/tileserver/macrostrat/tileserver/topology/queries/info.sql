@@ -34,11 +34,11 @@ covering_face AS MATERIALIZED (
   WHERE ST_Intersects(mf.geometry, loc.geometry)
 ),
 nodes AS (
-  /* Roots are the registered compilations (those with faces) -- structural
-     containers, never emitted. */
+  /* Roots are the face layers, each walked from its compilation. Never
+     emitted. */
   SELECT
     ml.id AS map_layer,
-    ml.source_id AS source_id,
+    ml.source_id,
     ARRAY[]::integer[] AS path,
     NULL::integer AS parent_id,
     NULL::integer AS member_id,
@@ -52,14 +52,13 @@ nodes AS (
     cm.member_id,
     n.path || coalesce(cm.priority, 0),
     n.source_id,
-    /* The member of the registered compilation this row belongs to, skipping
-       intermediate registered compilations (the scale layers). This is the level
+    /* The member of the served compilation this row belongs to, skipping
+       unserved compilations, which exist only to build others. This is the level
        the `maps` and `faces` tiles draw by default, so a row whose `member_id` is
        its own `source_id` is what matches a clicked feature. */
     coalesce(
       n.member_id,
-      CASE WHEN map_bounds.has_faces(cm.member_id) THEN NULL
-           ELSE cm.member_id END
+      CASE WHEN map_bounds.is_served(cm.member_id) THEN cm.member_id END
     ),
     n.depth + 1
   FROM nodes n
@@ -74,7 +73,8 @@ resolved AS (
   SELECT DISTINCT ON (map_layer, source_id) *
   FROM nodes
   WHERE depth > 0
-    AND NOT map_bounds.has_faces(source_id)
+    -- Unserved compilations are structure, not something anyone looks at.
+    AND NOT (map_bounds.is_compilation(source_id) AND NOT map_bounds.is_served(source_id))
   ORDER BY map_layer, source_id, path DESC
 )
 SELECT
@@ -82,13 +82,14 @@ SELECT
     s.slug,
     s.name,
     s.scale,
-    ml.slug AS map_layer,
+    -- A layer is named by its compilation.
+    mls.slug AS map_layer,
     ml.id AS map_layer_id,
     ml.name AS layer_name,
     array_to_string(n.path, '.') AS priority,
     n.path AS priority_path,
     n.depth,
-    /* The compilation this row was reached through. May be a registered
+    /* The compilation this row was reached through. May be an unserved
        compilation, in which case it has no row of its own. */
     n.parent_id,
     k.is_compilation,
@@ -111,6 +112,7 @@ CROSS JOIN LATERAL (
     map_bounds.is_derived(n.source_id) AS is_derived
 ) k
 JOIN map_bounds.map_layer ml ON ml.id = n.map_layer
+LEFT JOIN maps.sources mls ON mls.source_id = ml.source_id
 JOIN maps.sources s ON s.source_id = n.source_id
 LEFT JOIN maps.sources v ON v.source_id = n.member_id
 LEFT JOIN covering_face mf

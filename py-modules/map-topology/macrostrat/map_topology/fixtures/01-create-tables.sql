@@ -186,13 +186,15 @@ FROM map_bounds.map_area a;
   `geometry_hash` itself, and a compilation that is not a mosaic is never noded
   at all -- its bounds are composed, and identity resolves it through its
   members. Only the layer test is the library's; the compilation test keeps the
-  whole-row pass (`update_contacts`) away from rows it has no business with. */
+  whole-row pass (`update_contacts`) away from rows it has no business with.
+
+  No composite test: a map's boundary is only ever recorded in the barrier
+  layer (`barrier_layer`), which is never composite. */
 CREATE OR REPLACE FUNCTION map_bounds_topology.get_topological_map_layer(_line map_bounds.map_area)
   RETURNS integer AS $$
 SELECT ml.id
 FROM map_bounds.map_layer ml
 WHERE ml.id = $1.map_layer
-  AND NOT map_bounds.is_composite_layer(ml.id)
   AND ml.topological
   AND NOT EXISTS (
     SELECT 1 FROM map_bounds.map_layer r WHERE r.source_id = $1.source_id
@@ -232,11 +234,6 @@ CREATE INDEX IF NOT EXISTS map_area_topogeom_id_idx
   ON map_bounds.map_area (((topo).id));
 
 
-CREATE OR REPLACE FUNCTION map_bounds.layer_id(_slug text)
-  RETURNS integer AS $$
-SELECT id FROM map_bounds.map_layer WHERE slug = _slug;
-$$ LANGUAGE SQL IMMUTABLE;
-
 /** View to adjust map priority based on scales
   (higher-scale maps are always higher priority)
  */
@@ -255,26 +252,6 @@ SELECT
 FROM maps.sources_metadata m
 WHERE is_finalized
   AND status_code = 'active';
-
-/** Standard map compilations */
-INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological)
-VALUES
-  ('tiny', 'Tiny',  0, 4, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('small', 'Small', 4, 8, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('medium', 'Medium', 8, 12, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true),
-  ('large', 'Large', 12, 18, ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true)
-ON CONFLICT (slug) DO NOTHING;
-
-/** Composite compilations */
-INSERT INTO map_bounds.map_layer (slug, name, min_zoom, max_zoom, bounds, topological, editable)
-VALUES
- ('carto-small', 'Carto small', 4, 8,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
- ('carto-medium', 'Carto medium', 8, 12,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false),
- ('carto-large', 'Carto large', 12, 18,
-  ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326)), true, false)
-ON CONFLICT (slug) DO NOTHING;
 
 /** Carto layer membership. `carto-large` is the compilation of `medium` and
   `large`; higher priority wins where they overlap. These are ordinary

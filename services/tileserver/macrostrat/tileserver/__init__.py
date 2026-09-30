@@ -1,6 +1,8 @@
+import re
 from os import environ
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlencode
 
 from buildpg import asyncpg, render
 from fastapi import FastAPI
@@ -8,7 +10,7 @@ from pydantic_settings import SettingsConfigDict
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, RedirectResponse
 from starlette_cramjam.middleware import CompressionMiddleware
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
@@ -55,6 +57,10 @@ app = FastAPI(
 class TileServerSettings(PostgresSettings):
     # XDD embedding service URL
     xdd_embedding_service_url: Optional[str] = None
+    #: Send `/carto-slim` and `/carto` tiles to `/map/carto`, the compilation
+    #: build, instead of the legacy `carto` tables. Off until an environment is
+    #: ready to change what its public clients receive.
+    redirect_legacy_carto: bool = False
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="allow",
@@ -121,6 +127,29 @@ async def shutdown_event():
 # came back to clients as a 503 from Varnish. Everything with actual content is
 # still compressed.
 app.add_middleware(CompressionMiddleware, minimum_size=1)
+
+# `/carto-slim/{z}/{x}/{y}` and `/carto/{z}/{x}/{y}` are the legacy build's
+# tiles. With `redirect_legacy_carto`, both go to `/map/carto`: `carto-slim`'s
+# properties are `/map/carto`'s, and `/carto`'s are its `detail=full` ones. Any
+# query string is kept. Temporary redirects, so a client never caches the move.
+_LEGACY_CARTO_TILE = re.compile(r"^/(carto|carto-slim)/(\d+)/(\d+)/(\d+)$")
+
+
+@app.middleware("http")
+async def redirect_legacy_carto(request: Request, call_next):
+    match = None
+    if db_settings.redirect_legacy_carto:
+        match = _LEGACY_CARTO_TILE.match(request.url.path)
+    if match is None:
+        return await call_next(request)
+
+    layer, z, x, y = match.groups()
+    params = list(request.query_params.multi_items())
+    if layer == "carto":
+        params.append(("detail", "full"))
+    url = request.url.replace(path=f"/map/carto/{z}/{x}/{y}", query=urlencode(params))
+    return RedirectResponse(str(url), status_code=307)
+
 
 # Map ingestion
 register_map_ingestion_routes(app)
@@ -202,9 +231,16 @@ from .stats import stats_router
 
 app.include_router(stats_router, tags=["Stats"], prefix="/stats")
 
-from .carto_new import router as carto_router
+from .map_tiles import legacy_router as carto_alias_router
+from .map_tiles import router as map_tiles_router
 
-app.include_router(carto_router, tags=["Carto new"], prefix="/dev/carto")
+# Any source by slug, `carto` included: `/map/{slug}/{z}/{x}/{y}`. Five segments,
+# so it never collides with the catalog's `/map/{z}/{x}/{y}?source_id=` above,
+# which stays as the v2 alias.
+app.include_router(map_tiles_router, tags=["Map tiles"], prefix="/map")
+app.include_router(
+    carto_alias_router, tags=["Map tiles"], prefix="/dev/carto", deprecated=True
+)
 
 from .topology import router as topo_router
 

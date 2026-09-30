@@ -462,7 +462,11 @@ try:
 
     from .commands.export import export_map
 
-    map_app.command("export", short_help="Export map data")(export_map)
+    # `macrostrat maps export` now writes map packages; the region (bbox/WKT)
+    # export of carto layers stays available under its own name.
+    map_app.command("export-region", short_help="Export carto data for a region")(
+        export_map
+    )
 
     main.add_typer(
         map_app,

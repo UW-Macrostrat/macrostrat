@@ -42,16 +42,15 @@ nodes AS (
 SELECT
   s.source_id,
   s.slug,
-  /* A served layer carries its name on `map_layer`; its `maps.sources` row is a
-     bridge minted by the schema and has none. */
+  /* The name is the source's; its face layer's is only a fallback. */
   coalesce(s.name, ml.name) AS name,
   s.scale,
-  ml.id IS NOT NULL AS has_faces,
+  map_bounds.has_faces(s.source_id) AS has_faces,
   map_bounds.is_served(s.source_id) AS is_served,
   map_bounds.is_global(s.source_id) AS is_global,
   ml.id AS map_layer_id,
-  ml.min_zoom,
-  ml.max_zoom,
+  zr.min_zoom,
+  zr.max_zoom,
   true AS is_compilation,
   cs.is_materialized,
   cs.is_derived,
@@ -68,6 +67,18 @@ FROM nodes n
 JOIN maps.sources s USING (source_id)
 JOIN map_bounds.compilation_sync cs USING (source_id)
 LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
+/* The zoom band the compilation's `scale` answers for, from `map_bounds.scale_band`
+   (the one home for the thresholds): `max_zoom` is null for the last band, and both
+   are null for a compilation without a scale, such as the multiscale `carto`. */
+LEFT JOIN LATERAL (
+  SELECT
+    sb.min_zoom,
+    (SELECT min(nb.min_zoom) - 1
+     FROM map_bounds.scale_band nb
+     WHERE nb.min_zoom > sb.min_zoom) AS max_zoom
+  FROM map_bounds.scale_band sb
+  WHERE sb.scale::text = s.scale
+) zr ON true
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
 CROSS JOIN LATERAL (
   SELECT count(*) AS n_sources

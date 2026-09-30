@@ -175,7 +175,9 @@ offline.macrostrat.local {
     # An offline version of the frontend, if running
 }
 
-storage.macrostrat.local {
+# Plain HTTP as well, for host-side clients: their Minio client verifies TLS
+# against certifi, which lacks OrbStack's CA. Containers use HTTPS.
+http://storage.macrostrat.local, https://storage.macrostrat.local {
     tls internal
     reverse_proxy storage:9000
 }

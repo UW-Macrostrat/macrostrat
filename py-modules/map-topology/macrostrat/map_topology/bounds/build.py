@@ -108,18 +108,18 @@ _OPENING_GEOMETRY = {
         WHERE source_id = :source_id
     """,
     # The bounds of every noded source below the compilation, read from the
-    # topology: the faces their topogeometries hold form a coverage (the noding
-    # already resolved every overlap), so they merge with `ST_CoverageUnion`
-    # rather than an overlay. Half the time of `ST_Union` over the sources'
-    # geometries for `medium` (20 s against 44 s), and exact: the bounds are the
-    # region the compilation's faces will tile. Taking the noded sources rather
+    # topology: the union of the faces their topogeometries hold, which is exact
+    # -- the bounds are the region the compilation's faces will tile. The faces
+    # form a coverage, but `ST_CoverageUnion` needs PostGIS 3.4 and deployed
+    # databases run 3.3, so they merge with `ST_Union` (~40 s for `medium`'s
+    # 74,685 faces, against ~9 s as a coverage). Taking the noded sources rather
     # than the direct members makes the result independent of the order nested
     # compilations are built in; a mosaic is noded whole, so it counts and its
     # members do not. Nothing noded yet gives empty bounds, rebuilt when the
     # members' stamp changes.
     "compile": """
         SELECT coalesce(
-          ST_Multi(ST_SetSRID(ST_CoverageUnion(
+          ST_Multi(ST_SetSRID(ST_Union(
             topology.ST_GetFaceGeometry('map_bounds_topology', f.face_id)
           ), 4326)),
           ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)

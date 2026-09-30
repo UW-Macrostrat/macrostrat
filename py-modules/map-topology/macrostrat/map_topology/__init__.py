@@ -10,6 +10,7 @@ from .manager import (
     RETRY_TOLERANCE,
     _print_map_info,
     filter_maps,
+    get_held_maps,
     get_map_list,
     get_maps_with_changed_geometries,
     proc,
@@ -41,7 +42,8 @@ def _remove(
 ):
     """Remove topology fixtures"""
     mgr = get_topo_manager()
-    all_maps = get_map_list(mgr.db, filter_by=maps)
+    # Every map holding topology, including ones no longer noded.
+    all_maps = get_held_maps(mgr.db, filter_by=maps)
 
     # Replaces an ad-hoc input() prompt. That prompt fired even in `local`,
     # where this needs no ceremony, and raised EOFError as a traceback when
@@ -102,7 +104,10 @@ def mark_all():
             INSERT INTO map_bounds_topology.dirty_face (id, map_layer)
                 SELECT f.face_id, ml.id
                 FROM map_bounds_topology.face f
-                CROSS JOIN map_bounds.map_layer ml
+                -- Solved layers only: those with rankings.
+                JOIN map_bounds.map_layer ml ON EXISTS (
+                    SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = ml.id
+                )
                 ON CONFLICT DO NOTHING
                 RETURNING id
         )

@@ -150,7 +150,7 @@ class Macrostrat(Application):
                 # dialing a stale container IP, and every core-backed tile route
                 # 503s until varnish itself is restarted. Reloading the VCL
                 # re-resolves the backends (and picks up edits to
-                # configs/tileserver-cache.vcl) without dropping cached objects.
+                # configs/varnish/tileserver-cache.vcl) without dropping cached objects.
                 "tileserver_cache": "varnishreload",
             },
         )
@@ -173,4 +173,7 @@ class Macrostrat(Application):
         if backend == "docker-compose":
             mgr = self.create_docker_compose_extension()
             mgr.add_commands(cmd)
+            from .stack_check import check
+
+            cmd.command(rich_help_panel="System (Docker Compose)")(check)
         return cmd

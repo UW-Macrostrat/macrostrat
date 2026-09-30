@@ -5,9 +5,9 @@ classify a source and there are no names for their combinations: `is_compilation
 (has members), `is_materialized` (holds polygons), `is_derived` (those polygons are
 a cache cut from its members'), and `assembly_mode` (`topological` | `mosaic`). Two
 more are authored: `is_served` (may be requested by name) and `superseded_by`.
-`has_faces` says the compilation's faces are cached, which every served one will
-have once sync solves them all. The flags are derived in SQL so this module stays
-a description of the payload.
+`has_faces` says the compilation has faces of its own: a served one that draws
+through them. The flags are derived in SQL so this module stays a description of
+the payload.
 """
 
 from typing import Optional
@@ -23,9 +23,9 @@ class MapNode(BaseModel):
     name: Optional[str] = None
     scale: Optional[str] = None
 
-    #: The compilation's faces are cached in `map_face` (a `map_layer` row).
-    #: Today the seven scale and carto layers, which a client renders as
-    #: containers rather than as maps.
+    #: Has faces of its own in `map_face`: a served compilation with a face
+    #: layer -- one per scale band for a multiscale one such as `carto`. An
+    #: unserved compilation has none; it is solved only within a served one.
     has_faces: bool = False
     #: May be requested by name. Authored; a compilation that is not served
     #: exists to build others.
@@ -61,8 +61,13 @@ class MapNode(BaseModel):
 class CompilationFacts(MapNode):
     """A compilation's own state, shared by the index and the detail view."""
 
-    #: The `map_layer` id when the compilation has faces.
+    #: The face layer's id for a served topological compilation. Null for a
+    #: multiscale one, whose faces are per band.
     map_layer_id: Optional[int] = None
+    #: The zoom band the compilation's `scale` answers for, from
+    #: `map_bounds.scale_band`. `max_zoom` is null for the last band; both are
+    #: null for a compilation without a scale, such as the multiscale `carto`,
+    #: which answers at every zoom through its members.
     min_zoom: Optional[int] = None
     max_zoom: Optional[int] = None
 
@@ -87,6 +92,12 @@ class MemberRef(MapNode):
     #: Higher wins where members overlap; null in a mosaic, where nothing
     #: overlaps and the ordering carries no meaning.
     priority: Optional[int] = None
+
+
+class SourceRef(BaseModel):
+    source_id: int
+    slug: str
+    name: Optional[str] = None
 
 
 class ParentRef(BaseModel):
@@ -121,6 +132,13 @@ class CompilationDetail(CompilationFacts):
     member_hash: Optional[str] = None
     current_member_hash: Optional[str] = None
 
+    #: The replacing map's slug, beside the inherited `superseded_by` id.
+    superseded_by_slug: Optional[str] = None
+    #: Maps this one supersedes -- the inverse of `superseded_by`.
+    supersedes: list[SourceRef] = []
+    #: `[west, south, east, north]` of the map's bounds, when it has any.
+    bounds: Optional[list[float]] = None
+
     parents: list[ParentRef] = []
     members: list[MemberRef] = []
 
@@ -134,6 +152,7 @@ class GraphNode(MapNode):
     """
 
     map_layer_id: Optional[int] = None
+    #: The scale's zoom band, as on `CompilationFacts`.
     min_zoom: Optional[int] = None
     max_zoom: Optional[int] = None
     n_sources: int = 0
@@ -162,6 +181,74 @@ class CompilationGraph(BaseModel):
 
     nodes: list[GraphNode] = []
     edges: list[GraphEdge] = []
+
+
+class MemberEdit(BaseModel):
+    """One membership as it should stand after the edit."""
+
+    member_id: int
+    priority: Optional[int] = None
+
+
+class CompilationEdit(BaseModel):
+    """What changes about one source. Omitted fields are left alone.
+
+    `assembly_mode` is not editable here: it is fixed by how the compilation's
+    contents were built, so changing it is restructuring, done with
+    `macrostrat compilations mode`.
+    """
+
+    source_id: int
+    #: The complete member list after the edit, replacing the current one: a
+    #: member left out is removed, a new one added, a changed priority rewritten.
+    #: Omitted, membership is untouched.
+    members: Optional[list[MemberEdit]] = None
+    is_served: Optional[bool] = None
+    name: Optional[str] = None
+    #: The map that replaces this one. Given as null, supersession is cleared;
+    #: omitted, it is left alone -- so presence, not value, is what counts.
+    superseded_by: Optional[int] = None
+
+
+class EditRequest(BaseModel):
+    """A batch of edits, applied in one transaction.
+
+    One batch rather than a request per compilation, because a move is two
+    edits -- out of one compilation, into another -- and half of one is a map
+    in both places or in neither.
+    """
+
+    edits: list[CompilationEdit]
+    #: Author memberships the checks would refuse (a superseded member), as
+    #: `macrostrat compilations add --force` does.
+    force: bool = False
+
+
+class EdgeChange(BaseModel):
+    compilation_id: int
+    compilation_slug: str
+    member_id: int
+    member_slug: str
+    #: `added`, `removed` or `reprioritized`.
+    change: str
+    priority: Optional[int] = None
+    previous_priority: Optional[int] = None
+
+
+class PropertyChange(BaseModel):
+    source_id: int
+    slug: str
+    field: str
+    value: Optional[str | bool | int] = None
+    previous: Optional[str | bool | int] = None
+
+
+class EditResult(BaseModel):
+    """What the batch changed. Nothing downstream has been rebuilt:
+    `macrostrat topo update` is what makes membership take effect."""
+
+    edges: list[EdgeChange] = []
+    properties: list[PropertyChange] = []
 
 
 class NeighborMap(BaseModel):
