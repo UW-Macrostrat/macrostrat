@@ -262,6 +262,118 @@ function buildSQL(scale, where) {
   `;
 }
 
+/* --- The compilation path ---------------------------------------------------
+
+   With `?compilation=<slug or id>` the candidate polygons come from
+   `map_bounds.units_at`, the one entry point the tiles and API v3 resolve
+   through: it applies the multiscale hop (`carto` at z=5 is `carto-small`),
+   resolves a compilation with faces through them, a plain map or mosaic member
+   through `polygons_of`, and `sys:carto-legacy` from the materialized `carto.*`
+   build. Everything after the FROM clause is decoration, joined by key.
+
+   The legend comes from `maps.legend` through `map_legend` -- what the tiles
+   carry (`legend_id`, `color`) -- rather than the legacy `lookup_<scale>`
+   tables, so a unit's color here is the color it is drawn with.
+
+   Without `compilation`, nothing below runs and the legacy query is used
+   unchanged, so a database without the compilation schema, or a regression in
+   it, leaves the default behaviour untouched. `carto` becomes the default once
+   the new design is the only one served. */
+
+const COMPILATION_SELECT = `
+    SELECT
+      m.map_id,
+      m.source_id,
+      COALESCE(m.name, '') AS name,
+      COALESCE(m.age, '') AS age,
+      COALESCE(m.strat_name, '') AS strat_name,
+      COALESCE(m.lith, '') AS lith,
+      COALESCE(m.descrip, '') AS descrip,
+      COALESCE(m.comments, '') AS comments,
+      COALESCE(l.unit_ids, '{}') AS macro_units,
+      COALESCE(l.strat_name_ids, '{}') AS strat_names,
+      COALESCE((
+        SELECT json_agg(t) FROM (
+          SELECT id AS lith_id, lith, lith_type, lith_class, lith_color AS color, lith_fill
+          FROM macrostrat.liths
+          WHERE id = ANY(l.lith_ids)
+        ) t
+      ), '[]') AS liths,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            m.b_interval AS int_id,
+            tb.age_bottom::float AS b_age,
+            tb.age_top::float AS t_age,
+            tb.interval_name AS int_name,
+            tb.interval_color AS color
+        ) r
+      ) AS b_int,
+      (
+        SELECT row_to_json(r) FROM (
+          SELECT
+            m.t_interval AS int_id,
+            ti.age_bottom::float AS b_age,
+            ti.age_top::float AS t_age,
+            ti.interval_name AS int_name,
+            ti.interval_color AS color
+        ) r
+      ) AS t_int,
+      l.color,
+      m.scale::text AS scale,
+      (SELECT row_to_json(r) FROM (SELECT
+        sources.name,
+        sources.source_id,
+        COALESCE(sources.url, '') url,
+        COALESCE(sources.ref_title, '') ref_title,
+        COALESCE(sources.authors, '') authors,
+        COALESCE(sources.ref_year, '') ref_year,
+        COALESCE(sources.ref_source, '') ref_source,
+        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
+    FROM map_bounds.units_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
+    JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
+    JOIN maps.sources ON m.source_id = sources.source_id
+    LEFT JOIN maps.map_legend ON map_legend.map_id = m.map_id
+    LEFT JOIN maps.legend l ON l.legend_id = map_legend.legend_id
+    LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
+    LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
+`;
+
+function buildCompilationSQL(where) {
+  return `${COMPILATION_SELECT} ${where} ORDER BY u.priority_path DESC NULLS LAST, m.map_id`;
+}
+
+/* Lines within the click tolerance, through `map_bounds.lines_at` over a
+   geodesic buffer of the point. One line per source, the nearest, as the legacy
+   query returns them. */
+function buildCompilationLineSQL() {
+  return `
+    SELECT
+      y.line_id,
+      y.source_id,
+      COALESCE(y.name, '') AS name,
+      COALESCE(y.type, '') AS type,
+      COALESCE(y.direction, '') AS direction,
+      COALESCE(y.descrip, '') AS descrip,
+      y.scale::text AS scale,
+      y.distance
+    FROM (
+      SELECT
+        l.line_id, l.source_id, l.name, l.type, l.direction, l.descrip, l.scale,
+        ST_DistanceSpheroid(l.geom, ST_SetSRID(ST_MakePoint($2, $3), 4326), 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance,
+        row_number() OVER (PARTITION BY l.source_id ORDER BY l.geom <-> ST_SetSRID(ST_MakePoint($2, $3), 4326)) AS rn
+      FROM map_bounds.lines_at(
+        $1,
+        ST_Buffer(ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $5)::geometry,
+        $4
+      ) u
+      JOIN maps.lines l ON l.line_id = u.line_id AND l.scale = u.scale
+    ) y
+    WHERE y.rn = 1
+    ORDER BY y.distance
+  `;
+}
+
 function buildLineSQL(scale) {
   scale = scale || "tiny";
   let scaleJoin = scaleIsIn[scale]
@@ -329,6 +441,10 @@ module.exports = (req, res, next) => {
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
 
+  // A compilation slug or source id selects the compilation path; absent, the
+  // legacy carto query runs unchanged. See `COMPILATION_SELECT`.
+  const compilation = req.query.compilation ? String(req.query.compilation) : null;
+
   async.parallel(
     {
       elevation: (cb) => {
@@ -344,10 +460,22 @@ module.exports = (req, res, next) => {
 
       lines: (cb) => {
         larkin.trace("running lines");
+        let lineSQL = buildLineSQL(scaleLookup[req.query.z]);
+        let lineParams = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
+        if (compilation != null) {
+          lineSQL = buildCompilationLineSQL();
+          lineParams = [
+            compilation,
+            req.query.lng,
+            req.query.lat,
+            req.query.z,
+            tolerance(req.query.lat, req.query.z) * LINE_TOLERANCE,
+          ];
+        }
         larkin.queryPg(
           "burwell",
-          buildLineSQL(scaleLookup[req.query.z]),
-          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          lineSQL,
+          lineParams,
           (error, result) => {
             if (error) return cb(error);
             result.rows = result.rows
@@ -453,9 +581,33 @@ module.exports = (req, res, next) => {
 
         where = ` WHERE ${where.join(" AND ")}`;
 
+        let unitSQL = buildSQL(scaleLookup[req.query.z], where);
+        if (compilation != null) {
+          // The point is always given here, so a map_id / legend_id filter
+          // narrows the answer at that point rather than replacing it.
+          let filter = "";
+          if (req.query.map_id) {
+            filter = " WHERE m.map_id = $5";
+            params = [req.query.map_id];
+          } else if (req.query.legend_id) {
+            filter = " WHERE l.legend_id = $5";
+            params = [req.query.legend_id];
+          } else {
+            params = [];
+          }
+          unitSQL = buildCompilationSQL(filter);
+          params = [
+            compilation,
+            req.query.lng,
+            req.query.lat,
+            req.query.z,
+            ...params,
+          ];
+        }
+
         larkin.queryPg(
           "burwell",
-          buildSQL(scaleLookup[req.query.z], where),
+          unitSQL,
           params,
           (error, result) => {
             if (error) {
