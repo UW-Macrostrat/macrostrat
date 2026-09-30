@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import morecantile
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -27,37 +27,8 @@ def _query(name: str):
     return text((_queries / f"{name}.sql").read_text())
 
 
-class MapAreaInfo:
-    def __init__(self, bounds: Polygon, zoom: int):
-        self.bounds = bounds
-        self.zoom = zoom
-
-
-def map_area_params(
-    bounds: str = None, lat: float = None, lng: float = None, zoom: int = None
-) -> MapAreaInfo:
-    """Dependency to get map area information."""
-
-    if bounds is not None:
-        _bounds = parse_bounds(bounds)
-        zoom = min_bounding_tile(_bounds).z + 1
-        return MapAreaInfo(bounds=_bounds, zoom=zoom)
-
-    if lat is None or lng is None:
-        raise HTTPException(400, "Either bounds or and lat,lng,zoom must be provided.")
-    if zoom is None:
-        zoom = 23
-    tile = tms.tile(lng=lng, lat=lat, zoom=zoom)
-    _bounds = tile_polygon(tile)
-    return MapAreaInfo(bounds=_bounds, zoom=zoom)
-
-    # Calculate bounds from lat, lng, zoom
-
-
-def tile_polygon(tile: Tile) -> Polygon:
-    """Get the polygon for a given tile."""
-    bbox = tms.bounds(tile)
-    return Polygon.from_bounds(bbox.left, bbox.bottom, bbox.right, bbox.top)
+# Templated before it becomes a statement: `::owners` is filled per request.
+_LEGEND_SQL = (_queries / "legend.sql").read_text()
 
 
 def min_bounding_tile(geometry: Polygon) -> Tile:
@@ -110,38 +81,45 @@ def scale_for_zoom(z: int, dz: int = 0):
         return "large"
 
 
-def get_compilation(compilation: str) -> str:
-    """Dependency to validate compilation parameter."""
-    valid_compilations = ["carto"]
-    if compilation not in valid_compilations:
-        raise ValueError(
-            f"Invalid compilation '{compilation}'. Valid options are: {valid_compilations}"
-        )
-    return compilation
+#: Most legend entries to return. `carto`'s whole legend at a zoom is tens of
+#: thousands; the cap keeps an `all` request a response rather than a dump.
+DEFAULT_LEGEND_LIMIT = 5_000
+MAX_LEGEND_LIMIT = 50_000
 
+#: `legend.sql`'s owners in view: each map with a face there, with the part of
+#: the view it owns; or, without faces, the answering source over the whole view.
+# The layer and the view are scalar subqueries, not joins, so the planner
+# reads them as constants and reaches `map_face`'s layer and spatial indexes.
+_OWNERS_VISIBLE = """
+  SELECT
+    mf.map_id,
+    ST_UnaryUnion(ST_Collect(ST_ClipByBox2D(mf.geometry, (SELECT g FROM view))))
+      AS geometry
+  FROM map_bounds_topology.map_face mf
+  WHERE mf.map_layer = (SELECT layer_id FROM target)
+    AND ST_Intersects(mf.geometry, (SELECT g FROM view))
+    AND map_bounds.has_content(mf.map_id)
+  GROUP BY mf.map_id
+  UNION ALL
+  SELECT t.source_id, (SELECT g FROM view)
+  FROM target t
+  WHERE t.layer_id IS NULL
+"""
 
-@router.get(
-    "/{compilation}/legend",
-    summary="Get map service status",
-)
-def get_map_legend(
-    compilation: Annotated[str, Depends(get_compilation)],
-    map_area: Annotated[MapAreaInfo, Depends(map_area_params)],
-    database: DatabaseDep,
-):
-    """Get the legend for a given map compilation."""
+#: Every owner, and no geometry: the whole legend of each.
+_OWNERS_ALL = """
+  SELECT DISTINCT mf.map_id, NULL::geometry AS geometry
+  FROM map_bounds_topology.map_face mf
+  WHERE mf.map_layer = (SELECT layer_id FROM target)
+    AND map_bounds.has_content(mf.map_id)
+  UNION ALL
+  SELECT t.source_id, NULL::geometry
+  FROM target t
+  WHERE t.layer_id IS NULL
+"""
 
-    scale = scale_for_zoom(map_area.zoom)
-
-    if compilation != "carto":
-        raise HTTPException(
-            status_code=400,
-            detail="Only 'carto' compilation is currently supported.",
-        )
-
-    res = (
-        database.sync.run_query(
-            """
+_LEGACY_LEGEND = text(
+    """
         WITH polygons AS (
             SELECT legend_id, source_id, scale
             FROM carto.polygons p
@@ -178,34 +156,97 @@ def get_map_legend(
         FROM maps.legend m
         JOIN maps.sources s USING (source_id)
         JOIN polygons p USING (legend_id, source_id)
-        """,
-            params={"bounds": map_area.bounds.wkt, "scale": scale},
-        )
-        .mappings()
-        .all()
-    )
+"""
+)
 
-    return res
+
+@router.get(
+    "/{ident}/legend",
+    summary="The legend of a map or compilation",
+)
+async def get_map_legend(
+    ident: Annotated[
+        str,
+        PathParam(
+            description=(
+                "A map or compilation slug, or an integer source id. "
+                "`sys:carto-legacy` reads the materialized carto build."
+            )
+        ),
+    ],
+    database: DatabaseDep,
+    bounds: Annotated[
+        str | None,
+        Query(description="Only the entries drawn within this area (WKT or bbox)"),
+    ] = None,
+    zoom: Annotated[
+        int | None,
+        Query(description="The zoom whose drawing is described; picks `carto`'s layer"),
+    ] = None,
+    limit: Annotated[
+        int, Query(ge=1, le=MAX_LEGEND_LIMIT, description="Most entries to return")
+    ] = DEFAULT_LEGEND_LIMIT,
+):
+    """The legend entries a source draws at a zoom, youngest first.
+
+    With `bounds`, only the entries drawn within it (`visible`); without, every
+    entry of every map the source draws at that zoom (`all`). Resolved the way
+    the tiles are, so the legend matches the map: `carto` answers from its
+    member at the zoom's scale, a compilation through its faces, a map from its
+    own polygons. `zoom` defaults to the most detailed.
+    """
+    geometry = None
+    if bounds is not None:
+        geometry = parse_bounds(bounds)
+    if zoom is None:
+        zoom = 23
+
+    async with database.async_connection() as conn:
+        await conn.execute(
+            text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
+        )
+
+        if ident == LEGACY_CARTO:
+            if geometry is None:
+                raise HTTPException(400, "The legacy build's legend needs `bounds`.")
+            res = await conn.execute(
+                _LEGACY_LEGEND,
+                {"bounds": geometry.wkt, "scale": scale_for_zoom(zoom)},
+            )
+            return res.mappings().all()
+
+        known = await conn.execute(
+            text("SELECT map_bounds.resolve_source(CAST(:ident AS text))"),
+            {"ident": ident},
+        )
+        if known.scalar() is None:
+            raise HTTPException(404, f"No map or compilation matching '{ident}'")
+
+        owners = _OWNERS_ALL
+        params = {"ident": ident, "zoom": zoom, "limit": limit}
+        if geometry is not None:
+            owners = _OWNERS_VISIBLE
+            params["bounds"] = geometry.wkt
+        sql = text(_LEGEND_SQL.replace("::owners", owners))
+        try:
+            res = await conn.execute(sql, params)
+        except DBAPIError as err:
+            if not _is_timeout(err):
+                raise
+            raise HTTPException(
+                504, "The legend query timed out; ask for a smaller area."
+            ) from err
+        return res.mappings().all()
 
 
 # --- Units at a location ---
 
-# A product served as several layers, one per zoom band.
-#
-# `carto-v2` is the only one: the dynamic layers `/dev/carto` draws from. It is
-# a constant here because the stack has no node in the database -- `map_layer`
-# holds the four layers, but nothing says they are one product. At Stage D
-# ("carto as compilations") it becomes a real compilation and this table gives
-# way to walking its members, and `carto` becomes askable in its own right.
-#
-# Deliberately *not* called `carto`: `/{compilation}/legend` reads that as the
-# materialized `carto.polygons`, which is what the `/carto` tiles draw. Today
-# those are two different data paths, and one path segment meaning both is a
-# trap. They converge at Stage D.
-#
-# The thresholds are `carto-dynamic.sql`'s, not `map_layer`'s own zoom ranges.
-# The tile query buckets a tile `z` one band coarser than the layer's range, and
-# a point query that disagreed with the tiles would be useless for checking them.
+#: The materialized `carto.*` build, addressed like a compilation. Answered by
+#: `map_bounds.units_at` itself; never a `maps.sources` row, so the existence
+#: check below skips it. It exists to measure the compilation system against the
+#: legacy build on the same route, and goes with Stage D.
+LEGACY_CARTO = "sys:carto-legacy"
+
 # How long the database is allowed to spend on one units request.
 #
 # The route is a point lookup and answers in tens of milliseconds; what can run
@@ -232,15 +273,6 @@ MAX_BOUNDS_SPAN = 5.0
 DEFAULT_LIMIT = 500
 MAX_LIMIT = 5_000
 
-LAYER_STACKS: dict[str, list[tuple[Optional[int], str]]] = {
-    "carto-v2": [
-        (3, "tiny"),
-        (6, "carto-small"),
-        (9, "carto-medium"),
-        (None, "carto-large"),
-    ],
-}
-
 
 class MapLocation:
     """Where to ask, and at what zoom.
@@ -263,7 +295,7 @@ class MapLocation:
 def map_location_params(
     bounds: str = None, lng: float = None, lat: float = None, zoom: int = None
 ) -> MapLocation:
-    """The same parameters as `map_area_params`, read for a point query."""
+    """`bounds`, or `lng`/`lat` with an optional `zoom`, read for a point query."""
     if bounds is not None:
         geometry = parse_bounds(bounds)
         check_bounds_span(geometry)
@@ -300,14 +332,6 @@ def check_bounds_span(geometry) -> None:
     )
 
 
-def layer_for_zoom(stack: list[tuple[Optional[int], str]], zoom: int) -> str:
-    """The layer a tile at this zoom would be drawn from."""
-    for max_zoom, slug in stack:
-        if max_zoom is None or zoom < max_zoom:
-            return slug
-    return stack[-1][1]
-
-
 @router.get(
     "/{compilation}/units",
     summary="Map units at a location",
@@ -317,8 +341,9 @@ async def get_map_units(
         str,
         PathParam(
             description=(
-                "A map, compilation or served-layer slug -- or `carto-v2`, "
-                "the stack of layers the dynamic carto tiles are drawn from."
+                "A map or compilation slug, or an integer source id. `carto` is "
+                "the served map; `sys:carto-legacy` is the materialized build it "
+                "replaces."
             )
         ),
     ],
@@ -334,33 +359,19 @@ async def get_map_units(
     the question here is "what is mapped at this point, and by which map", which
     is the one the compilation system answers differently from the materialized
     carto tables -- a polygon arrives with the map that owns it, the face it
-    sits in, and the layer member it is presented as.
+    sits in, and the member of the compilation it is presented as.
 
-    Resolution goes through `map_bounds.polygons_of`, the same function the
-    dynamic carto tiles use, so the answer is what those tiles draw rather than a
-    second opinion assembled another way. A served layer resolves through the
-    `map_face` covering the location; any other map or compilation is asked
-    directly, walking whatever mosaic membership lies beneath it.
-
-    Asking for a *stack* returns every layer's answer, with `is_current_layer`
-    marking the one the request's zoom would have drawn. Nothing is dropped:
-    two carto generations disagreeing at a point often means they resolved at
-    different layers, which is invisible if the server picks one.
+    Resolution is `map_bounds.units_at`, the same entry point the tiles and the
+    v2 point lookup read through, so the answer is what the tiles draw rather
+    than a second opinion assembled another way. A multiscale compilation
+    (`carto`) answers from the member whose scale band contains `zoom`; any
+    other compilation or map answers for itself at every zoom.
 
     Takes `bounds`, or `lng`/`lat` with an optional `zoom` -- the same location
     parameters as `/{compilation}/legend`, but `lng`/`lat` means the point
-    rather than the tile around it, so `zoom` only picks the current layer.
-    With `bounds` this is an area query and returns everything intersecting the
-    box.
+    rather than the tile around it. With `bounds` this is an area query and
+    returns everything intersecting the box.
     """
-    stack = LAYER_STACKS.get(compilation)
-    if stack is None:
-        slugs = [compilation]
-        current_layer = None
-    else:
-        slugs = [slug for _, slug in stack]
-        current_layer = layer_for_zoom(stack, location.zoom)
-
     async with database.async_connection() as conn:
         # Bounded before anything spatial runs, and `LOCAL` so it lapses with
         # this transaction rather than following the connection back to the pool.
@@ -368,20 +379,20 @@ async def get_map_units(
             text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
         )
 
-        known = await conn.execute(
-            text(
-                "SELECT slug FROM maps.sources WHERE slug = ANY(CAST(:slugs AS text[]))"
-            ),
-            {"slugs": slugs},
-        )
-        missing = set(slugs) - {row[0] for row in known}
-        if len(missing) > 0:
-            raise HTTPException(404, f"No map or compilation matching '{compilation}'")
+        if compilation != LEGACY_CARTO:
+            known = await conn.execute(
+                text("SELECT map_bounds.resolve_source(CAST(:ident AS text))"),
+                {"ident": compilation},
+            )
+            if known.scalar() is None:
+                raise HTTPException(
+                    404, f"No map or compilation matching '{compilation}'"
+                )
 
         params = {
-            "slugs": slugs,
+            "ident": compilation,
             "bounds": location.geometry.wkt,
-            "current_layer": current_layer,
+            "zoom": location.zoom,
             "limit": limit,
         }
         try:

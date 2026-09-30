@@ -436,17 +436,19 @@ def remove(
 @cli.command("mode")
 def mode(
     compilation: Annotated[str, Argument(help="Slug or source id")],
-    assembly_mode: Annotated[str, Argument(help="topological | mosaic")],
+    assembly_mode: Annotated[str, Argument(help="topological | mosaic | multiscale")],
 ):
     """Set how a compilation's members fit together.
 
     `topological` means they may overlap and the topology settles their extents
     by priority; `mosaic` means they partition the territory, so a member's
-    extent is its footprint and its content is the compilation's inside it.
-    Not derivable -- it is an assertion about the data.
+    extent is its footprint and its content is the compilation's inside it;
+    `multiscale` means they are alternatives by scale, and a request at a zoom
+    is answered by the member whose scale band contains it. Not derivable -- it
+    is an assertion about the data.
     """
-    if assembly_mode not in ("topological", "mosaic"):
-        print("[red]Mode must be 'topological' or 'mosaic'[/]")
+    if assembly_mode not in ("topological", "mosaic", "multiscale"):
+        print("[red]Mode must be 'topological', 'mosaic' or 'multiscale'[/]")
         raise typer.Exit(1)
     db = get_database()
     source_id, slug = _resolve(compilation)
@@ -636,6 +638,36 @@ def lint():
         print(table)
         print("[dim]`compilations rm <layer> <member>` keeps only the nested route.[/]")
 
+    # A multiscale compilation answers a zoom with its one member at that scale
+    # (`serving_source`); two leave the answer to chance. The rule reads the
+    # members' own `scale`, which can change without the membership changing,
+    # so it is checked here as well as by the editor.
+    crowded = db.run_query(
+        """
+        SELECT c.slug AS compilation, coalesce(m.scale, 'none') AS scale,
+               string_agg(m.slug, ', ' ORDER BY m.slug) AS members
+        FROM map_bounds.compilation_member cm
+        JOIN maps.sources c ON c.source_id = cm.compilation_id
+        JOIN maps.sources m ON m.source_id = cm.member_id
+        WHERE map_bounds.is_multiscale(cm.compilation_id)
+        GROUP BY c.slug, m.scale
+        -- More than one, or a scale no zoom maps to, so never answered.
+        HAVING count(*) > 1
+            OR m.scale IS NULL
+            OR NOT m.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
+        ORDER BY 1, 2
+        """
+    ).all()
+    if crowded:
+        found = True
+        table = Table(title="Multiscale compilations without one member per scale")
+        table.add_column("Compilation")
+        table.add_column("Scale")
+        table.add_column("Members")
+        for r in crowded:
+            table.add_row(r.compilation, r.scale, f"[yellow]{r.members}[/]")
+        print(table)
+
     # Authored, assembled, and resolved nowhere. Reads `map_priority`, so it is
     # only meaningful after a sync.
     orphaned = db.run_query(
@@ -643,9 +675,15 @@ def lint():
         SELECT c.slug, count(DISTINCT cm.member_id) AS members
         FROM maps.sources c
         JOIN map_bounds.compilation_member cm ON cm.compilation_id = c.source_id
-        WHERE NOT map_bounds.has_faces(c.source_id)
+        WHERE NOT map_bounds.is_multiscale(c.source_id)
+          -- Resolved somewhere: it, or something it resolves to, is ranked in a
+          -- face layer. Not `member_id`, which skips unserved compilations.
           AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.map_priority mp WHERE mp.member_id = c.source_id
+            SELECT 1 FROM map_bounds.map_priority mp
+            WHERE mp.map_id = c.source_id
+               OR mp.map_id IN (
+                 SELECT m.source_id FROM map_bounds.members_of(c.source_id, true) m
+               )
           )
         GROUP BY 1 ORDER BY 1
         """
@@ -658,7 +696,7 @@ def lint():
         for r in orphaned:
             table.add_row(r.slug, str(r.members))
         print(table)
-        print("[dim]Expected for a compilation held deliberately out of service.[/]")
+        print("[dim]A mosaic or materialized compilation in no solved compilation.[/]")
 
     if not found:
         print("[green]No problems found.[/]")
@@ -728,23 +766,24 @@ def freeze_placements(
     db = get_database()
     pending = db.run_query(
         """
-        SELECT ml.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
+        SELECT ls.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
         FROM maps.sources s
-        JOIN map_bounds.map_layer ml ON ml.slug = s.scale
+        -- The scale compilation of the map's scale: `large` for a large map.
+        JOIN maps.sources ls ON ls.slug = s.scale
         JOIN map_bounds.map_area a ON a.source_id = s.source_id
         WHERE s.scale IS NOT NULL
-          AND ml.source_id IS NOT NULL
           AND s.superseded_by IS NULL
           AND NOT map_bounds.is_mosaic_member(s.source_id)
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
+            JOIN maps.sources c ON c.source_id = cm.compilation_id
             WHERE cm.member_id = s.source_id
-              AND NOT map_bounds.has_faces(cm.compilation_id)
+              AND NOT c.slug = ANY (enum_range(NULL::maps.map_scale)::text[])
               AND NOT map_bounds.is_mosaic(cm.compilation_id)
           )
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.compilation_id = ml.source_id AND cm.member_id = s.source_id
+            WHERE cm.compilation_id = ls.source_id AND cm.member_id = s.source_id
           )
         ORDER BY 1, 2
         """

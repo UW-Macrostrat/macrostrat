@@ -6,9 +6,10 @@ and the functions beside it, exactly as `macrostrat compilations` does on the CL
 and as the tileserver's point-info route does per location. This is the same
 graph, walked without a location.
 
-Two routes, because the graph has two useful shapes: the whole thing at
+Two read routes, because the graph has two useful shapes: the whole thing at
 compilation granularity (small -- the graph is the compilations, not the map
-catalog), and one node with the edges on either side of it.
+catalog), and one node with the edges on either side of it. One admin-only write
+route authors it (see `edit`).
 """
 
 from pathlib import Path
@@ -19,11 +20,15 @@ from fastapi import Path as PathParam
 from sqlalchemy import text
 
 from api.database import DatabaseDep
+from api.routes.security import TokenData, require_admin
 
+from .edit import apply_edits
 from .models import (
     CompilationDetail,
     CompilationGraph,
     CompilationSummary,
+    EditRequest,
+    EditResult,
     NeighborMap,
     NeighborResult,
 )
@@ -75,6 +80,23 @@ async def list_compilations(
     async with database.async_connection() as conn:
         res = await conn.execute(_query("index"), location)
         return [CompilationSummary(**row) for row in res.mappings()]
+
+
+@router.patch("", summary="Edit compilations")
+async def edit_compilations(
+    request: EditRequest,
+    database: DatabaseDep,
+    user_token: TokenData = Depends(require_admin),
+) -> EditResult:
+    """Apply a batch of membership and property edits in one transaction. Admin only.
+
+    Each edit's `members`, when given, is the complete member list afterwards.
+    A superseded member is refused (409) unless `force` is set, and a membership
+    that would make a cycle is refused (409) by the database. Nothing downstream
+    is rebuilt: run `macrostrat topo update` for the edit to take effect.
+    """
+    async with database.async_connection() as conn:
+        return await apply_edits(conn, request)
 
 
 @router.get("/graph", summary="The whole compilation graph")

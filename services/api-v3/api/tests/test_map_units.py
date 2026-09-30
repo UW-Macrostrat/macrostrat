@@ -3,7 +3,7 @@
 Written against whatever the test database happens to hold. A database with no
 topology solved answers with an empty list, and every invariant below is stated
 so that it holds for that case too -- what is being tested is the shape of the
-answer and the layer bookkeeping, not the map data.
+answer and the compilation bookkeeping, not the map data.
 """
 
 from types import SimpleNamespace
@@ -11,75 +11,64 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import DBAPIError
 
-from api.map import (
-    LAYER_STACKS,
-    MAX_BOUNDS_SPAN,
-    MAX_LIMIT,
-    _is_timeout,
-    layer_for_zoom,
-)
+from api.map import LEGACY_CARTO, MAX_BOUNDS_SPAN, MAX_LIMIT, _is_timeout
 
 from .test_database import TEST_SOURCE_TABLE, api_client
 
-# The dynamic layers, not the materialized `carto.polygons` that
-# `/{compilation}/legend` answers from -- see `LAYER_STACKS`.
-CARTO_STACK = LAYER_STACKS["carto-v2"]
-CARTO_LAYERS = [slug for _, slug in CARTO_STACK]
+# The layer `carto` reads at each zoom: its member's at the zoom's scale, per
+# `map_bounds.scale_band` (small / medium / large from 3 / 6 / 9) -- the same
+# table the tiles read, so a point query here agrees with what is drawn.
+CARTO_LAYER_FOR_ZOOM = {
+    5: "carto-small",
+    8: "carto-medium",
+    14: "carto-large",
+}
 
 # South Dakota, where the carto layers have something to say.
 SOMEWHERE = {"lng": -99, "lat": 43.5}
 
 
 class TestMapUnits:
-    def test_layer_for_zoom_matches_the_tile_query(self):
-        """The thresholds `carto-dynamic.sql` buckets a tile `z` with.
-
-        A point query that disagreed with the tiles would be useless for
-        checking them, so these are pinned rather than derived from
-        `map_layer`'s own zoom ranges, which differ.
-        """
-        assert layer_for_zoom(CARTO_STACK, 0) == "tiny"
-        assert layer_for_zoom(CARTO_STACK, 2) == "tiny"
-        assert layer_for_zoom(CARTO_STACK, 3) == "carto-small"
-        assert layer_for_zoom(CARTO_STACK, 5) == "carto-small"
-        assert layer_for_zoom(CARTO_STACK, 6) == "carto-medium"
-        assert layer_for_zoom(CARTO_STACK, 8) == "carto-medium"
-        assert layer_for_zoom(CARTO_STACK, 9) == "carto-large"
-        assert layer_for_zoom(CARTO_STACK, 18) == "carto-large"
-
-    def test_a_stack_answers_for_every_layer(self, api_client: TestClient):
-        """Nothing is chosen server-side: each layer's answer comes back, and
-        the flag says which one the zoom would have drawn."""
-        for zoom in (2, 5, 8, 14):
+    def test_carto_reads_the_layer_for_the_zoom(self, api_client: TestClient):
+        """`carto` is multiscale: it has no faces of its own, and the zoom picks
+        the member whose faces are read, in the database."""
+        for zoom, layer in CARTO_LAYER_FOR_ZOOM.items():
             response = api_client.get(
-                "/map/carto-v2/units", params={**SOMEWHERE, "zoom": zoom}
+                "/map/carto/units", params={**SOMEWHERE, "zoom": zoom}
             )
             assert response.status_code == 200
-
-            current = layer_for_zoom(CARTO_STACK, zoom)
             for unit in response.json():
-                assert unit["map_layer"] in CARTO_LAYERS
-                assert unit["is_current_layer"] == (unit["map_layer"] == current)
+                assert unit["map_layer"] == layer
+                assert unit["map_layer_id"] is not None
 
-    def test_zoom_only_chooses_the_current_layer(self, api_client: TestClient):
-        """`lng`/`lat` means the point, not the tile around it.
+    def test_zoom_is_the_only_thing_that_changes_the_answer(
+        self, api_client: TestClient
+    ):
+        """`lng`/`lat` means the point, not the tile around it, so asking twice
+        at one zoom is the same answer."""
+        params = {**SOMEWHERE, "zoom": 8}
+        once = api_client.get("/map/carto/units", params=params).json()
+        twice = api_client.get("/map/carto/units", params=params).json()
 
-        Sizing the query from the tile makes a low zoom an area scan of a
-        quarter of a hemisphere, which is what this route is not for. The row
-        set must therefore not depend on the zoom -- only which row is marked.
-        """
-        params = {**SOMEWHERE, "zoom": 2}
-        coarse = api_client.get("/map/carto-v2/units", params=params).json()
-        params = {**SOMEWHERE, "zoom": 14}
-        fine = api_client.get("/map/carto-v2/units", params=params).json()
+        ids = [unit["map_id"] for unit in once]
+        assert ids == [unit["map_id"] for unit in twice]
 
-        assert [unit["map_id"] for unit in coarse] == [unit["map_id"] for unit in fine]
+    def test_the_legacy_build_is_addressable(self, api_client: TestClient):
+        """`sys:carto-legacy` reads `carto.polygons` through the same route, so
+        the two builds can be compared with nothing but the name changing. It
+        is not a `maps.sources` row, so it carries no compilation bookkeeping."""
+        response = api_client.get(
+            f"/map/{LEGACY_CARTO}/units", params={**SOMEWHERE, "zoom": 8}
+        )
+        assert response.status_code == 200
+        for unit in response.json():
+            assert unit["map_layer"] is None
+            assert unit["map_face_id"] is None
+            assert unit["priority_path"] == []
 
     def test_units_carry_where_they_came_from(self, api_client: TestClient):
         """The part the materialized carto tables cannot answer."""
-        response = api_client.get(
-            "/map/carto-v2/units", params={**SOMEWHERE, "zoom": 14}
-        )
+        response = api_client.get("/map/carto/units", params={**SOMEWHERE, "zoom": 14})
         assert response.status_code == 200
 
         for unit in response.json():
@@ -100,7 +89,6 @@ class TestMapUnits:
         for unit in response.json():
             assert unit["map_layer"] is None
             assert unit["map_face_id"] is None
-            assert not unit["is_current_layer"]
 
     def test_an_unknown_map_is_not_an_empty_answer(self, api_client: TestClient):
         """A typo should say so rather than look like open ocean."""
@@ -110,7 +98,7 @@ class TestMapUnits:
     def test_somewhere_with_no_maps(self, api_client: TestClient):
         """Mid-Atlantic: a real answer that happens to be empty."""
         response = api_client.get(
-            "/map/carto-v2/units", params={"lng": -30, "lat": 0, "zoom": 8}
+            "/map/carto/units", params={"lng": -30, "lat": 0, "zoom": 8}
         )
         assert response.status_code == 200
         assert response.json() == []
@@ -118,18 +106,18 @@ class TestMapUnits:
     def test_bounds_are_accepted_too(self, api_client: TestClient):
         """The same location parameters as `/{compilation}/legend`."""
         response = api_client.get(
-            "/map/carto-v2/units", params={"bounds": "-99.1,43.4,-98.9,43.6"}
+            "/map/carto/units", params={"bounds": "-99.1,43.4,-98.9,43.6"}
         )
         assert response.status_code == 200
 
     def test_a_location_is_required(self, api_client: TestClient):
-        assert api_client.get("/map/carto-v2/units").status_code == 400
+        assert api_client.get("/map/carto/units").status_code == 400
 
     def test_a_continent_sized_bounds_is_refused(self, api_client: TestClient):
         """Refused up front, not after the statement timeout has burned ten
         seconds finding out."""
         response = api_client.get(
-            "/map/carto-v2/units", params={"bounds": "-180,-85,180,85"}
+            "/map/carto/units", params={"bounds": "-180,-85,180,85"}
         )
         assert response.status_code == 400
         assert "bounds" in response.json()["detail"]
@@ -142,12 +130,12 @@ class TestMapUnits:
         """
         half = MAX_BOUNDS_SPAN / 2
         bounds = f"{-half},{-half},{half},{half}"
-        response = api_client.get("/map/carto-v2/units", params={"bounds": bounds})
+        response = api_client.get("/map/carto/units", params={"bounds": bounds})
         assert response.status_code == 200
 
     def test_limit_caps_the_response(self, api_client: TestClient):
         response = api_client.get(
-            "/map/carto-v2/units",
+            "/map/carto/units",
             params={"bounds": "-99.1,43.4,-98.9,43.6", "limit": 1},
         )
         assert response.status_code == 200
@@ -157,7 +145,7 @@ class TestMapUnits:
         """An unbounded `limit` would undo the point of having one."""
         for limit in (0, MAX_LIMIT + 1):
             response = api_client.get(
-                "/map/carto-v2/units", params={**SOMEWHERE, "limit": limit}
+                "/map/carto/units", params={**SOMEWHERE, "limit": limit}
             )
             assert response.status_code == 422
 

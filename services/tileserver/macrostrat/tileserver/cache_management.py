@@ -36,16 +36,34 @@ _CARTO_PROFILES = ["carto", "carto-slim", "carto-image"]
 
 _VARNISH_URL = environ.get("VARNISH_URL", None)
 
-# Carto scale band → [min_zoom, max_zoom], mirroring tile_layers.carto_slim.
-# A source is expired only across its own scale band. Unknown scales fall back
-# to the full zoom range.
-_SCALE_BANDS = {
-    "tiny": (0, 2),
-    "small": (3, 5),
-    "medium": (6, 8),
-    "large": (9, 14),
-}
+# A source is expired only across its own scale band. The bands come from
+# `map_bounds.scale_band`, the one place the zoom thresholds live, and are read
+# once per process. Unknown scales fall back to the full zoom range.
 _FULL_RANGE = (0, 14)
+_bands: Optional[dict[str, tuple[int, int]]] = None
+
+
+async def scale_bands(pool) -> dict[str, tuple[int, int]]:
+    """Scale → (min_zoom, max_zoom), the last band running to the cache's max."""
+    global _bands
+    if _bands is None:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT scale, min_zoom FROM map_bounds.scale_band ORDER BY min_zoom"
+            )
+        bands = {}
+        for i, row in enumerate(rows):
+            upper = rows[i + 1]["min_zoom"] - 1 if i + 1 < len(rows) else _FULL_RANGE[1]
+            bands[row["scale"]] = (row["min_zoom"], upper)
+        _bands = bands
+    return _bands
+
+
+def band_for_zoom(bands: dict[str, tuple[int, int]], z: int) -> str:
+    for scale, (lo, hi) in bands.items():
+        if lo <= z <= hi:
+            return scale
+    return next(reversed(bands))
 
 
 class InvalidationRequest(BaseModel):
@@ -114,20 +132,10 @@ async def invalidate_l1_cache(
 
 # ─── Footprints tile layer (for the cache UI) ─────────────────────────────────
 # Shows the maps composited into the carto layer at a given zoom, picking the
-# scale band the same way tile_layers.carto_slim does. Two modes: "all" (full
+# scale band from `map_bounds.scale_band`, as every tile route does. Two modes: "all" (full
 # source footprints) and "active" (the realized topological faces actually
 # rendered). `dz` shifts the band so footprints appear at a lower zoom than the
 # maps themselves display, making them easier to click before they shrink away.
-
-
-def _scale_band(z: int) -> str:
-    if z < 3:
-        return "tiny"
-    if z < 6:
-        return "small"
-    if z < 9:
-        return "medium"
-    return "large"
 
 
 _FOOTPRINTS_TILE = """
@@ -165,7 +173,13 @@ _FOOTPRINTS_ACTIVE = """
     JOIN map_bounds.map_layer ml ON f.map_layer = ml.id
     JOIN tile ON ST_Intersects(f.geometry, tile.projected_envelope)
     JOIN maps.sources s ON f.map_id = s.source_id
-    WHERE ml.slug = :band AND s.status_code = 'active'
+    -- The faces `carto` draws for the band: its member's at that scale.
+    WHERE ml.id = map_bounds.face_layer_for(
+        map_bounds.source_id('carto'),
+        (SELECT min_zoom FROM map_bounds.scale_band
+         WHERE scale = CAST(:band AS maps.map_scale))
+      )
+      AND s.status_code = 'active'
 """
 
 
@@ -174,7 +188,7 @@ async def footprints_tile(
     request: Request, z: int, x: int, y: int, mode: str = "all", dz: int = 0
 ):
     """Vector tile of carto map footprints for the band visible at zoom z+dz."""
-    band = _scale_band(z + dz)
+    band = band_for_zoom(await scale_bands(request.app.state.pool), z + dz)
     source = _FOOTPRINTS_ACTIVE if mode == "active" else _FOOTPRINTS_ALL
     q, p = render(_FOOTPRINTS_TILE.format(source=source), z=z, x=x, y=y, band=band)
     async with request.app.state.pool.acquire() as conn:
@@ -205,7 +219,8 @@ async def _delete_l2_for_sources(pool, source_ids: list[int]) -> int:
             # No faces compiled for this source → nothing cached to expire.
             if row is None or row["bbox"] is None:
                 continue
-            min_zoom, max_zoom = _SCALE_BANDS.get(row["scale"], _FULL_RANGE)
+            bands = await scale_bands(pool)
+            min_zoom, max_zoom = bands.get(row["scale"], _FULL_RANGE)
             total += await _delete_l2_tiles(conn, row["bbox"], min_zoom, max_zoom)
     return total
 
@@ -216,7 +231,14 @@ async def _bbox_for_layer(pool, layer_slug: str):
             FROM (
                 SELECT ST_Extent(geometry) AS ext
                 FROM map_bounds_topology.map_face
-                WHERE map_layer = map_bounds.layer_id(:slug)
+                -- The layers the source named by `slug` draws at any zoom: its
+                -- own, or a multiscale one's members'.
+                WHERE map_layer IN (
+                    SELECT map_bounds.face_layer_for(
+                        map_bounds.source_id(:slug), sb.min_zoom
+                    )
+                    FROM map_bounds.scale_band sb
+                )
             ) t""",
         slug=layer_slug,
     )

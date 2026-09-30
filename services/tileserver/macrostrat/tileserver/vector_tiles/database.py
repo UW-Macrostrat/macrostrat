@@ -24,6 +24,10 @@ class PostgresSettings(BaseSettings):
     db_max_conn_size: int = 10
     db_max_queries: int = 50000
     db_max_inactive_conn_lifetime: float = 60
+    #: Milliseconds before Postgres cancels a statement. A runaway tile otherwise
+    #: holds its connection for minutes, and ten of them starve every other
+    #: layer; the slowest tile measured uncached took 28 s.
+    db_statement_timeout: int = 60_000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -45,6 +49,10 @@ async def connect_to_db(
     if settings is None:
         settings = PostgresSettings()
 
+    server_settings = {
+        "statement_timeout": str(settings.db_statement_timeout),
+        **kwargs.pop("server_settings", {}),
+    }
     app.state.pool = await asyncpg.create_pool_b(
         settings.database_url,
         min_size=settings.db_min_conn_size,
@@ -52,6 +60,7 @@ async def connect_to_db(
         max_queries=settings.db_max_queries,
         max_inactive_connection_lifetime=settings.db_max_inactive_conn_lifetime,
         init=_init_connection,
+        server_settings=server_settings,
         **kwargs,
     )
 

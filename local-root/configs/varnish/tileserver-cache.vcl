@@ -95,6 +95,24 @@ sub vcl_recv {
         set req.http.X-Cache = "bypass";
         return (pass);
     }
+
+    # Guarded map tiles (`/map/<slug>/{z}/{x}/{y}`) are cached despite their
+    # `Authorization` header, which the built-in rules would otherwise pass
+    # straight to the backend. The token is cost control: the tileserver spends
+    # a render only for a known caller, and a cached tile costs no render. So a
+    # hit is served to anyone, and a miss goes to the tileserver, which checks
+    # the token before it touches the database. The header is not part of the
+    # cache key, so every caller shares one copy of each tile.
+    #
+    # Interim, by decision (2026-09-28): the intent is to verify the token here
+    # instead -- it is HS256, an HMAC-SHA256 over the header and payload plus an
+    # `exp` check -- once the image carries an HMAC VMOD, so that tokens can
+    # gate access and not only cost. Until then, nothing that must stay private
+    # may be served under `/map/`.
+    if ((req.method == "GET" || req.method == "HEAD") &&
+        req.url ~ "^/map/[^/]+/[0-9]+/[0-9]+/[0-9]+(\?.*)?$") {
+        return (hash);
+    }
 }
 
 sub vcl_deliver {
@@ -115,6 +133,16 @@ sub vcl_backend_response {
     # so it stays on the ban list and is re-tested against every request for the
     # life of the process; one over obj.* is retired once it has been applied.
     set beresp.http.X-Ban-Url = bereq.url;
+
+    # A guarded tile is looked up whatever its token (vcl_recv), so only a tile
+    # may be stored: a 401 for a caller without one, or any other error, cached
+    # under the tile's URL would be served to callers who have one. Marked
+    # hit-for-miss, so each such request goes to the backend on its own.
+    if (bereq.url ~ "^/map/[^/]+/[0-9]+/[0-9]+/[0-9]+" && beresp.status != 200) {
+        set beresp.uncacheable = true;
+        set beresp.ttl = 30s;
+        return (deliver);
+    }
 
     # Set a long TTL for tiles
     if (bereq.url ~ ".*\.(png|mvt)$") {

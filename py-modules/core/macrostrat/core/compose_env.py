@@ -1,7 +1,8 @@
 """Command-time environment for the local docker-compose stack.
 
-The compose file interpolates ``POSTGRES_*``, ``SECRET_KEY``, ``STORAGE_*`` and
-``ELEVATION_DATABASE_URL`` from the process environment, and the database
+The compose file interpolates ``POSTGRES_*``, ``SECRET_KEY``,
+``TILESERVER_SECRET_KEY``, ``STORAGE_*`` and ``ELEVATION_DATABASE_URL`` from the
+process environment, and the database
 container initialises its password from ``POSTGRES_PASSWORD``. Those values
 have to be plaintext when ``docker compose`` runs. A literal config exports
 them at import; a vaulted one deliberately does not (see
@@ -14,6 +15,8 @@ no injection architecture: ``os.environ`` is set and ``docker compose``
 inherits it, exactly as it always has.
 """
 
+import hmac
+from hashlib import sha256
 from os import environ
 from typing import Callable, Dict, Optional
 
@@ -40,6 +43,27 @@ DATABASE_VARIABLES = (
     "MACROSTRAT_DB_PORT",
     "MACROSTRAT_DATABASE_URL",
 )
+
+
+#: The legacy `S3_*` credentials api_v3 and the worker read, and the `STORAGE_*`
+#: variable each falls back to. `S3_HOST` falls back to the storage endpoint.
+S3_CREDENTIALS = {
+    "S3_ACCESS_KEY": "STORAGE_ACCESS_KEY",
+    "S3_SECRET_KEY": "STORAGE_SECRET_KEY",
+}
+
+
+#: The label `TILESERVER_SECRET_KEY` is derived under. Changing it is a rotation.
+TILESERVER_KEY_LABEL = "macrostrat:tileserver-secret-key:v1"
+
+
+def derive_tileserver_secret_key(secret_key: str) -> str:
+    """The tile-token key for a stack that sets none: HMAC-SHA256 of a fixed
+    label under `SECRET_KEY`. One-way, so the tileserver learns nothing that
+    signs a session."""
+    return hmac.new(
+        secret_key.encode("utf-8"), TILESERVER_KEY_LABEL.encode("utf-8"), sha256
+    ).hexdigest()
 
 
 def export_compose_environment(settings, env: Optional[Dict[str, str]] = None):
@@ -104,6 +128,13 @@ def export_compose_environment(settings, env: Optional[Dict[str, str]] = None):
 
         attempt("SECRET_KEY", signing_key)
 
+    if "TILESERVER_SECRET_KEY" not in env and env.get("SECRET_KEY"):
+        # Locally the tile-token key is derived, so the stack needs no second
+        # secret; deployments set their own. The web server derives the same
+        # value when it is unset (`src/_utils/tile-token.server.ts` in web).
+        env["TILESERVER_SECRET_KEY"] = derive_tileserver_secret_key(env["SECRET_KEY"])
+        exported.append("TILESERVER_SECRET_KEY")
+
     if "STORAGE_ACCESS_KEY" not in env or "STORAGE_SECRET_KEY" not in env:
 
         def storage():
@@ -116,6 +147,30 @@ def export_compose_environment(settings, env: Optional[Dict[str, str]] = None):
             return True
 
         attempt("STORAGE_*", storage)
+
+    if any(name not in env for name in ("S3_HOST", *S3_CREDENTIALS)):
+
+        def s3_from_storage():
+            filled = []
+            for name, source in S3_CREDENTIALS.items():
+                if name in env or source not in env:
+                    continue
+                env[name] = env[source]
+                filled.append(name)
+            if "S3_HOST" not in env:
+                endpoint = settings.storage_endpoint()
+                if endpoint is not None:
+                    env["S3_HOST"] = endpoint.host
+                    filled.append("S3_HOST")
+            if filled:
+                log.warning(
+                    "%s not set; falling back to the storage endpoint and STORAGE_* "
+                    "credentials. Set them in local-root/.env to use a different store.",
+                    ", ".join(filled),
+                )
+            return bool(filled)
+
+        attempt("S3_*", s3_from_storage)
 
     if exported:
         log.info(

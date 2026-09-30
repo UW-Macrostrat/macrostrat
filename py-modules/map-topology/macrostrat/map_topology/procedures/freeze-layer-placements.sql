@@ -23,16 +23,16 @@
   `compilations lint`), not enforced behind the operator.
 */
 INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
-SELECT ml.source_id, s.source_id, coalesce(s.new_priority, 0)
+SELECT ls.source_id, s.source_id, coalesce(s.new_priority, 0)
 FROM maps.sources s
-JOIN map_bounds.map_layer ml
-  ON ml.slug = s.scale
+/* The scale compilation of the map's scale: `large` for a large map. */
+JOIN maps.sources ls
+  ON ls.slug = s.scale
 /* Only maps actually in the topology. A source with a matching scale but no
    boundary was never in the layer. */
 JOIN map_bounds.map_area a
   ON a.source_id = s.source_id
 WHERE s.scale IS NOT NULL
-  AND ml.source_id IS NOT NULL
   AND s.superseded_by IS NULL
   /* A mosaic member reached a layer only by an authored edge, which is already
      present and must not be duplicated by a scale-derived one. */
@@ -41,8 +41,9 @@ WHERE s.scale IS NOT NULL
      had no direct edge of its own to freeze. */
   AND NOT EXISTS (
     SELECT 1 FROM map_bounds.compilation_member cm
+    JOIN maps.sources c ON c.source_id = cm.compilation_id
     WHERE cm.member_id = s.source_id
-      AND NOT map_bounds.has_faces(cm.compilation_id)
+      AND NOT c.slug = ANY (enum_range(NULL::maps.map_scale)::text[])
       AND NOT map_bounds.is_mosaic(cm.compilation_id)
   )
 ON CONFLICT (compilation_id, member_id) DO NOTHING;

@@ -16,13 +16,12 @@ from pydantic import BaseModel
 class MapUnit(BaseModel):
     """One mapped polygon covering the requested location."""
 
-    #: The served layer this answer came from, null when the request named a map
-    #: or compilation directly rather than a layer.
+    #: The compilation whose layer's faces this polygon was found through --
+    #: for `carto`, its member at the zoom's scale (`carto-medium`). Null when
+    #: the request named a map, or a compilation without faces, whose own
+    #: polygons were read.
     map_layer: Optional[str] = None
-    #: Whether this is the layer the request's zoom would have drawn. A request
-    #: against a stack gets every covering layer's answer; this marks the one
-    #: that matches, without hiding the others.
-    is_current_layer: bool = False
+    map_layer_id: Optional[int] = None
     #: The solved face the polygon's map owns here. Null outside a layer.
     map_face_id: Optional[int] = None
 

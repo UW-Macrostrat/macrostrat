@@ -13,7 +13,9 @@ file next to the class, so sharing a directory would run unrelated migrations.
 from . import (  # noqa: F401
     carto_v1_compilation,
     compilation_assembly_mode,
+    compilation_multiscale,
     layer_bounds,
+    layers_by_compilation,
     map_priority_columns,
     map_topo_adopt,
     map_topo_pieces,
@@ -23,11 +25,13 @@ from . import (  # noqa: F401
 
 __all__ = [
     "carto_v1_compilation",
+    "layers_by_compilation",
     "source_id_rename",
     "relation_trigger_repair",
     "map_topo_pieces",
     "map_topo_adopt",
     "layer_bounds",
     "compilation_assembly_mode",
+    "compilation_multiscale",
     "map_priority_columns",
 ]

@@ -9,6 +9,9 @@ from macrostrat.map_topology import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import (
     MacrostratTopologyManager,
+    get_held_maps,
+    get_map_list,
+    get_retired_maps,
     proc,
     update_maps,
 )
@@ -85,6 +88,14 @@ class TestMapTopology:
         # Check that we have two maps in the map_area table
         assert n_map_areas(db) == 2
 
+        # `large` and `medium` are unserved in the carto tree. Served here, so a
+        # face below `carto-large` is credited to them, and the member faces
+        # below have something to read.
+        db.run_query(
+            "UPDATE maps.sources SET is_served = true WHERE slug IN ('large', 'medium')"
+        )
+        db.session.commit()
+
         # Placement is authored. Nothing infers a layer from `scale` any more, so
         # a map that is never placed is ingested, assembled, and served nowhere --
         # which is why every test that adds a source also says where it goes.
@@ -123,22 +134,23 @@ class TestMapTopology:
                 """
                 SELECT count(*)
                 FROM map_bounds.compilation_member cm
-                JOIN map_bounds.map_layer ml ON ml.source_id = cm.compilation_id
-                WHERE ml.slug = 'large'
+                JOIN maps.sources c ON c.source_id = cm.compilation_id
+                WHERE c.slug = 'large'
                 """
             ).scalar()
             == 2
         )
 
-        # And they resolve in `large`, plus in `carto-large` by way of it --
-        # rows the flattening generates, which is what lets a composite layer be
-        # solved rather than copied.
+        # And they resolve in `large`, plus in `carto-large` by way of it -- rows
+        # the flattening generates from `carto-large`'s membership. `carto`, the
+        # multiscale compilation above, has no layer of its own.
         assert set(
             db.run_query(
                 """
-                SELECT DISTINCT ml.slug
+                SELECT DISTINCT s.slug
                 FROM map_bounds.map_priority mp
                 JOIN map_bounds.map_layer ml ON ml.id = mp.map_layer
+                JOIN maps.sources s ON s.source_id = ml.source_id
                 """
             ).scalars()
         ) == {"large", "carto-large"}
@@ -147,12 +159,13 @@ class TestMapTopology:
         # Check that we have the appropriate number of faces
         insp = TopologyInspector(ctx)
         assert insp.n_face_primitives() == 2
-        mgr = TopologyManager(ctx)
 
-        # Update topology faces
-        mgr.update()
+        # Update topology faces. The host pipeline, not the library's `update()`:
+        # a face layer sync has just created is marked for the dissolve by
+        # `mark-stale-identity`, which only the host runs.
+        MacrostratTopologyManager(ctx).update_full()
 
-        assert insp.n_faces() == 2
+        assert insp.n_faces(map_layer="Large") == 2
 
         # Sanity check that faces have been correctly identified
         args = (ctx.database, insp.map_layer_id("Large"))
@@ -180,7 +193,7 @@ class TestMapTopology:
 
         update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update()
+        MacrostratTopologyManager(ctx).update_full()
 
         map_layer = insp.map_layer_id("Large")
         cases = [
@@ -218,7 +231,7 @@ class TestMapTopology:
         # After reprioritization, the center face should be at priority 10, so it should occupy the two faces on either side of it
         # update_maps(mgr, bulk=True)
         assert insp.n_face_primitives() == 5
-        mgr.update()
+        MacrostratTopologyManager(ctx).update_full()
 
         # Check map identity for shared areas
 
@@ -274,7 +287,7 @@ class TestMapTopology:
         mgr = MacrostratTopologyManager(ctx)
         update_maps(mgr, subdivide_vertices=32)
         set_priority(db, "medium", [(1004, 0)])
-        mgr.update()
+        mgr.update_full()
 
         insp = TopologyInspector(ctx)
         assert n_base_faces(db) == 4
@@ -326,9 +339,13 @@ class TestMapTopology:
         insp = TopologyInspector(ctx)
         assert insp.n_faces(map_layer="Large") == 3
         assert insp.n_faces(map_layer="Medium") == 1
-        assert insp.n_faces(map_layer="Carto large") == 4
-        assert insp.n_faces(map_layer="Carto medium") == 1
-        assert insp.n_faces(map_layer="Carto small") == 0
+        # The carto tiers, each solved as a layer of its own. Beside the map
+        # faces, a layer holds a member face for each served member it presents:
+        # `large` and `medium`, served here (in the carto tree they are not, and
+        # are skipped).
+        assert n_faces(db, "carto-large") == (4, 2)
+        assert n_faces(db, "carto-medium") == (1, 1)
+        assert n_faces(db, "carto-small") == (0, 0)
 
         # Solved, not copied: an overlaid face carries a back-reference to the
         # member face it was cloned from.
@@ -338,6 +355,56 @@ class TestMapTopology:
                 SELECT count(*) FROM map_bounds_topology.map_face mf
                 WHERE map_bounds.is_composite_layer(mf.map_layer)
                   AND mf.source_id IS NOT NULL
+                """
+            ).scalar()
+            == 0
+        )
+
+    def test_one_barrier_layer(self, ctx):
+        """Every noded map records its boundary in the one barrier layer, which
+        every solved layer composes -- so a map's bounds are a barrier in each
+        layer that solves it, whatever its scale. The barrier layer is never
+        solved, and neither a multiscale compilation nor one without members has
+        a layer."""
+        db = ctx.database
+        barrier = db.run_query("SELECT map_bounds.barrier_layer()").scalar()
+        assert barrier is not None
+
+        misplaced = db.run_query(
+            """
+            SELECT count(*) FROM map_bounds.map_area
+            WHERE topo IS NOT NULL
+              AND map_layer IS DISTINCT FROM map_bounds.barrier_layer()
+            """
+        ).scalar()
+        assert misplaced == 0
+
+        solved = set(
+            db.run_query(
+                "SELECT DISTINCT map_layer FROM map_bounds.map_priority"
+            ).scalars()
+        )
+        composing = set(
+            db.run_query(
+                """
+                SELECT parent_id FROM map_bounds.map_layer_composition
+                WHERE member_id = map_bounds.barrier_layer()
+                """
+            ).scalars()
+        )
+        assert solved and composing == solved
+        assert barrier not in solved
+
+        # `carto` draws its members' layers; `tiny` and `small` hold nothing here.
+        assert (
+            db.run_query(
+                """
+                SELECT count(*) FROM map_bounds.map_layer
+                WHERE source_id IN (
+                  map_bounds.source_id('carto'),
+                  map_bounds.source_id('tiny'),
+                  map_bounds.source_id('small')
+                )
                 """
             ).scalar()
             == 0
@@ -363,6 +430,118 @@ class TestMapTopology:
             "SELECT ST_XMin(geometry), ST_XMax(geometry) FROM map_bounds.map_area WHERE source_id = 1001"
         ).first()
         assert (xmin, xmax) == (-180, 180)
+
+    def test_multiscale_carto(self, ctx):
+        """`carto` is one multiscale compilation over the four served tiers, and
+        a request at a zoom is answered by the member whose scale band contains
+        it. The bands live in `scale_band` alone."""
+        db = ctx.database
+
+        mode, members = db.run_query(
+            """
+            SELECT c.assembly_mode,
+              (SELECT array_agg(m.slug ORDER BY m.scale::maps.map_scale)
+               FROM map_bounds.compilation_member cm
+               JOIN maps.sources m ON m.source_id = cm.member_id
+               WHERE cm.compilation_id = c.source_id)
+            FROM map_bounds.compilation c
+            JOIN maps.sources s ON s.source_id = c.source_id
+            WHERE s.slug = 'carto'
+            """
+        ).first()
+        assert mode == "multiscale"
+        assert members == ["tiny", "carto-small", "carto-medium", "carto-large"]
+
+        served = db.run_query(
+            """
+            SELECT z, s.slug
+            FROM unnest(ARRAY[0, 2, 3, 5, 6, 8, 9, 18]) z
+            JOIN maps.sources s
+              ON s.source_id = map_bounds.serving_source(map_bounds.source_id('carto'), z)
+            ORDER BY z
+            """
+        ).all()
+        assert [slug for _, slug in served] == [
+            "tiny",
+            "tiny",
+            "carto-small",
+            "carto-small",
+            "carto-medium",
+            "carto-medium",
+            "carto-large",
+            "carto-large",
+        ]
+
+        # Anything that is not multiscale answers for itself at every zoom.
+        (same,) = db.run_query(
+            "SELECT map_bounds.serving_source(map_bounds.source_id('carto-large'), 0)"
+        ).first()
+        assert (
+            same == db.run_query("SELECT map_bounds.source_id('carto-large')").scalar()
+        )
+
+        # `carto` has no faces of its own; its tiers do, served or not.
+        carto_faces, served, tier_faces = db.run_query(
+            """
+            SELECT map_bounds.has_faces(map_bounds.source_id('carto')),
+                   map_bounds.is_served(map_bounds.source_id('carto-large')),
+                   map_bounds.has_faces(map_bounds.source_id('carto-large'))
+            """
+        ).first()
+        assert (carto_faces, served, tier_faces) == (False, False, True)
+        # The zoom picks the member, and its layer is what `carto` draws. Nothing
+        # here is small-scale, so `carto-small`'s layer has no rankings and no
+        # faces.
+        for z, member, solved in [
+            (5, "carto-small", False),
+            (8, "carto-medium", True),
+            (14, "carto-large", True),
+        ]:
+            layer, row = db.run_query(
+                """
+                SELECT map_bounds.face_layer_for(map_bounds.source_id('carto'), :z),
+                  (SELECT id FROM map_bounds.map_layer
+                   WHERE source_id = map_bounds.source_id(:member))
+                """,
+                dict(z=z, member=member),
+            ).first()
+            if solved:
+                assert layer == row, z
+            else:
+                assert layer is None, z
+
+        # Bounds: global by definition, seeded beside the layers'.
+        opening, xmin, xmax = db.run_query(
+            """
+            SELECT o.operation, ST_XMin(a.geometry), ST_XMax(a.geometry)
+            FROM map_bounds.boundary_op o
+            JOIN map_bounds.map_area a ON a.source_id = o.source_id
+            WHERE o.source_id = map_bounds.source_id('carto') AND o.position = 0
+            """
+        ).first()
+        assert opening == "world"
+        assert (xmin, xmax) == (-180, 180)
+
+        # Idents: a slug, an id as text, or nothing.
+        assert (
+            db.run_query(
+                "SELECT map_bounds.resolve_source(map_bounds.source_id('carto')::text)"
+            ).scalar()
+            == db.run_query("SELECT map_bounds.source_id('carto')").scalar()
+        )
+        assert (
+            db.run_query("SELECT map_bounds.resolve_source('no-such')").scalar() is None
+        )
+
+        # The legacy alias reads `carto.polygons`, empty on a fresh database, and
+        # an unknown name is nothing rather than an error.
+        point = "ST_SetSRID(ST_MakePoint(0, 0), 4326)"
+        for ident in ("sys:carto-legacy", "no-such", "carto"):
+            n = db.run_query(
+                f"SELECT count(*) FROM map_bounds.units_at(:ident, {point}, 10)",
+                dict(ident=ident),
+            ).scalar()
+            assert n == 0, ident
 
     def test_virtual_compilation(self, ctx):
         """A compilation with no polygons of its own is descended through.
@@ -394,9 +573,9 @@ class TestMapTopology:
         db.run_query(
             """
             DELETE FROM map_bounds.compilation_member cm
-            USING map_bounds.map_layer ml
-            WHERE ml.slug = 'large'
-              AND cm.compilation_id = ml.source_id
+            USING maps.sources c
+            WHERE c.slug = 'large'
+              AND cm.compilation_id = c.source_id
               AND cm.member_id IN (1001, 1002)
             """
         )
@@ -455,6 +634,63 @@ class TestMapTopology:
         assert get_identity_for_area(db, layer, Point(0.5, 0.5)) == 1001
         assert get_identity_for_area(db, layer, Point(3.5, 0.5)) == 1002
 
+    def test_retired_mosaic_member(self, ctx):
+        """A noded map that becomes a mosaic-only member is released by update.
+
+        Its extent is its bounds from then on, so its topogeometry is dead weight
+        -- SGMC's members were noded before mosaics existed and kept theirs.
+        """
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1007, 'test_source_7', true, 'active', 'large')
+            """
+        )
+        add_polygons(db, {1007: "ST_MakeEnvelope(10, 10, 11, 11, 4326)"})
+        update_maps(mgr)
+
+        def held():
+            return db.run_query(
+                """
+                SELECT topo IS NOT NULL OR EXISTS (
+                  SELECT 1 FROM map_bounds.map_topo t WHERE t.source_id = 1007
+                ) FROM map_bounds.map_area WHERE source_id = 1007
+                """
+            ).scalar()
+
+        assert held()
+        assert 1007 in {m.map_id for m in get_map_list(db)}
+
+        for statement in (
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1008, 'test_source_8', false, 'active', 'large')
+            """,
+            """
+            INSERT INTO map_bounds.compilation (source_id, assembly_mode)
+            VALUES (1008, 'mosaic')
+            """,
+            """
+            INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)
+            VALUES (1008, 1007, 0)
+            """,
+        ):
+            db.run_query(statement)
+        db.session.commit()
+
+        assert 1007 not in {m.map_id for m in get_map_list(db)}
+        assert 1007 in {m.map_id for m in get_retired_maps(db)}
+        # `topo remove` can still reach it.
+        assert 1007 in {m.map_id for m in get_held_maps(db)}
+
+        summary = update_maps(mgr)
+        assert summary.maps_released == 1
+        assert not held()
+        assert get_retired_maps(db) == []
+
 
 @dataclass
 class MapFaceTestCase:
@@ -480,11 +716,12 @@ class MapFaceTestCase:
 
 def n_map_areas(db):
     """Count maps, not compilations -- every compilation has a `map_area` row too,
-    composed from its members' bounds."""
+    composed from its members' bounds, and the scale compilations have one before
+    they have members."""
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds.map_area a
-        WHERE NOT map_bounds.has_faces(a.source_id)
+        WHERE map_bounds.has_content(a.source_id)
           AND NOT EXISTS (
             SELECT 1 FROM map_bounds.compilation_member cm
             WHERE cm.compilation_id = a.source_id
@@ -520,9 +757,9 @@ def set_priority(
             """
             UPDATE map_bounds.compilation_member cm
             SET priority = :default_priority
-            FROM map_bounds.map_layer ml
-            WHERE ml.slug = :layer
-              AND cm.compilation_id = ml.source_id
+            FROM maps.sources c
+            WHERE c.slug = :layer
+              AND cm.compilation_id = c.source_id
             """,
             dict(default_priority=default, layer=map_layer),
         )
@@ -530,9 +767,9 @@ def set_priority(
         """
         INSERT INTO map_bounds.compilation_member
             (compilation_id, member_id, priority)
-        SELECT ml.source_id, :map_id, :priority
-        FROM map_bounds.map_layer ml
-        WHERE ml.slug = :layer
+        SELECT c.source_id, :map_id, :priority
+        FROM maps.sources c
+        WHERE c.slug = :layer
         ON CONFLICT (compilation_id, member_id)
         DO UPDATE SET priority = EXCLUDED.priority
         """,
@@ -545,13 +782,15 @@ def set_priority(
 
 
 def n_base_faces(db):
-    """Faces in ordinary layers. `TopologyInspector.n_faces()` counts every layer,
-    and composite layers are solved now, so a bare total no longer isolates the
-    base ones."""
+    """Faces in the scale compilations' layers (`large`, `medium`), not the carto
+    tiers'. `TopologyInspector.n_faces()` counts every layer."""
     return db.run_query(
         """
         SELECT count(*) FROM map_bounds_topology.map_face mf
-        WHERE NOT map_bounds.is_composite_layer(mf.map_layer)
+        JOIN map_bounds.map_layer ml ON ml.id = mf.map_layer
+        WHERE ml.source_id IN (
+          map_bounds.source_id('large'), map_bounds.source_id('medium')
+        )
         """
     ).scalar()
 
@@ -567,6 +806,23 @@ def add_polygons(db, geometries: dict[int, str], *, scale: str = "large"):
             dict(source_id=source_id, scale=scale),
         )
     db.session.commit()
+
+
+def n_faces(db, compilation: str) -> tuple[int, int]:
+    """A layer's map faces and member faces, apart. A member face belongs to a
+    compilation (`sync-unit-faces`), which has no content of its own."""
+    row = db.run_query(
+        """
+        SELECT
+          count(*) FILTER (WHERE map_bounds.has_content(mf.map_id)),
+          count(*) FILTER (WHERE NOT map_bounds.has_content(mf.map_id))
+        FROM map_bounds_topology.map_face mf
+        JOIN map_bounds.map_layer ml ON ml.id = mf.map_layer
+        WHERE ml.source_id = map_bounds.source_id(:compilation)
+        """,
+        dict(compilation=compilation),
+    ).one()
+    return tuple(row)
 
 
 def get_identity_for_area(db, map_layer: int, geometry):

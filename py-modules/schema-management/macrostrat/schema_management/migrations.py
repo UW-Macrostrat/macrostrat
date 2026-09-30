@@ -658,7 +658,7 @@ def _print_status(name, status: MigrationState, *, name_max_width=40):
     elif status == MigrationState.ALWAYS_APPLY:
         print("[yellow] always applied[/yellow]")
     elif status == MigrationState.DISALLOWED:
-        print("[red]cannot be applied without --force or --data-changes[/red]")
+        print("[red]cannot be applied without --force or --data[/red]")
     elif status == MigrationState.NOT_ENV_READY:
         cur_env = _get_active_env()
         print(f"[red]not {cur_env} ready[/red]")

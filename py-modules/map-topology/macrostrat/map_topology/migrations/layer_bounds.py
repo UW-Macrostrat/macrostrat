@@ -4,7 +4,7 @@ from macrostrat.database import Database
 from macrostrat.schema_management import Migration
 
 from ..bounds.compile import compile_bounds
-from ..bounds.layers import layer_bounds, seed_layer_openings
+from ..bounds.layers import SCALE_COMPILATIONS, layer_bounds, seed_layer_openings
 
 
 def _operations_declared(db: Database) -> bool:
@@ -20,9 +20,11 @@ def _operations_declared(db: Database) -> bool:
 
 
 def _layers_registered(db: Database) -> bool:
+    """The scale compilations exist. Their face layers, if any, come from sync."""
     return (
         db.run_query(
-            "SELECT EXISTS (SELECT 1 FROM map_bounds.map_layer WHERE source_id IS NOT NULL)"
+            "SELECT EXISTS (SELECT 1 FROM maps.sources WHERE slug = ANY(:slugs))",
+            dict(slugs=list(SCALE_COMPILATIONS)),
         ).scalar()
         is True
     )
@@ -33,7 +35,9 @@ def _all_opened(db: Database) -> bool:
 
 
 def _all_built(db: Database) -> bool:
-    return all(l.complete for l in layer_bounds(db))
+    """The scale compilations' bounds. Multiscale ones are `compilation-multiscale`'s,
+    which depends on this migration, so counting them here would block both."""
+    return all(l.complete for l in layer_bounds(db) if not l.is_multiscale)
 
 
 class LayerBoundsMigration(Migration):

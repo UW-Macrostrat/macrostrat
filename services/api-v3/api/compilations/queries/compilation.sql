@@ -43,12 +43,12 @@ SELECT
   s.url,
   s.status_code,
   s.is_finalized,
-  ml.id IS NOT NULL AS has_faces,
+  map_bounds.has_faces(s.source_id) AS has_faces,
   map_bounds.is_served(s.source_id) AS is_served,
   map_bounds.is_global(s.source_id) AS is_global,
   ml.id AS map_layer_id,
-  ml.min_zoom,
-  ml.max_zoom,
+  zr.min_zoom,
+  zr.max_zoom,
   ml.description AS layer_description,
   n.n_members > 0 AS is_compilation,
   n.is_materialized,
@@ -66,10 +66,31 @@ SELECT
   cs.current_member_hash::text AS current_member_hash,
   ma.area_km::float AS area_km,
   ma.map_layer AS placed_in_layer_id,
+  /* Supersession both ways: what replaced this map, and what it replaced. */
+  s.superseded_by,
+  sup.slug AS superseded_by_slug,
+  coalesce(sps.supersedes, '[]'::jsonb) AS supersedes,
+  /* [west, south, east, north], for a client to fit the map to. */
+  CASE WHEN ma.geometry IS NOT NULL THEN jsonb_build_array(
+    ST_XMin(ma.geometry), ST_YMin(ma.geometry),
+    ST_XMax(ma.geometry), ST_YMax(ma.geometry))
+  END AS bounds,
   coalesce(par.parents, '[]'::jsonb) AS parents,
   coalesce(mem.members, '[]'::jsonb) AS members
 FROM target t
 JOIN maps.sources s ON s.source_id = t.source_id
+/* The zoom band the compilation's `scale` answers for, from `map_bounds.scale_band`
+   (the one home for the thresholds): `max_zoom` is null for the last band, and both
+   are null for a compilation without a scale, such as the multiscale `carto`. */
+LEFT JOIN LATERAL (
+  SELECT
+    sb.min_zoom,
+    (SELECT min(nb.min_zoom) - 1
+     FROM map_bounds.scale_band nb
+     WHERE nb.min_zoom > sb.min_zoom) AS max_zoom
+  FROM map_bounds.scale_band sb
+  WHERE sb.scale::text = s.scale
+) zr ON true
 CROSS JOIN LATERAL (
   SELECT
     map_bounds.is_materialized(s.source_id) AS is_materialized,
@@ -80,6 +101,14 @@ LEFT JOIN map_bounds.map_layer ml ON ml.source_id = s.source_id
 LEFT JOIN map_bounds.compilation c ON c.source_id = s.source_id
 LEFT JOIN map_bounds.compilation_sync cs ON cs.source_id = s.source_id
 LEFT JOIN map_bounds.map_area ma ON ma.source_id = s.source_id
+LEFT JOIN maps.sources sup ON sup.source_id = s.superseded_by
+LEFT JOIN LATERAL (
+  SELECT jsonb_agg(jsonb_build_object(
+    'source_id', o.source_id, 'slug', o.slug, 'name', o.name
+  ) ORDER BY o.slug) AS supersedes
+  FROM maps.sources o
+  WHERE o.superseded_by = s.source_id
+) sps ON true
 CROSS JOIN LATERAL (
   SELECT count(*) AS n_sources
   FROM map_bounds.members_of(s.source_id, true) m
@@ -91,7 +120,7 @@ LEFT JOIN LATERAL (
     'slug', p.slug,
     'name', coalesce(p.name, pl.name),
     'priority', cm.priority,
-    'has_faces', pl.id IS NOT NULL,
+    'has_faces', map_bounds.has_faces(p.source_id),
     'is_served', map_bounds.is_served(p.source_id)
   ) ORDER BY p.slug) AS parents
   FROM map_bounds.compilation_member cm
@@ -106,7 +135,7 @@ LEFT JOIN LATERAL (
     'name', coalesce(m.name, mlr.name),
     'scale', m.scale,
     'priority', cm.priority,
-    'has_faces', mlr.id IS NOT NULL,
+    'has_faces', map_bounds.has_faces(m.source_id),
     'is_served', map_bounds.is_served(m.source_id),
     'is_compilation', mn.n_members > 0,
     'is_materialized', mn.is_materialized,
