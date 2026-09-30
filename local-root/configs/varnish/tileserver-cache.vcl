@@ -119,6 +119,16 @@ sub vcl_deliver {
     # Internal bookkeeping (see vcl_backend_response), not for clients.
     unset resp.http.X-Ban-Url;
 
+    # The tileserver answers any origin (`*`), but adds the header only when a
+    # request carries `Origin`, and a cached object keeps the headers of the
+    # request that filled it. Filled by a caller without one -- a script, a
+    # proxy -- a tile would then reach every browser without the header and be
+    # refused as a CORS failure. Restated here, on delivery, so no cached
+    # object depends on who asked for it first.
+    if (req.http.Origin && !resp.http.Access-Control-Allow-Origin) {
+        set resp.http.Access-Control-Allow-Origin = "*";
+    }
+
     if (obj.hits > 0) {
         # Add debug header to see if it's a HIT/MISS and the number of hits, disable when not needed
         set resp.http.X-Cache = "hit";

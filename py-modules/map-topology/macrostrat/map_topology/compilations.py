@@ -742,8 +742,10 @@ def prune(
 
 #: Every map a scale compilation would take: one with bounds and a usable
 #: scale, not superseded, not a mosaic member (which reaches a compilation only
-#: by an authored edge), and in no compilation yet. A scale compilation is never
-#: placed in itself, which `tiny` would be while it has no members.
+#: by an authored edge), and not yet anywhere under `carto`. Membership
+#: elsewhere does not count: the `-v1` snapshot holds most of the older maps,
+#: and a map only there is still unplaced in the live tree. A scale compilation
+#: is never placed in itself, which `tiny` would be while it has no members.
 #:
 #: By default only materialized maps -- sources holding their own polygons --
 #: and nothing registered as a compilation, memberless or not: carto's tiers and
@@ -752,6 +754,10 @@ def prune(
 #: `:include_compilations` lifts both. `:state`, when given, keeps maps whose
 #: `ingest_process.state` matches, as `--state` does for the processing commands.
 _PENDING_PLACEMENTS = """
+WITH in_carto AS MATERIALIZED (
+  SELECT m.source_id
+  FROM map_bounds.members_of(map_bounds.source_id('carto'), true) m
+)
 SELECT
   map_bounds.source_id(s.scale) AS compilation_id,
   s.scale AS compilation,
@@ -774,10 +780,7 @@ WHERE map_bounds.source_id(s.scale) IS NOT NULL
       )
     )
   )
-  AND NOT EXISTS (
-    SELECT 1 FROM map_bounds.compilation_member cm
-    WHERE cm.member_id = s.source_id
-  )
+  AND s.source_id NOT IN (SELECT source_id FROM in_carto)
   AND (
     CAST(:state AS text) IS NULL
     OR EXISTS (
@@ -824,9 +827,10 @@ def place_by_scale(
     The rule the retired `scale` sweep applied on every sync, run on request and
     written down as ordinary membership: a map with bounds and a `scale` of
     `tiny`, `small`, `medium` or `large` joins that compilation at its
-    `new_priority`. Only maps in no compilation at all are placed, so a map
-    already curated -- in `ngs-bedrock`, say, or placed by hand -- is left where
-    it is, as is any map placed once before. Only materialized maps are
+    `new_priority`. Only maps not yet anywhere under `carto` are placed, so a
+    map already in the tree -- through `ngs-bedrock`, say, or placed by hand --
+    is left where it is, as is any map placed once before. A map only in some
+    other compilation (most often the `-v1` snapshot) is placed. Only materialized maps are
     placed unless `--include-compilations` is given.
 
     Selects maps as the processing commands do: slugs, source ids or slug globs,
