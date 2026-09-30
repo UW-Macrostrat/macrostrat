@@ -80,11 +80,13 @@ class CompilationMultiscale(Migration):
 
     preconditions = [
         exists("map_bounds", "compilation", "compilation_member"),
-        lambda db: not (
-            _constraint_allows_multiscale(db)
-            and _is_multiscale("carto")(db)
-            and _is_multiscale("carto-v1", absent_ok=True)(db)
-            and _multiscale_bounds_built(db)
+        lambda db: (
+            not (
+                _constraint_allows_multiscale(db)
+                and _is_multiscale("carto")(db)
+                and _is_multiscale("carto-v1", absent_ok=True)(db)
+                and _multiscale_bounds_built(db)
+            )
         ),
     ]
     postconditions = [

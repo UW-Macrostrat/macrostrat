@@ -107,7 +107,9 @@ The library functions take a database, as elsewhere in `map-integration`:
 
 ```python
 from macrostrat.map_integration.package import (
-    ConflictAction, export_maps, import_package,
+    ConflictAction,
+    export_maps,
+    import_package,
 )
 
 export_maps(db, "ngs.gpkg", maps, staging_prefixes={"ngs"})
