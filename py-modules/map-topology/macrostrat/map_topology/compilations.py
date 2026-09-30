@@ -701,65 +701,67 @@ def prune(
     print(f"[green]{len(doomed)}[/] edges withdrawn")
 
 
+#: Every map a scale compilation would take: one with bounds and a usable
+#: scale, not superseded, not a mosaic member (which reaches a compilation only
+#: by an authored edge), and in no compilation yet. Compilations are never
+#: placed, though the scale compilations and carto's tiers carry a scale too.
+_PENDING_PLACEMENTS = """
+SELECT
+  map_bounds.source_id(s.scale) AS compilation_id,
+  s.scale AS compilation,
+  s.source_id AS member_id,
+  s.slug AS member,
+  coalesce(s.new_priority, 0) AS priority
+FROM maps.sources s
+JOIN map_bounds.map_area a ON a.source_id = s.source_id
+WHERE map_bounds.source_id(s.scale) IS NOT NULL
+  AND s.superseded_by IS NULL
+  AND NOT map_bounds.is_compilation(s.source_id)
+  AND NOT map_bounds.is_mosaic_member(s.source_id)
+  AND NOT EXISTS (
+    SELECT 1 FROM map_bounds.compilation_member cm
+    WHERE cm.member_id = s.source_id
+  )
+"""
+
+
 @cli.command("freeze-placements")
 def freeze_placements(
     apply: Annotated[
         bool, Option("--apply/--dry-run", help="Write the changes")
     ] = False,
 ):
-    """Check for layer placements the retired `scale` sweep left unwritten.
+    """Place every uncategorized map in the scale compilation for its scale.
 
-    Mostly a safety net, and usually a no-op. The sweep wrote ordinary
-    `compilation_member` rows, and those persist, so any database that ever ran
-    `compilations sync` or `topo update` under the old code already holds every
-    placement it would have made -- there is no gap to fill.
+    The rule the retired `scale` sweep applied on every sync, run once and
+    written down as ordinary membership: a map with bounds and a `scale` of
+    `tiny`, `small`, `medium` or `large` joins that compilation at its
+    `new_priority`. Only maps in no compilation at all are placed, so a map
+    already curated -- in `ngs-bedrock`, say, or placed by hand -- is left where
+    it is, as is any map placed once before.
 
-    Not a migration, for the same reason. The one database where this writes
-    anything is one with boundaries and layers that never ran the sweep at all,
-    which is a database built fresh under authored membership -- exactly where
-    placing every map by its scale is the behaviour being retired. Nothing in the
-    database distinguishes that from a genuine upgrade, so the choice belongs to
-    an operator who knows which one they have.
-
-    Safe to repeat: it only adds a missing edge, and never rewrites the priority
-    on one that already exists. Run it as a dry run when upgrading, to confirm
-    nothing was left behind.
+    Safe to repeat: it only adds edges. Run `topo update` afterwards to solve
+    the new members into their layers.
     """
     db = get_database()
-    pending = db.run_query(
-        """
-        SELECT ml.slug AS layer, s.slug AS member, coalesce(s.new_priority, 0) AS priority
-        FROM maps.sources s
-        JOIN map_bounds.map_layer ml ON ml.slug = s.scale
-        JOIN map_bounds.map_area a ON a.source_id = s.source_id
-        WHERE s.scale IS NOT NULL
-          AND ml.source_id IS NOT NULL
-          AND s.superseded_by IS NULL
-          AND NOT map_bounds.is_mosaic_member(s.source_id)
-          AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.member_id = s.source_id
-              AND NOT map_bounds.has_faces(cm.compilation_id)
-              AND NOT map_bounds.is_mosaic(cm.compilation_id)
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM map_bounds.compilation_member cm
-            WHERE cm.compilation_id = ml.source_id AND cm.member_id = s.source_id
-          )
-        ORDER BY 1, 2
-        """
-    ).all()
+    pending = db.run_query(_PENDING_PLACEMENTS + " ORDER BY 2, 4").all()
     if not pending:
-        print("[green]Every placement is already authored.[/]")
+        print("[green]Every map is already in a compilation.[/]")
         return
     for r in pending:
-        print(f"[green]+[/] {r.layer} <- {r.member} [dim](priority {r.priority})[/]")
+        print(
+            f"[green]+[/] {r.compilation} <- {r.member} [dim](priority {r.priority})[/]"
+        )
     if not apply:
         print(
             f"[yellow]{len(pending)}[/] placements would be written [dim](--apply)[/]"
         )
         return
-    db.run_sql(proc("freeze-layer-placements"))
+    db.run_query(
+        "INSERT INTO map_bounds.compilation_member (compilation_id, member_id, priority)"
+        f" SELECT compilation_id, member_id, priority FROM ({_PENDING_PLACEMENTS}) p"
+        " ON CONFLICT (compilation_id, member_id) DO NOTHING"
+    )
     db.session.commit()
     print(f"[green]{len(pending)}[/] placements written")
 
