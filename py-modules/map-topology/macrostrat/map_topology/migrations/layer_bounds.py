@@ -31,7 +31,9 @@ def _layers_registered(db: Database) -> bool:
 
 
 def _all_built(db: Database) -> bool:
-    return all(l.complete for l in layer_bounds(db))
+    """The scale compilations' bounds. Multiscale ones are `compilation-multiscale`'s,
+    which depends on this migration, so counting them here would block both."""
+    return all(l.complete for l in layer_bounds(db) if not l.is_multiscale)
 
 
 class LayerBoundsMigration(Migration):

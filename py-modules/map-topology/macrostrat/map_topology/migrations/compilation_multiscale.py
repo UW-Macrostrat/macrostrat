@@ -129,6 +129,20 @@ class CompilationMultiscale(Migration):
         database.session.commit()
 
         areas, openings = seed_layer_openings(database)
+        # A compilation that had members before it was multiscale was given a
+        # `compile` opening by `compile_bounds`, which the seed respects. A
+        # multiscale compilation is global by definition, so it opens with `world`.
+        database.run_sql(
+            """
+            UPDATE map_bounds.boundary_op o
+            SET operation = 'world', geometry = NULL, parameters = jsonb_build_object()
+            FROM map_bounds.compilation c
+            WHERE c.source_id = o.source_id
+              AND c.assembly_mode = 'multiscale'
+              AND o.position = 0
+              AND o.operation = 'compile'
+            """
+        )
         database.session.commit()
         print(f"Seeded {areas} boundary rows and {openings} openings")
         ids = [l.source_id for l in layer_bounds(database) if l.is_multiscale]

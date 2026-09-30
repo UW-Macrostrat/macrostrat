@@ -120,8 +120,8 @@ ALTER TABLE map_bounds.map_layer
   only once. Topological, because the library keeps
   barriers only for topological layers. */
 INSERT INTO map_bounds.map_layer (name, topological)
-VALUES ('Boundaries', true)
-ON CONFLICT (source_id) DO NOTHING;
+SELECT 'Boundaries', true
+WHERE NOT EXISTS (SELECT 1 FROM map_bounds.map_layer WHERE name = 'Boundaries');
 
 CREATE OR REPLACE FUNCTION map_bounds.barrier_layer()
   RETURNS integer AS $$
