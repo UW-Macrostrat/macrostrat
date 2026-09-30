@@ -86,11 +86,11 @@ services:
       - VARNISH_URL=http://tileserver_cache:8000
       - TILESERVER_URL=http://tileserver_core:8000
       # Object storage for the column-ingest upload. Values come from local-root/.env
-      # (gitignored) — never hardcode them here. `access_key`/`secret_key` are the
-      # var names api/routes/columns.py (and create_object) read.
+      # (gitignored) — never hardcode them here. `S3_ACCESS_KEY`/`S3_SECRET_KEY` are
+      # the var names api/routes/columns.py (and create_object) read.
       - S3_HOST=${S3_HOST}
-      - access_key=${S3_ACCESS_KEY}
-      - secret_key=${S3_SECRET_KEY}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
       # The Minio client verifies TLS against certifi, which lacks OrbStack's CA;
       # the system bundle has it, so https://storage.macrostrat.local verifies.
       - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

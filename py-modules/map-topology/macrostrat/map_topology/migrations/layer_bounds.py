@@ -30,6 +30,10 @@ def _layers_registered(db: Database) -> bool:
     )
 
 
+def _all_opened(db: Database) -> bool:
+    return all(l.has_area and l.opening is not None for l in layer_bounds(db))
+
+
 def _all_built(db: Database) -> bool:
     """The scale compilations' bounds. Multiscale ones are `compilation-multiscale`'s,
     which depends on this migration, so counting them here would block both."""
@@ -63,7 +67,8 @@ class LayerBoundsMigration(Migration):
     preconditions = [
         _operations_declared,
         _layers_registered,
-        lambda db: not _all_built(db),
+        # Openings are the seed a fresh database already gets from the fixtures.
+        lambda db: not _all_opened(db),
     ]
     postconditions = [_operations_declared, _layers_registered, _all_built]
 

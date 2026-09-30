@@ -8,9 +8,12 @@ on:
       - worker-v[0-9]+.[0-9]+.[0-9]+-**  # Semver Pre-Release
     paths:
       - services/worker/**
-      # The worker image bundles map_utils (COPY --from=py-modules), so a
-      # change to that library must rebuild the image.
+      # The worker image bundles these py-modules (COPY --from=py-modules +
+      # pip install in services/worker/Dockerfile), so a change to any of them
+      # must rebuild the image.
       - py-modules/map-utils/**
+      - py-modules/column-ingestion/**
+      - py-modules/core/**
       - .github/workflows/build-worker.yaml
   pull_request:
     branches:
@@ -18,6 +21,8 @@ on:
     paths:
       - services/worker/**
       - py-modules/map-utils/**
+      - py-modules/column-ingestion/**
+      - py-modules/core/**
       - .github/workflows/build-worker.yaml
 jobs:
   docker:

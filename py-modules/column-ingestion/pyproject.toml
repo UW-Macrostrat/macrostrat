@@ -8,7 +8,11 @@ readme = "README.md"
 dependencies = [
     "fastexcel>=0.16.0",
     "openpyxl>=3.1.5",
-    "polars>=1.36.1",
+    # `rtcompat` extra: use the runtime-CPU-compatible Polars build. The default
+    # wheel is compiled for AVX2/FMA; the worker pod can be scheduled onto a node
+    # whose CPU lacks those, and the first Polars call then dies with SIGILL
+    # (illegal instruction). rtcompat dispatches at runtime so it runs anywhere.
+    "polars[rtcompat]>=1.36.1",
     "pydantic>=2.12.5",
     "typer>=0.25.0,<0.27",
     "macrostrat.utils>=1.3.1,<2.0.0",

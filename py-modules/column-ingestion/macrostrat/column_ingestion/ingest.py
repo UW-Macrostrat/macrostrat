@@ -71,7 +71,7 @@ def ingest_columns_from_file(
     if project is None:
         raise ValueError("Project not found in the data file")
 
-    ingest_columns(db, columns, project=project, references=references)
+    ingest_columns(db, columns, project=project, references=references, dry_run=dry_run)
 
 
 def ingest_columns(
@@ -80,6 +80,7 @@ def ingest_columns(
     *,
     project: ProjectIdentifier,
     references: list | None = None,
+    dry_run: bool = False,
 ):
     """Write columns, their sections, their units and their age models.
 
