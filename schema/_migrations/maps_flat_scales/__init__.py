@@ -98,8 +98,10 @@ class _FlattenScales(_OneTransaction):
         self.sql_file = f"{self.table}.sql"
         self.preconditions = [lambda db: _relkind(db, "maps", self.table) == "p"]
         self.postconditions = [
-            lambda db: _relkind(db, "maps", self.table) == "r"
-            and _relkind(db, "maps", f"{self.table}_large") == "v"
+            lambda db: (
+                _relkind(db, "maps", self.table) == "r"
+                and _relkind(db, "maps", f"{self.table}_large") == "v"
+            )
         ]
 
     def before(self, db: Database):
@@ -137,12 +139,20 @@ class MapsLookupUnified(_OneTransaction):
     sql_file = "lookup.sql"
 
     preconditions = [
-        lambda db: _relkind(db, "maps", "polygons") == "r"
-        and all(_relkind(db, "public", f"lookup_{s}") == "r" for s in _LOOKUP_SCALES)
+        lambda db: (
+            _relkind(db, "maps", "polygons") == "r"
+            and all(
+                _relkind(db, "public", f"lookup_{s}") == "r" for s in _LOOKUP_SCALES
+            )
+        )
     ]
     postconditions = [
-        lambda db: _relkind(db, "maps", "lookup") == "r"
-        and all(_relkind(db, "public", f"lookup_{s}") == "v" for s in _LOOKUP_SCALES)
+        lambda db: (
+            _relkind(db, "maps", "lookup") == "r"
+            and all(
+                _relkind(db, "public", f"lookup_{s}") == "v" for s in _LOOKUP_SCALES
+            )
+        )
     ]
 
     def before(self, db: Database):
