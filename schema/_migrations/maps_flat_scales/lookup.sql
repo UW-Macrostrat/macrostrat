@@ -10,6 +10,7 @@
 CREATE TABLE maps.lookup (
     map_id integer PRIMARY KEY
         REFERENCES maps.polygons (map_id) ON DELETE CASCADE,
+    source_id integer NOT NULL REFERENCES maps.sources (source_id),
     scale maps.map_scale NOT NULL,
     legend_id integer
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
@@ -25,11 +26,11 @@ CREATE TABLE maps.lookup (
     color character varying(20)
 );
 
-INSERT INTO maps.lookup (map_id, scale, legend_id, unit_ids, strat_name_ids,
+INSERT INTO maps.lookup (map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
   concept_ids, strat_name_children, lith_ids, lith_types, lith_classes,
   best_age_top, best_age_bottom, color)
 SELECT DISTINCT ON (lk.map_id)
-  lk.map_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
+  lk.map_id, p.source_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
   lk.concept_ids, lk.strat_name_children, lk.lith_ids, lk.lith_types, lk.lith_classes,
   lk.best_age_top, lk.best_age_bottom, lk.color
 FROM (
@@ -60,28 +61,30 @@ DROP TABLE public.lookup_small;
 DROP TABLE public.lookup_medium;
 DROP TABLE public.lookup_large;
 
+CREATE INDEX lookup_source_id_idx ON maps.lookup USING btree (source_id);
 CREATE INDEX lookup_legend_id_idx ON maps.lookup USING btree (legend_id);
 CREATE INDEX lookup_concept_ids_idx ON maps.lookup USING gin (concept_ids);
 CREATE INDEX lookup_lith_ids_idx ON maps.lookup USING gin (lith_ids);
 CREATE INDEX lookup_strat_name_children_idx ON maps.lookup USING gin (strat_name_children);
 
-/* The old tables as views, their columns in the old order with `scale` appended
-   so that an insert naming the table still lands at that scale. */
+/* The old tables as views, their columns in the old order with `scale` and
+   `source_id` appended; `scale` defaults so an insert naming the table still
+   lands at that scale. */
 CREATE VIEW public.lookup_tiny AS
   SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale
+    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
   FROM maps.lookup WHERE scale = 'tiny' WITH CHECK OPTION;
 CREATE VIEW public.lookup_small AS
   SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale
+    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
   FROM maps.lookup WHERE scale = 'small' WITH CHECK OPTION;
 CREATE VIEW public.lookup_medium AS
   SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale
+    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
   FROM maps.lookup WHERE scale = 'medium' WITH CHECK OPTION;
 CREATE VIEW public.lookup_large AS
   SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale
+    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
   FROM maps.lookup WHERE scale = 'large' WITH CHECK OPTION;
 ALTER VIEW public.lookup_tiny ALTER COLUMN scale SET DEFAULT 'tiny';
 ALTER VIEW public.lookup_small ALTER COLUMN scale SET DEFAULT 'small';

@@ -477,11 +477,13 @@ ALTER TABLE maps.map_units ADD CONSTRAINT map_units_map_id_fkey
   Was `public.lookup_<scale>`, one table per scale beside the polygon partitions;
   the `maps-lookup-unified` migration merged them and left the old names as
   writable views (`02-views.sql`). The v2 API reads those; `scale` is here so the
-  views are a filter, not a join.
+  views are a filter, not a join, and `source_id` so a source's rows can be
+  rebuilt and read without going through the polygons.
 */
 CREATE TABLE maps.lookup (
     map_id integer PRIMARY KEY
         REFERENCES maps.polygons (map_id) ON DELETE CASCADE,
+    source_id integer NOT NULL REFERENCES maps.sources (source_id),
     scale maps.map_scale NOT NULL,
     legend_id integer
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
@@ -594,6 +596,8 @@ ALTER TABLE maps.lines CLUSTER ON lines_scale_source_id_idx;
 CREATE INDEX lines_source_id_idx ON maps.lines USING btree (source_id);
 
 CREATE INDEX lines_orig_id_idx ON maps.lines USING btree (orig_id);
+
+CREATE INDEX lookup_source_id_idx ON maps.lookup USING btree (source_id);
 
 CREATE INDEX lookup_legend_id_idx ON maps.lookup USING btree (legend_id);
 

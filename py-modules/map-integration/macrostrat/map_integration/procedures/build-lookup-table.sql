@@ -10,13 +10,11 @@
   Run as one transaction (see `lookup.py`), so the source is never seen with its
   rows deleted and not yet rebuilt.
 */
-DELETE FROM maps.lookup
-WHERE map_id IN (
-  SELECT map_id FROM maps.polygons WHERE source_id = :source_id
-);
+DELETE FROM maps.lookup WHERE source_id = :source_id;
 
 INSERT INTO maps.lookup (
   map_id,
+  source_id,
   scale,
   legend_id,
   unit_ids,
@@ -143,6 +141,7 @@ unit_matches AS (
 polygons AS (
   SELECT
     q.map_id,
+    q.source_id,
     q.scale,
     ml.legend_id,
     q.name,
@@ -182,6 +181,7 @@ colors AS (
 
 SELECT
   p.map_id,
+  p.source_id,
   p.scale,
   p.legend_id,
   coalesce(p.unit_ids, '{{}}'),
