@@ -84,6 +84,8 @@ def copy_to_maps(
             polygons_table=Identifier("sources", prefix + "_polygons"),
             lines_table=Identifier("sources", prefix + "_lines"),
             points_table=Identifier("sources", prefix + "_points"),
+            polygons_table_maps=Identifier("maps", "polygons_" + scale),
+            lines_table_maps=Identifier("maps", "lines_" + scale),
             scale=Literal(scale),
         ),
     )
