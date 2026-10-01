@@ -81,4 +81,10 @@ COMMENT ON VIEW maps.lines_medium IS 'Compatibility view over maps.lines, which 
 COMMENT ON VIEW maps.lines_small IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
 COMMENT ON VIEW maps.lines_tiny IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
 
+ALTER TABLE maps.lines SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_analyze_scale_factor = 0.01
+);
+ALTER TABLE maps.lines ALTER COLUMN source_id SET STATISTICS 1000;
+
 ANALYZE maps.lines;

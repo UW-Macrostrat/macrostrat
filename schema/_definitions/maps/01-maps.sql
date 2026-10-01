@@ -127,6 +127,11 @@ CREATE TABLE maps.lines (
 );
 
 ALTER SEQUENCE maps.line_ids OWNED BY maps.lines.line_id;
+ALTER TABLE maps.lines SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_analyze_scale_factor = 0.01
+);
+ALTER TABLE maps.lines ALTER COLUMN source_id SET STATISTICS 1000;
 SET default_table_access_method = heap;
 
 /** TODO: make this sequence a bit more generic */
@@ -218,6 +223,16 @@ CREATE TABLE maps.polygons (
 );
 
 ALTER SEQUENCE maps.map_ids OWNED BY maps.polygons.map_id;
+
+/* One heap where there were four: autovacuum's default 20 percent threshold would
+   let a re-ingested map's dead rows sit until half a million accumulate. Vacuum
+   and analyze after about one map's worth instead. `source_id` spans a thousand
+   maps, so the default 100 most-common values miss most of them. */
+ALTER TABLE maps.polygons SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_analyze_scale_factor = 0.01
+);
+ALTER TABLE maps.polygons ALTER COLUMN source_id SET STATISTICS 1000;
 
 GRANT USAGE ON SCHEMA maps TO web_admin;
 GRANT SELECT ON TABLE maps.sources TO web_admin;

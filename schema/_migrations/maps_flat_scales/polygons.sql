@@ -152,4 +152,12 @@ ALTER TABLE maps.map_units ADD CONSTRAINT map_units_map_id_fkey
 ALTER TABLE maps.map_liths ADD CONSTRAINT map_liths_map_id_fkey
   FOREIGN KEY (map_id) REFERENCES maps.polygons (map_id) ON DELETE CASCADE NOT VALID;
 
+/* Vacuum after about one map's worth of churn rather than a fifth of the table,
+   and know the thousand sources, not the hundred commonest. */
+ALTER TABLE maps.polygons SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_analyze_scale_factor = 0.01
+);
+ALTER TABLE maps.polygons ALTER COLUMN source_id SET STATISTICS 1000;
+
 ANALYZE maps.polygons;
