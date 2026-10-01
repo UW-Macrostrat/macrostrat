@@ -2,7 +2,7 @@
 Script to create record in the maps schema for all tables for a given source
 */
 
-INSERT INTO maps.polygons (
+INSERT INTO {polygons_table_maps} (
   source_id,
   scale,
   orig_id,
@@ -34,7 +34,7 @@ WHERE source_id = {source_id}
   AND NOT coalesce(omit, false);
 
 
-INSERT INTO maps.lines (
+INSERT INTO {lines_table_maps} (
   source_id,
   scale,
   orig_id,

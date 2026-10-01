@@ -13,6 +13,7 @@ from macrostrat.map_integration.package import (
     ImportStopped,
     compilation_tree,
     export_maps,
+    format,
     import_package,
     is_map_package,
     read_package,
@@ -114,19 +115,24 @@ def source_db(base_db):
         db.engine.dispose()
 
 
-@pytest.fixture(scope="module")
-def package(source_db, tmp_path_factory) -> Path:
-    path = tmp_path_factory.mktemp("package") / "pkg.gpkg"
-    root = get_map_info(source_db, "pkg-comp")
-    maps = resolve_maps(source_db, [str(i) for i in compilation_tree(source_db, root)])
+def export_compilation(db, path: Path) -> Path:
+    root = get_map_info(db, "pkg-comp")
+    maps = resolve_maps(db, [str(i) for i in compilation_tree(db, root)])
     export_maps(
-        source_db,
+        db,
         path,
         maps,
         staging_prefixes={"pkg"},
         metadata={"exported_from": "test"},
     )
     return path
+
+
+@pytest.fixture(scope="module")
+def package(source_db, tmp_path_factory) -> Path:
+    return export_compilation(
+        source_db, tmp_path_factory.mktemp("package") / "pkg.gpkg"
+    )
 
 
 @pytest.fixture
@@ -165,6 +171,17 @@ def test_package_contents(package):
     assert pkg.layers["sources__pkg-a_polygons"].owner == "pkg-a"
     # Derived topology state stays behind
     assert pkg.layers["map_area"].column("topo") is None
+
+
+def test_chunked_export(source_db, package, tmp_path, monkeypatch):
+    """Writing a layer in many pieces changes nothing about its contents."""
+    monkeypatch.setattr(format, "FETCH_SIZE", 1)
+    monkeypatch.setattr(format, "CHUNK_BYTES", 1)
+    chunked = read_package(export_compilation(source_db, tmp_path / "chunked.gpkg"))
+    whole = read_package(package)
+    assert chunked.layers.keys() == whole.layers.keys()
+    for name in whole.layers:
+        assert chunked.all_rows(name) == whole.all_rows(name), name
 
 
 def test_not_a_package(tmp_path):
