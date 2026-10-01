@@ -93,21 +93,21 @@ COMMENT ON VIEW maps.lines_tiny IS 'Compatibility view over maps.lines, which wa
   so an insert naming the table still lands at that scale. Read by the v2 API and, over `postgres_fdw`, by Rockd.
 */
 CREATE OR REPLACE VIEW public.lookup_tiny AS
-  SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
-  FROM maps.lookup WHERE scale = 'tiny' WITH CHECK OPTION;
+SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
+  lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
+FROM maps.lookup WHERE scale = 'tiny' WITH CHECK OPTION;
 CREATE OR REPLACE VIEW public.lookup_small AS
-  SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
-  FROM maps.lookup WHERE scale = 'small' WITH CHECK OPTION;
+SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
+  lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
+FROM maps.lookup WHERE scale = 'small' WITH CHECK OPTION;
 CREATE OR REPLACE VIEW public.lookup_medium AS
-  SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
-  FROM maps.lookup WHERE scale = 'medium' WITH CHECK OPTION;
+SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
+  lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
+FROM maps.lookup WHERE scale = 'medium' WITH CHECK OPTION;
 CREATE OR REPLACE VIEW public.lookup_large AS
-  SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
-    lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
-  FROM maps.lookup WHERE scale = 'large' WITH CHECK OPTION;
+SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
+  lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
+FROM maps.lookup WHERE scale = 'large' WITH CHECK OPTION;
 ALTER VIEW public.lookup_tiny ALTER COLUMN scale SET DEFAULT 'tiny';
 ALTER VIEW public.lookup_small ALTER COLUMN scale SET DEFAULT 'small';
 ALTER VIEW public.lookup_medium ALTER COLUMN scale SET DEFAULT 'medium';

@@ -186,3 +186,5 @@ GRANT ALL ON FUNCTION public.update_updated_on() TO macrostrat;
 
 GRANT ALL ON FUNCTION public.array_agg_mult(anycompatiblearray) TO macrostrat;
 
+-- Allow further view creation in the public schema
+GRANT USAGE, CREATE ON SCHEMA public TO macrostrat;
