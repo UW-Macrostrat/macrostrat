@@ -37,6 +37,10 @@ LAYERS_TABLE = "macrostrat_package_layers"
 COLUMNS_TABLE = "macrostrat_package_columns"
 
 CHUNK_SIZE = 5000
+# Export fetches small batches and writes once either limit is reached, so a
+# table of dense geometries never arrives as one enormous fetch
+CHUNK_BYTES = 32 * 1024 * 1024
+FETCH_SIZE = 200
 
 _INTEGER = {"int2", "int4", "int8"}
 _FLOAT = {"float4", "float8", "numeric"}
@@ -196,27 +200,51 @@ def dump_table(
     if order_by:
         sql += f" ORDER BY {order_by}"
 
-    result = conn.execution_options(stream_results=True).execute(text(sql), params)
+    # A binary-format server-side cursor: in text format `bytea` arrives as hex,
+    # doubling the transfer of every geometry. SQLAlchemy can't request binary
+    # results, so the cursor is opened on the driver connection, in the same
+    # transaction. Every selected column is an integer, double, boolean, text or
+    # bytea, which decode to the same Python values in either format.
+    compiled = text(sql).compile(dialect=conn.dialect)
     layer.row_count = 0
-    while rows := result.fetchmany(CHUNK_SIZE):
-        df = _frame(rows, layer)
-        opts = {}
-        if layer.geometry_column is not None:
-            opts = dict(
-                promote_to_multi=False,
-                geometry_type="Unknown",
-                layer_options={"GEOMETRY_NAME": layer.geometry_column},
-            )
-        pyogrio.write_dataframe(
-            df,
-            path,
-            layer=layer.name,
-            driver="GPKG",
-            append=layer.row_count > 0,
-            **opts,
-        )
-        layer.row_count += len(df)
+    rows, size = [], 0
+    with conn.connection.driver_connection.cursor(
+        name="map_package_export", binary=True
+    ) as cursor:
+        cursor.execute(compiled.string, compiled.construct_params(params))
+        while batch := cursor.fetchmany(FETCH_SIZE):
+            rows += batch
+            size += sum(_row_bytes(r) for r in batch)
+            if len(rows) >= CHUNK_SIZE or size >= CHUNK_BYTES:
+                _write_rows(path, layer, rows)
+                rows, size = [], 0
+    if rows:
+        _write_rows(path, layer, rows)
     return layer
+
+
+def _row_bytes(row) -> int:
+    return sum(len(v) for v in row if isinstance(v, (bytes, str)))
+
+
+def _write_rows(path: Path, layer: Layer, rows: list):
+    df = _frame(rows, layer)
+    opts = {}
+    if layer.geometry_column is not None:
+        opts = dict(
+            promote_to_multi=False,
+            geometry_type="Unknown",
+            layer_options={"GEOMETRY_NAME": layer.geometry_column},
+        )
+    pyogrio.write_dataframe(
+        df,
+        path,
+        layer=layer.name,
+        driver="GPKG",
+        append=layer.row_count > 0,
+        **opts,
+    )
+    layer.row_count += len(df)
 
 
 def write_manifest(path: Path, meta: dict, layers: list[Layer]):
