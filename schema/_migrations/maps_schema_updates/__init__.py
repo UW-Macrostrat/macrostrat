@@ -17,14 +17,10 @@ class MapsSchemaUpdates(Migration):
         exists("maps", "sources"),
     ]
     postconditions = [
-        column_type_is("maps", "polygons_large", "orig_id", "text"),
-        column_type_is("maps", "polygons_medium", "orig_id", "text"),
-        column_type_is("maps", "polygons_small", "orig_id", "text"),
-        column_type_is("maps", "polygons_tiny", "orig_id", "text"),
-        column_type_is("maps", "lines_large", "orig_id", "text"),
-        column_type_is("maps", "lines_medium", "orig_id", "text"),
-        column_type_is("maps", "lines_small", "orig_id", "text"),
-        column_type_is("maps", "lines_tiny", "orig_id", "text"),
+        # Read off the parent tables: the scale partitions this retyped are views
+        # once `maps-polygons-flat` / `maps-lines-flat` have run.
+        column_type_is("maps", "polygons", "orig_id", "text"),
+        column_type_is("maps", "lines", "orig_id", "text"),
         column_type_is("maps", "points", "orig_id", "text"),
         has_columns(
             "maps",

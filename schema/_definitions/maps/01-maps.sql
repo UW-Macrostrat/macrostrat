@@ -102,9 +102,16 @@ COMMENT ON COLUMN maps.sources.ref_compilation IS
   'Free text and single-valued on purpose: a placeholder until organizations and '
   'projects are modelled properly, kept deliberately too small to grow into them.';
 
--- TODO: integrate lines sequence into maps schema
+CREATE SEQUENCE maps.line_ids
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+/** One table for every scale; see `maps.polygons` below for the design. */
 CREATE TABLE maps.lines (
-    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
+    line_id integer DEFAULT nextval('maps.line_ids'::regclass) NOT NULL,
     orig_id text,
     source_id integer,
     name character varying(255),
@@ -115,9 +122,11 @@ CREATE TABLE maps.lines (
     type character varying(100),
     direction character varying(40),
     scale maps.map_scale NOT NULL,
-    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
-)
-PARTITION BY LIST (scale);
+    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom)),
+    CONSTRAINT lines_pkey PRIMARY KEY (line_id)
+);
+
+ALTER SEQUENCE maps.line_ids OWNED BY maps.lines.line_id;
 SET default_table_access_method = heap;
 
 /** TODO: make this sequence a bit more generic */
@@ -176,11 +185,24 @@ CREATE SEQUENCE maps.map_ids
     NO MAXVALUE
     CACHE 1;
 
+/** Every mapped polygon, at every scale, in one table.
+
+  `scale` is a real cartographic property that nearly every query filters on,
+  and it stays that way; it is simply no longer the physical layout. The table
+  was `PARTITION BY LIST (scale)` until the `maps-polygons-flat` migration, which
+  cost it a primary key on `map_id` (a partition key must be in every unique
+  constraint) and so any foreign key to a polygon. The pruning partitioning
+  bought is kept by the `(scale, geom)` index below, and the heap clustering it
+  enforced is kept by convention and by maintenance -- see the cluster index.
+
+  The design and its measurements are in the workbench vault,
+  `Design/Map polygon partitioning`. The former partitions survive as the
+  writable views `maps.polygons_<scale>` (`02-views.sql`).
+*/
 CREATE TABLE maps.polygons (
     map_id integer DEFAULT nextval('maps.map_ids'::regclass) NOT NULL,
-    source_id integer NOT NULL,
-    scale maps.map_scale NOT NULL,
     orig_id text,
+    source_id integer NOT NULL,
     name text,
     strat_name text,
     age character varying(255),
@@ -190,10 +212,12 @@ CREATE TABLE maps.polygons (
     t_interval integer,
     b_interval integer,
     geom public.geometry(Geometry,4326) NOT NULL,
+    scale maps.map_scale NOT NULL,
     CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
-)
-PARTITION BY LIST (scale);
+    CONSTRAINT maps_polygons_pkey PRIMARY KEY (map_id)
+);
+
+ALTER SEQUENCE maps.map_ids OWNED BY maps.polygons.map_id;
 
 GRANT USAGE ON SCHEMA maps TO web_admin;
 GRANT SELECT ON TABLE maps.sources TO web_admin;
@@ -218,104 +242,15 @@ CREATE TABLE maps.points (
     CONSTRAINT strike_positive CHECK ((strike >= 0))
 );
 
-CREATE TABLE maps.polygons_large (
-    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer NOT NULL,
-    name text,
-    strat_name text,
-    age character varying(255),
-    lith text,
-    descrip text,
-    comments text,
-    t_interval integer,
-    b_interval integer,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
-    CONSTRAINT enforce_valid_geom_large CHECK (public.st_isvalid(geom)),
-    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
-    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
-);
-
-CREATE TABLE maps.lines_large (
-    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer,
-    name character varying(255),
-    type_legacy character varying(100),
-    direction_legacy character varying(40),
-    descrip text,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    type character varying(100),
-    direction character varying(40),
-    scale maps.map_scale DEFAULT 'large'::maps.map_scale NOT NULL,
-    CONSTRAINT lines_large_scale_check CHECK ((scale = 'large'::maps.map_scale)),
-    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
-);
-
-CREATE TABLE maps.lines_medium (
-    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer,
-    name character varying(255),
-    type_legacy character varying(100),
-    direction_legacy character varying(40),
-    descrip text,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    type character varying(100),
-    direction character varying(40),
-    scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
-    CONSTRAINT lines_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
-    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
-);
-
-CREATE TABLE maps.lines_small (
-    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer,
-    name character varying(255),
-    type_legacy character varying(100),
-    direction_legacy character varying(40),
-    descrip text,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    type character varying(100),
-    direction character varying(40),
-    scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
-    CONSTRAINT lines_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
-    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
-);
-
-CREATE TABLE maps.lines_tiny (
-    line_id integer DEFAULT nextval('public.line_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer,
-    name character varying(255),
-    type_legacy character varying(100),
-    direction_legacy character varying(40),
-    descrip text,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    type character varying(100),
-    direction character varying(40),
-    scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
-    CONSTRAINT isvalid CHECK (public.st_isvalid(geom)),
-    CONSTRAINT lines_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
-    CONSTRAINT maps_lines_geom_check CHECK (maps.lines_geom_is_valid(geom))
-);
-
 /** Hand-made additions and removals layered over the derived strat-name and unit
   matches for a polygon.
 
-  `map_id` deliberately carries **no** foreign key: `maps.polygons` is partitioned
-  by scale, so its primary key is `(map_id, scale)` and a unique index on `map_id`
-  alone cannot exist. The reference is unenforceable rather than unenforced.
-
-  That matters because `maps.polygons.map_id` defaults to `nextval('maps.map_ids')`
-  and is therefore regenerated when a source is re-ingested -- so curation for that
-  source silently stops resolving, with nothing to notice. The durable key is
-  `(source_id, orig_id)`, which is what re-ingestion preserves; rekeying to it is
-  the real repair, and is tracked separately.
+  `map_id` deliberately carries **no** foreign key, although `maps.polygons` now
+  has a key it could reference. `maps.polygons.map_id` is regenerated when a
+  source is re-ingested, so a cascading reference would delete this curation
+  with the polygons it was made against, and a plain one would stop re-ingestion.
+  The durable key is `(source_id, orig_id)`, which is what re-ingestion
+  preserves; rekeying to it is the real repair, and is tracked separately.
 */
 CREATE TABLE maps.manual_matches (
     match_id integer NOT NULL,
@@ -345,14 +280,20 @@ CREATE SEQUENCE maps.manual_matches_match_id_seq
 
 ALTER SEQUENCE maps.manual_matches_match_id_seq OWNED BY maps.manual_matches.match_id;
 
+/** Which legend entry each polygon shows. Derived by ingestion and by
+  `materialize`, so a polygon takes its row with it when it goes. The reference
+  is `NOT VALID`: it was unenforceable while `maps.polygons` was partitioned and
+  orphans accumulated, which `VALIDATE CONSTRAINT` asserts away once they are
+  cleared. */
 CREATE TABLE maps.map_legend (
   -- no cascade delete on legend_id link prevents orphaned polygons if a legend entry is deleted
   legend_id integer NOT NULL REFERENCES maps.legend(legend_id),
-  -- we allow polygons to be deleted without restriction, removing downstream map_legend entries
-  map_id integer NOT NULL, -- Can't create a foreign key to maps.polygons(id) because it's partitioned.
-    -- Would also need to mention scale. Perhaps we should revisit this (either partitioning or foreign key) in the future.
+  map_id integer NOT NULL,
   UNIQUE (legend_id, map_id) -- not null, unique constraints ~ primary key
 );
+
+ALTER TABLE maps.map_legend ADD CONSTRAINT map_legend_map_id_fkey
+  FOREIGN KEY (map_id) REFERENCES maps.polygons (map_id) ON DELETE CASCADE NOT VALID;
 
 CREATE INDEX map_legend_legend_id_idx ON maps.map_legend USING btree (legend_id);
 CREATE INDEX map_legend_map_id_idx ON maps.map_legend USING btree (map_id);
@@ -362,6 +303,10 @@ CREATE TABLE maps.map_liths (
     lith_id integer NOT NULL,
     basis_col character varying(50)
 );
+
+-- `NOT VALID` for the same reason as `map_legend_map_id_fkey`.
+ALTER TABLE maps.map_liths ADD CONSTRAINT map_liths_map_id_fkey
+  FOREIGN KEY (map_id) REFERENCES maps.polygons (map_id) ON DELETE CASCADE NOT VALID;
 
 /** Stratigraphic names matched to map legend entries.
 
@@ -505,26 +450,9 @@ CREATE TABLE maps.map_units (
     basis_col character varying(50)
 );
 
-CREATE TABLE maps.polygons_medium (
-    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer NOT NULL,
-    name text,
-    strat_name text,
-    age character varying(255),
-    lith text,
-    descrip text,
-    comments text,
-    t_interval integer,
-    b_interval integer,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    scale maps.map_scale DEFAULT 'medium'::maps.map_scale NOT NULL,
-    CONSTRAINT enforce_valid_geom_medium CHECK (public.st_isvalid(geom)),
-    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_medium_scale_check CHECK ((scale = 'medium'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
-    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
-);
+-- `NOT VALID` for the same reason as `map_legend_map_id_fkey`.
+ALTER TABLE maps.map_units ADD CONSTRAINT map_units_map_id_fkey
+  FOREIGN KEY (map_id) REFERENCES maps.polygons (map_id) ON DELETE CASCADE NOT VALID;
 
 CREATE SEQUENCE maps.points_point_id_seq
     START WITH 1
@@ -534,46 +462,6 @@ CREATE SEQUENCE maps.points_point_id_seq
     CACHE 1;
 
 ALTER SEQUENCE maps.points_point_id_seq OWNED BY maps.points.point_id;
-
-CREATE TABLE maps.polygons_small (
-    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer NOT NULL,
-    name text,
-    strat_name text,
-    age character varying(255),
-    lith text,
-    descrip text,
-    comments text,
-    t_interval integer,
-    b_interval integer,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    scale maps.map_scale DEFAULT 'small'::maps.map_scale NOT NULL,
-    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_small_scale_check CHECK ((scale = 'small'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
-    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
-);
-
-CREATE TABLE maps.polygons_tiny (
-    map_id integer DEFAULT nextval('public.map_ids'::regclass) NOT NULL,
-    orig_id text,
-    source_id integer NOT NULL,
-    name text,
-    strat_name text,
-    age character varying(255),
-    lith text,
-    descrip text,
-    comments text,
-    t_interval integer,
-    b_interval integer,
-    geom public.geometry(Geometry,4326) NOT NULL,
-    scale maps.map_scale DEFAULT 'tiny'::maps.map_scale NOT NULL,
-    CONSTRAINT maps_polygons_geom_check CHECK (maps.polygons_geom_is_valid(geom)),
-    CONSTRAINT polygons_tiny_scale_check CHECK ((scale = 'tiny'::maps.map_scale)),
-    CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id),
-    PRIMARY KEY (map_id, scale) -- can't declare a unique constraint across partitions.
-);
 
 CREATE TABLE maps.source_operations (
     id integer NOT NULL,
@@ -608,22 +496,6 @@ CREATE SEQUENCE maps.source_operations_id_seq
 
 ALTER SEQUENCE maps.source_operations_id_seq OWNED BY maps.source_operations.id;
 
-ALTER TABLE ONLY maps.lines ATTACH PARTITION maps.lines_large FOR VALUES IN ('large');
-
-ALTER TABLE ONLY maps.lines ATTACH PARTITION maps.lines_medium FOR VALUES IN ('medium');
-
-ALTER TABLE ONLY maps.lines ATTACH PARTITION maps.lines_small FOR VALUES IN ('small');
-
-ALTER TABLE ONLY maps.lines ATTACH PARTITION maps.lines_tiny FOR VALUES IN ('tiny');
-
-ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_large FOR VALUES IN ('large');
-
-ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_medium FOR VALUES IN ('medium');
-
-ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_small FOR VALUES IN ('small');
-
-ALTER TABLE ONLY maps.polygons ATTACH PARTITION maps.polygons_tiny FOR VALUES IN ('tiny');
-
 ALTER TABLE ONLY maps.manual_matches ALTER COLUMN match_id SET DEFAULT nextval('maps.manual_matches_match_id_seq'::regclass);
 
 ALTER TABLE ONLY maps.points ALTER COLUMN point_id SET DEFAULT nextval('maps.points_point_id_seq'::regclass);
@@ -633,96 +505,58 @@ ALTER TABLE ONLY maps.source_operations ALTER COLUMN id SET DEFAULT nextval('map
 ALTER TABLE ONLY maps.legend_liths
     ADD CONSTRAINT legend_liths_legend_id_lith_id_basis_col_key UNIQUE (legend_id, lith_id, basis_col);
 
-ALTER TABLE ONLY maps.lines
-    ADD CONSTRAINT lines_pkey PRIMARY KEY (line_id, scale);
-
-ALTER TABLE ONLY maps.lines_large
-    ADD CONSTRAINT lines_large_pkey PRIMARY KEY (line_id, scale);
-
-ALTER TABLE ONLY maps.lines_medium
-    ADD CONSTRAINT lines_medium_pkey PRIMARY KEY (line_id, scale);
-
-ALTER TABLE ONLY maps.lines_small
-    ADD CONSTRAINT lines_small_pkey PRIMARY KEY (line_id, scale);
-
-ALTER TABLE ONLY maps.lines_tiny
-    ADD CONSTRAINT lines_tiny_pkey PRIMARY KEY (line_id, scale);
-
 ALTER TABLE ONLY maps.sources
     ADD CONSTRAINT map_sources_name_key UNIQUE (primary_table);
 
 ALTER TABLE ONLY maps.source_operations
     ADD CONSTRAINT source_operations_pkey PRIMARY KEY (id);
 
-CREATE INDEX polygons_b_interval_idx ON ONLY maps.polygons USING btree (b_interval);
+/** The index set of `maps.polygons`.
 
-CREATE INDEX large_b_interval_idx ON maps.polygons_large USING btree (b_interval);
+  `(scale, geom)` does what partition pruning did: a request for one scale
+  descends only that scale's subtree, whether the scale arrives as a literal, a
+  subquery, a join qual or a bind parameter -- none of which a partial index per
+  scale would serve. Needs `btree_gist` (`0000-globals.sql`) for the enum column.
 
-CREATE INDEX polygons_geom_idx ON ONLY maps.polygons USING gist (geom);
+  `(scale, source_id)` is the clustering order. Heap locality by scale is the
+  one thing partitioning did that an index cannot: a scale-interleaved heap costs
+  up to a quarter more buffer reads on low-zoom tiles (measured in the design
+  note), so ingestion appends in scale order by nature and the order is restored
+  periodically with `pg_repack -t maps.polygons` (online; it follows the
+  cluster index) or `CLUSTER maps.polygons` (exclusive lock). The same holds for
+  `maps.lines`.
+*/
+CREATE INDEX polygons_scale_geom_idx ON maps.polygons USING gist (scale, geom);
 
-CREATE INDEX large_geom_idx ON maps.polygons_large USING gist (geom);
+CREATE INDEX polygons_scale_source_id_idx ON maps.polygons USING btree (scale, source_id);
 
-CREATE INDEX polygons_name_idx ON ONLY maps.polygons USING btree (name);
+ALTER TABLE maps.polygons CLUSTER ON polygons_scale_source_id_idx;
 
-CREATE INDEX large_name_idx ON maps.polygons_large USING btree (name);
+CREATE INDEX polygons_source_id_idx ON maps.polygons USING btree (source_id);
 
-CREATE INDEX polygons_orig_id_idx ON ONLY maps.polygons USING btree (orig_id);
+CREATE INDEX polygons_orig_id_idx ON maps.polygons USING btree (orig_id);
 
-CREATE INDEX large_orig_id_idx ON maps.polygons_large USING btree (orig_id);
+CREATE INDEX polygons_name_idx ON maps.polygons USING btree (name);
 
-CREATE INDEX polygons_source_id_idx ON ONLY maps.polygons USING btree (source_id);
+CREATE INDEX polygons_t_interval_idx ON maps.polygons USING btree (t_interval);
 
-CREATE INDEX large_source_id_idx ON maps.polygons_large USING btree (source_id);
+CREATE INDEX polygons_b_interval_idx ON maps.polygons USING btree (b_interval);
 
-CREATE INDEX polygons_t_interval_idx ON ONLY maps.polygons USING btree (t_interval);
+CREATE INDEX lines_scale_geom_idx ON maps.lines USING gist (scale, geom);
 
-CREATE INDEX large_t_interval_idx ON maps.polygons_large USING btree (t_interval);
+CREATE INDEX lines_scale_source_id_idx ON maps.lines USING btree (scale, source_id);
+
+ALTER TABLE maps.lines CLUSTER ON lines_scale_source_id_idx;
+
+CREATE INDEX lines_source_id_idx ON maps.lines USING btree (source_id);
+
+CREATE INDEX lines_orig_id_idx ON maps.lines USING btree (orig_id);
 
 CREATE INDEX legend_liths_legend_id_idx ON maps.legend_liths USING btree (legend_id);
 
 CREATE INDEX legend_liths_lith_id_idx ON maps.legend_liths USING btree (lith_id);
 
 CREATE INDEX legend_source_id_idx ON maps.legend USING btree (source_id);
-
-CREATE INDEX lines_geom_idx ON ONLY maps.lines USING gist (geom);
-
-CREATE INDEX lines_large_geom_idx ON maps.lines_large USING gist (geom);
-
-CREATE INDEX lines_line_id_idx ON ONLY maps.lines USING btree (line_id);
-
-CREATE INDEX lines_large_line_id_idx ON maps.lines_large USING btree (line_id);
-
-CREATE INDEX lines_orig_id_idx ON ONLY maps.lines USING btree (orig_id);
-
-CREATE INDEX lines_large_orig_id_idx ON maps.lines_large USING btree (orig_id);
-
-CREATE INDEX lines_source_id_idx ON ONLY maps.lines USING btree (source_id);
-
-CREATE INDEX lines_large_source_id_idx ON maps.lines_large USING btree (source_id);
-
-CREATE INDEX lines_medium_geom_idx ON maps.lines_medium USING gist (geom);
-
-CREATE INDEX lines_medium_line_id_idx ON maps.lines_medium USING btree (line_id);
-
-CREATE INDEX lines_medium_orig_id_idx ON maps.lines_medium USING btree (orig_id);
-
-CREATE INDEX lines_medium_source_id_idx ON maps.lines_medium USING btree (source_id);
-
-CREATE INDEX lines_small_geom_idx ON maps.lines_small USING gist (geom);
-
-CREATE INDEX lines_small_line_id_idx ON maps.lines_small USING btree (line_id);
-
-CREATE INDEX lines_small_orig_id_idx ON maps.lines_small USING btree (orig_id);
-
-CREATE INDEX lines_small_source_id_idx ON maps.lines_small USING btree (source_id);
-
-CREATE INDEX lines_tiny_geom_idx ON maps.lines_tiny USING gist (geom);
-
-CREATE INDEX lines_tiny_line_id_idx ON maps.lines_tiny USING btree (line_id);
-
-CREATE INDEX lines_tiny_orig_id_idx ON maps.lines_tiny USING btree (orig_id);
-
-CREATE INDEX lines_tiny_source_id_idx ON maps.lines_tiny USING btree (source_id);
 
 CREATE INDEX manual_matches_map_id_idx ON maps.manual_matches USING btree (map_id);
 
@@ -742,145 +576,13 @@ CREATE INDEX map_units_map_id_idx ON maps.map_units USING btree (map_id);
 
 CREATE INDEX map_units_unit_id_idx ON maps.map_units USING btree (unit_id);
 
-CREATE INDEX medium_b_interval_idx ON maps.polygons_medium USING btree (b_interval);
-
-CREATE INDEX medium_geom_idx ON maps.polygons_medium USING gist (geom);
-
-CREATE INDEX medium_orig_id_idx ON maps.polygons_medium USING btree (orig_id);
-
-CREATE INDEX medium_source_id_idx ON maps.polygons_medium USING btree (source_id);
-
-CREATE INDEX medium_t_interval_idx ON maps.polygons_medium USING btree (t_interval);
-
 CREATE INDEX points_geom_idx ON maps.points USING gist (geom);
 
 CREATE INDEX points_source_id_idx ON maps.points USING btree (source_id);
 
-CREATE INDEX polygons_medium_name_idx ON maps.polygons_medium USING btree (name);
-
-CREATE INDEX polygons_small_name_idx ON maps.polygons_small USING btree (name);
-
-CREATE INDEX polygons_tiny_name_idx ON maps.polygons_tiny USING btree (name);
-
-CREATE INDEX small_b_interval_idx ON maps.polygons_small USING btree (b_interval);
-
-CREATE INDEX small_geom_idx ON maps.polygons_small USING gist (geom);
-
-CREATE INDEX small_orig_id_idx ON maps.polygons_small USING btree (orig_id);
-
-CREATE INDEX small_source_id_idx ON maps.polygons_small USING btree (source_id);
-
-CREATE INDEX small_t_interval_idx ON maps.polygons_small USING btree (t_interval);
-
 CREATE INDEX sources_rgeom_idx ON maps.sources USING gist (rgeom);
 
 CREATE INDEX sources_web_geom_idx ON maps.sources USING gist (web_geom);
-
-CREATE INDEX tiny_b_interval_idx ON maps.polygons_tiny USING btree (b_interval);
-
-CREATE INDEX tiny_geom_idx ON maps.polygons_tiny USING gist (geom);
-
-CREATE INDEX tiny_orig_id_idx ON maps.polygons_tiny USING btree (orig_id);
-
-CREATE INDEX tiny_source_id_idx ON maps.polygons_tiny USING btree (source_id);
-
-CREATE INDEX tiny_t_interval_idx ON maps.polygons_tiny USING btree (t_interval);
-
-ALTER INDEX maps.polygons_b_interval_idx ATTACH PARTITION maps.large_b_interval_idx;
-
-ALTER INDEX maps.polygons_geom_idx ATTACH PARTITION maps.large_geom_idx;
-
-ALTER INDEX maps.polygons_name_idx ATTACH PARTITION maps.large_name_idx;
-
-ALTER INDEX maps.polygons_orig_id_idx ATTACH PARTITION maps.large_orig_id_idx;
-
-ALTER INDEX maps.polygons_source_id_idx ATTACH PARTITION maps.large_source_id_idx;
-
-ALTER INDEX maps.polygons_t_interval_idx ATTACH PARTITION maps.large_t_interval_idx;
-
-ALTER INDEX maps.lines_geom_idx ATTACH PARTITION maps.lines_large_geom_idx;
-
-ALTER INDEX maps.lines_line_id_idx ATTACH PARTITION maps.lines_large_line_id_idx;
-
-ALTER INDEX maps.lines_orig_id_idx ATTACH PARTITION maps.lines_large_orig_id_idx;
-
-ALTER INDEX maps.lines_pkey ATTACH PARTITION maps.lines_large_pkey;
-
-ALTER INDEX maps.lines_source_id_idx ATTACH PARTITION maps.lines_large_source_id_idx;
-
-ALTER INDEX maps.lines_geom_idx ATTACH PARTITION maps.lines_medium_geom_idx;
-
-ALTER INDEX maps.lines_line_id_idx ATTACH PARTITION maps.lines_medium_line_id_idx;
-
-ALTER INDEX maps.lines_orig_id_idx ATTACH PARTITION maps.lines_medium_orig_id_idx;
-
-ALTER INDEX maps.lines_pkey ATTACH PARTITION maps.lines_medium_pkey;
-
-ALTER INDEX maps.lines_source_id_idx ATTACH PARTITION maps.lines_medium_source_id_idx;
-
-ALTER INDEX maps.lines_geom_idx ATTACH PARTITION maps.lines_small_geom_idx;
-
-ALTER INDEX maps.lines_line_id_idx ATTACH PARTITION maps.lines_small_line_id_idx;
-
-ALTER INDEX maps.lines_orig_id_idx ATTACH PARTITION maps.lines_small_orig_id_idx;
-
-ALTER INDEX maps.lines_pkey ATTACH PARTITION maps.lines_small_pkey;
-
-ALTER INDEX maps.lines_source_id_idx ATTACH PARTITION maps.lines_small_source_id_idx;
-
-ALTER INDEX maps.lines_geom_idx ATTACH PARTITION maps.lines_tiny_geom_idx;
-
-ALTER INDEX maps.lines_line_id_idx ATTACH PARTITION maps.lines_tiny_line_id_idx;
-
-ALTER INDEX maps.lines_orig_id_idx ATTACH PARTITION maps.lines_tiny_orig_id_idx;
-
-ALTER INDEX maps.lines_pkey ATTACH PARTITION maps.lines_tiny_pkey;
-
-ALTER INDEX maps.lines_source_id_idx ATTACH PARTITION maps.lines_tiny_source_id_idx;
-
-ALTER INDEX maps.maps_polygons_pkey ATTACH PARTITION maps.maps_polygons_large_pkey;
-
-ALTER INDEX maps.maps_polygons_pkey ATTACH PARTITION maps.maps_polygons_medium_pkey;
-
-ALTER INDEX maps.maps_polygons_pkey ATTACH PARTITION maps.maps_polygons_small_pkey;
-
-ALTER INDEX maps.maps_polygons_pkey ATTACH PARTITION maps.maps_polygons_tiny_pkey;
-
-ALTER INDEX maps.polygons_b_interval_idx ATTACH PARTITION maps.medium_b_interval_idx;
-
-ALTER INDEX maps.polygons_geom_idx ATTACH PARTITION maps.medium_geom_idx;
-
-ALTER INDEX maps.polygons_orig_id_idx ATTACH PARTITION maps.medium_orig_id_idx;
-
-ALTER INDEX maps.polygons_source_id_idx ATTACH PARTITION maps.medium_source_id_idx;
-
-ALTER INDEX maps.polygons_t_interval_idx ATTACH PARTITION maps.medium_t_interval_idx;
-
-ALTER INDEX maps.polygons_name_idx ATTACH PARTITION maps.polygons_medium_name_idx;
-
-ALTER INDEX maps.polygons_name_idx ATTACH PARTITION maps.polygons_small_name_idx;
-
-ALTER INDEX maps.polygons_name_idx ATTACH PARTITION maps.polygons_tiny_name_idx;
-
-ALTER INDEX maps.polygons_b_interval_idx ATTACH PARTITION maps.small_b_interval_idx;
-
-ALTER INDEX maps.polygons_geom_idx ATTACH PARTITION maps.small_geom_idx;
-
-ALTER INDEX maps.polygons_orig_id_idx ATTACH PARTITION maps.small_orig_id_idx;
-
-ALTER INDEX maps.polygons_source_id_idx ATTACH PARTITION maps.small_source_id_idx;
-
-ALTER INDEX maps.polygons_t_interval_idx ATTACH PARTITION maps.small_t_interval_idx;
-
-ALTER INDEX maps.polygons_b_interval_idx ATTACH PARTITION maps.tiny_b_interval_idx;
-
-ALTER INDEX maps.polygons_geom_idx ATTACH PARTITION maps.tiny_geom_idx;
-
-ALTER INDEX maps.polygons_orig_id_idx ATTACH PARTITION maps.tiny_orig_id_idx;
-
-ALTER INDEX maps.polygons_source_id_idx ATTACH PARTITION maps.tiny_source_id_idx;
-
-ALTER INDEX maps.polygons_t_interval_idx ATTACH PARTITION maps.tiny_t_interval_idx;
 
 ALTER TABLE maps.lines
     ADD CONSTRAINT lines_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);

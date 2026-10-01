@@ -95,14 +95,6 @@ ALTER TABLE public.land_gid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE public.land_gid_seq OWNED BY public.land.gid;
 
-CREATE SEQUENCE public.line_ids
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE public.line_ids OWNER TO macrostrat;
-
 CREATE TABLE public.lookup_large (
     map_id integer,
     unit_ids integer[],
@@ -183,14 +175,6 @@ CREATE SEQUENCE public.macrostrat_union_id_seq
 ALTER TABLE public.macrostrat_union_id_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE public.macrostrat_union_id_seq OWNED BY public.macrostrat_union.id;
-
-CREATE SEQUENCE public.map_ids
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-ALTER TABLE public.map_ids OWNER TO macrostrat;
 
 CREATE TABLE public.next_id (
     id integer

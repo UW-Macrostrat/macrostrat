@@ -25,65 +25,68 @@ FROM maps.sources s
 ORDER BY s.source_id DESC;
 COMMENT ON VIEW maps.sources_metadata IS 'Convenience view for maps.sources with only metadata fields';
 
+/** The per-scale views. `maps.polygons` was once four tables named `maps.large`
+  and so on, then four partitions; these keep the first of those names for v2 and
+  the scripts that still read it. */
 CREATE OR REPLACE VIEW maps.large AS
-SELECT polygons_large.map_id,
-  polygons_large.orig_id,
-  polygons_large.source_id,
-  polygons_large.name,
-  polygons_large.strat_name,
-  polygons_large.age,
-  polygons_large.lith,
-  polygons_large.descrip,
-  polygons_large.comments,
-  polygons_large.t_interval,
-  polygons_large.b_interval,
-  polygons_large.geom
-FROM maps.polygons_large;
+SELECT map_id, orig_id, source_id, name, strat_name, age, lith, descrip, comments,
+  t_interval, b_interval, geom
+FROM maps.polygons WHERE scale = 'large';
 
 CREATE OR REPLACE VIEW maps.medium AS
-SELECT polygons_medium.map_id,
-  polygons_medium.orig_id,
-  polygons_medium.source_id,
-  polygons_medium.name,
-  polygons_medium.strat_name,
-  polygons_medium.age,
-  polygons_medium.lith,
-  polygons_medium.descrip,
-  polygons_medium.comments,
-  polygons_medium.t_interval,
-  polygons_medium.b_interval,
-  polygons_medium.geom
-FROM maps.polygons_medium;
+SELECT map_id, orig_id, source_id, name, strat_name, age, lith, descrip, comments,
+  t_interval, b_interval, geom
+FROM maps.polygons WHERE scale = 'medium';
 
 CREATE OR REPLACE VIEW maps.small AS
-SELECT polygons_small.map_id,
-  polygons_small.orig_id,
-  polygons_small.source_id,
-  polygons_small.name,
-  polygons_small.strat_name,
-  polygons_small.age,
-  polygons_small.lith,
-  polygons_small.descrip,
-  polygons_small.comments,
-  polygons_small.t_interval,
-  polygons_small.b_interval,
-  polygons_small.geom
-FROM maps.polygons_small;
+SELECT map_id, orig_id, source_id, name, strat_name, age, lith, descrip, comments,
+  t_interval, b_interval, geom
+FROM maps.polygons WHERE scale = 'small';
 
 CREATE OR REPLACE VIEW maps.tiny AS
-SELECT polygons_tiny.map_id,
-  polygons_tiny.orig_id,
-  polygons_tiny.source_id,
-  polygons_tiny.name,
-  polygons_tiny.strat_name,
-  polygons_tiny.age,
-  polygons_tiny.lith,
-  polygons_tiny.descrip,
-  polygons_tiny.comments,
-  polygons_tiny.t_interval,
-  polygons_tiny.b_interval,
-  polygons_tiny.geom
-FROM maps.polygons_tiny;
+SELECT map_id, orig_id, source_id, name, strat_name, age, lith, descrip, comments,
+  t_interval, b_interval, geom
+FROM maps.polygons WHERE scale = 'tiny';
+
+/** The former partitions of `maps.polygons` and `maps.lines`, as views.
+
+  Writable: an insert that names one lands in the table with the scale the name
+  implies (the column default), and a row of another scale is refused (the check
+  option). New code reads and writes the tables themselves.
+*/
+CREATE OR REPLACE VIEW maps.polygons_large AS
+  SELECT * FROM maps.polygons WHERE scale = 'large' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.polygons_medium AS
+  SELECT * FROM maps.polygons WHERE scale = 'medium' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.polygons_small AS
+  SELECT * FROM maps.polygons WHERE scale = 'small' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.polygons_tiny AS
+  SELECT * FROM maps.polygons WHERE scale = 'tiny' WITH CHECK OPTION;
+ALTER VIEW maps.polygons_large ALTER COLUMN scale SET DEFAULT 'large';
+ALTER VIEW maps.polygons_medium ALTER COLUMN scale SET DEFAULT 'medium';
+ALTER VIEW maps.polygons_small ALTER COLUMN scale SET DEFAULT 'small';
+ALTER VIEW maps.polygons_tiny ALTER COLUMN scale SET DEFAULT 'tiny';
+COMMENT ON VIEW maps.polygons_large IS 'Compatibility view over maps.polygons, which was partitioned by scale. New code reads and writes maps.polygons.';
+COMMENT ON VIEW maps.polygons_medium IS 'Compatibility view over maps.polygons, which was partitioned by scale. New code reads and writes maps.polygons.';
+COMMENT ON VIEW maps.polygons_small IS 'Compatibility view over maps.polygons, which was partitioned by scale. New code reads and writes maps.polygons.';
+COMMENT ON VIEW maps.polygons_tiny IS 'Compatibility view over maps.polygons, which was partitioned by scale. New code reads and writes maps.polygons.';
+
+CREATE OR REPLACE VIEW maps.lines_large AS
+  SELECT * FROM maps.lines WHERE scale = 'large' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.lines_medium AS
+  SELECT * FROM maps.lines WHERE scale = 'medium' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.lines_small AS
+  SELECT * FROM maps.lines WHERE scale = 'small' WITH CHECK OPTION;
+CREATE OR REPLACE VIEW maps.lines_tiny AS
+  SELECT * FROM maps.lines WHERE scale = 'tiny' WITH CHECK OPTION;
+ALTER VIEW maps.lines_large ALTER COLUMN scale SET DEFAULT 'large';
+ALTER VIEW maps.lines_medium ALTER COLUMN scale SET DEFAULT 'medium';
+ALTER VIEW maps.lines_small ALTER COLUMN scale SET DEFAULT 'small';
+ALTER VIEW maps.lines_tiny ALTER COLUMN scale SET DEFAULT 'tiny';
+COMMENT ON VIEW maps.lines_large IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
+COMMENT ON VIEW maps.lines_medium IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
+COMMENT ON VIEW maps.lines_small IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
+COMMENT ON VIEW maps.lines_tiny IS 'Compatibility view over maps.lines, which was partitioned by scale. New code reads and writes maps.lines.';
 
 /** We should probably get rid of this */
 CREATE OR REPLACE VIEW maps.vw_legend_with_liths AS

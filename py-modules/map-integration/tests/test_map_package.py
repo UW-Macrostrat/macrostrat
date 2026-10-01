@@ -139,7 +139,7 @@ def target_db(base_db):
             SELECT setval('maps.sources_source_id_seq', 5000);
             SELECT setval('maps.map_ids', 5000);
             SELECT setval('maps.legend_legend_id_seq', 5000);
-            SELECT setval('line_ids', 5000);
+            SELECT setval('maps.line_ids', 5000);
             """,
             raise_errors=True,
         )

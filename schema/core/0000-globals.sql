@@ -15,6 +15,8 @@ CREATE EXTENSION IF NOT EXISTS pgaudit WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_raster;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
+-- `maps.polygons (scale, geom)` and `maps.lines (scale, geom)`: an enum beside a geometry in one GiST index.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS vector;
