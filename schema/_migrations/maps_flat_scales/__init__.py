@@ -1,7 +1,6 @@
 """One `maps.polygons`, one `maps.lines` and one `maps.lookup`, with `scale` an
 ordinary column on each."""
 
-import time
 from pathlib import Path
 
 from macrostrat.database import Database
@@ -64,21 +63,42 @@ def _report_cascade(db: Database, table: str):
             print(f"  - {r.name}")
 
 
-# SQLSTATEs a locking attempt may fail with and be retried: a deadlock chosen
-# against us, and the lock timeout below.
-_RETRY_STATES = {"40P01", "55P03"}
 _LOCK_TIMEOUT = "60s"
-_ATTEMPTS = 5
 
-
-def _sqlstate(err: Exception) -> str | None:
-    """psycopg 3 spells it `sqlstate`, psycopg 2 `pgcode`; both are installed."""
-    orig = getattr(err, "orig", err)
-    return getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
+# Who holds a lock on any of these tables, for the message when ours times out.
+_LOCK_HOLDERS = """
+SELECT DISTINCT a.pid, a.application_name, a.state,
+  date_trunc('second', now() - a.xact_start) AS in_transaction_for,
+  left(regexp_replace(a.query, '\\s+', ' ', 'g'), 80) AS query
+FROM pg_locks l
+JOIN pg_class c ON c.oid = l.relation
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_stat_activity a ON a.pid = l.pid
+WHERE n.nspname || '.' || c.relname = ANY(CAST(:tables AS text[]))
+  AND l.pid <> pg_backend_pid()
+ORDER BY in_transaction_for DESC
+"""
 
 
 def _lock_statement(tables: list[str], mode: str) -> str:
     return "LOCK TABLE " + ", ".join(tables) + " IN " + mode + " MODE"
+
+
+def _report_lock_holders(db: Database, tables: list[str]):
+    rows = db.run_query(_LOCK_HOLDERS, dict(tables=tables)).all()
+    db.session.rollback()
+    if not rows:
+        return
+    print("Sessions holding locks on the tables this migration needs:")
+    for r in rows:
+        print(
+            f"  pid {r.pid} ({r.application_name or 'no name'}, {r.state},"
+            f" in transaction for {r.in_transaction_for}): {r.query}"
+        )
+    print(
+        "An `idle in transaction` session is a connection that never committed;"
+        " `SELECT pg_terminate_backend(<pid>)` ends it."
+    )
 
 
 def run_locked(db: Database, sql: Path, *, exclusive: list[str], shared: list[str]):
@@ -89,37 +109,27 @@ def run_locked(db: Database, sql: Path, *, exclusive: list[str], shared: list[st
     deadlocked against the API. So the first statement locks everything the file
     touches: `exclusive` (ACCESS EXCLUSIVE, for what is dropped or rewritten) and
     `shared` (SHARE ROW EXCLUSIVE, what a new foreign key will reference). Readers
-    already holding a table are waited out; new ones queue behind. A deadlock or
-    a lock timeout there costs nothing yet, so it is simply tried again.
+    already holding a table are waited out, up to the timeout; new ones queue
+    behind. A lock that cannot be had in that time fails the migration before it
+    has done anything, naming the sessions in the way.
     """
-    for attempt in range(1, _ATTEMPTS + 1):
-        try:
-            with db.transaction():
-                # `raise_errors` on every statement: `run_sql` otherwise prints an
-                # error and carries on, and the transaction is then committed dead.
+    try:
+        with db.transaction():
+            # `raise_errors` on every statement: `run_sql` otherwise prints an
+            # error and carries on, and the transaction is then committed dead.
+            db.run_sql(f"SET LOCAL lock_timeout = '{_LOCK_TIMEOUT}'", raise_errors=True)
+            if exclusive:
                 db.run_sql(
-                    f"SET LOCAL lock_timeout = '{_LOCK_TIMEOUT}'", raise_errors=True
+                    _lock_statement(exclusive, "ACCESS EXCLUSIVE"), raise_errors=True
                 )
-                if exclusive:
-                    db.run_sql(
-                        _lock_statement(exclusive, "ACCESS EXCLUSIVE"),
-                        raise_errors=True,
-                    )
-                if shared:
-                    db.run_sql(
-                        _lock_statement(shared, "SHARE ROW EXCLUSIVE"),
-                        raise_errors=True,
-                    )
-                db.run_sql(sql, raise_errors=True)
-            return
-        except Exception as err:
-            if _sqlstate(err) not in _RETRY_STATES or attempt == _ATTEMPTS:
-                raise
-            print(
-                f"Could not take the locks (attempt {attempt} of {_ATTEMPTS}):"
-                f" {str(getattr(err, 'orig', err)).splitlines()[0]}. Trying again."
-            )
-            time.sleep(5 * attempt)
+            if shared:
+                db.run_sql(
+                    _lock_statement(shared, "SHARE ROW EXCLUSIVE"), raise_errors=True
+                )
+            db.run_sql(sql, raise_errors=True)
+    except Exception:
+        _report_lock_holders(db, exclusive + shared)
+        raise
 
 
 class _OneTransaction(Migration):
@@ -143,6 +153,10 @@ class _OneTransaction(Migration):
 
     def apply(self, db: Database):
         self.before(db)
+        # The session the runner and `before` used holds an open transaction,
+        # and with it ACCESS SHARE on every table they read. `run_locked` works
+        # on a second connection, which would then wait on this one. End it.
+        db.session.commit()
         run_locked(
             db, __dir__ / self.sql_file, exclusive=self.exclusive, shared=self.shared
         )
