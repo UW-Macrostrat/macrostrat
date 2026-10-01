@@ -26,33 +26,53 @@ CREATE TABLE maps.lookup (
     color character varying(20)
 );
 
-INSERT INTO maps.lookup (map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
+INSERT INTO maps.lookup (
+  map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
   concept_ids, strat_name_children, lith_ids, lith_types, lith_classes,
   best_age_top, best_age_bottom, color)
-SELECT DISTINCT ON (lk.map_id)
+SELECT
   lk.map_id, p.source_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
   lk.concept_ids, lk.strat_name_children, lk.lith_ids, lk.lith_types, lk.lith_classes,
   lk.best_age_top, lk.best_age_bottom, lk.color
-FROM (
-  SELECT map_id, legend_id, unit_ids, strat_name_ids, concept_ids, strat_name_children,
-    lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color
-  FROM public.lookup_tiny
-  UNION ALL
-  SELECT map_id, legend_id, unit_ids, strat_name_ids, concept_ids, strat_name_children,
-    lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color
-  FROM public.lookup_small
-  UNION ALL
-  SELECT map_id, legend_id, unit_ids, strat_name_ids, concept_ids, strat_name_children,
-    lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color
-  FROM public.lookup_medium
-  UNION ALL
-  SELECT map_id, legend_id, unit_ids, strat_name_ids, concept_ids, strat_name_children,
-    lith_ids, lith_types, lith_classes, best_age_top, best_age_bottom, color
-  FROM public.lookup_large
-) lk
+FROM public.lookup_tiny lk
 JOIN maps.polygons p ON p.map_id = lk.map_id
-LEFT JOIN maps.legend l ON l.legend_id = lk.legend_id
-ORDER BY lk.map_id, lk.legend_id NULLS LAST;
+LEFT JOIN maps.legend l ON l.legend_id = lk.legend_id;
+
+INSERT INTO maps.lookup (
+  map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
+  concept_ids, strat_name_children, lith_ids, lith_types, lith_classes,
+  best_age_top, best_age_bottom, color)
+SELECT
+  lk.map_id, p.source_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
+  lk.concept_ids, lk.strat_name_children, lk.lith_ids, lk.lith_types, lk.lith_classes,
+  lk.best_age_top, lk.best_age_bottom, lk.color
+FROM public.lookup_small lk
+JOIN maps.polygons p ON p.map_id = lk.map_id
+LEFT JOIN maps.legend l ON l.legend_id = lk.legend_id;
+
+INSERT INTO maps.lookup (
+  map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
+  concept_ids, strat_name_children, lith_ids, lith_types, lith_classes,
+  best_age_top, best_age_bottom, color)
+SELECT
+  lk.map_id, p.source_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
+  lk.concept_ids, lk.strat_name_children, lk.lith_ids, lk.lith_types, lk.lith_classes,
+  lk.best_age_top, lk.best_age_bottom, lk.color
+FROM public.lookup_medium lk
+JOIN maps.polygons p ON p.map_id = lk.map_id
+LEFT JOIN maps.legend l ON l.legend_id = lk.legend_id;
+
+INSERT INTO maps.lookup (
+  map_id, source_id, scale, legend_id, unit_ids, strat_name_ids,
+  concept_ids, strat_name_children, lith_ids, lith_types, lith_classes,
+  best_age_top, best_age_bottom, color)
+SELECT
+  lk.map_id, p.source_id, p.scale, l.legend_id, lk.unit_ids, lk.strat_name_ids,
+  lk.concept_ids, lk.strat_name_children, lk.lith_ids, lk.lith_types, lk.lith_classes,
+  lk.best_age_top, lk.best_age_bottom, lk.color
+FROM public.lookup_large lk
+JOIN maps.polygons p ON p.map_id = lk.map_id
+LEFT JOIN maps.legend l ON l.legend_id = lk.legend_id;
 
 /* No CASCADE: anything still depending on the old tables should stop this and
    be looked at. */
