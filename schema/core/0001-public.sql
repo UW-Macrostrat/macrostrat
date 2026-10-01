@@ -95,70 +95,6 @@ ALTER TABLE public.land_gid_seq OWNER TO macrostrat;
 
 ALTER SEQUENCE public.land_gid_seq OWNED BY public.land.gid;
 
-CREATE TABLE public.lookup_large (
-    map_id integer,
-    unit_ids integer[],
-    strat_name_ids integer[],
-    lith_ids integer[],
-    best_age_top numeric,
-    best_age_bottom numeric,
-    color character varying(20),
-    lith_types text[],
-    lith_classes text[],
-    concept_ids integer[],
-    strat_name_children integer[],
-    legend_id integer
-);
-ALTER TABLE public.lookup_large OWNER TO macrostrat;
-
-CREATE TABLE public.lookup_medium (
-    map_id integer,
-    unit_ids integer[],
-    strat_name_ids integer[],
-    lith_ids integer[],
-    best_age_top numeric,
-    best_age_bottom numeric,
-    color character varying(20),
-    lith_types text[],
-    lith_classes text[],
-    concept_ids integer[],
-    strat_name_children integer[],
-    legend_id integer
-);
-ALTER TABLE public.lookup_medium OWNER TO macrostrat;
-
-CREATE TABLE public.lookup_small (
-    map_id integer,
-    unit_ids integer[],
-    strat_name_ids integer[],
-    lith_ids integer[],
-    best_age_top numeric,
-    best_age_bottom numeric,
-    color character varying(20),
-    lith_types text[],
-    lith_classes text[],
-    concept_ids integer[],
-    strat_name_children integer[],
-    legend_id integer
-);
-ALTER TABLE public.lookup_small OWNER TO macrostrat;
-
-CREATE TABLE public.lookup_tiny (
-    map_id integer,
-    unit_ids integer[],
-    strat_name_ids integer[],
-    lith_ids integer[],
-    best_age_top numeric,
-    best_age_bottom numeric,
-    color character varying(20),
-    lith_types text[],
-    lith_classes text[],
-    concept_ids integer[],
-    strat_name_children integer[],
-    legend_id integer
-);
-ALTER TABLE public.lookup_tiny OWNER TO macrostrat;
-
 CREATE TABLE public.macrostrat_union (
     id integer NOT NULL,
     geom public.geometry
@@ -241,46 +177,6 @@ ALTER TABLE ONLY public.usage_stats
     ADD CONSTRAINT usage_stats_pkey PRIMARY KEY (id);
 
 CREATE INDEX land_geom_idx ON public.land USING gist (geom);
-
-CREATE INDEX lookup_large_concept_ids_idx ON public.lookup_large USING gin (concept_ids);
-
-CREATE INDEX lookup_large_legend_id_idx ON public.lookup_large USING btree (legend_id);
-
-CREATE INDEX lookup_large_lith_ids_idx ON public.lookup_large USING gin (lith_ids);
-
-CREATE INDEX lookup_large_map_id_idx ON public.lookup_large USING btree (map_id);
-
-CREATE INDEX lookup_large_strat_name_children_idx ON public.lookup_large USING gin (strat_name_children);
-
-CREATE INDEX lookup_medium_concept_ids_idx ON public.lookup_medium USING gin (concept_ids);
-
-CREATE INDEX lookup_medium_legend_id_idx ON public.lookup_medium USING btree (legend_id);
-
-CREATE INDEX lookup_medium_lith_ids_idx ON public.lookup_medium USING gin (lith_ids);
-
-CREATE INDEX lookup_medium_map_id_idx ON public.lookup_medium USING btree (map_id);
-
-CREATE INDEX lookup_medium_strat_name_children_idx ON public.lookup_medium USING gin (strat_name_children);
-
-CREATE INDEX lookup_small_concept_ids_idx ON public.lookup_small USING gin (concept_ids);
-
-CREATE INDEX lookup_small_legend_id_idx ON public.lookup_small USING btree (legend_id);
-
-CREATE INDEX lookup_small_lith_ids_idx ON public.lookup_small USING gin (lith_ids);
-
-CREATE INDEX lookup_small_map_id_idx ON public.lookup_small USING btree (map_id);
-
-CREATE INDEX lookup_small_strat_name_children_idx ON public.lookup_small USING gin (strat_name_children);
-
-CREATE INDEX lookup_tiny_concept_ids_idx ON public.lookup_tiny USING gin (concept_ids);
-
-CREATE INDEX lookup_tiny_legend_id_idx ON public.lookup_tiny USING btree (legend_id);
-
-CREATE INDEX lookup_tiny_lith_ids_idx ON public.lookup_tiny USING gin (lith_ids);
-
-CREATE INDEX lookup_tiny_map_id_idx ON public.lookup_tiny USING btree (map_id);
-
-CREATE INDEX lookup_tiny_strat_name_children_idx ON public.lookup_tiny USING gin (strat_name_children);
 
 GRANT ALL ON FUNCTION public.current_app_role() TO macrostrat;
 

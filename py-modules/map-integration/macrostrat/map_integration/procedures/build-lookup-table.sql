@@ -1,4 +1,4 @@
-/** Rebuild one source's rows in `lookup_<scale>`.
+/** Rebuild one source's rows in `maps.lookup`.
 
   Two grains, kept apart. Strat names and lithologies are matched per legend
   entry, so every polygon of an entry carries the same ones: they are decided
@@ -10,13 +10,14 @@
   Run as one transaction (see `lookup.py`), so the source is never seen with its
   rows deleted and not yet rebuilt.
 */
-DELETE FROM {lookup_table}
+DELETE FROM maps.lookup
 WHERE map_id IN (
-  SELECT map_id FROM {scale_table} WHERE source_id = :source_id
+  SELECT map_id FROM maps.polygons WHERE source_id = :source_id
 );
 
-INSERT INTO {lookup_table} (
+INSERT INTO maps.lookup (
   map_id,
+  scale,
   legend_id,
   unit_ids,
   strat_name_ids,
@@ -130,7 +131,7 @@ unit_matches AS (
     array_agg(DISTINCT mu.unit_id) AS unit_ids,
     min(ui.t_age) AS t_age,
     max(ui.b_age) AS b_age
-  FROM {scale_table} q
+  FROM maps.polygons q
   JOIN maps.map_units mu ON mu.map_id = q.map_id
   LEFT JOIN macrostrat.lookup_unit_intervals ui ON ui.unit_id = mu.unit_id
   WHERE q.source_id = :source_id
@@ -142,12 +143,13 @@ unit_matches AS (
 polygons AS (
   SELECT
     q.map_id,
+    q.scale,
     ml.legend_id,
     q.name,
     u.unit_ids,
     coalesce(u.t_age, ti.age_top) AS best_age_top,
     coalesce(u.b_age, tb.age_bottom) AS best_age_bottom
-  FROM {scale_table} q
+  FROM maps.polygons q
   LEFT JOIN maps.map_legend ml ON ml.map_id = q.map_id
   LEFT JOIN unit_matches u ON u.map_id = q.map_id
   LEFT JOIN macrostrat.intervals ti ON ti.id = q.t_interval
@@ -180,6 +182,7 @@ colors AS (
 
 SELECT
   p.map_id,
+  p.scale,
   p.legend_id,
   coalesce(p.unit_ids, '{{}}'),
   coalesce(sn.strat_name_ids, '{{}}'),

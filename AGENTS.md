@@ -110,8 +110,9 @@ migration-applied one converge on the same `APPLIED` state.
   They were partitioned by scale until the `maps-polygons-flat` /
   `maps-lines-flat` migrations. Keep the `scale` predicate on spatial queries
   all the same: it is the first column of the `(scale, geom)` GiST index, which
-  is what stands in for partition pruning. `maps.polygons_<scale>` and
-  `maps.lines_<scale>` are compatibility views; write to the tables.
+  is what stands in for partition pruning. `maps.polygons_<scale>`,
+  `maps.lines_<scale>` and `public.lookup_<scale>` are compatibility views over
+  the tables and over `maps.lookup`; write to the tables.
 - **Don't guard against "already exists".** Schema application tolerates errors,
   so state objects declaratively and let a duplicate raise, get noted, and be
   stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more

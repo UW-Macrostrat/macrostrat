@@ -469,6 +469,34 @@ CREATE TABLE maps.map_units (
 ALTER TABLE maps.map_units ADD CONSTRAINT map_units_map_id_fkey
   FOREIGN KEY (map_id) REFERENCES maps.polygons (map_id) ON DELETE CASCADE NOT VALID;
 
+/** Per-polygon cache of what the matches resolve to: the legend entry, its
+  units, strat names, concepts and lithologies, the best age and a colour.
+  Rebuilt a source at a time by `make_lookup` (`build-lookup-table.sql`), which
+  is why it can reference what it is derived from and follow it on delete.
+
+  Was `public.lookup_<scale>`, one table per scale beside the polygon partitions;
+  the `maps-lookup-unified` migration merged them and left the old names as
+  writable views (`02-views.sql`). The v2 API reads those; `scale` is here so the
+  views are a filter, not a join.
+*/
+CREATE TABLE maps.lookup (
+    map_id integer PRIMARY KEY
+        REFERENCES maps.polygons (map_id) ON DELETE CASCADE,
+    scale maps.map_scale NOT NULL,
+    legend_id integer
+        REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
+    unit_ids integer[],
+    strat_name_ids integer[],
+    concept_ids integer[],
+    strat_name_children integer[],
+    lith_ids integer[],
+    lith_types text[],
+    lith_classes text[],
+    best_age_top numeric,
+    best_age_bottom numeric,
+    color character varying(20)
+);
+
 CREATE SEQUENCE maps.points_point_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -566,6 +594,14 @@ ALTER TABLE maps.lines CLUSTER ON lines_scale_source_id_idx;
 CREATE INDEX lines_source_id_idx ON maps.lines USING btree (source_id);
 
 CREATE INDEX lines_orig_id_idx ON maps.lines USING btree (orig_id);
+
+CREATE INDEX lookup_legend_id_idx ON maps.lookup USING btree (legend_id);
+
+CREATE INDEX lookup_concept_ids_idx ON maps.lookup USING gin (concept_ids);
+
+CREATE INDEX lookup_lith_ids_idx ON maps.lookup USING gin (lith_ids);
+
+CREATE INDEX lookup_strat_name_children_idx ON maps.lookup USING gin (strat_name_children);
 
 CREATE INDEX legend_liths_legend_id_idx ON maps.legend_liths USING btree (legend_id);
 

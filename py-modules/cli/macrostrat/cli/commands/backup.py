@@ -274,26 +274,24 @@ class Backup(Base):
                 shell=True,
             )
 
-            # public.lookup_scale
+            # maps.lookup
             self.pg["cursor"].execute(
                 """
-                COPY (SELECT * FROM public.lookup_%(scale)s
+                COPY (SELECT * FROM maps.lookup
                 WHERE map_id IN (
                     SELECT map_id
-                    FROM maps.%(scale)s
+                    FROM maps.polygons
                     WHERE source_id = %(source_id)s
                 )) TO '%(cwd)s/temp_lookup.tsv' WITH ENCODING 'UTF8'
             """,
                 {
-                    "scale": AsIs(source_info.scale),
                     "source_id": self.args[1],
                     "cwd": AsIs(cwd),
                 },
             )
             call(
                 [
-                    'echo "COPY public.lookup_%s FROM stdin;" | cat - temp_lookup.tsv > lookup.tsv && echo "\.\n" >> lookup.tsv && rm -f temp_lookup.tsv'
-                    % (source_info.scale,)
+                    'echo "COPY maps.lookup FROM stdin;" | cat - temp_lookup.tsv > lookup.tsv && echo "\.\n" >> lookup.tsv && rm -f temp_lookup.tsv'
                 ],
                 shell=True,
             )

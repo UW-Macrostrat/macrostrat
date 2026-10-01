@@ -1,7 +1,6 @@
 from psycopg2.sql import Identifier
 from rich import print
 
-from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
 
 from ..database import sql_file
@@ -9,49 +8,23 @@ from ..utils import MapInfo
 
 
 def make_lookup(db: Database, source: MapInfo):
-    """Rebuild a map source's rows in `lookup_<scale>` and refresh its stats.
+    """Rebuild a map source's rows in `maps.lookup` and refresh its stats.
 
     Each polygon gets its unit, strat-name and lith matches, its best age and a
     colour for tiles.
     """
-    scale = source_scale(db, source.id)
-    refresh_lookup_table(db, source.id, scale)
+    refresh_lookup_table(db, source.id)
     update_source_stats(db, source.id)
 
 
-def source_scale(db: Database, source_id: int) -> str:
-    """The scale `maps.sources` declares, which names the source's lookup table.
-
-    Raised rather than `sys.exit(1)`, which the version-1 command used: these
-    steps run over a selector, and killing the process on the first map without
-    a scale would abandon the other 113.
-    """
-    row = db.run_query(
-        "SELECT scale FROM maps.sources WHERE source_id = :source_id",
-        {"source_id": source_id},
-    ).first()
-    if row is None:
-        raise MacrostratError(f"Source {source_id} was not found in maps.sources")
-    if row.scale is None:
-        raise MacrostratError(f"Source {source_id} is missing a scale")
-    return row.scale
-
-
-def refresh_lookup_table(db: Database, source_id: int, scale: str):
-    """Rebuild this source's rows in `lookup_<scale>`.
+def refresh_lookup_table(db: Database, source_id: int):
+    """Rebuild this source's rows in `maps.lookup`.
 
     The delete and the insert share a transaction, so the source is never seen
     with no lookup rows: `run_sql` otherwise commits each statement on its own.
     """
-    params = {
-        # `scale` names two tables, not one: the scale-partitioned view of
-        # `maps` and the lookup table beside it.
-        "lookup_table": Identifier(f"lookup_{scale}"),
-        "scale_table": Identifier("maps", scale),
-        "source_id": source_id,
-    }
     with db.transaction():
-        db.run_sql(sql_file("build-lookup-table"), params)
+        db.run_sql(sql_file("build-lookup-table"), {"source_id": source_id})
 
 
 def update_source_stats(db: Database, source_id: int):

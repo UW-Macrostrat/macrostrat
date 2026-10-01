@@ -145,10 +145,7 @@ def import_package(
 _PER_POLYGON = (
     "maps.map_liths",
     "maps.map_units",
-    "public.lookup_tiny",
-    "public.lookup_small",
-    "public.lookup_medium",
-    "public.lookup_large",
+    "maps.lookup",
 )
 
 
