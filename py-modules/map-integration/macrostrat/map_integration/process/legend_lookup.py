@@ -5,7 +5,6 @@ group of `maps.legend` columns for the source; `assign_colors` then nudges the
 base colours apart.
 """
 
-from psycopg2.sql import Identifier
 from rich import print
 
 from macrostrat.database import Database
@@ -13,7 +12,6 @@ from macrostrat.database import Database
 from ..database import sql_file
 from ..utils import MapInfo
 from ..utils.legend_color import LegendRow, assign_colors
-from .lookup import source_scale
 
 #: The legend-lookup steps, in the order they run. Later steps read what earlier
 #: ones wrote: `concepts` reads `unit_ids` and `strat_name_ids`, and `ages`
@@ -23,23 +21,21 @@ STEPS = ["unit-ids", "strat-name-ids", "liths", "concepts", "ages"]
 
 def legend_lookup(db: Database, source: MapInfo):
     """Refresh one source's legend entries from its unit, strat-name and lith matches."""
-    scale = source_scale(db, source.id)
-    params = {"source_id": source.id, "scale_table": Identifier("maps", scale)}
     for step in STEPS:
-        db.run_sql(sql_file("legend-lookup/" + step), params)
+        db.run_sql(sql_file("legend-lookup/" + step), {"source_id": source.id})
 
     # Nudge same-age units apart. Variants are chosen from each legend's place
     # and size, so two maps of the same ground agree; see utils/legend_color.
     # One read and one write per map -- this used to be an UPDATE per legend
     # row, followed by a name-based homogenization sweep that rewrote every
     # other map at a compatible scale.
-    rows = color_inputs(db, source.id, scale)
+    rows = color_inputs(db, source.id)
     changes = assign_colors(rows)
     write_colors(db, changes)
     print(f"Shifted {len(changes)} of {len(rows)} legend colors")
 
 
-def color_inputs(db: Database, source_id: int, scale: str) -> list[LegendRow]:
+def color_inputs(db: Database, source_id: int) -> list[LegendRow]:
     """Each legend entry's base colour and age, and the place and size of its polygons.
 
     Nearly all of the cost is the spheroidal area -- 14.8 of 15.7 s on SGMC --
@@ -57,12 +53,12 @@ def color_inputs(db: Database, source_id: int, scale: str) -> list[LegendRow]:
           sum(ST_Area(q.geom::geography)) / 1e6 AS area_km
         FROM maps.legend l
         LEFT JOIN maps.map_legend ml ON ml.legend_id = l.legend_id
-        LEFT JOIN {scale_table} q
+        LEFT JOIN maps.polygons q
           ON q.map_id = ml.map_id AND q.source_id = l.source_id
         WHERE l.source_id = :source_id
         GROUP BY l.legend_id
         """,
-        {"source_id": source_id, "scale_table": Identifier("maps", scale)},
+        {"source_id": source_id},
     ).all()
     return [
         LegendRow(
