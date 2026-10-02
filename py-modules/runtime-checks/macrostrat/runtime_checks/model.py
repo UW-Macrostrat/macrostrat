@@ -77,8 +77,7 @@ _MISSING = object()
 
 @dataclass(frozen=True)
 class JSONPath(Expectation):
-    """A dotted path into a JSON body (`success.data[0].col_id`) that must exist,
-    and optionally equal a value."""
+    """A path into a JSON body (`success.data[0].col_id`), optionally with a value."""
 
     path: str
     equals: Any = _MISSING
@@ -100,10 +99,9 @@ class JSONPath(Expectation):
 
 @dataclass(frozen=True)
 class Redirect(Expectation):
-    """A server-side redirect to `target` (a path). The request is not followed.
+    """A server-side redirect to the path `target`, not followed.
 
-    `same_scheme` catches an https request redirected to http, which a
-    TLS-terminating proxy produces when the app builds absolute URLs itself.
+    `same_scheme` catches https redirected to http behind a TLS-terminating proxy.
     """
 
     target: str
