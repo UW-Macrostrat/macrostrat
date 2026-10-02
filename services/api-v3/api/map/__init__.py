@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Annotated
 
 import morecantile
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from fastapi import Path as PathParam
 from morecantile import Tile
 from shapely import GEOSException
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Polygon
 from shapely.wkb import loads as load_wkb
 from shapely.wkt import loads as load_wkt
 from sqlalchemy import text
@@ -14,17 +14,11 @@ from sqlalchemy.exc import DBAPIError
 
 from api.database import DatabaseDep
 
-from .models import MapUnit
-
 router = APIRouter(tags=["map"])
 
 tms = morecantile.tms.get("WebMercatorQuad")
 
 _queries = Path(__file__).parent / "queries"
-
-
-def _query(name: str):
-    return text((_queries / f"{name}.sql").read_text())
 
 
 # Templated before it becomes a statement: `::owners` is filled per request.
@@ -160,6 +154,69 @@ _LEGACY_LEGEND = text(
 )
 
 
+#: The materialized `carto.*` build, addressed like a compilation. Never a
+#: `maps.sources` row, so the existence check below skips it. It exists to
+#: measure the compilation system against the legacy build on the same route,
+#: and goes with Stage D.
+LEGACY_CARTO = "sys:carto-legacy"
+
+# How long the database is allowed to spend on one legend request.
+#
+# Without this, a large `bounds` pins a backend for as long as it takes -- and
+# killing the client does not stop it, because the query keeps running until the
+# server notices the socket is gone. A timeout is what makes "this cannot block
+# forever" true rather than hoped for.
+STATEMENT_TIMEOUT_MS = 10_000
+
+#: Widest `bounds` this route will answer, in tiles at the request's zoom.
+#
+# Not a cost model — degrees are not equal-area — but a sanity guard, and one
+# whose answer a caller can predict. An area is answered at the detail of its
+# zoom, so what is reasonable scales with it: a continent at zoom 11 is not a
+# view. Eight tiles of 512 px is a 4K viewport at a whole zoom.
+MAX_BOUNDS_TILES = 8
+
+
+def max_bounds_span(zoom: int) -> float:
+    """The widest `bounds` answered at `zoom`, as a span in degrees."""
+    return MAX_BOUNDS_TILES * 360 / 2**zoom
+
+
+def check_bounds_span(geometry, zoom: int) -> None:
+    """Refuse an area too large to be a view at `zoom`.
+
+    Up front, before any spatial work: the statement timeout would stop a
+    continent-sized request eventually, but spending ten seconds to say no is
+    worse than saying it immediately, and a caller learns nothing from a
+    timeout.
+    """
+    minx, miny, maxx, maxy = geometry.bounds
+    span = max(maxx - minx, maxy - miny)
+    limit = max_bounds_span(zoom)
+    if span <= limit:
+        return
+    raise HTTPException(
+        400,
+        f"`bounds` spans {span:.3g}°, over the {limit:.3g}° this route answers "
+        f"for at zoom {zoom}.",
+    )
+
+
+def check_served_zoom(ident: str, zoom: int, min_zoom: int | None) -> None:
+    """Refuse a zoom below the ones the source is drawn at.
+
+    Its tiles hold nothing there (`map_bounds.zoom_range`), so neither does
+    its legend. Above the range a client overzooms the last tiles, and the
+    answer is theirs.
+    """
+    if min_zoom is None or zoom >= min_zoom:
+        return
+    raise HTTPException(
+        400,
+        f"'{ident}' is drawn from zoom {min_zoom}; zoom {zoom} is below it.",
+    )
+
+
 @router.get(
     "/{ident}/legend",
     summary="The legend of a map or compilation",
@@ -193,15 +250,22 @@ async def get_map_legend(
     entry of every map the source draws at that zoom (`all`). Resolved the way
     the tiles are, so the legend matches the map: `carto` answers from its
     member at the zoom's scale, a compilation through its faces, a map from its
-    own polygons. `zoom` defaults to the most detailed.
+    own polygons. `zoom` defaults to the one `bounds` fills, or without it to the
+    most detailed. A zoom below the ones the source is drawn at is refused, as is
+    a `bounds` more than eight tiles across at the zoom.
     """
     geometry = None
     if bounds is not None:
         geometry = parse_bounds(bounds)
+        if zoom is None:
+            zoom = min_bounding_tile(geometry).z + 1
+        check_bounds_span(geometry, zoom)
     if zoom is None:
         zoom = 23
 
     async with database.async_connection() as conn:
+        # Bounded before anything spatial runs, and `LOCAL` so it lapses with
+        # this transaction rather than following the connection back to the pool.
         await conn.execute(
             text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
         )
@@ -215,12 +279,23 @@ async def get_map_legend(
             )
             return res.mappings().all()
 
-        known = await conn.execute(
-            text("SELECT map_bounds.resolve_source(CAST(:ident AS text))"),
-            {"ident": ident},
-        )
-        if known.scalar() is None:
+        source = (
+            await conn.execute(
+                text(
+                    """
+                    SELECT s.id, zr.min_zoom
+                    FROM (
+                      SELECT map_bounds.resolve_source(CAST(:ident AS text)) AS id
+                    ) s
+                    LEFT JOIN LATERAL map_bounds.zoom_range(s.id) zr ON true
+                    """
+                ),
+                {"ident": ident},
+            )
+        ).one()
+        if source.id is None:
             raise HTTPException(404, f"No map or compilation matching '{ident}'")
+        check_served_zoom(ident, zoom, source.min_zoom)
 
         owners = _OWNERS_ALL
         params = {"ident": ident, "zoom": zoom, "limit": limit}
@@ -237,210 +312,6 @@ async def get_map_legend(
                 504, "The legend query timed out; ask for a smaller area."
             ) from err
         return res.mappings().all()
-
-
-# --- Units at a location ---
-
-#: The materialized `carto.*` build, addressed like a compilation. Answered by
-#: `map_bounds.units_at` itself; never a `maps.sources` row, so the existence
-#: check below skips it. It exists to measure the compilation system against the
-#: legacy build on the same route, and goes with Stage D.
-LEGACY_CARTO = "sys:carto-legacy"
-
-# How long the database is allowed to spend on one units request.
-#
-# The route is a point lookup and answers in tens of milliseconds; what can run
-# away is `bounds`, which a caller may set to a continent and which is asked of
-# every layer of a stack at once. Without this, such a request pins a backend
-# for as long as it takes -- and killing the client does not stop it, because
-# the query keeps running until the server notices the socket is gone. A
-# timeout is what makes "this cannot block forever" true rather than hoped for.
-STATEMENT_TIMEOUT_MS = 10_000
-
-#: Widest `bounds` this route will answer, in tiles at the request's zoom.
-#
-# Not a cost model — degrees are not equal-area — but a sanity guard, and one
-# whose answer a caller can predict. A box is answered at the detail of its
-# zoom, so what is reasonable scales with it: a continent at zoom 11 is not a
-# location. `bounds` is meant for a click tolerance or a small viewport.
-MAX_BOUNDS_TILES = 4
-
-
-def max_bounds_span(zoom: int) -> float:
-    """The widest `bounds` answered at `zoom`, as a span in degrees."""
-    return MAX_BOUNDS_TILES * 360 / 2**zoom
-
-
-#: Most units to return. Caps the response rather than the work -- the timeout
-#: above is what bounds the work -- so a huge area fails loudly instead of
-#: serializing a million rows.
-DEFAULT_LIMIT = 500
-MAX_LIMIT = 5_000
-
-
-class MapLocation:
-    """Where to ask, and at what zoom.
-
-    `lng`/`lat` is taken as a **point**, not as the tile containing it. This
-    route asks what is mapped at a place, and the tile a location falls in is a
-    quarter of a hemisphere at low zoom -- sizing the query from it turns a
-    point question into an area scan of millions of polygons. `zoom` therefore
-    only chooses which layer of a stack is the current one.
-
-    `bounds` is an explicit area and is used as given, the same as
-    `/{compilation}/legend`.
-    """
-
-    def __init__(self, geometry, zoom: int):
-        self.geometry = geometry
-        self.zoom = zoom
-
-
-def map_location_params(
-    bounds: str = None, lng: float = None, lat: float = None, zoom: int = None
-) -> MapLocation:
-    """`bounds`, or `lng`/`lat` with an optional `zoom`, read for a point query."""
-    if bounds is not None:
-        geometry = parse_bounds(bounds)
-        if zoom is None:
-            zoom = min_bounding_tile(geometry).z + 1
-        check_bounds_span(geometry, zoom)
-        return MapLocation(geometry, zoom)
-
-    if lat is None or lng is None:
-        raise HTTPException(400, "Either bounds, or lng and lat, must be provided.")
-
-    # No zoom means "the most detailed answer is the current one".
-    if zoom is None:
-        zoom = 23
-    return MapLocation(Point(lng, lat), zoom)
-
-
-def check_bounds_span(geometry, zoom: int) -> None:
-    """Refuse an area too large to be a location at `zoom`.
-
-    Up front, before any spatial work: the statement timeout below would stop a
-    continent-sized request eventually, but spending ten seconds to say no is
-    worse than saying it immediately, and a caller learns nothing from a
-    timeout.
-    """
-    minx, miny, maxx, maxy = geometry.bounds
-    span = max(maxx - minx, maxy - miny)
-    limit = max_bounds_span(zoom)
-    if span <= limit:
-        return
-    raise HTTPException(
-        400,
-        f"`bounds` spans {span:.3g}°, over the {limit:.3g}° this route answers "
-        f"for at zoom {zoom}. It reports what is mapped at a location; use the "
-        "tiles for an area.",
-    )
-
-
-def check_served_zoom(compilation: str, zoom: int, min_zoom: int | None) -> None:
-    """Refuse a zoom below the ones the source is drawn at.
-
-    Its tiles hold nothing there (`map_bounds.zoom_range`), so neither does
-    this route. Above the range a client overzooms the last tiles, and the
-    answer is theirs.
-    """
-    if min_zoom is None or zoom >= min_zoom:
-        return
-    raise HTTPException(
-        400,
-        f"'{compilation}' is drawn from zoom {min_zoom}; zoom {zoom} is below it.",
-    )
-
-
-@router.get(
-    "/{compilation}/units",
-    summary="Map units at a location",
-)
-async def get_map_units(
-    compilation: Annotated[
-        str,
-        PathParam(
-            description=(
-                "A map or compilation slug, or an integer source id. `carto` is "
-                "the served map; `sys:carto-legacy` is the materialized build it "
-                "replaces."
-            )
-        ),
-    ],
-    location: Annotated[MapLocation, Depends(map_location_params)],
-    database: DatabaseDep,
-    limit: Annotated[
-        int, Query(ge=1, le=MAX_LIMIT, description="Most units to return")
-    ] = DEFAULT_LIMIT,
-) -> list[MapUnit]:
-    """Every mapped polygon covering a location, with where each came from.
-
-    Polygon granularity, where `/{compilation}/legend` is legend granularity:
-    the question here is "what is mapped at this point, and by which map", which
-    is the one the compilation system answers differently from the materialized
-    carto tables -- a polygon arrives with the map that owns it and the member
-    of the compilation it is presented as.
-
-    Resolution is `map_bounds.units_at`, the same entry point the tiles and the
-    v2 point lookup read through, so the answer is what the tiles draw rather
-    than a second opinion assembled another way. A multiscale compilation
-    (`carto`) answers from the member whose scale band contains `zoom`; any
-    other compilation or map answers for itself at every zoom.
-
-    Takes `bounds`, or `lng`/`lat` with an optional `zoom` -- the same location
-    parameters as `/{compilation}/legend`, but `lng`/`lat` means the point
-    rather than the tile around it. With `bounds` this is an area query and
-    returns everything intersecting the box. A zoom below the ones the source is
-    drawn at is refused, as is a `bounds` more than four tiles across at the
-    zoom.
-    """
-    async with database.async_connection() as conn:
-        # Bounded before anything spatial runs, and `LOCAL` so it lapses with
-        # this transaction rather than following the connection back to the pool.
-        await conn.execute(
-            text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
-        )
-
-        if compilation != LEGACY_CARTO:
-            source = (
-                await conn.execute(
-                    text(
-                        """
-                        SELECT s.id, zr.min_zoom
-                        FROM (
-                          SELECT map_bounds.resolve_source(CAST(:ident AS text)) AS id
-                        ) s
-                        LEFT JOIN LATERAL map_bounds.zoom_range(s.id) zr ON true
-                        """
-                    ),
-                    {"ident": compilation},
-                )
-            ).one()
-            if source.id is None:
-                raise HTTPException(
-                    404, f"No map or compilation matching '{compilation}'"
-                )
-            check_served_zoom(compilation, location.zoom, source.min_zoom)
-
-        params = {
-            "ident": compilation,
-            "bounds": location.geometry.wkt,
-            "zoom": location.zoom,
-            "limit": limit,
-        }
-        try:
-            res = await conn.execute(_query("units"), params)
-        except DBAPIError as err:
-            if not _is_timeout(err):
-                raise
-            raise HTTPException(
-                504,
-                "The units query timed out. This route is a point lookup; a "
-                "`bounds` covering more than a small area is too much to ask "
-                "of it.",
-            ) from err
-
-        return [MapUnit(**row) for row in res.mappings()]
 
 
 def _is_timeout(err: DBAPIError) -> bool:
