@@ -88,13 +88,8 @@ TABLES = (
         "map_area",
         "map_bounds.map_area",
         "t.id = ANY(:ids)",
+        # `map_layer` is always the barrier layer, which the target seeds itself.
         exclude=("source_id", "topo", "geometry_hash", "topology_error", "map_layer"),
-        extra=(
-            (
-                "map_layer_slug",
-                "(SELECT ml.slug FROM map_bounds.map_layer ml WHERE ml.id = t.map_layer)",
-            ),
-        ),
     ),
     TableSpec(
         "boundary_op",

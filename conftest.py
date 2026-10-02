@@ -216,30 +216,35 @@ from macrostrat.core.defs_provider import (
 
 @fixture(scope="session")
 def data_provider(request):
+    from sqlalchemy.exc import SQLAlchemyError
+
     from macrostrat.core import get_database
     from macrostrat.core.config import settings
     from macrostrat.core.exc import MacrostratError
 
-    source_db = None
-    log.info("Attempting to connect to database %s", settings.pg_database)
     if not request.config.getoption("--skip-env"):
+        log.info("Attempting to connect to database %s", settings.pg_database)
         try:
-            source_db = get_database()
-        except (RuntimeError, MacrostratError) as e:
-            log.warning("Could not connect to environment database: %s", e)
-            log.warning("Defs will not be loaded from the API configuration")
+            provider = MacrostratDatabaseDataProvider(get_database())
+            # `get_database()` does not connect, so an environment that is
+            # configured but unreachable (stack down, no VPN) or missing a table
+            # only fails here. Load everything now, while the API can still stand in.
+            provider.get_intervals()
+            provider.get_lithologies()
+            provider.get_lithology_attributes()
+            provider.get_environments()
+        except (RuntimeError, MacrostratError, SQLAlchemyError) as e:
+            log.warning("Could not load defs from the environment database: %s", e)
+            log.warning("Defs will be loaded from the API instead")
+        else:
+            log.info("Set up Macrostrat data provider from database")
+            yield provider
+            return
 
-    base_url = settings.base_url
-    cfg = MacrostratAPIConfig(base_url=base_url + "/api/v2")
-    data_provider = MacrostratAPIDataProvider(cfg)
-    if source_db is not None:
-        data_provider = MacrostratDatabaseDataProvider(source_db)
-        log.info(
-            "Set up Macrostrat data provider from database: %s", source_db.engine.url
-        )
-    else:
-        log.info("Set up Macrostrat data provider using API: %s", cfg.base_url)
-    yield data_provider
+    cfg = MacrostratAPIConfig(base_url=settings.base_url + "/api/v2")
+    log.info("Set up Macrostrat data provider using API: %s", cfg.base_url)
+    with MacrostratAPIDataProvider(cfg) as provider:
+        yield provider
 
 
 @fixture(scope="session")

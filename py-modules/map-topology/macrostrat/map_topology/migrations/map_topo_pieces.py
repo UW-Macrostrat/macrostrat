@@ -41,6 +41,7 @@ class MapTopoPiecesMigration(Migration):
     """
 
     name = "map-topo-pieces"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "Drop the map_topo and composite_topo topogeometry layers"
     readiness_state = "ga"

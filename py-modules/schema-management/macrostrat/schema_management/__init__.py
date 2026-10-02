@@ -21,6 +21,7 @@ from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
+from .composer import APP_OWNER
 from .defs import (
     StatementCounter,
     apply_schema_for_environment,
@@ -106,6 +107,8 @@ def plan():
             format_sql(s, reindent_aligned=True, compact=True, keyword_case="upper")
             for s in m.statements
         ]
+        if statements:
+            statements = [_PLAN_ROLE_HEADER, *statements, "RESET ROLE;"]
 
         with open(out_file, "w") as f:
             for statement in statements:
@@ -113,6 +116,19 @@ def plan():
                 # Extra newline after statements that span multiple lines
                 if "\n" in statement:
                     f.write("\n")
+
+
+# A plan has no chunk structure to take an owner from, so it names the role it
+# is applied as. `apply` sets the role itself and skips these; they are for a
+# plan applied by hand. No colons here: the plan runs through SQLAlchemy, which
+# reads one before a word as a bind parameter.
+_PLAN_ROLE_HEADER = f"""\
+-- Applied as {APP_OWNER}, so what it creates is owned as the declarative build
+-- owns it. `macrostrat schema apply` takes the role itself, and re-runs what the
+-- role is refused (an extension, a grant in the public schema) as the connector.
+-- Applied by hand, re-run any statement refused here as the connector.
+SET ROLE {APP_OWNER};
+"""
 
 
 def filter_changes_from_plan(changes):

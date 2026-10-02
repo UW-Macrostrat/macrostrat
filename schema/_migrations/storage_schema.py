@@ -4,6 +4,7 @@ from macrostrat.schema_management.migrations import ApplicationStatus, Migration
 
 class StorageSchemeMigration(Migration):
     name = "storage-scheme"
+    owner = None  # its own `apply`, written for the connector's privileges
 
     depends_on = ["api-v3"]
     readiness_state = "ga"

@@ -73,7 +73,7 @@ VALUES (map_bounds.source_id('large'), map_bounds.source_id('pkg-a'));
 
 INSERT INTO map_bounds.map_area (id, geometry, map_layer)
 SELECT map_bounds.source_id(slug), ST_Multi(ST_MakeEnvelope(x, 0, x + 2, 1, 4326)),
-       (SELECT id FROM map_bounds.map_layer WHERE slug = 'large')
+       map_bounds.barrier_layer()
 FROM (VALUES ('pkg-a', 0), ('pkg-b', 3), ('pkg-comp', 0)) v(slug, x);
 INSERT INTO map_bounds.boundary_op (source_id, position, operation, parameters)
 VALUES (map_bounds.source_id('pkg-a'), 0, 'union', '{}'),
@@ -277,12 +277,13 @@ def test_import(target_db, package):
         == "mosaic"
     )
 
+    # The boundary is recorded in the target's own barrier layer
     area = db.run_query(
-        "SELECT ml.slug, geometry_hash FROM map_bounds.map_area a"
-        " JOIN map_bounds.map_layer ml ON ml.id = a.map_layer WHERE a.id = :a",
+        "SELECT a.map_layer = map_bounds.barrier_layer() AS in_barrier, geometry_hash"
+        " FROM map_bounds.map_area a WHERE a.id = :a",
         dict(a=a),
     ).one()
-    assert area.slug == "large" and area.geometry_hash is None
+    assert area.in_barrier and area.geometry_hash is None
     ops = db.run_query(
         "SELECT operation, parameters FROM map_bounds.boundary_op WHERE source_id = :a"
         " ORDER BY position",

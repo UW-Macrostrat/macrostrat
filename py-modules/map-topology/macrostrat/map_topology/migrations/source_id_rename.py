@@ -22,6 +22,7 @@ class SourceIDRenameMigration(Migration):
     """
 
     name = "map-bounds-source-id"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "Name maps.sources keys `source_id` across map_bounds"
     readiness_state = "ga"

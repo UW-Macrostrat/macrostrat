@@ -14,6 +14,7 @@ from typing import Callable, Iterator, NamedTuple, Optional
 
 from typer import Option
 
+from macrostrat.core.database import pin_role
 from macrostrat.core.schema_definition import sql_files
 from macrostrat.database import Database
 from macrostrat.utils import get_logger
@@ -80,6 +81,7 @@ def role_switcher(db: Database):
         # failure into a raise. A `SET ROLE` is itself rolled back with the
         # transaction, so the one case this swallows — an aborted transaction —
         # is also the one where the role is already gone.
+        pin_role(db.engine, None)
         db.run_sql("RESET ROLE", raise_errors=False)
 
 

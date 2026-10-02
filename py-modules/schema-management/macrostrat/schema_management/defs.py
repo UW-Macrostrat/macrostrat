@@ -1,3 +1,4 @@
+import re
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -150,6 +151,9 @@ def get_all_schemas(db: Database, excluded_schemas=None):
     )
 
 
+_ROLE_STATEMENT = re.compile(r"\s*(SET|RESET)\s+ROLE\b", re.IGNORECASE)
+
+
 class StatementCounter:
     def __init__(self, safe: bool = True):
         self.total = 0
@@ -158,6 +162,10 @@ class StatementCounter:
         self.statements = []
 
     def filter(self, s, params):
+        # The plan's own `SET ROLE` / `RESET ROLE`, for applying it by hand: `apply`
+        # manages the role itself (`applied_as_app_owner`), and they are not changes.
+        if _ROLE_STATEMENT.match(s):
+            return False
         self.total += 1
         if is_unsafe_statement(s):
             self.unsafe += 1

@@ -6,6 +6,9 @@ The plan is a flat statement list, so it can't take an owner per chunk the way
 than trying to classify statements in advance.
 """
 
+from sqlalchemy import create_engine
+
+from macrostrat.core.database import _role_pins
 from macrostrat.schema_management.ownership import applied_as_app_owner
 
 
@@ -30,6 +33,8 @@ class FakeDB:
     def __init__(self, can_set_role: bool = True):
         self.roles: list[str] = []
         self.can_set_role = can_set_role
+        # Never connects; only carries the pool listeners `pin_role` installs.
+        self.engine = create_engine("postgresql+psycopg://")
 
     def run_sql(self, sql, params=None, **kwargs):
         if sql == "SET ROLE {role}" and not self.can_set_role:
@@ -50,14 +55,17 @@ def test_privilege_error_is_retried_as_the_connector():
     ctx = FakeContext()
     with applied_as_app_owner(db) as escalate:
         recovery = escalate(ctx, FakeError("42501"), None)
-
-    # Drop to the connector, re-run the statement, then take the role back so the
-    # rest of the plan is still applied as macrostrat.
-    assert [d.query for d in recovery] == [
-        "RESET ROLE",
-        ctx.query,
-        "SET ROLE {role}",
-    ]
+        # Dropped to the connector to re-run the statement, then took the role
+        # back so the rest of the plan is still applied as macrostrat.
+        assert db.roles == [
+            "SET ROLE {role}",
+            "RESET ROLE",
+            ctx.query,
+            "SET ROLE {role}",
+        ]
+        assert _role_pins[db.engine].role == "macrostrat"
+    assert recovery == []  # handled, nothing left for the loop to run
+    assert db.engine not in _role_pins
 
 
 def test_other_errors_are_left_to_normal_handling():
@@ -73,3 +81,46 @@ def test_falls_back_to_the_connector_when_the_role_is_unavailable():
     with applied_as_app_owner(db) as escalate:
         assert escalate is None
     assert db.roles == []  # never masqueraded, so nothing to reset
+    assert db.engine not in _role_pins
+
+
+def test_migrations_apply_as_their_owner():
+    """A migration is applied as `macrostrat` by default, with the hook that
+    retries refused statements; `owner = None` applies it as the connector."""
+    from macrostrat.schema_management.migrations import Migration, _apply_as_owner
+
+    seen = []
+
+    class AsOwner(Migration):
+        name = "as-owner"
+
+        def apply(self, db):
+            seen.append((self.name, db.roles[-1], self.on_error is not None))
+
+    class AsConnector(AsOwner):
+        name = "as-connector"
+        owner = None
+
+    db = FakeDB()
+    _apply_as_owner(db, AsOwner())
+    _apply_as_owner(db, AsConnector())
+    assert seen == [
+        ("as-owner", "SET ROLE {role}", True),
+        ("as-connector", "RESET ROLE", False),
+    ]
+    assert db.engine not in _role_pins
+
+
+def test_apply_skips_the_plans_own_role_statements():
+    """A plan names the role it applies as, for applying it by hand; `apply`
+    manages the role itself, so those lines are neither run nor counted."""
+    from macrostrat.schema_management.defs import StatementCounter
+
+    counter = StatementCounter()
+    kept = [
+        s
+        for s in ["SET ROLE macrostrat;", "CREATE TABLE maps.t ();", "RESET ROLE"]
+        if counter.filter(s, None)
+    ]
+    assert kept == ["CREATE TABLE maps.t ();"]
+    assert counter.total == 1

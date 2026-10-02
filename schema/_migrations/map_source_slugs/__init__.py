@@ -12,6 +12,7 @@ WHERE table_schema = 'sources'"""
 
 class MapSourceSlugsMigration(Migration):
     name = "map-source-slug"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "core"
     description = """
     Starting from a Macrostrat v1 map database (burwell), create the maps.sources.slugs column,

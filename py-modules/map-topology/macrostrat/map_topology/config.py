@@ -3,7 +3,9 @@ from pathlib import Path
 from mapboard.topology_manager.config import IdentityStrategy, create_context
 
 from macrostrat.core import SchemaDefinition, get_database
+from macrostrat.core.database import pin_role
 from macrostrat.database import Database
+from macrostrat.schema_management.composer import APP_OWNER
 
 from .manager import MacrostratTopologyManager
 
@@ -61,17 +63,36 @@ def create_topo_context(db: Database):
 
 def create_topo_fixtures(db: Database):
     ctx = create_topo_context(db)
-    mgr = MacrostratTopologyManager(ctx)
-    mgr.create_tables(check=False)
+    # The library applies its fixtures through an engine of its own, which the
+    # role this chunk is applied as (`SET ROLE`) does not reach. Pin that engine
+    # to the same role, so what the library creates is owned like the rest of
+    # the chunk rather than by the connector.
+    role = db.run_query(
+        "SELECT CASE WHEN current_user <> session_user THEN current_user END"
+    ).scalar()
+    pin_role(ctx.database.engine, role)
+    try:
+        MacrostratTopologyManager(ctx).create_tables(check=False)
+    finally:
+        pin_role(ctx.database.engine, None)
+        ctx.database.engine.dispose()
 
 
 def seed_layer_bounds(db: Database):
-    """The registered compilations' openings: data, so it is a step of its own,
-    after every fixture pass. A fresh database is seeded here; an existing one by
-    the `compilation-layer-bounds` migration, which also builds the bounds."""
-    from .bounds.layers import seed_layer_openings
+    """The registered compilations' openings and bounds: data, so it is a step of
+    its own, after every fixture pass. A fresh database is seeded and built here;
+    an existing one by the `compilation-layer-bounds` migration, which does the
+    same. Building here too is what lets that migration read as applied on a
+    fresh database rather than always having work to do."""
+    from .bounds.compile import compile_bounds
+    from .bounds.layers import layer_bounds, seed_layer_openings
 
     seed_layer_openings(db)
+    db.session.commit()
+    layer_ids = [l.source_id for l in layer_bounds(db)]
+    for res in compile_bounds(db, force=True, only=layer_ids):
+        if res.error:
+            print(f"  {res.slug}: {res.error}")
     db.session.commit()
 
 
@@ -96,6 +117,7 @@ TopologySchema = SchemaDefinition(
     ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),
+    owner=APP_OWNER,
 )
 
 

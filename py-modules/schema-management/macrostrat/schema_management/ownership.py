@@ -16,13 +16,11 @@ trying to classify statements up front.
 
 from contextlib import contextmanager
 
-from psycopg.sql import Identifier
-
+from macrostrat.core.database import pin_role
 from macrostrat.database import Database
-from macrostrat.database.query import StatementDirective
 from macrostrat.utils import get_logger
 
-from .chunks import APP_OWNER
+from .composer import APP_OWNER, set_applying_role
 
 log = get_logger(__name__)
 
@@ -46,14 +44,19 @@ def _is_privilege_error(err: Exception) -> bool:
 def applied_as_app_owner(db: Database):
     """Run a block's DDL as ``macrostrat``, yielding an ``on_error`` hook to pass on.
 
-    The hook re-runs a statement the application role was refused as the connector,
-    then restores the role for the rest of the plan. Yields ``None`` — leaving the
-    session as the connector, i.e. the previous behaviour — when the connector
-    isn't a member of ``macrostrat`` and so can't take the role at all.
+    The hook re-runs a statement the application role was refused as the
+    connector, then restores the role for the rest of the plan. It runs the
+    statement itself rather than returning ``RESET ROLE`` / statement / ``SET
+    ROLE`` directives: each directive commits on its own, and the role is pinned
+    to every connection the engine hands out (``set_applying_role``), so a reset
+    issued as a separate statement would not carry over to the next one.
+
+    Yields ``None`` -- leaving the session as the connector, i.e. the previous
+    behaviour -- when the connector isn't a member of ``macrostrat`` and so can't
+    take the role at all.
     """
-    role = dict(role=Identifier(APP_OWNER))
     try:
-        db.run_sql("SET ROLE {role}", role, raise_errors=True)
+        set_applying_role(db, APP_OWNER)
     except Exception as err:  # noqa: BLE001 — degrade to the connector, don't fail
         log.warning(
             "Could not apply as %s (%s); running as the connector instead.",
@@ -67,13 +70,18 @@ def applied_as_app_owner(db: Database):
         if not _is_privilege_error(err):
             return None  # not ours to handle — fall through to normal handling
         log.info("Statement needs the connector's privileges: %s", ctx.sql_text[:100])
-        return [
-            StatementDirective(query="RESET ROLE"),
-            StatementDirective(query=ctx.query, params=ctx.params),
-            StatementDirective(query="SET ROLE {role}", params=role),
-        ]
+        set_applying_role(db, None)
+        try:
+            db.run_sql(ctx.query, ctx.params, raise_errors=True)
+        except Exception as retry_err:  # noqa: BLE001 — reported as the original
+            log.error("Statement failed as the connector too: %s", retry_err)
+            return None
+        finally:
+            set_applying_role(db, APP_OWNER)
+        return []  # handled: nothing further to run
 
     try:
         yield escalate
     finally:
+        pin_role(db.engine, None)
         db.run_sql("RESET ROLE", raise_errors=False)

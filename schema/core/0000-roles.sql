@@ -55,6 +55,12 @@ GRANT web_user TO web_admin;
 GRANT REFERENCES ON spatial_ref_sys TO macrostrat;
 GRANT SELECT ON spatial_ref_sys TO macrostrat;
 
+--   3. macrostrat to register the topologies it creates (`map-topology`). PostGIS
+--      records them in its own tables, which `CreateTopology` and
+--      `AddTopoGeometryColumn` write to.
+GRANT SELECT, INSERT, UPDATE, DELETE ON topology.topology, topology.layer TO macrostrat;
+GRANT USAGE, SELECT, UPDATE ON SEQUENCE topology.topology_id_seq TO macrostrat;
+
 /** Create a low-privilege role for the logs pipeline to write to usage_stats. */
 CREATE ROLE logs_writer;
 -- Grant this access to the corresponding K8s-created user if it exists.

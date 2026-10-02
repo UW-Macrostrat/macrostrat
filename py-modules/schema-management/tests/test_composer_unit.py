@@ -9,8 +9,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from pytest import raises
+from sqlalchemy import create_engine
 
 from macrostrat.core import SchemaDefinition
+from macrostrat.core.database import _role_pins
 from macrostrat.schema_management.chunks import chunks_for_environment
 from macrostrat.schema_management.composer import build_schema, dependency_closure
 
@@ -39,6 +41,8 @@ class FakeDB:
         self.applied: list[Path] = []
         # Sequence of role directives issued by build_schema, as raw SQL strings.
         self.roles: list[str] = []
+        # Never connects; only carries the pool listeners `pin_role` installs.
+        self.engine = create_engine("postgresql+psycopg://")
 
     def run_fixtures(self, fixtures, **kwargs):
         self.applied.extend(fixtures)
@@ -98,6 +102,23 @@ def test_build_schema_sets_role_per_chunk():
     assert db.roles == ["RESET ROLE", "SET ROLE {role}", "RESET ROLE"]
 
 
+def test_build_schema_pins_the_role_to_the_engine_while_a_chunk_applies():
+    """Every pooled connection takes the chunk's role, not just the one in hand,
+    and no pin outlives the build."""
+    seen = []
+    chunks = [
+        SchemaDefinition(
+            name="app",
+            owner="macrostrat",
+            provides=[lambda db: seen.append(_role_pins[db.engine].role)],
+        )
+    ]
+    db = FakeDB()
+    build_schema(db, _ENV, chunks)
+    assert seen == ["macrostrat"]
+    assert db.engine not in _role_pins
+
+
 def test_build_schema_resets_role_even_when_a_chunk_fails():
     """A mid-build failure still resets the session (the finally clause)."""
 
@@ -109,6 +130,7 @@ def test_build_schema_resets_role_even_when_a_chunk_fails():
     with raises(RuntimeError, match="exploded"):
         build_schema(db, _ENV, chunks)
     assert db.roles == ["SET ROLE {role}", "RESET ROLE"]
+    assert db.engine not in _role_pins
 
 
 def test_dependency_closure_of_macrostrat():

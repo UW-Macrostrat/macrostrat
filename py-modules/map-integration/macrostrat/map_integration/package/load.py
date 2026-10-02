@@ -499,14 +499,19 @@ class _Importer:
         """
         if not self.has("map_area"):
             return
+        # Packages written before layers were keyed by compilation carry the
+        # layer's slug, which nothing reads any more.
         cols = self.common("map_area", skip=("map_layer_slug",))
         rows = self._remapped("map_area", "id")
-        layers = dict(
-            self.conn.execute(
-                text("SELECT slug, id FROM map_bounds.map_layer WHERE slug IS NOT NULL")
-            ).all()
-        )
-        if self.pkg.layers["map_area"].column("map_layer_slug"):
+        # Every map's boundary is recorded in the barrier layer, which each
+        # database seeds as its own, so it is the target's rather than carried.
+        barrier = self.conn.execute(
+            text(
+                "SELECT CASE WHEN to_regprocedure('map_bounds.barrier_layer()')"
+                " IS NOT NULL THEN map_bounds.barrier_layer() END"
+            )
+        ).scalar()
+        if barrier is not None:
             cols.append(
                 next(
                     c
@@ -515,7 +520,7 @@ class _Importer:
                 )
             )
             for row in rows:
-                row["map_layer"] = layers.get(row.get("map_layer_slug"))
+                row["map_layer"] = barrier
         updates = ", ".join(
             f"{quote(c.name)} = EXCLUDED.{quote(c.name)}"
             for c in cols

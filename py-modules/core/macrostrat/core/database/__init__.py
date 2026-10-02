@@ -301,3 +301,68 @@ def set_audit_context(
         raise_errors=True,
     )
     return True
+
+
+# The role each engine's connections are pinned to, per engine. See `pin_role`.
+_role_pins: WeakKeyDictionary = WeakKeyDictionary()
+
+
+class _RolePin:
+    """Checkout/checkin listeners holding one engine's connections to a role."""
+
+    def __init__(self, engine, role: str):
+        self.role = role
+        event.listen(engine, "checkout", self.checkout)
+        event.listen(engine, "checkin", self.checkin)
+
+    def remove(self, engine):
+        event.remove(engine, "checkout", self.checkout)
+        event.remove(engine, "checkin", self.checkin)
+
+    def checkout(self, dbapi_connection, connection_record, connection_proxy):
+        _set_session_role(dbapi_connection, self.role)
+
+    def checkin(self, dbapi_connection, connection_record):
+        # None for a connection that was invalidated, and so is going away anyway.
+        if dbapi_connection is None:
+            return
+        try:
+            _set_session_role(dbapi_connection, None)
+        except Exception:  # noqa: BLE001 -- a broken connection is discarded later
+            log.debug("Could not reset the role of a returned connection")
+
+
+def _set_session_role(dbapi_connection, role: str | None):
+    if role is None:
+        statement = "RESET ROLE"
+    else:
+        statement = 'SET ROLE "' + role.replace('"', '""') + '"'
+    with dbapi_connection.cursor() as cursor:
+        cursor.execute(statement)
+    # Committed, so the role outlives the transaction SQLAlchemy opens next.
+    dbapi_connection.commit()
+
+
+def pin_role(engine, role: str | None) -> None:
+    """Have every connection `engine` hands out act as `role`; `None` stops.
+
+    `SET ROLE` belongs to one connection, and most code here commits per
+    statement, which hands the session's connection back to the pool. Once the
+    pool holds a second connection -- anything that called `engine.connect()`,
+    `db.transaction()` or a library that opens its own -- the next statement can
+    land on a connection that never took the role, and whatever it creates is
+    owned by the connector. So the role is pinned to the engine instead: set on
+    every checkout, and reset on checkin so that no pooled connection outlives
+    the pin still acting as the role. A connection the caller already holds is
+    not reached; set its role directly.
+    """
+    pin = _role_pins.get(engine)
+    if role is None:
+        if pin is not None:
+            pin.remove(engine)
+            del _role_pins[engine]
+        return
+    if pin is None:
+        _role_pins[engine] = _RolePin(engine, role)
+    else:
+        pin.role = role

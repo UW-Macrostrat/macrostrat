@@ -18,7 +18,6 @@ import importlib.util
 from pytest import fixture, mark
 
 from macrostrat.core.config import settings
-from macrostrat.map_topology.config import config as _topo_config
 from macrostrat.schema_management.composer import build_schema
 from macrostrat.schema_management.defs import temporary_database_cluster
 from macrostrat.schema_management.migrations import ApplicationStatus
@@ -45,14 +44,6 @@ _ENV = "development"
 # system catalogs, the foundational/shared ``public`` and PostGIS ``topology``, and
 # external data schemas the diff never manages.
 #
-# The map-topology schemas are excluded for a different reason: that chunk is
-# function-backed and the topology manager opens its *own* connection
-# (``create_context`` builds a fresh ``Database`` from the engine URL), so the
-# composer's session-level ``SET ROLE`` doesn't reach it and its objects are born
-# owned by the connector. Making them macrostrat-owned would additionally require
-# granting ``macrostrat`` write access to the PostGIS ``topology`` metadata tables.
-_TOPOLOGY_SCHEMAS = (_topo_config["data_schema"], _topo_config["topo_schema"])
-
 # `temp` (loader scratch space), `text_vectors` (deliberately owned by `xdd-writer`)
 # and `macrostratbak2` (the dead MariaDB-migration copy) are out of scope for the
 # same reasons the migration excludes them.
@@ -67,7 +58,6 @@ _EXCLUDED_SCHEMAS = (
     "temp",
     "text_vectors",
     "macrostratbak2",
-    *_TOPOLOGY_SCHEMAS,
 )
 
 
@@ -133,6 +123,20 @@ def test_application_objects_are_macrostrat_owned(built_schema):
         if row.owner != "macrostrat"
     ]
     assert not bad_schemas, f"non-macrostrat-owned application schemas: {bad_schemas}"
+
+
+@mark.docker
+@mark.slow
+def test_fresh_build_needs_no_ownership_reconciliation(built_schema):
+    """`ownership-unification` has nothing to do on a database just built.
+
+    Built as `macrostrat_admin`, one of the roles it sweeps -- so anything the
+    build creates outside the applying role (a library opening its own
+    connection, a statement on a pooled connection that never took the role)
+    shows up here as work the migration would otherwise be asked to repeat.
+    """
+    migration = _load_ownership_migration()
+    assert migration.should_apply(built_schema) == ApplicationStatus.APPLIED
 
 
 @mark.docker

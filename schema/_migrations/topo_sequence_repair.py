@@ -8,6 +8,7 @@ from macrostrat.schema_management.migrations import ApplicationStatus, Migration
 
 class TopoSequenceRepair(Migration):
     name = "topo-schema-sequence-repair"
+    owner = None  # its own `apply`, written for the connector's privileges
 
     def apply(self, db: Database):
         topo_name = "map_bounds_topology"
