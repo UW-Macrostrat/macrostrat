@@ -31,6 +31,25 @@ ENV PATH="/services/main/.venv/bin:$PATH" \
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 
+# GDAL network behaviour for cloud-optimized rasters read over HTTP (the
+# `/rasters` mosaics and the elevation service). With the defaults, opening one
+# remote COG costs a HEAD request, a directory-listing attempt and a 404 probe
+# for each of `.aux.xml` / `.ovr` / `.msk` before the header is read; these are
+# the settings titiler's own images ship to avoid that. `CPL_VSIL_CURL_CACHE_SIZE`
+# is the cross-open byte cache that makes a re-read of a file already touched
+# cost milliseconds — headers included — so it is sized to hold many of them.
+# `CPL_VSIL_CURL_ALLOWED_EXTENSIONS` is deliberately not set: it would break the
+# generic `/cog` route for anything that is not a `.tif`.
+ENV GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR \
+    GDAL_INGESTED_BYTES_AT_OPEN=32768 \
+    GDAL_HTTP_VERSION=2 \
+    GDAL_HTTP_MULTIPLEX=YES \
+    GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES \
+    CPL_VSIL_CURL_CACHE_SIZE=536870912 \
+    GDAL_CACHEMAX=512 \
+    VSI_CACHE=TRUE \
+    VSI_CACHE_SIZE=52428800
+
 # NEED TO specify another build context for the py-modules directory
 COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
 

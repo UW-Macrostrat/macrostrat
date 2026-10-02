@@ -2,8 +2,9 @@ from dataclasses import dataclass
 
 from geoalchemy2.shape import from_shape
 from mapboard.topology_manager import TopologyInspector, TopologyManager
-from pytest import approx, fixture, mark
+from pytest import approx, fixture, mark, raises
 from shapely.geometry import Point
+from sqlalchemy.exc import DBAPIError
 
 from macrostrat.map_topology import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
@@ -260,6 +261,50 @@ class TestMapTopology:
         ).all()
         assert len(records) == 3
         assert len(set(record.map_id for record in records)) == 3
+
+    def test_polygon_at_point_in_partly_covered_map(self, ctx):
+        """A point resolves to the polygon under it, wherever that polygon's
+        representative point falls.
+
+        1003 now covers 1001's upper-right corner, so 1001's face is an L while
+        its polygon is still the whole square, whose `ST_PointOnSurface` is the
+        corner of the L. Testing faces against that point dropped 1001 at every
+        point it still owns."""
+        db = ctx.database
+
+        for (x, y), map_id in [((0.5, 0.5), 1001), ((4.5, 0.5), 1002), ((2, 2), 1003)]:
+            source_ids = db.run_query(
+                """
+                SELECT source_id FROM map_bounds.polygon_at(
+                  'large', ST_SetSRID(ST_MakePoint(:x, :y), 4326), 10
+                )
+                """,
+                dict(x=x, y=y),
+            ).scalars()
+            assert list(source_ids) == [map_id], (x, y)
+
+        # The retired name answers the same, while API v2 still calls it.
+        (alias,) = db.run_query(
+            """
+            SELECT source_id FROM map_bounds.units_at(
+              'large', ST_SetSRID(ST_MakePoint(0.5, 0.5), 4326), 10
+            )
+            """
+        ).one()
+        assert alias == 1001
+
+    def test_polygon_at_refuses_an_area(self, ctx):
+        """An area is the legend's question."""
+        db = ctx.database
+        with raises(DBAPIError, match="takes a point"):
+            db.run_query(
+                """
+                SELECT * FROM map_bounds.polygon_at(
+                  'large', ST_MakeEnvelope(0, 0, 1, 1, 4326), 10
+                )
+                """
+            ).all()
+        db.session.rollback()
 
     ## TODO, we could add test isolation here with a template_database fixture...
     def test_add_another_layer_feature(self, ctx):
@@ -533,12 +578,13 @@ class TestMapTopology:
             db.run_query("SELECT map_bounds.resolve_source('no-such')").scalar() is None
         )
 
-        # The legacy alias reads `carto.polygons`, empty on a fresh database, and
-        # an unknown name is nothing rather than an error.
-        point = "ST_SetSRID(ST_MakePoint(0, 0), 4326)"
+        # The legacy alias reads `carto.polygons`, empty here, and an unknown name
+        # is nothing rather than an error. Asked away from the test maps, which
+        # `carto` would otherwise answer with.
+        point = "ST_SetSRID(ST_MakePoint(100, 50), 4326)"
         for ident in ("sys:carto-legacy", "no-such", "carto"):
             n = db.run_query(
-                f"SELECT count(*) FROM map_bounds.units_at(:ident, {point}, 10)",
+                f"SELECT count(*) FROM map_bounds.polygon_at(:ident, {point}, 10)",
                 dict(ident=ident),
             ).scalar()
             assert n == 0, ident

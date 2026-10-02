@@ -40,7 +40,9 @@ def raster_layer_configs():
     """Macrostrat's canned raster layers."""
     from macrostrat.raster_layers import RasterLayerConfig
 
-    return [
+    from ..elevation import ELEVATION_LAYERS, supports_elevation
+
+    configs = [
         # Mineral maps derived from EMIT hyperspectral data (Zaid Al-Attar and
         # Thomas Monecke, Colorado School of Mines). Single-band Byte
         # classifications with an embedded palette: `nearest` resampling is
@@ -52,6 +54,27 @@ def raster_layer_configs():
             resampling="nearest",
         ),
     ]
+
+    if supports_elevation():
+        # Global elevation and bathymetry, as a mosaic: SRTM GL1 over SRTM15+
+        # (see `..elevation` for the layers and the pipeline that registers
+        # them). Continuous int16 / float32 data, so the opposite defaults to
+        # the EMIT case — bilinear, no class machinery — and scale-aware, so a
+        # coarse request is read from the coarse product rather than opening
+        # every fine tile it touches. The elevation *service* (`/elevation`)
+        # is separate; this is the raster view of the same layers.
+        configs.append(
+            RasterLayerConfig(
+                slug="elevation",
+                layers=list(ELEVATION_LAYERS),
+                title="Global elevation and bathymetry",
+                resampling="bilinear",
+                class_filtering=False,
+                backend_options={"scale_aware": True},
+            )
+        )
+
+    return configs
 
 
 # Kept as a module-level name for discoverability; built lazily because the

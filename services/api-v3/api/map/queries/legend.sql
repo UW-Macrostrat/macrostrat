@@ -11,8 +11,8 @@
    view each one owns (the `visible` form), or with every owner and no geometry
    (the `all` form, which takes each owner's whole legend). Only legend entries
    come back, so a viewport's cost is one indexed polygon lookup per owner rather
-   than a row per polygon: `units_at` over a z6 view of `carto` takes 20 s, this
-   about 1 s. */
+   than a row per polygon: a row per polygon over a z6 view of `carto` took
+   20 s, this about 1 s. */
 WITH target AS (
   SELECT
     map_bounds.serving_source(s.id, CAST(:zoom AS integer)) AS source_id,
