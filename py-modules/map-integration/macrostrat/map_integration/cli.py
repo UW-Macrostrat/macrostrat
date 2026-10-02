@@ -41,7 +41,7 @@ from .commands.sources import map_sources
 from .commands.staging_normalize import normalize_cli
 from .database import get_database
 from .migrations import run_migrations
-from .package.cli import export_command
+from .package.cli import export_command, patch_command
 from .pipeline import upload_file
 from .process import cli as _process
 from .process.insert import _delete_map_data
@@ -67,6 +67,7 @@ def set_active_map(map: MapInfo = None):
 
 cli.add_command(ingest_map, name="ingest")
 cli.add_command(export_command, name="export")
+cli.add_command(patch_command, name="patch")
 cli.add_command(prepare_fields, name="prepare-fields")
 
 
