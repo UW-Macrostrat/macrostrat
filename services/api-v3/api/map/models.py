@@ -3,8 +3,8 @@
 The vocabulary is the one `/map/{compilation}/legend` already uses, so a client
 that renders one can render the other: `map_unit_name`, `t_age`/`b_age`,
 `lith_types`, and so on. What a unit adds on top of a legend entry is *where it
-came from* — the map that owns the polygon, the face it sits in, and the layer
-member it is presented as — which is the part the compilation system can answer
+came from* — the map that owns the polygon and the layer member it is
+presented as — which is the part the compilation system can answer
 and the materialized carto tables cannot.
 """
 
@@ -22,8 +22,6 @@ class MapUnit(BaseModel):
     #: polygons were read.
     map_layer: Optional[str] = None
     map_layer_id: Optional[int] = None
-    #: The solved face the polygon's map owns here. Null outside a layer.
-    map_face_id: Optional[int] = None
 
     map_id: int
     #: The polygon's identifier in the source dataset.

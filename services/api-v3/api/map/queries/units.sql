@@ -1,9 +1,9 @@
 /* The map units at a location, resolved through the compilation system.
 
    `map_bounds.units_at` is the one entry point: it applies the multiscale hop
-   (`carto` at zoom 5 is `carto-small`), resolves a compilation with faces in
-   two indexed phases (its `map_face` coverage, then one lookup per face for
-   that map's content), answers a plain map or a mosaic member through
+   (`carto` at zoom 5 is `carto-small`), reads a compilation with faces
+   through them (each map's faces at the location, then its polygons within
+   them), answers a plain map or a mosaic member through
    `polygons_of`, and reads `sys:carto-legacy` from the materialized `carto.*`
    build. It is called once, with constant arguments, and returns keys only.
 
@@ -19,7 +19,6 @@ WITH units AS (
     u.source_id,
     u.scale,
     u.map_layer_id,
-    u.map_face_id,
     u.member_id,
     u.priority_path
   FROM map_bounds.units_at(
@@ -34,7 +33,6 @@ SELECT
   -- A layer is named by its compilation.
   mls.slug AS map_layer,
   u.map_layer_id,
-  u.map_face_id,
   p.map_id,
   p.orig_id,
   p.scale,

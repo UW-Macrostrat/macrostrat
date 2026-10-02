@@ -261,6 +261,45 @@ class TestMapTopology:
         assert len(records) == 3
         assert len(set(record.map_id for record in records)) == 3
 
+    def test_units_at_point_in_partly_covered_map(self, ctx):
+        """A point resolves to the polygon under it, wherever that polygon's
+        representative point falls.
+
+        1003 now covers 1001's upper-right corner, so 1001's face is an L while
+        its polygon is still the whole square, whose `ST_PointOnSurface` is the
+        corner of the L. Testing faces against that point dropped 1001 at every
+        point it still owns."""
+        db = ctx.database
+
+        for (x, y), map_id in [((0.5, 0.5), 1001), ((4.5, 0.5), 1002)]:
+            source_ids = db.run_query(
+                """
+                SELECT source_id FROM map_bounds.units_at(
+                  'large', ST_SetSRID(ST_MakePoint(:x, :y), 4326), 10
+                )
+                """,
+                dict(x=x, y=y),
+            ).scalars()
+            assert list(source_ids) == [map_id], (x, y)
+
+        # An area is read through each map's faces cut to it: 1001's square
+        # reaches under 1003, but 1003 answers there.
+        for box, map_ids in [
+            ((0.2, 0.2, 0.8, 0.8), [1001]),
+            ((1.2, 1.2, 1.8, 1.8), [1003]),
+            ((0.5, 0.5, 1.5, 1.5), [1001, 1003]),
+        ]:
+            source_ids = db.run_query(
+                """
+                SELECT DISTINCT source_id FROM map_bounds.units_at(
+                  'large', ST_MakeEnvelope(:x0, :y0, :x1, :y1, 4326), 10
+                )
+                ORDER BY source_id
+                """,
+                dict(zip(("x0", "y0", "x1", "y1"), box)),
+            ).scalars()
+            assert list(source_ids) == map_ids, box
+
     ## TODO, we could add test isolation here with a template_database fixture...
     def test_add_another_layer_feature(self, ctx):
         """Add overlapping feature to the 'medium' layer to check that it is not merged into the 'large' layer.
@@ -533,9 +572,10 @@ class TestMapTopology:
             db.run_query("SELECT map_bounds.resolve_source('no-such')").scalar() is None
         )
 
-        # The legacy alias reads `carto.polygons`, empty on a fresh database, and
-        # an unknown name is nothing rather than an error.
-        point = "ST_SetSRID(ST_MakePoint(0, 0), 4326)"
+        # The legacy alias reads `carto.polygons`, empty here, and an unknown name
+        # is nothing rather than an error. Asked away from the test maps, which
+        # `carto` would otherwise answer with.
+        point = "ST_SetSRID(ST_MakePoint(100, 50), 4326)"
         for ident in ("sys:carto-legacy", "no-such", "carto"):
             n = db.run_query(
                 f"SELECT count(*) FROM map_bounds.units_at(:ident, {point}, 10)",

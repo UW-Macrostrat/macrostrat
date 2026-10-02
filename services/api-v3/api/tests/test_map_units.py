@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import DBAPIError
 
-from api.map import LEGACY_CARTO, MAX_BOUNDS_SPAN, MAX_LIMIT, _is_timeout
+from api.map import LEGACY_CARTO, MAX_LIMIT, _is_timeout, max_bounds_span
 
 from .test_database import TEST_SOURCE_TABLE, api_client
 
@@ -63,7 +63,6 @@ class TestMapUnits:
         assert response.status_code == 200
         for unit in response.json():
             assert unit["map_layer"] is None
-            assert unit["map_face_id"] is None
             assert unit["priority_path"] == []
 
     def test_units_carry_where_they_came_from(self, api_client: TestClient):
@@ -76,8 +75,8 @@ class TestMapUnits:
             # the member itself.
             assert unit["source_id"] is not None
             assert unit["map_id"] is not None
-            # A layer answer always comes through a solved face.
-            assert unit["map_face_id"] is not None
+            # A layer answer always comes through a solved layer.
+            assert unit["map_layer_id"] is not None
 
     def test_a_map_resolves_without_a_layer(self, api_client: TestClient):
         """Asked directly, a map answers for itself -- no faces involved."""
@@ -88,7 +87,7 @@ class TestMapUnits:
 
         for unit in response.json():
             assert unit["map_layer"] is None
-            assert unit["map_face_id"] is None
+            assert unit["map_layer_id"] is None
 
     def test_an_unknown_map_is_not_an_empty_answer(self, api_client: TestClient):
         """A typo should say so rather than look like open ocean."""
@@ -114,23 +113,40 @@ class TestMapUnits:
         assert api_client.get("/map/carto/units").status_code == 400
 
     def test_a_continent_sized_bounds_is_refused(self, api_client: TestClient):
-        """Refused up front, not after the statement timeout has burned ten
-        seconds finding out."""
+        """A continent at zoom 11 is not a location. Refused up front, not after
+        the statement timeout has burned ten seconds finding out."""
         response = api_client.get(
-            "/map/carto/units", params={"bounds": "-180,-85,180,85"}
+            "/map/carto/units",
+            params={"bounds": "-115,30,-105,40", "zoom": 11},
         )
         assert response.status_code == 400
         assert "bounds" in response.json()["detail"]
 
+    def test_a_zoom_below_the_drawn_range_is_refused(self, api_client: TestClient):
+        """`large` is drawn from zoom 9; below that its tiles hold nothing, and
+        neither does this route."""
+        refused = api_client.get(
+            "/map/large/units", params={"bounds": "-115,30,-105,40", "zoom": 1}
+        )
+        assert refused.status_code == 400
+        assert "zoom" in refused.json()["detail"]
+
+        drawn = api_client.get("/map/large/units", params={**SOMEWHERE, "zoom": 9})
+        assert drawn.status_code == 200
+
     def test_a_bounds_at_the_limit_is_accepted(self, api_client: TestClient):
-        """The guard is on the span, not on where the box happens to sit.
+        """The guard is on the span at the zoom, not on where the box happens
+        to sit.
 
         A tile-based measure would reject a tiny box that straddles a tile
         boundary, which is the wrong answer for the right-sized request.
         """
-        half = MAX_BOUNDS_SPAN / 2
-        bounds = f"{-half},{-half},{half},{half}"
-        response = api_client.get("/map/carto/units", params={"bounds": bounds})
+        zoom = 11
+        half = max_bounds_span(zoom) / 2
+        bounds = f"{-99 - half},{43.5 - half},{-99 + half},{43.5 + half}"
+        response = api_client.get(
+            "/map/carto/units", params={"bounds": bounds, "zoom": zoom}
+        )
         assert response.status_code == 200
 
     def test_limit_caps_the_response(self, api_client: TestClient):

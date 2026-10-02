@@ -704,7 +704,8 @@ $$ LANGUAGE SQL STABLE;
 
 
 /** The mapped polygons of a source at a location: which rows of `maps.polygons`
-  a request for `_ident` at `_zoom` should read within `_within`.
+  a request for `_ident` at `_zoom` should read within `_within`, a point or an
+  area. An area is read as its bounding box.
 
   Resolution, in order:
     - `sys\:carto-legacy` reads the legacy `carto.polygons` build at the zoom's
@@ -713,9 +714,8 @@ $$ LANGUAGE SQL STABLE;
       same routes while both are served, and goes with Stage D.
     - otherwise `_ident` (slug or id) is resolved;
     - a source with faces -- for a multiscale one, its member's at the zoom
-      (`face_layer_for`) -- resolves in two phases: its `map_face` coverage,
-      then one indexed lookup per face for that map's content -- exactly the
-      shape `carto-dynamic.sql` and v3's `units.sql` had inline;
+      (`face_layer_for`) -- is read through them: each map's faces at the
+      location, then that map's polygons within them;
     - anything else reads `polygons_of` of the source answering at the zoom
       (`serving_source`, the multiscale hop): a map, a mosaic member, a
       materialized compilation. A virtual compilation without faces returns
@@ -729,6 +729,7 @@ $$ LANGUAGE SQL STABLE;
 
   Only keys come back. Names, legend text and intervals are the caller's
   decoration, which v2 and v3 do differently and over at most a handful of rows. */
+DROP FUNCTION IF EXISTS map_bounds.units_at(text, geometry, integer);
 CREATE OR REPLACE FUNCTION map_bounds.units_at(
   _ident text,
   _within geometry,
@@ -739,7 +740,6 @@ CREATE OR REPLACE FUNCTION map_bounds.units_at(
     source_id integer,
     scale maps.map_scale,
     map_layer_id integer,
-    map_face_id integer,
     member_id integer,
     priority_path integer[]
   ) AS $$
@@ -747,6 +747,7 @@ DECLARE
   _source integer;
   _target integer;
   _layer integer;
+  _is_point boolean := GeometryType(_within) = 'POINT';
 BEGIN
   IF _ident = 'sys\:carto-legacy' THEN
     RETURN QUERY
@@ -754,7 +755,7 @@ BEGIN
       p.map_id,
       p.source_id,
       CAST(p.geom_scale AS maps.map_scale),
-      NULL::integer, NULL::integer, NULL::integer, NULL::integer[]
+      NULL::integer, NULL::integer, NULL::integer[]
     FROM carto.polygons p
     WHERE p.scale = map_bounds.scale_for_zoom(_zoom)
       AND ST_Intersects(p.geom, _within);
@@ -777,23 +778,33 @@ BEGIN
       p.map_id,
       p.source_id,
       p.scale,
-      NULL::integer, NULL::integer, NULL::integer, NULL::integer[]
+      NULL::integer, NULL::integer, NULL::integer[]
     FROM map_bounds.polygons_of(_target, _within) p;
     RETURN;
   END IF;
 
   RETURN QUERY
+  /* Each map's faces at the location, as one geometry, as the tiles collect
+     them: cut to the area once per map, so every polygon is then tested against
+     a small, fixed geometry. A point needs no cut. Member faces (a compilation
+     with no content of its own) are for attribution and are skipped. */
   WITH faces AS MATERIALIZED (
-    SELECT mf.id AS face_id, mf.map_id AS owner_id
+    SELECT
+      mf.map_id AS owner_id,
+      CASE WHEN _is_point THEN NULL
+           ELSE ST_UnaryUnion(ST_Collect(ST_ClipByBox2D(mf.geometry, _within)))
+      END AS geometry
     FROM map_bounds_topology.map_face mf
     WHERE mf.map_layer = _layer
       AND ST_Intersects(mf.geometry, _within)
+      AND map_bounds.has_content(mf.map_id)
+    GROUP BY mf.map_id
   ),
-  /* Where each face's map keeps its polygons, resolved once per face. */
+  /* Where each map keeps its polygons, resolved once per map. */
   holders AS MATERIALIZED (
     SELECT
-      f.face_id,
       f.owner_id,
+      f.geometry,
       c.source_id AS content_id,
       c.footprint,
       cs.scale AS content_scale
@@ -808,7 +819,6 @@ BEGIN
     p.source_id,
     p.scale,
     _layer,
-    h.face_id,
     mp.member_id,
     mp.priority_path
   FROM holders h
@@ -819,14 +829,10 @@ BEGIN
   LEFT JOIN map_bounds.map_priority mp
     ON mp.map_layer = _layer
    AND mp.map_id = h.owner_id
-  /* The face bounds what its map answers for: an area request can span several
-     faces, and a map's polygons must not be reported where another map's face
-     covers them. Fetched by id, tested against the representative point. */
-  WHERE EXISTS (
-      SELECT 1 FROM map_bounds_topology.map_face f
-      WHERE f.id = h.face_id
-        AND ST_Contains(f.geometry, ST_PointOnSurface(p.geom))
-    )
+  /* A map answers only inside its faces. At a point both were found there, so
+     that holds already; over an area the polygon must meet the faces. */
+  WHERE (_is_point OR ST_Intersects(p.geom, h.geometry))
+    -- A mosaic member reads its holder's polygons through its own footprint.
     AND (h.footprint IS NULL OR ST_Contains(h.footprint, ST_PointOnSurface(p.geom)));
 END;
 /* `ROWS`: a point resolves to one or a few polygons, and the planner's default
