@@ -19,7 +19,12 @@ from typing import Optional
 from psycopg.sql import Identifier
 
 from macrostrat.core import SchemaDefinition
+from macrostrat.core.database import pin_role
 from macrostrat.database import Database
+
+# Application chunks are applied as this role (create-as-owner), so their objects
+# are born owned by it and the SQL carries no ``ALTER … OWNER TO`` boilerplate.
+APP_OWNER = "macrostrat"
 
 
 def set_applying_role(db: Database, owner: Optional[str]) -> None:
@@ -33,14 +38,20 @@ def set_applying_role(db: Database, owner: Optional[str]) -> None:
     mid-chunk failure can't silently carry a role forward into the next chunk.
     ``owner=None`` runs as the connector (superuser) for foundational DDL.
 
-    ``SET ROLE`` is session-level (non-``LOCAL``), so it persists across
-    ``run_fixtures``' per-statement commits on the shared session connection —
-    the same basis :func:`macrostrat.schema_management.readonly.as_role` relies on.
+    ``SET ROLE`` belongs to one connection, but ``run_fixtures`` commits per
+    statement and so may be handed a different pooled connection for the next
+    one; the role is therefore also pinned to the engine (``pin_role``), so every
+    connection it hands out takes it. The direct ``SET ROLE`` covers the
+    connection the session may already hold, or is bound to in a transaction.
     """
-    if owner:
-        db.run_sql("SET ROLE {role}", dict(role=Identifier(owner)), raise_errors=True)
-    else:
+    if not owner:
+        pin_role(db.engine, None)
         db.run_sql("RESET ROLE", raise_errors=True)
+        return
+    db.run_sql("SET ROLE {role}", dict(role=Identifier(owner)), raise_errors=True)
+    # After the direct `SET ROLE`, so a role the connector can't take is refused
+    # before anything is pinned.
+    pin_role(db.engine, owner)
 
 
 def order_chunks(chunks: list[SchemaDefinition]) -> list[SchemaDefinition]:
@@ -147,6 +158,6 @@ def build_schema(
     finally:
         # Never leave the session masquerading as an application role, even if a
         # chunk raised partway through.
-        db.run_sql("RESET ROLE", raise_errors=True)
+        set_applying_role(db, None)
 
     return db

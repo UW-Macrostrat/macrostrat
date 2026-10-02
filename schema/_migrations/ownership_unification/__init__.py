@@ -172,6 +172,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
 
 class OwnershipUnificationMigration(Migration):
     name = "ownership-unification"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "core"
     readiness_state = "ga"
     load_sql_files = False

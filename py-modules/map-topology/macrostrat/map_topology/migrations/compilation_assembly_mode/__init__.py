@@ -60,6 +60,7 @@ class CompilationAssemblyMode(Migration):
     """
 
     name = "compilation-assembly-mode-vocabulary"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = (
         "assembly_mode: layered/disjoint -> topological/mosaic; drop stored content"

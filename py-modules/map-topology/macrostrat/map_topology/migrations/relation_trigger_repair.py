@@ -46,6 +46,7 @@ class RelationTriggerRepair(Migration):
     """
 
     name = "map-bounds-relation-trigger-repair"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "Repair topology relation trigger and layer constraints"
     readiness_state = "ga"

@@ -28,7 +28,7 @@ from macrostrat.map_topology.config import TopologySchema
 from macrostrat.usage_stats import build_schema_config
 from macrostrat.utils import get_logger
 
-from .composer import SchemaDefinition
+from .composer import APP_OWNER, SchemaDefinition
 from .discovery import discover_chunks
 
 log = get_logger(__name__)
@@ -56,10 +56,6 @@ _PERMISSIONS_FILE = "9500-permissions.sql"
 # sorting before this name form the "before maps" bucket (``macrostrat``); those
 # after form the "after maps" bucket (``core``).
 _MAPS_BOUNDARY = "0002-maps"
-
-# Application chunks are applied as this role (create-as-owner), so their objects
-# are born owned by it and the SQL carries no ``ALTER … OWNER TO`` boilerplate.
-APP_OWNER = "macrostrat"
 
 
 def _core_dir() -> Path:

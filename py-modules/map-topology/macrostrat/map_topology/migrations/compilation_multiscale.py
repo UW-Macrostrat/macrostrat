@@ -69,6 +69,7 @@ class CompilationMultiscale(Migration):
     """
 
     name = "compilation-multiscale"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "`multiscale` assembly mode; `carto` as a compilation"
     readiness_state = "ga"

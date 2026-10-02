@@ -140,6 +140,7 @@ class _OneTransaction(Migration):
     destructive = True
     readiness_state = "beta"
     load_sql_files = False
+    owner = None  # its own `apply`, written for the connector's privileges
     sql_file: str
     # Locked before anything else runs; see `run_locked`.
     exclusive: list[str] = []

@@ -3,7 +3,9 @@ from pathlib import Path
 from mapboard.topology_manager.config import IdentityStrategy, create_context
 
 from macrostrat.core import SchemaDefinition, get_database
+from macrostrat.core.database import pin_role
 from macrostrat.database import Database
+from macrostrat.schema_management.composer import APP_OWNER
 
 from .manager import MacrostratTopologyManager
 
@@ -61,8 +63,19 @@ def create_topo_context(db: Database):
 
 def create_topo_fixtures(db: Database):
     ctx = create_topo_context(db)
-    mgr = MacrostratTopologyManager(ctx)
-    mgr.create_tables(check=False)
+    # The library applies its fixtures through an engine of its own, which the
+    # role this chunk is applied as (`SET ROLE`) does not reach. Pin that engine
+    # to the same role, so what the library creates is owned like the rest of
+    # the chunk rather than by the connector.
+    role = db.run_query(
+        "SELECT CASE WHEN current_user <> session_user THEN current_user END"
+    ).scalar()
+    pin_role(ctx.database.engine, role)
+    try:
+        MacrostratTopologyManager(ctx).create_tables(check=False)
+    finally:
+        pin_role(ctx.database.engine, None)
+        ctx.database.engine.dispose()
 
 
 def seed_layer_bounds(db: Database):
@@ -104,6 +117,7 @@ TopologySchema = SchemaDefinition(
     ],
     depends_on=["core"],
     environments=frozenset({"local", "development"}),
+    owner=APP_OWNER,
 )
 
 

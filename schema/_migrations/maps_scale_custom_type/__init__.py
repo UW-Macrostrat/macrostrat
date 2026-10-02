@@ -6,6 +6,7 @@ from macrostrat.schema_management import Migration, _any, _not, custom_type_exis
 
 class MapsScaleCustomTypeMigration(Migration):
     name = "maps-scale-type"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = """
     Relocate custom type that drives the maps schema

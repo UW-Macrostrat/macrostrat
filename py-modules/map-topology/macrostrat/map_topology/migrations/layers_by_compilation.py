@@ -65,6 +65,7 @@ class LayersByCompilationMigration(Migration):
     """
 
     name = "layers-by-compilation"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "One layer per solved compilation; multiscale draws its members'"
     readiness_state = "beta"

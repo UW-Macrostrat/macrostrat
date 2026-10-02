@@ -89,6 +89,7 @@ class MapTopoAdoptMigration(Migration):
     """
 
     name = "map-topo-adopt"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "Adopt existing topogeometries as piecewise-noded"
     readiness_state = "ga"

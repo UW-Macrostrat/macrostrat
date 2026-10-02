@@ -19,6 +19,8 @@ class RockdMigration(Migration):
     """Base class for rockd migrations."""
 
     subsystem = "rockd"
+    # Another database: its objects are not the `macrostrat` role's to own.
+    owner = None
 
 
 class InitialSchema(RockdMigration):

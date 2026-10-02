@@ -89,5 +89,5 @@ class DatabaseTestHarness:
                 chunk.apply(self.db, transform_statement=self.transform_statement)
                 self._applied_chunks.add(chunk.name)
         finally:
-            self.db.run_sql("RESET ROLE", raise_errors=True)
+            set_applying_role(self.db, None)
         return self.db

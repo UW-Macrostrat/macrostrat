@@ -54,6 +54,7 @@ class LayerBoundsMigration(Migration):
     """
 
     name = "compilation-layer-bounds"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "Open and build the registered compilations' bounds"
     readiness_state = "ga"

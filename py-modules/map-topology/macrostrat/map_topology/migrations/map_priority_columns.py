@@ -20,6 +20,7 @@ class MapPriorityColumnsMigration(Migration):
     """
 
     name = "map-priority-columns"
+    owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "map_priority: source_id -> map_id, via -> member_id"
     readiness_state = "ga"

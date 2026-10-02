@@ -16,6 +16,7 @@ from macrostrat.core.database import get_database
 from macrostrat.database.query import OutputMode
 from macrostrat.dinosaur.cluster import database_cluster
 
+from .composer import APP_OWNER
 from .inspect_utils import *
 
 try:
@@ -138,6 +139,18 @@ class Migration:
     # schema changes
     destructive: bool = False
 
+    # Role the migration is applied as, so what it creates is born owned the way
+    # the declarative build owns it rather than by the connector -- which is what
+    # `ownership-unification` otherwise has to sweep up afterwards. Statements
+    # from the migration's SQL files that the role is refused (an extension,
+    # `public`) are retried as the connector. `None` applies it as the connector:
+    # for a migration whose own `apply` needs more than the application role.
+    owner: Optional[str] = APP_OWNER
+
+    # Set by the runner while the migration applies: retries a statement the
+    # owner is refused as the connector. See `ownership.applied_as_app_owner`.
+    on_error = None
+
     # Flag for whether this migration only contains views/functions that don't modify the broader schema
     always_apply: bool = False
 
@@ -172,14 +185,18 @@ class Migration:
         if len(self.fixtures) == 0 and self.load_sql_files:
             # Automatically load fixtures from the same directory as the migration
             sql_dir = Path(inspect.getfile(self.__class__)).parent
-            database.run_fixtures(sql_dir, output_mode=self.output_mode)
+            database.run_fixtures(
+                sql_dir, output_mode=self.output_mode, on_error=self.on_error
+            )
             return
 
         for fixture in self.fixtures:
             if callable(fixture):
                 fixture(database)
             elif isinstance(fixture, Path):
-                database.run_fixtures(fixture, output_mode=self.output_mode)
+                database.run_fixtures(
+                    fixture, output_mode=self.output_mode, on_error=self.on_error
+                )
             else:
                 raise ValueError(f"Fixture {fixture} should be a callable or a Path")
 
@@ -354,6 +371,21 @@ def _migration_classes() -> list[type[Migration]]:
             )
         migrations.extend(subclasses)
     return [cls for cls in migrations if hasattr(cls, "name")]
+
+
+def _apply_as_owner(db: Database, migration: Migration):
+    """Apply a migration as its `owner`; see `Migration.owner`."""
+    if migration.owner is None:
+        migration.apply(db)
+        return
+    from .ownership import applied_as_app_owner
+
+    with applied_as_app_owner(db) as escalate:
+        migration.on_error = escalate
+        try:
+            migration.apply(db)
+        finally:
+            migration.on_error = None
 
 
 def _sync_after(db: Database, migration: Migration):
@@ -550,7 +582,7 @@ def _run_migrations(
         _migration.output_mode = output_mode
 
         print(f"\nApplying migration [bold cyan]{_name}[/]...")
-        _migration.apply(db)
+        _apply_as_owner(db, _migration)
         _sync_after(db, _migration)
         run_counter += 1
         # After running migration, reload the database and confirm that application was sucessful

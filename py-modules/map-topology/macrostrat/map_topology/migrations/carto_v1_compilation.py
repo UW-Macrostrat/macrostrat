@@ -59,6 +59,7 @@ class CartoV1Compilation(Migration):
     # The work is Python, not SQL files beside this module.
     load_sql_files = False
     fixtures = [write]
+    owner = None  # a Python fixture, written for the connector's privileges
 
     # Creates `maps.sources` rows and membership edges, but removes nothing and
     # rewrites no map.

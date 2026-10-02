@@ -7,6 +7,8 @@ role is connected. Running the sweep as the connector is how application objects
 end up owned by it — which is what `ownership-unification` then has to undo.
 """
 
+from sqlalchemy import create_engine
+
 from macrostrat.core import SchemaDefinition
 from macrostrat.schema_management.rebuild import (
     ChunkStatement,
@@ -23,6 +25,8 @@ class FakeDB:
         self.roles: list[str] = []
         self.applied: list[str] = []
         self.fail_on = fail_on
+        # Never connects; only carries the pool listeners `pin_role` installs.
+        self.engine = create_engine("postgresql+psycopg://")
 
     def run_sql(self, sql, params=None, **kwargs):
         if sql in ("RESET ROLE", "SET ROLE {role}"):
