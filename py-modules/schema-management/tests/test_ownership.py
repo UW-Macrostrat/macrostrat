@@ -109,3 +109,18 @@ def test_migrations_apply_as_their_owner():
         ("as-connector", "RESET ROLE", False),
     ]
     assert db.engine not in _role_pins
+
+
+def test_apply_skips_the_plans_own_role_statements():
+    """A plan names the role it applies as, for applying it by hand; `apply`
+    manages the role itself, so those lines are neither run nor counted."""
+    from macrostrat.schema_management.defs import StatementCounter
+
+    counter = StatementCounter()
+    kept = [
+        s
+        for s in ["SET ROLE macrostrat;", "CREATE TABLE maps.t ();", "RESET ROLE"]
+        if counter.filter(s, None)
+    ]
+    assert kept == ["CREATE TABLE maps.t ();"]
+    assert counter.total == 1
