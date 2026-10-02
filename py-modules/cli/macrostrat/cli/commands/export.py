@@ -158,11 +158,7 @@ def run_exporter(
             sys.exit()
 
         # Write homogenized units
-        select = maps_select % (
-            source_info["scale"],
-            source_info["scale"],
-            source_id,
-        )
+        select = maps_select % (source_id,)
         write_layer(pg, filename, "units", "MultiPolygon", select, {}, maps_schema)
 
         # Write homogenized lines
@@ -525,7 +521,7 @@ SELECT
 FROM maps.polygons m
 LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
 LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-JOIN lookup_%s l ON m.map_id = l.map_id
+JOIN maps.lookup l ON m.map_id = l.map_id
 WHERE m.source_id = %s
 """
 
@@ -549,7 +545,7 @@ SELECT
 FROM maps.%s m
 LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
 LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-JOIN lookup_%s l ON m.map_id = l.map_id
+JOIN maps.lookup l ON m.map_id = l.map_id
 WHERE ST_Intersects(geom, %s)
 """
 

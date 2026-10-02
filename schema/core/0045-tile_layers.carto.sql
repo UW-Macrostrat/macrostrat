@@ -26,6 +26,11 @@ SELECT
 FROM
   carto.polygons;
 
+/* The attributes of a carto line, read off its `maps.lines` row. `geom_scale` is
+   the scale that row lives at, so the join names it: without it the lookup
+   fanned out across every scale of `maps.lines` on every carto tile, and walked
+   the whole table for a large one (workbench, `Production polygon table
+   statistics`). */
 CREATE OR REPLACE VIEW tile_layers.line_data AS
 SELECT
   l.line_id,
@@ -36,7 +41,8 @@ SELECT
   l.scale::text AS scale
 FROM carto.lines l
        JOIN maps.lines l1
-            ON l.line_id = l1.line_id;
+            ON l.line_id = l1.line_id
+           AND l1.scale = l.geom_scale;
 
 
 

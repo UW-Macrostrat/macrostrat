@@ -336,10 +336,10 @@ $$ LANGUAGE SQL STABLE;
   envelope or a face, in the polygons' SRID, and may be NULL.
 
   Plain SQL and STABLE so the planner inlines it into the calling query: the
-  scale predicate then prunes `maps.polygons` to the content's partition, the
-  GiST index serves `_within`, and the bounds reach `ST_Contains` as one repeated
-  value, so PostGIS prepares it once. `maps.sources.scale` is free text, so the
-  enum cast is guarded to real partition keys.
+  scale predicate and `_within` together reach the `(scale, geom)` index of
+  `maps.polygons`, and the bounds reach `ST_Contains` as one repeated value, so
+  PostGIS prepares it once. `maps.sources.scale` is free text, so the enum cast
+  is guarded to real scales.
 
   For one source and one envelope only. Do not `LATERAL` it per face: the planner
   re-runs the mosaic walk per output row and loses the constant envelope. */

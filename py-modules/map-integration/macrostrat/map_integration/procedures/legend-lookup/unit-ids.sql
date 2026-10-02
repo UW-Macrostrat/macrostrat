@@ -9,7 +9,7 @@
 */
 WITH matched AS (
   SELECT ml.legend_id, mu.unit_id, mu.basis_col
-  FROM {scale_table} q
+  FROM maps.polygons q
   JOIN maps.map_legend ml ON ml.map_id = q.map_id
   JOIN maps.map_units mu ON mu.map_id = q.map_id
   WHERE q.source_id = :source_id

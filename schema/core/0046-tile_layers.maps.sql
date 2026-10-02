@@ -1,4 +1,7 @@
-/* This view is a stopgap to prepare for a unified tablespace for map units */
+/* Kept as a union of the per-scale views rather than a read of `maps.polygons`:
+   the constant `scale` column lets a `scale = <value>` filter skip three of the
+   four branches before they run, and each branch carries a literal scale into
+   the `(scale, geom)` index. */
 CREATE OR REPLACE VIEW tile_layers.map_units AS
 SELECT
   *,
@@ -82,8 +85,8 @@ BEGIN
 
   -- Units. Which polygons a map shows is `map_bounds.polygons_of`'s question:
   -- an ordinary map's own, a mosaic member's parent's inside its footprint (an
-  -- SGMC state map holds none itself). It prunes the partition by the content's
-  -- scale itself, so no scale bucketing is needed here.
+  -- SGMC state map holds none itself). It filters by the content's scale
+  -- itself, so no scale bucketing is needed here.
   WITH mvt_features AS (
     SELECT
       map_id,

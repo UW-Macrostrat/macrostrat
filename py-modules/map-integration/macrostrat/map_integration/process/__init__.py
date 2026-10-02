@@ -36,7 +36,7 @@ from ..utils.map_info import (
     resolve_maps,
 )
 from .geometry import create_rgeom, create_webgeom
-from .insert import copy_to_maps, run_insert
+from .insert import copy_to_maps, remove
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
 from .status import processing_status
@@ -209,7 +209,7 @@ def insert(
     """
     for_each_map(
         maps,
-        run_insert,
+        partial(copy_to_maps, get_database()),
         exclude=exclude,
         state=state,
         delete_existing=delete_existing,
@@ -218,6 +218,13 @@ def insert(
         allow_unattributed=allow_unattributed,
         skip_empty_maps=False,
     )
+
+
+@cli.command(name="remove", rich_help_panel="Utils")
+def delete(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
+    """Delete all data from the maps schema for the selected map sources."""
+    db = get_database()
+    for_each_map(maps, partial(remove, db), exclude=exclude, state=state)
 
 
 @cli.command(name="legend", rich_help_panel="Map")

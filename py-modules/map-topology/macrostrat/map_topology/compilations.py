@@ -569,15 +569,11 @@ def materialize(
     read = 0
     written = counts.written
     started = time.time()
-    # The compilation's scale partition, which only a valid scale names.
+    # The polygons are written at the compilation's own scale, which must be one.
     if scale not in ("tiny", "small", "medium", "large"):
         print(f"[red]{slug}[/] has no usable scale ({scale!r}) to write polygons at")
         raise typer.Exit(1)
-    batch_sql = (
-        proc("materialize-batch")
-        .read_text()
-        .replace("::polygons_table", f"maps.polygons_{scale}")
-    )
+    batch_sql = proc("materialize-batch").read_text()
     while True:
         try:
             batch = db.run_query(

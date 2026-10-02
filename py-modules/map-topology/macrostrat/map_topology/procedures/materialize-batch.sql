@@ -77,12 +77,10 @@ clipped AS MATERIALIZED (
   FROM windowed b
   WHERE b.face IS NOT NULL
 ),
-/* Into the scale's own partition (`::polygons_table`, filled by the command),
-   with no `map_id`: the partitions' default draws from the sequence ingestion
-   uses. The parent's default is a second sequence that has drifted from it --
-   behind by millions on dev -- so going through the parent collides. */
+/* With no `map_id`: the table's default draws from `maps.map_ids`, the one
+   sequence ingestion uses too. */
 written AS (
-  INSERT INTO ::polygons_table (
+  INSERT INTO maps.polygons (
     source_id, scale, orig_id, name, strat_name, age, lith, descrip,
     comments, t_interval, b_interval, geom
   )

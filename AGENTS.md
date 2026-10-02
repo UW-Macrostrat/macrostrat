@@ -96,7 +96,7 @@ migration-applied one converge on the same `APPLIED` state.
   that access path (a view over a `STABLE` function, a set-returning function in
   a `LATERAL`) reintroduces the full scan the coverage was built to avoid.
   Before and after any such change, run `EXPLAIN (ANALYZE, BUFFERS)` and check
-  for a `Seq Scan` on a `maps.polygons` partition; a cost that does not vary with
+  for a `Seq Scan` on `maps.polygons`; a cost that does not vary with
   how much the request actually covers is the tell. See
   `Incidents/2026-09-20 Spatial queries rewritten past their indexes.md` in the
   workbench vault.
@@ -106,6 +106,13 @@ migration-applied one converge on the same `APPLIED` state.
   re-runs the mosaic walk per output row and loses the constant envelope it needs
   for the GiST index. Resolve `content_of` once per face, then join
   `maps.polygons` on `source_id` + `scale` directly.
+- **`maps.polygons` and `maps.lines` are flat tables; `scale` is a column.**
+  They were partitioned by scale until the `maps-polygons-flat` /
+  `maps-lines-flat` migrations. Keep the `scale` predicate on spatial queries
+  all the same: it is the first column of the `(scale, geom)` GiST index, which
+  is what stands in for partition pruning. `maps.polygons_<scale>`,
+  `maps.lines_<scale>` and `public.lookup_<scale>` are compatibility views over
+  the tables and over `maps.lookup`; write to the tables.
 - **Don't guard against "already exists".** Schema application tolerates errors,
   so state objects declaratively and let a duplicate raise, get noted, and be
   stepped over — existence pre-checks and `IF NOT EXISTS` scaffolding cost more
