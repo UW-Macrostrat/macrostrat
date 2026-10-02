@@ -1880,13 +1880,13 @@ export default {
         lat: "numeric, a valid latitude",
         lng: "numeric, a valid longitude",
         z: "integer, a valid zoom level",
-        compilation:
-          "string, a map or compilation slug or source id (e.g. `carto`) to answer from the compilation system; absent, the legacy carto build is used",
+        source:
+          "string, a map or compilation slug or source id (e.g. `carto`) to answer from the compilation system; absent, the legacy carto build is used. `compilation` is accepted as an earlier name",
       },
       output_formats: ["json"],
       examples: [
         "/mobile/map_query_v2?lat=43.0706192&lng=-89.406167&z=10",
-        "/mobile/map_query_v2?lat=43.0706192&lng=-89.406167&z=10&compilation=carto",
+        "/mobile/map_query_v2?lat=43.0706192&lng=-89.406167&z=10&source=carto",
       ],
       fields: [],
     },
