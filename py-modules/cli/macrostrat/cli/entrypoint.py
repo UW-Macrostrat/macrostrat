@@ -164,6 +164,10 @@ main.add_typer(
 for sub in subsystem_commands:
     main.add_typer(sub, rich_help_panel="Subsystems")
 
+from macrostrat.runtime_checks.cli import check
+
+main.command(name="check", rich_help_panel="Meta")(check)
+
 
 @main.command(name="env")
 def set_env(

@@ -1,0 +1,28 @@
+[project]
+name = "macrostrat.runtime_checks"
+version = "0.1.0"
+description = "Checks that a running Macrostrat environment answers as its clients expect"
+authors = [{ name = "Daven Quinn", email = "dev@davenquinn.com" }]
+requires-python = ">=3.11,<4"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "httpx>=0.27,<1",
+    "rich>=13,<16",
+    # System trust store, so the macOS keychain (OrbStack's local CA) is honoured.
+    "truststore>=0.10.4,<1",
+    "typer>=0.12,<0.27",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3.2,<9"]
+
+[tool.hatch.build.targets.sdist]
+include = ["macrostrat"]
+
+[tool.hatch.build.targets.wheel]
+include = ["macrostrat"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

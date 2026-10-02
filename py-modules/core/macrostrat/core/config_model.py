@@ -356,6 +356,13 @@ class EnvironmentSettings(BaseModel):
     base_url: str = Field(
         "https://macrostrat.org", description="Public URL of this environment."
     )
+    tiles_url: Optional[str] = Field(
+        None,
+        description=(
+            "Public URL of this environment's tileserver. `macrostrat check` "
+            "skips tile checks without it."
+        ),
+    )
     backend: BackendType = Field(
         BackendType.Kubernetes,
         description="`kubernetes`, or `docker-compose` for the local stack.",

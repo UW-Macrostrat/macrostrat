@@ -1094,6 +1094,7 @@ dependencies = [
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-radosgw-admin" },
+    { name = "macrostrat-runtime-checks" },
     { name = "macrostrat-schema-management" },
     { name = "macrostrat-usage-stats" },
     { name = "macrostrat-utils" },
@@ -1148,6 +1149,7 @@ requires-dist = [
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "macrostrat-radosgw-admin", editable = "submodules/storage-admin" },
+    { name = "macrostrat-runtime-checks", editable = "py-modules/runtime-checks" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
     { name = "macrostrat-usage-stats", editable = "py-modules/usage-stats" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
@@ -1513,6 +1515,28 @@ sdist = { url = "https://files.pythonhosted.org/packages/a7/12/a48d1603d4a5fa414
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/c6/129ba120b7fbf21a94f19c75f7ae2a84d774dc687e0cac53992e14b56b1c/macrostrat_raster_layers-0.3.2-py3-none-any.whl", hash = "sha256:107c66d2e2e4e7afea9edc0ee6fbe7278151c6c5779b91c54bf7f6d0f2e71719", size = 16935, upload-time = "2026-08-25T06:29:34.995Z" },
 ]
+
+[[package]]
+name = "macrostrat-runtime-checks"
+version = "0.1.0"
+source = { editable = "py-modules/runtime-checks" }
+dependencies = [
+    { name = "httpx" },
+    { name = "rich" },
+    { name = "truststore" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27,<1" },
+    { name = "rich", specifier = ">=13,<16" },
+    { name = "truststore", specifier = ">=0.10.4,<1" },
+    { name = "typer", specifier = ">=0.12,<0.27" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.3.2,<9" }]
 
 [[package]]
 name = "macrostrat-schema-management"

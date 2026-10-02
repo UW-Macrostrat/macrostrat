@@ -1,29 +1,25 @@
-"""`macrostrat check`: does the local stack answer the way its clients expect?
+"""The compose-only `local` group: what no restart of the local stack repairs.
 
-Two groups of read-only checks. **Routes** are plain HTTP requests from the
-host, as a browser or API client makes them. **Local setup** covers what no
-restart repairs: whether each storage client holds credentials the store
-accepts, trusts its certificate, and finds the buckets it writes to. Container
-state is left to docker compose, which `macrostrat up` reconciles.
+Whether each storage client holds credentials the store accepts, trusts its
+certificate, and finds the buckets it writes to. Container state is left to
+docker compose, which `macrostrat up` reconciles.
 """
 
 import subprocess
-from dataclasses import dataclass
-from sys import exit
 from typing import Iterator
 
-from rich.console import Console
+from .model import Check, Result, Status
 
-#: Routes the gateway serves, fetched from the host. curl, not Python, so the
-#: macOS keychain (where OrbStack's CA lives) decides trust, as in a browser.
-ROUTES = (
-    "https://macrostrat.local/api/v2/",
-    "https://macrostrat.local/api/v3/openapi.json",
-    "https://macrostrat.local/api/pg/",
-    "https://tiles.macrostrat.local/openapi.json",
-    "https://storage.macrostrat.local/minio/health/live",
-    "http://storage.macrostrat.local/minio/health/live",
-)
+#: The local object store's gateway routes, over both schemes its clients use.
+STORAGE_ROUTES = [
+    Check(
+        f"storage-{scheme}",
+        "local",
+        f"{scheme}://storage.macrostrat.local/minio/health/live",
+        [Status(200)],
+    )
+    for scheme in ("https", "http")
+]
 
 #: How each storage client in the stack reaches object storage, as its own
 #: code does: (python command, host var, access var, secret var, secure var,
@@ -74,11 +70,9 @@ print("ok")
 """
 
 
-@dataclass
-class Result:
-    name: str
-    status: str  # "ok", "warn" or "fail"
-    detail: str = ""
+def check_local_setup(settings) -> Iterator[Result]:
+    yield from check_host_storage(settings)
+    yield from check_container_storage()
 
 
 def _run(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
@@ -92,23 +86,11 @@ def _last_line(text: str) -> str:
     return lines[-1]
 
 
-def check_routes() -> Iterator[Result]:
-    for url in ROUTES:
-        res = _run(
-            "curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}", "-m", "10", url
-        )
-        code = res.stdout.strip()
-        if res.returncode == 0 and code.startswith("2"):
-            yield Result(url, "ok", code)
-            continue
-        yield Result(url, "fail", _last_line(res.stderr) or code)
-
-
 def check_host_storage(settings) -> Iterator[Result]:
     name = "storage from host"
     endpoint = settings.storage_endpoint()
     if endpoint is None:
-        yield Result(name, "warn", "no storage endpoint configured")
+        yield Result(name, "warn", "no storage endpoint configured", "local")
         return
     try:
         from minio import Minio
@@ -119,13 +101,14 @@ def check_host_storage(settings) -> Iterator[Result]:
         )
         names = {b.name for b in client.list_buckets()}
     except Exception as err:
-        yield Result(name, "fail", f"{endpoint.endpoint}: {type(err).__name__}")
+        detail = f"{endpoint.endpoint}: {type(err).__name__}"
+        yield Result(name, "fail", detail, "local")
         return
     missing = [b for b in settings.buckets().values() if b not in names]
     if missing:
-        yield Result(name, "fail", "missing buckets: " + ", ".join(missing))
+        yield Result(name, "fail", "missing buckets: " + ", ".join(missing), "local")
     else:
-        yield Result(name, "ok", endpoint.endpoint)
+        yield Result(name, "ok", endpoint.endpoint, "local")
 
 
 def check_container_storage() -> Iterator[Result]:
@@ -145,30 +128,4 @@ def check_container_storage() -> Iterator[Result]:
         )
         status = {0: "ok", 2: "warn"}.get(res.returncode, "fail")
         detail = res.stdout.strip() or _last_line(res.stderr)
-        yield Result(f"storage from {service}", status, detail)
-
-
-_MARKS = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "fail": "[red]✗[/]"}
-
-
-def print_section(console: Console, title: str, results: list):
-    console.print(f"[bold]{title}[/]")
-    for r in results:
-        console.print(f"  {_MARKS[r.status]} {r.name} [dim]{r.detail}[/]")
-
-
-def check():
-    """Check that the local :app_name: stack answers as expected. Read-only."""
-    from macrostrat.core import app
-
-    routes = list(check_routes())
-    setup = [*check_host_storage(app.settings), *check_container_storage()]
-    print_section(app.console, "Routes", routes)
-    print_section(app.console, "Local setup", setup)
-
-    results = routes + setup
-    failed = sum(r.status == "fail" for r in results)
-    warned = sum(r.status == "warn" for r in results)
-    app.console.print(f"\n{failed} failed, {warned} warnings, {len(results)} checks")
-    if failed:
-        exit(1)
+        yield Result(f"storage from {service}", status, detail, "local")
