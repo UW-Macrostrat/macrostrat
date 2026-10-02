@@ -38,6 +38,7 @@ endpoint = "https://storage.example.org"
 env_class = "local"
 backend = "docker-compose"
 base_url = "https://macrostrat.local"
+tiles_url = "https://tiles.macrostrat.local"
 compose_root = "./local-root"
 token_signing_key = "a-random-local-string"
 env_files = ["./macrostrat-auth.env"]
@@ -69,6 +70,7 @@ map-staging = "map-datafiles"
 [development]
 env_class = "development"
 base_url = "https://dev.macrostrat.org"
+tiles_url = "https://tiles.dev.macrostrat.org"
 token_signing_key = "op://Macrostrat development/api-v3/token signing key"
 kube_namespace = "macrostrat-dev"
 
@@ -101,6 +103,7 @@ access-logs = "access-logs"                          # a bucket on the default e
 [production]
 env_class = "production"
 base_url = "https://macrostrat.org"
+tiles_url = "https://tiles.macrostrat.org"
 token_signing_key = "op://Macrostrat production/api-v3/token signing key"
 active_ttl = "15m"
 

@@ -202,6 +202,7 @@ else:
         Validator("databases", default={}),
         Validator("log_modules", cast=list, default=["macrostrat"]),
         Validator("base_url", cast=convert_to_string, default="https://macrostrat.org"),
+        Validator("tiles_url", default=None),
     )
 
 macrostrat_env = getattr(settings, "env", None) or "default"

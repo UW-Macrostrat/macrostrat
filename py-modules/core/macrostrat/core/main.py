@@ -173,7 +173,4 @@ class Macrostrat(Application):
         if backend == "docker-compose":
             mgr = self.create_docker_compose_extension()
             mgr.add_commands(cmd)
-            from .stack_check import check
-
-            cmd.command(rich_help_panel="System (Docker Compose)")(check)
         return cmd
