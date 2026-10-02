@@ -143,7 +143,7 @@ def ingest_columns(
                 "col_group_id": col_group_id,
                 "n_columns": len(columns),
                 "n_units": sum(len(col.units) for col in columns),
-                "n_references": len(references),
+                "n_references": len(references or []),
                 "dry_run": dry_run,
             }
 

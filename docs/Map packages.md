@@ -30,7 +30,7 @@ takes this branch instead of the usual GIS-file ingest. The previous
 | `polygons`, `lines`, `points` | `maps.*`                         | Materialized compilations' polygons come after their members'    |
 | `legend`, `map_legend`     | `maps.legend`, `maps.map_legend`    | Included, but processing rebuilds them                           |
 | `ingest_process`, `ingest_process_tag` | `maps_metadata.*`       |                                                                  |
-| `map_area`, `boundary_op`  | `map_bounds.*`                      | The authored boundary and its operations; layer as `map_layer_slug` |
+| `map_area`, `boundary_op`  | `map_bounds.*`                      | The authored boundary and its operations; recorded in the target's own barrier layer on import |
 | `compilation`, `compilation_member` | `map_bounds.*`             | Edges touching an exported map, with both ends as slugs          |
 | `sources__<table>`         | `sources.<table>`                   | Staging tables; omit with `--no-sources-schema`                  |
 

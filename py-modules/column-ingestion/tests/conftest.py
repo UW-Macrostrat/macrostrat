@@ -14,7 +14,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @fixture(scope="class")
-def db(test_db_macrostrat_schema_only: Database, env_db: Database):
+def db(test_db_macrostrat_schema_only: Database):
     """A fresh database per test class, templated from the schema-only test database.
 
     Used where isolation beyond transaction rollback is required.

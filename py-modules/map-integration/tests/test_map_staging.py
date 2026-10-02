@@ -73,6 +73,8 @@ def extracted_path(path: Path):
         yield path
 
 
+# Reads the source files with `ogrinfo`
+@pytest.mark.requires_gdal
 @pytest.mark.parametrize("region_path", japan_map_files)
 def test_map_staging(test_db, region_path):
     """

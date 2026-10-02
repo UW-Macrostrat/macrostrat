@@ -66,12 +66,20 @@ def create_topo_fixtures(db: Database):
 
 
 def seed_layer_bounds(db: Database):
-    """The registered compilations' openings: data, so it is a step of its own,
-    after every fixture pass. A fresh database is seeded here; an existing one by
-    the `compilation-layer-bounds` migration, which also builds the bounds."""
-    from .bounds.layers import seed_layer_openings
+    """The registered compilations' openings and bounds: data, so it is a step of
+    its own, after every fixture pass. A fresh database is seeded and built here;
+    an existing one by the `compilation-layer-bounds` migration, which does the
+    same. Building here too is what lets that migration read as applied on a
+    fresh database rather than always having work to do."""
+    from .bounds.compile import compile_bounds
+    from .bounds.layers import layer_bounds, seed_layer_openings
 
     seed_layer_openings(db)
+    db.session.commit()
+    layer_ids = [l.source_id for l in layer_bounds(db)]
+    for res in compile_bounds(db, force=True, only=layer_ids):
+        if res.error:
+            print(f"  {res.slug}: {res.error}")
     db.session.commit()
 
 
