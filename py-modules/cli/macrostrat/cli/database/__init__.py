@@ -1,4 +1,5 @@
 import asyncio
+import os
 from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
@@ -131,6 +132,55 @@ db_app = typer.Typer(no_args_is_help=True)
 db_app = db_subsystem.control_command()
 
 
+# psql options whose value is a file on this machine.
+_PSQL_FILE_OPTIONS = (("-f", "--file"), ("-o", "--output"), ("-L", "--log-file"))
+
+
+def _psql_file_arguments(args: list[str]) -> list[Path]:
+    """The files named by `args`' file options (`-f x`, `-fx`, `--file=x`)."""
+    paths = []
+    args = iter(args)
+    for arg in args:
+        for short, long in _PSQL_FILE_OPTIONS:
+            if arg in (short, long):
+                value = next(args, None)
+            elif arg.startswith(long + "="):
+                value = arg[len(long) + 1 :]
+            elif arg.startswith(short) and not arg.startswith("--"):
+                value = arg[len(short) :]
+            else:
+                continue
+            if value and value != "-":  # `-` is stdin/stdout
+                paths.append(Path(value))
+            break
+    return paths
+
+
+def _local_file_flags(args: list[str]) -> list[str]:
+    """`docker run` flags that let psql in the container use local files.
+
+    The working directory, and the directory of every file `args` names, are
+    mounted at the same path inside the container, and psql starts in the
+    working directory. Paths therefore mean what they would to a local psql --
+    `-f plan.sql`, `\\i` and `\\ir`, `\\o`, `\\copy ... from 'file'` -- without
+    rewriting any argument. It runs as the calling user, so a file it writes
+    is not left owned by root.
+    """
+    cwd = Path.cwd()
+    dirs = [cwd]
+    for path in _psql_file_arguments(args):
+        parent = (cwd / path).resolve().parent
+        if not any(parent.is_relative_to(d) for d in dirs):
+            dirs.append(parent)
+    flags = []
+    for d in dirs:
+        flags += ["-v", f"{d}:{d}"]
+    flags += ["-w", str(cwd)]
+    if hasattr(os, "getuid"):  # not on Windows
+        flags += ["--user", f"{os.getuid()}:{os.getgid()}"]
+    return flags
+
+
 @db_app.command(
     context_settings={
         "allow_extra_args": True,
@@ -149,7 +199,8 @@ def psql(
     """Explore a database using [cyan]psql[/cyan]
 
     Connects with the read login unless [cyan]--write[/cyan] is given. Every
-    other argument is passed through to psql.
+    other argument is passed through to psql, which runs in a container that
+    can see the working directory and any file given with -f, -o or -L.
     """
     settings = app.settings
 
@@ -189,6 +240,7 @@ def psql(
         flags += ["-e", name]
     if stdin.isatty():
         flags.append("-t")
+    flags += _local_file_flags(ctx.args)
 
     db_container = settings.get("pg_database_container", "postgres:15")
 
