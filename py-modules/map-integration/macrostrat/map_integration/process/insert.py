@@ -91,23 +91,28 @@ def copy_to_maps(
     )
 
 
-def run_insert(
-    source: MapInfo,
-    *,
-    delete_existing: bool = False,
-    scale: str = None,
-    staging_prefix: str = None,
-    allow_unattributed: bool = False,
-):
-    """Copy one map's data to the maps schema, resolving the database itself."""
-    copy_to_maps(
-        get_database(),
-        source,
-        delete_existing=delete_existing,
-        scale=scale,
-        staging_prefix=staging_prefix,
-        allow_unattributed=allow_unattributed,
+def remove(db, source: MapInfo):
+    """Remove a map's data from the `maps` schema.
+
+    This is the inverse of `copy_to_maps`, and is used when a map is being
+    re-ingested or removed. It does not delete the source record itself, only
+    the geometry and attribute data in the `maps` schema.
+    """
+    data = feature_counts(db, source)
+
+    log.info(
+        "Deleting source %s with %s polygons, %s lines, %s points from database",
+        source.slug,
+        *data,
     )
+
+    if data.n_polygons == 0 and data.n_lines == 0 and data.n_points == 0:
+        log.warning(
+            "Source %s has no data in the maps schema. Nothing to delete.", source.slug
+        )
+        return
+
+    _delete_map_data(db, source.id)
 
 
 def _delete_map_data(db, source_id):
