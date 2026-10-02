@@ -101,6 +101,40 @@ the target rejects (a cycle, say) is skipped alone. Each imported map gets an
 The import is a data write, gated like any other (see
 [Environment configuration and write safety](Environment%20configuration%20and%20write%20safety.md)).
 
+## Patching existing maps
+
+`ingest` creates or replaces whole maps. To carry only *parts* of maps that
+already exist in the target — corrected metadata, edited boundary operations —
+export just those elements and apply them with `patch`:
+
+```sh
+macrostrat maps export spain-ops.gpkg spain --element boundary-ops
+macrostrat maps patch spain-ops.gpkg --dry-run   # show the plan
+macrostrat maps patch spain-ops.gpkg             # show it, then ask once
+```
+
+| Element        | Merge                                                                 |
+| -------------- | --------------------------------------------------------------------- |
+| `metadata`     | Descriptive `maps.sources` fields (name, authors, ref, url, license, keywords, …), field by field. A field the package leaves empty keeps the target's value |
+| `boundary-ops` | The map's whole operation stack is replaced, then its bounds rebuilt  |
+
+Maps are matched by slug and **never created**; a slug the target lacks is
+listed and skipped. The plan shows each map's changes — changed fields, and the
+old and new stacks as a diff — and is applied all or nothing once approved
+(`--yes` approves it without asking). Patch elements narrow with `--element`
+and maps with slug globs. Each patched map gets a `patch-package` entry in
+`maps.source_operations`.
+
+A computed opening's cached geometry (`union`, `compile`, `world`) describes
+the environment it was computed in, so it isn't compared and doesn't travel:
+the target keeps its own cache when the opening is unchanged, and recomputes it
+from its own features otherwise. Finish with `macrostrat topo update` to node
+the changed boundaries.
+
+A package exported with `--element` is **partial** (format version 2, listing
+its `elements`); `ingest` refuses it. `patch` also accepts a whole package and
+applies every element it carries.
+
 ## From Python
 
 The library functions take a database, as elsewhere in `map-integration`:
@@ -115,4 +149,10 @@ from macrostrat.map_integration.package import (
 export_maps(db, "ngs.gpkg", maps, staging_prefixes={"ngs"})
 report = import_package(other_db, "ngs.gpkg", on_conflict=ConflictAction.skip)
 report.imported, report.warnings
+
+from macrostrat.map_integration.package.patch import apply_patch, plan_patch
+
+plan = plan_patch(other_db, "spain-ops.gpkg")
+plan.changes, plan.missing
+apply_patch(other_db, plan)
 ```

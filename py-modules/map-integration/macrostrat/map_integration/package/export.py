@@ -12,7 +12,14 @@ from sqlalchemy import text
 from macrostrat.database import Database
 
 from ..utils.map_info import _MapInfo
-from .format import Layer, dump_table, table_columns, write_manifest
+from .format import (
+    FORMAT_VERSION,
+    FULL_FORMAT_VERSION,
+    Layer,
+    dump_table,
+    table_columns,
+    write_manifest,
+)
 
 console = Console(stderr=True)
 
@@ -162,8 +169,12 @@ def export_maps(
     staging: bool = True,
     staging_prefixes: set[str] = frozenset(),
     metadata: Optional[dict] = None,
+    elements: Optional[list[str]] = None,
 ) -> list[Layer]:
     """Write `maps` and everything describing them to a new GeoPackage.
+
+    With `elements`, the package is partial: only what those patch elements
+    read, for `macrostrat maps patch`, and refused by ingest.
 
     The file is written beside `path` and moved into place once complete, so an
     interrupted export never leaves something that looks like a package.
@@ -172,7 +183,7 @@ def export_maps(
     tmp = path.with_name(f".{path.stem}.partial.gpkg")
     tmp.unlink(missing_ok=True)
     try:
-        layers = _export(db, tmp, maps, staging, staging_prefixes, metadata)
+        layers = _export(db, tmp, maps, staging, staging_prefixes, metadata, elements)
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise
@@ -180,7 +191,7 @@ def export_maps(
     return layers
 
 
-def _export(db, tmp, maps, staging, staging_prefixes, metadata):
+def _export(db, tmp, maps, staging, staging_prefixes, metadata, elements):
     with db.engine.connect() as conn:
         has_topology = table_columns(conn, "map_bounds.compilation_member") is not None
         layer_ids = set()
@@ -217,7 +228,13 @@ def _export(db, tmp, maps, staging, staging_prefixes, metadata):
         params = dict(ids=ids, compilations=compilations)
 
         specs = list(TABLES)
-        if staging:
+        if elements:
+            # `maps_sources` always travels: it is how rows find their maps
+            wanted = {"maps_sources"}
+            for name in elements:
+                wanted.update(_element(name).layers)
+            specs = [s for s in specs if s.layer in wanted]
+        elif staging:
             for table, owner in _staging_tables(conn, maps, staging_prefixes).items():
                 specs.append(
                     TableSpec(
@@ -265,6 +282,18 @@ def _export(db, tmp, maps, staging, staging_prefixes, metadata):
         maps=[m.slug for m in maps],
         **(metadata or {}),
     )
+    version = FULL_FORMAT_VERSION
+    if elements:
+        meta["elements"] = list(elements)
+        version = FORMAT_VERSION
     # `maps_sources` always has rows, so the GeoPackage exists by now
-    write_manifest(tmp, meta, layers)
+    write_manifest(tmp, meta, layers, version)
     return layers
+
+
+def _element(name: str):
+    from .patch import ELEMENTS
+
+    if name not in ELEMENTS:
+        raise ValueError(f"Unknown element {name!r}; choose from {', '.join(ELEMENTS)}")
+    return ELEMENTS[name]

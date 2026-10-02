@@ -30,7 +30,10 @@ import shapely
 from sqlalchemy import text
 
 FORMAT_NAME = "macrostrat-map-package"
-FORMAT_VERSION = 1
+# The newest version this code reads. Full packages are still written as 1, so
+# older readers load them; partial packages (version 2) must be refused there.
+FORMAT_VERSION = 2
+FULL_FORMAT_VERSION = 1
 
 META_TABLE = "macrostrat_package"
 LAYERS_TABLE = "macrostrat_package_layers"
@@ -247,7 +250,22 @@ def _write_rows(path: Path, layer: Layer, rows: list):
     layer.row_count += len(df)
 
 
-def write_manifest(path: Path, meta: dict, layers: list[Layer]):
+def insert_rows(conn, table: str, columns: list[Column], rows: list[dict], suffix=""):
+    """Insert `rows`, casting each value to its target column's type."""
+    if not rows:
+        return
+    names = ", ".join(quote(c.name) for c in columns)
+    values = ", ".join(f"CAST(:p{i} AS {c.type})" for i, c in enumerate(columns))
+    sql = f"INSERT INTO {qualified(table)} ({names}) VALUES ({values}) {suffix}"
+    conn.execute(
+        text(sql),
+        [{f"p{i}": r.get(c.name) for i, c in enumerate(columns)} for r in rows],
+    )
+
+
+def write_manifest(
+    path: Path, meta: dict, layers: list[Layer], version: int = FULL_FORMAT_VERSION
+):
     with sqlite3.connect(path) as db:
         db.executescript(
             f"""
@@ -261,7 +279,7 @@ def write_manifest(path: Path, meta: dict, layers: list[Layer]):
               PRIMARY KEY (layer, position));
             """
         )
-        meta = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, **meta}
+        meta = {"format": FORMAT_NAME, "format_version": version, **meta}
         db.executemany(
             f"INSERT INTO {META_TABLE} VALUES (?, ?)",
             [(k, v if isinstance(v, str) else json.dumps(v)) for k, v in meta.items()],
@@ -304,6 +322,12 @@ class Package:
     @property
     def format_version(self) -> int:
         return int(self.meta.get("format_version", 0))
+
+    @property
+    def elements(self) -> Optional[list[str]]:
+        """The patch elements of a partial package; None for a whole one."""
+        value = self.meta.get("elements")
+        return None if value is None else json.loads(value)
 
     def rows(self, name: str) -> Iterator[list[dict]]:
         """Yield a layer's rows in chunks, decoded to plain Python values.

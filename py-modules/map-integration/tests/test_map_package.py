@@ -18,6 +18,7 @@ from macrostrat.map_integration.package import (
     is_map_package,
     read_package,
 )
+from macrostrat.map_integration.package.patch import apply_patch, plan_patch
 from macrostrat.map_integration.source_tables import create_source_tables
 from macrostrat.map_integration.utils.map_info import get_map_info, resolve_maps
 
@@ -449,3 +450,114 @@ def test_resilient_to_stale_information(target_db, package, tmp_path):
         )
         == 2
     )
+
+
+@pytest.fixture(scope="module")
+def ops_package(source_db, tmp_path_factory) -> Path:
+    path = tmp_path_factory.mktemp("partial") / "ops.gpkg"
+    maps = resolve_maps(source_db, ["pkg-a", "pkg-b"])
+    export_maps(source_db, path, maps, elements=["boundary-ops"])
+    return path
+
+
+def test_partial_package(ops_package, target_db):
+    pkg = read_package(ops_package)
+    assert pkg.elements == ["boundary-ops"]
+    assert pkg.format_version == 2
+    assert set(pkg.layers) == {"maps_sources", "boundary_op"}
+    # A package of parts can't stand in for whole maps
+    with pytest.raises(ImportStopped, match="holds only boundary-ops"):
+        import_package(target_db, ops_package)
+
+
+def _ops(db, slug):
+    rows = db.run_query(
+        "SELECT operation, parameters, geometry IS NOT NULL AS g"
+        " FROM map_bounds.boundary_op WHERE source_id = map_bounds.source_id(:s)"
+        " ORDER BY position",
+        dict(s=slug),
+    ).all()
+    return [tuple(r) for r in rows]
+
+
+def test_patch(target_db, package):
+    db = target_db
+    import_package(db, package)
+    # The target has diverged since: edited metadata and a different stack,
+    # with a union cached from its own features
+    db.run_sql(
+        """
+        UPDATE maps.sources SET name = 'Renamed here' WHERE slug = 'pkg-a';
+        UPDATE maps.sources SET url = 'https://kept.example' WHERE slug = 'pkg-b';
+        DELETE FROM map_bounds.boundary_op
+          WHERE source_id = map_bounds.source_id('pkg-a') AND position = 1;
+        INSERT INTO map_bounds.boundary_op (source_id, position, operation, parameters)
+          VALUES (map_bounds.source_id('pkg-a'), 1, 'buffer', '{"distance": 1}');
+        UPDATE map_bounds.boundary_op SET geometry = ST_Multi(ST_MakeEnvelope(0, 0, 9, 9, 4326))
+          WHERE source_id = map_bounds.source_id('pkg-a') AND position = 0;
+        """,
+        raise_errors=True,
+    )
+    db.session.commit()
+
+    plan = plan_patch(db, package)
+    assert [(c.slug, c.element) for c in plan.changes] == [
+        ("pkg-a", "metadata"),
+        ("pkg-a", "boundary-ops"),
+    ]
+    assert list(plan.changes[0].data) == ["name"]
+    # The package has no url for pkg-b, which doesn't clear the target's
+    assert plan.unchanged == ["pkg-b", "pkg-comp"]
+    assert plan.missing == [] and plan.warnings == []
+
+    narrowed = plan_patch(db, package, elements=["boundary-ops"], only=["pkg-a"])
+    assert [c.element for c in narrowed.changes] == ["boundary-ops"]
+
+    apply_patch(db, plan)
+    assert scalar(db, "SELECT name FROM maps.sources WHERE slug = 'pkg-a'") == "Map A"
+    assert (
+        scalar(db, "SELECT url FROM maps.sources WHERE slug = 'pkg-b'")
+        == "https://kept.example"
+    )
+    # The opening is unchanged, so the target's own cache stands
+    assert _ops(db, "pkg-a") == [
+        ("union", {}, True),
+        ("simplify", {"tolerance": 0.01}, False),
+    ]
+    assert (
+        scalar(
+            db,
+            "SELECT count(*) FROM maps.source_operations"
+            " WHERE operation = 'patch-package' AND source_id = map_bounds.source_id('pkg-a')",
+        )
+        == 1
+    )
+    # Applying again changes nothing
+    assert plan_patch(db, package).changes == []
+
+
+def test_patch_partial(target_db, package, ops_package):
+    db = target_db
+    import_package(db, package, only=["pkg-a"])
+    db.run_sql(
+        """
+        DELETE FROM map_bounds.boundary_op WHERE source_id = map_bounds.source_id('pkg-a');
+        UPDATE maps.sources SET name = 'Renamed here' WHERE slug = 'pkg-a';
+        """,
+        raise_errors=True,
+    )
+    db.session.commit()
+
+    with pytest.raises(Exception, match="doesn't carry metadata"):
+        plan_patch(db, ops_package, elements=["metadata"])
+    plan = plan_patch(db, ops_package)
+    # Only the element the package was exported with, and never a new map
+    assert [(c.slug, c.element) for c in plan.changes] == [("pkg-a", "boundary-ops")]
+    assert plan.changes[0].summary == "replace stack: 0 → 2 ops"
+    assert plan.missing == ["pkg-b"]
+    apply_patch(db, plan)
+    assert [o[0] for o in _ops(db, "pkg-a")] == ["union", "simplify"]
+    assert scalar(db, "SELECT name FROM maps.sources WHERE slug = 'pkg-a'") == (
+        "Renamed here"
+    )
+    assert scalar(db, "SELECT count(*) FROM maps.sources WHERE slug = 'pkg-b'") == 0

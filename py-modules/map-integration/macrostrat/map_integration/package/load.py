@@ -31,6 +31,7 @@ from .format import (
     Column,
     Layer,
     Package,
+    insert_rows,
     qualified,
     quote,
     read_package,
@@ -96,6 +97,11 @@ def import_package(
     target's `source_id` and replaces the map's data in place.
     """
     pkg = read_package(path)
+    if pkg.elements is not None:
+        raise ImportStopped(
+            f"{Path(path).name} holds only {', '.join(pkg.elements)} for existing maps",
+            details="Apply it with `macrostrat maps patch`.",
+        )
     sources = pkg.all_rows("maps_sources")
     if only:
         sources = [s for s in sources if any(fnmatch(s["slug"], p) for p in only)]
@@ -192,15 +198,7 @@ class _Importer:
         ]
 
     def insert(self, table: str, columns: list[Column], rows: list[dict], suffix=""):
-        if not rows:
-            return
-        names = ", ".join(quote(c.name) for c in columns)
-        values = ", ".join(f"CAST(:p{i} AS {c.type})" for i, c in enumerate(columns))
-        sql = f"INSERT INTO {qualified(table)} ({names}) VALUES ({values}) {suffix}"
-        self.conn.execute(
-            text(sql),
-            [{f"p{i}": r.get(c.name) for i, c in enumerate(columns)} for r in rows],
-        )
+        insert_rows(self.conn, table, columns, rows, suffix)
 
     def allocate(self, table: str, column: str, n: int) -> list[int]:
         """Draw `n` ids from the sequence behind a column's default."""
