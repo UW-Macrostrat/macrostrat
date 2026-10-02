@@ -703,8 +703,8 @@ WHERE ml.source_id = map_bounds.serving_source(_source_id, _zoom)
 $$ LANGUAGE SQL STABLE;
 
 
-/** The mapped polygons of a source at a location: which rows of `maps.polygons`
-  a request for `_ident` at `_zoom` should read within `_within`.
+/** The mapped polygon of a source at a point: the row of `maps.polygons` that
+  a request for `_ident` at `_zoom` is answered with at `_point`.
 
   Resolution, in order:
     - `sys\:carto-legacy` reads the legacy `carto.polygons` build at the zoom's
@@ -713,13 +713,17 @@ $$ LANGUAGE SQL STABLE;
       same routes while both are served, and goes with Stage D.
     - otherwise `_ident` (slug or id) is resolved;
     - a source with faces -- for a multiscale one, its member's at the zoom
-      (`face_layer_for`) -- resolves in two phases: its `map_face` coverage,
-      then one indexed lookup per face for that map's content -- exactly the
-      shape `carto-dynamic.sql` and v3's `units.sql` had inline;
+      (`face_layer_for`) -- is read through them: the maps whose faces hold the
+      point, then their polygons at it;
     - anything else reads `polygons_of` of the source answering at the zoom
       (`serving_source`, the multiscale hop): a map, a mosaic member, a
       materialized compilation. A virtual compilation without faces returns
       nothing.
+
+  Faces in a layer do not overlap, so one map answers at a point and with one
+  polygon. A point on a shared edge meets two; the higher-ranked one is
+  returned. An area is the legend's question (v3 `/map/{slug}/legend`), not
+  this one's, and is refused.
 
   `source_id` is the content holder (the map whose row it is); `member_id` is
   the member of the served compilation the face's map belongs to, and
@@ -728,10 +732,11 @@ $$ LANGUAGE SQL STABLE;
   in a layer owns the face while SGMC holds the polygons.
 
   Only keys come back. Names, legend text and intervals are the caller's
-  decoration, which v2 and v3 do differently and over at most a handful of rows. */
-CREATE OR REPLACE FUNCTION map_bounds.units_at(
+  decoration. */
+DROP FUNCTION IF EXISTS map_bounds.units_at(text, geometry, integer);
+CREATE OR REPLACE FUNCTION map_bounds.polygon_at(
   _ident text,
-  _within geometry,
+  _point geometry,
   _zoom integer
 )
   RETURNS TABLE (
@@ -739,7 +744,6 @@ CREATE OR REPLACE FUNCTION map_bounds.units_at(
     source_id integer,
     scale maps.map_scale,
     map_layer_id integer,
-    map_face_id integer,
     member_id integer,
     priority_path integer[]
   ) AS $$
@@ -748,16 +752,22 @@ DECLARE
   _target integer;
   _layer integer;
 BEGIN
+  IF GeometryType(_point) <> 'POINT' THEN
+    RAISE USING MESSAGE = 'polygon_at takes a point; an area is a legend query';
+  END IF;
+
   IF _ident = 'sys\:carto-legacy' THEN
     RETURN QUERY
     SELECT
       p.map_id,
       p.source_id,
       CAST(p.geom_scale AS maps.map_scale),
-      NULL::integer, NULL::integer, NULL::integer, NULL::integer[]
+      NULL::integer, NULL::integer, NULL::integer[]
     FROM carto.polygons p
     WHERE p.scale = map_bounds.scale_for_zoom(_zoom)
-      AND ST_Intersects(p.geom, _within);
+      AND ST_Intersects(p.geom, _point)
+    ORDER BY p.map_id
+    LIMIT 1;
     RETURN;
   END IF;
 
@@ -767,8 +777,7 @@ BEGIN
     RETURN;
   END IF;
 
-  -- The faces are `_target`'s; without faces, its own polygons (or lines) are
-  -- read.
+  -- The faces are `_target`'s; without faces, its own polygons are read.
   _layer := map_bounds.face_layer_for(_source, _zoom);
 
   IF _layer IS NULL THEN
@@ -777,22 +786,26 @@ BEGIN
       p.map_id,
       p.source_id,
       p.scale,
-      NULL::integer, NULL::integer, NULL::integer, NULL::integer[]
-    FROM map_bounds.polygons_of(_target, _within) p;
+      NULL::integer, NULL::integer, NULL::integer[]
+    FROM map_bounds.polygons_of(_target, _point) p
+    ORDER BY p.map_id
+    LIMIT 1;
     RETURN;
   END IF;
 
   RETURN QUERY
+  /* The maps whose faces hold the point. Member faces (a compilation with no
+     content of its own) are for attribution and are skipped. */
   WITH faces AS MATERIALIZED (
-    SELECT mf.id AS face_id, mf.map_id AS owner_id
+    SELECT DISTINCT mf.map_id AS owner_id
     FROM map_bounds_topology.map_face mf
     WHERE mf.map_layer = _layer
-      AND ST_Intersects(mf.geometry, _within)
+      AND ST_Intersects(mf.geometry, _point)
+      AND map_bounds.has_content(mf.map_id)
   ),
-  /* Where each face's map keeps its polygons, resolved once per face. */
+  /* Where each map keeps its polygons. */
   holders AS MATERIALIZED (
     SELECT
-      f.face_id,
       f.owner_id,
       c.source_id AS content_id,
       c.footprint,
@@ -808,34 +821,43 @@ BEGIN
     p.source_id,
     p.scale,
     _layer,
-    h.face_id,
     mp.member_id,
     mp.priority_path
   FROM holders h
   JOIN maps.polygons p
     ON p.source_id = h.content_id
    AND p.scale = CAST(h.content_scale AS maps.map_scale)
-   AND ST_Intersects(p.geom, _within)
+   AND ST_Intersects(p.geom, _point)
   LEFT JOIN map_bounds.map_priority mp
     ON mp.map_layer = _layer
    AND mp.map_id = h.owner_id
-  /* The face bounds what its map answers for: an area request can span several
-     faces, and a map's polygons must not be reported where another map's face
-     covers them. Fetched by id, tested against the representative point. */
-  WHERE EXISTS (
-      SELECT 1 FROM map_bounds_topology.map_face f
-      WHERE f.id = h.face_id
-        AND ST_Contains(f.geometry, ST_PointOnSurface(p.geom))
-    )
-    AND (h.footprint IS NULL OR ST_Contains(h.footprint, ST_PointOnSurface(p.geom)));
+  -- A mosaic member reads its holder's polygons through its own footprint.
+  WHERE h.footprint IS NULL OR ST_Contains(h.footprint, ST_PointOnSurface(p.geom))
+  ORDER BY mp.priority_path DESC NULLS LAST, p.map_id
+  LIMIT 1;
 END;
-/* `ROWS`: a point resolves to one or a few polygons, and the planner's default
-   estimate of 1000 for a set-returning function made every caller that
-   decorated the keys hash-join whole tables -- `map_legend` (3.5M rows),
-   `sources`, `legend` -- for a one-row answer: ~1 s in v2 against 7 ms with the
-   estimate right. An area request gets nested-loop index lookups per row, which
-   is what it wants too. */
-$$ LANGUAGE plpgsql STABLE ROWS 20;
+/* `ROWS`: the planner's default estimate of 1000 for a set-returning function
+   made every caller that decorated the keys hash-join whole tables --
+   `map_legend` (3.5M rows), `sources`, `legend` -- for a one-row answer: ~1 s
+   in v2 against 7 ms with the estimate right. */
+$$ LANGUAGE plpgsql STABLE ROWS 1;
+
+/** The retired name of `polygon_at`, kept while API v2 still calls it. */
+CREATE OR REPLACE FUNCTION map_bounds.units_at(
+  _ident text,
+  _within geometry,
+  _zoom integer
+)
+  RETURNS TABLE (
+    map_id integer,
+    source_id integer,
+    scale maps.map_scale,
+    map_layer_id integer,
+    member_id integer,
+    priority_path integer[]
+  ) AS $$
+SELECT * FROM map_bounds.polygon_at(_ident, _within, _zoom);
+$$ LANGUAGE SQL STABLE ROWS 1;
 
 /** The lines of a source at a location; the `maps.lines` counterpart of
   `units_at`, resolved the same way. A line is reported where it intersects a
