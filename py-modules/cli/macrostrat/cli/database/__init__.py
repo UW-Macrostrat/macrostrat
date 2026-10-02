@@ -7,6 +7,7 @@ from typing import Any, Callable, Iterable
 from warnings import warn
 
 import typer
+from click import ClickException
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
@@ -156,6 +157,35 @@ def _psql_file_arguments(args: list[str]) -> list[Path]:
     return paths
 
 
+# The container's own system directories. A local directory mounted at the same
+# path would replace one -- the host's `/usr/lib` in place of the image's breaks
+# psql outright -- so files there are refused rather than mounted.
+_CONTAINER_SYSTEM_PATHS = tuple(
+    Path(p)
+    for p in (
+        "/bin",
+        "/boot",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/lib32",
+        "/lib64",
+        "/libx32",
+        "/proc",
+        "/sbin",
+        "/sys",
+        "/usr",
+        "/var",
+    )
+)
+
+
+def _shadows_the_container(d: Path) -> bool:
+    return d == Path(d.anchor) or any(
+        d.is_relative_to(p) for p in _CONTAINER_SYSTEM_PATHS
+    )
+
+
 def _local_file_flags(args: list[str]) -> list[str]:
     """`docker run` flags that let psql in the container use local files.
 
@@ -164,14 +194,23 @@ def _local_file_flags(args: list[str]) -> list[str]:
     working directory. Paths therefore mean what they would to a local psql --
     `-f plan.sql`, `\\i` and `\\ir`, `\\o`, `\\copy ... from 'file'` -- without
     rewriting any argument. It runs as the calling user, so a file it writes
-    is not left owned by root.
+    is not left owned by root. A directory that is also one of the container's
+    system paths is refused, since mounting it would replace them.
     """
-    cwd = Path.cwd()
+    cwd = Path.cwd().resolve()
     dirs = [cwd]
     for path in _psql_file_arguments(args):
         parent = (cwd / path).resolve().parent
         if not any(parent.is_relative_to(d) for d in dirs):
             dirs.append(parent)
+    refused = [d for d in dirs if _shadows_the_container(d)]
+    if refused:
+        raise ClickException(
+            "psql runs in a container, which can't be given "
+            + ", ".join(str(d) for d in refused)
+            + ": mounted at the same path, it would replace the container's own"
+            " system files. Run from another directory, or copy the file to one."
+        )
     flags = []
     for d in dirs:
         flags += ["-v", f"{d}:{d}"]
