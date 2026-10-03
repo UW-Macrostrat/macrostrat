@@ -48,6 +48,19 @@ cli = IngestionCLI(
 cli.add_command(processing_status, name="status")
 
 
+_REQUIREMENTS = {
+    "polygons": """
+        SELECT DISTINCT source_id FROM maps.polygons
+        WHERE source_id = ANY(CAST(:ids AS integer[]))
+    """,
+    # `rgeom`, because that is what the geometry steps read.
+    "bounds": """
+        SELECT source_id FROM maps.sources
+        WHERE source_id = ANY(CAST(:ids AS integer[])) AND rgeom IS NOT NULL
+    """,
+}
+
+
 def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
     """Run a single-map processing step over every selected map.
 
@@ -62,33 +75,32 @@ def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
     if many:
         print(f"[dim]{len(maps)} maps[/]")
 
-    # A source with no polygons of its own has nothing for these steps to do.
-    # Compilations are the usual case -- their content is their members' -- and
-    # a registered but uncopied source is the other. Neither is a failure, and
-    # reporting them as one buried the real ones.
-    skip_empty_maps = kwargs.pop("skip_empty_maps", True)
-
-    materialized = set(
-        db.run_query(
-            """
-            SELECT DISTINCT source_id FROM maps.polygons
-            WHERE source_id = ANY(CAST(:ids AS integer[]))
-            """,
-            {"ids": [m.id for m in maps]},
-        ).scalars()
-    )
+    # What a step needs before it has anything to do: its own polygons (the
+    # default), its bounds, or nothing. A source without it is skipped, not
+    # failed -- compilations and mosaic members hold no polygons, and a
+    # registered but uncopied source has none yet.
+    requires = kwargs.pop("requires", "polygons")
+    ready = {m.id for m in maps}
+    if requires is not None:
+        ready = set(
+            db.run_query(
+                _REQUIREMENTS[requires], {"ids": [m.id for m in maps]}
+            ).scalars()
+        )
 
     failed = []
     skipped = []
     for m in maps:
-        if (m.id not in materialized) and skip_empty_maps:
+        if m.id not in ready:
             skipped.append(m.slug)
             if many:
-                print(f"[dim]{m.slug} #{m.id} -- no polygons, skipped[/]")
-            else:
+                print(f"[dim]{m.slug} #{m.id} -- no {requires}, skipped[/]")
+            elif requires == "polygons":
                 raise SourceNotMaterialized(
                     f"Source {m.id} ({m.slug}) has no polygons in any scale table"
                 )
+            else:
+                raise MacrostratError(f"Source {m.id} ({m.slug}) has no {requires}")
             continue
         if many:
             print(f"[bold cyan]{m.slug}[/] [dim]#{m.id}[/]")
@@ -101,7 +113,7 @@ def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
             print(f"  [red]failed[/] {failed[-1][1]}")
 
     if skipped:
-        print(f"\n[dim]{len(skipped)} of {len(maps)} skipped (no polygons)[/]")
+        print(f"\n[dim]{len(skipped)} of {len(maps)} skipped (no {requires})[/]")
     if failed:
         print(f"\n[red]{len(failed)} of {len(maps)} failed[/]")
         for slug, err in failed:
@@ -177,7 +189,14 @@ def web_geom(
     state: MapState = None,
 ):
     """Create simplified web geometries for the selected map sources."""
-    for_each_map(maps, create_webgeom, exclude=exclude, state=state, legacy=legacy)
+    for_each_map(
+        maps,
+        create_webgeom,
+        exclude=exclude,
+        state=state,
+        legacy=legacy,
+        requires="bounds",
+    )
 
 
 @cli.command(name="insert", rich_help_panel="Map")
@@ -216,7 +235,7 @@ def insert(
         scale=scale,
         staging_prefix=staging_prefix,
         allow_unattributed=allow_unattributed,
-        skip_empty_maps=False,
+        requires=None,
     )
 
 
