@@ -93,7 +93,24 @@ def build_cmd(
     maps: Annotated[
         Optional[list[str]], Argument(help="Map slugs or source ids")
     ] = None,
-    all_maps: Annotated[bool, Option("--all", help="Build every map")] = False,
+    all_maps: Annotated[
+        bool,
+        Option(
+            "--all",
+            help="Build every map whose operations changed since its last build",
+        ),
+    ] = False,
+    rebuild: Annotated[
+        bool, Option("--rebuild", help="With --all, build unchanged maps too")
+    ] = False,
+    strict: Annotated[
+        bool,
+        Option(
+            "--strict",
+            help=f"Write any change, not only those over {build_mod.TOLERANCE_KM:g} km²"
+            f" or {build_mod.TOLERANCE_REL:g} of the map's area",
+        ),
+    ] = False,
     init: Annotated[
         bool, Option("--init", help="Recompute the opening union from map features")
     ] = False,
@@ -101,16 +118,31 @@ def build_cmd(
         bool, Option("--dry-run", help="Report the result without writing")
     ] = False,
 ):
-    """Replay a map's operations onto its boundary."""
+    """Replay a map's operations onto its boundary.
+
+    Named maps are always rebuilt. A rebuilt boundary within tolerance of the
+    stored one is left in place, so it is not re-noded.
+    """
     if not maps and not all_maps:
         print("[red]Pass one or more maps, or --all[/]")
         raise typer.Exit(1)
     db = get_database()
-    targets = _sources_with_bounds(db) if all_maps else _resolve(maps)
+    if not all_maps:
+        targets = _resolve(maps)
+    elif rebuild:
+        targets = _sources_with_bounds(db)
+    else:
+        stale = build_mod.needs_build(db)
+        everything = _sources_with_bounds(db)
+        targets = [m for m in everything if m.map_id in stale]
+        print(
+            f"[dim]{len(everything) - len(targets)} maps up to date;"
+            " --rebuild to build them anyway[/]"
+        )
 
     failures = 0
     for m in targets:
-        res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run)
+        res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run, strict=strict)
         label = f"[bold]{res.slug or m.map_id}[/]"
         if res.error:
             failures += 1
@@ -122,6 +154,14 @@ def build_cmd(
             print(f"  [red]FAILED[/] {label}{where}: {res.error}")
         elif res.skipped:
             print(f"  [dim]skipped[/] {label} -- {res.skipped}")
+        elif res.unchanged:
+            if res.diff_km:
+                print(
+                    f"  [dim]unchanged[/] {label} -- moved {res.diff_km:,.4g} km²,"
+                    " within tolerance; --strict to write"
+                )
+            else:
+                print(f"  [dim]unchanged[/] {label}")
         else:
             verb = "would be" if dry_run else "built"
             area = f"{res.area_km:,.1f} km²" if res.area_km is not None else "?"

@@ -476,6 +476,47 @@ class TestMapTopology:
         ).first()
         assert (xmin, xmax) == (-180, 180)
 
+    def test_build_skips_unchanged(self, ctx):
+        """A rebuild writes only a boundary that moved beyond tolerance, and
+        `needs_build` follows the operation list, not the geometry."""
+        from macrostrat.map_topology.bounds import build as build_mod
+
+        db = ctx.database
+        assert 1001 not in build_mod.needs_build(db)
+
+        res = build_mod.build(db, 1001)
+        assert res.error is None
+        assert res.unchanged and not res.written and res.diff_km == 0
+
+        def punch(size):
+            db.run_query(
+                """
+                UPDATE map_bounds.map_area
+                SET geometry = ST_Multi(ST_Difference(
+                  ST_MakeEnvelope(-180, -90, 180, 90, 4326),
+                  ST_MakeEnvelope(0, 0, :size, :size, 4326)))
+                WHERE source_id = 1001
+                """,
+                dict(size=size),
+            )
+            db.session.commit()
+
+        # ~0.012 km²: drift on a world-sized boundary, not worth re-noding.
+        punch(0.001)
+        res = build_mod.build(db, 1001)
+        assert res.unchanged and 0 < res.diff_km < build_mod.TOLERANCE_KM
+        assert build_mod.build(db, 1001, strict=True).written
+
+        # ~12,000 km² is over the absolute threshold, however small relatively.
+        punch(1)
+        res = build_mod.build(db, 1001)
+        assert res.written and res.diff_km > build_mod.TOLERANCE_KM
+
+        build_mod.set_opening(db, 1001, "world")
+        db.session.commit()
+        assert 1001 in build_mod.needs_build(db)
+        assert build_mod.build(db, 1001).error is None
+
     def test_multiscale_carto(self, ctx):
         """`carto` is one multiscale compilation over the four served tiers, and
         a request at a zoom is answered by the member whose scale band contains

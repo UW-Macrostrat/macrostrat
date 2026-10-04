@@ -19,6 +19,47 @@ _AREA_KM = """CASE
   ELSE ST_Area(ST_Segmentize({geom}, 90)::geography) / 1e6
 END"""
 
+#: A rebuilt boundary is written only if it moved by more than either threshold.
+#: The relative one ignores floating-point drift; the absolute one still catches
+#: a real edit to a continent-scale map, where 1e-6 of the area is ~10 km².
+TOLERANCE_KM = 1.0
+TOLERANCE_REL = 1e-6
+
+#: Equal-area planar, since the difference against world-sized bounds is near-global
+#: and the geography type cannot measure it.
+_MOVED_KM = "ST_Area(ST_Transform({geom}, 6933)) / 1e6"
+
+#: A stamp over a map's operation list, geometry operands included, so a
+#: recomputed opening counts as a change.
+OPS_HASH = """md5(coalesce(string_agg(
+  o.position || ':' || o.operation || ':' || coalesce(o.parameters::text, '')
+    || ':' || coalesce(md5(ST_AsBinary(o.geometry)), ''),
+  ',' ORDER BY o.position
+), ''))::uuid"""
+
+#: The fold's result beside the stored boundary, and the area between them.
+_COMPARE = """
+new AS MATERIALIZED (SELECT ({expr}) AS g),
+cmp AS MATERIALIZED (
+  SELECT n.g,
+    ST_AsBinary(n.g) = ST_AsBinary(a.geometry) AS identical,
+    {area_new} AS area_km,
+    CASE WHEN ST_AsBinary(n.g) <> ST_AsBinary(a.geometry)
+      THEN ST_SymDifference(n.g, a.geometry) END AS moved
+  FROM new n
+  JOIN map_bounds.map_area a ON a.source_id = :source_id
+),
+d AS (
+  SELECT g, identical, area_km, coalesce({area_moved}, 0) AS diff_km,
+    -- A NULL fold is passed through, for `map_area`'s NOT NULL to report.
+    g IS NULL OR NOT identical AND (
+      CAST(:strict AS boolean)
+      OR coalesce({area_moved}, 0) > :tolerance_km
+      OR coalesce({area_moved}, 0) > :tolerance_rel * area_km
+    ) AS significant
+  FROM cmp
+)"""
+
 
 @dataclass
 class OpRow:
@@ -37,6 +78,10 @@ class BuildResult:
     ops: list[OpRow] = field(default_factory=list)
     area_km: float | None = None
     written: bool = False
+    #: Area between the rebuilt and stored boundaries, km².
+    diff_km: float | None = None
+    #: Rebuilt, but within tolerance of the stored boundary, so not written.
+    unchanged: bool = False
     opened: bool = False
     error: str | None = None
     failed_op: OpRow | None = None
@@ -65,6 +110,20 @@ def load_ops(db: Database, source_id: int) -> list[OpRow]:
         )
         for r in rows
     ]
+
+
+def needs_build(db: Database) -> set[int]:
+    """Sources whose operations have changed since their boundary was built."""
+    rows = db.run_query(
+        f"""
+        SELECT a.source_id
+        FROM map_bounds.map_area a
+        JOIN map_bounds.boundary_op o ON o.source_id = a.source_id
+        GROUP BY a.source_id, a.ops_hash
+        HAVING a.ops_hash IS DISTINCT FROM {OPS_HASH}
+        """
+    ).all()
+    return {r.source_id for r in rows}
 
 
 def ensure_opening(db: Database, source_id: int) -> int | None:
@@ -250,8 +309,20 @@ def _fold(
     return expr, params
 
 
-def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = False):
-    """Replay a map's operations onto `map_area.geometry`."""
+def build(
+    db: Database,
+    source_id: int,
+    *,
+    init: bool = False,
+    dry_run: bool = False,
+    strict: bool = False,
+):
+    """Replay a map's operations onto `map_area.geometry`.
+
+    The result is written only when it differs from the stored boundary by more
+    than `TOLERANCE_KM` or `TOLERANCE_REL`, or by anything at all with `strict`.
+    Writing clears `geometry_hash`, so a skipped write spares a re-noding.
+    """
     result = BuildResult(source_id=source_id)
     result.slug = db.run_query(
         "SELECT slug FROM maps.sources WHERE source_id = :source_id",
@@ -318,26 +389,40 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
         return result
 
     expr, params = _fold(ops, seed=seed)
-    params["source_id"] = source_id
+    params.update(
+        source_id=source_id,
+        strict=strict,
+        tolerance_km=TOLERANCE_KM,
+        tolerance_rel=TOLERANCE_REL,
+    )
+    compare = _COMPARE.format(
+        expr=expr,
+        area_new=_AREA_KM.format(geom="n.g"),
+        area_moved=_MOVED_KM.format(geom="moved"),
+    )
 
     if dry_run:
         row = db.run_query(
-            f"SELECT ST_GeometryType(g) AS gtype, {_AREA_KM.format(geom='g')}"
-            f" AS area_km FROM (SELECT {expr} AS g) s",
+            f"WITH {compare} SELECT area_km, diff_km, identical, significant FROM d",
             params,
         ).first()
         result.area_km = row.area_km
+        result.diff_km = row.diff_km
+        result.unchanged = not row.significant
         return result
 
     try:
         row = db.run_query(
             f"""
-            UPDATE map_bounds.map_area
-            SET geometry = ({expr}),
-                boundary_error = NULL,
-                geometry_hash = NULL
-            WHERE source_id = :source_id
-            RETURNING {_AREA_KM.format(geom="geometry")} AS area_km
+            WITH {compare},
+            w AS (
+              UPDATE map_bounds.map_area a
+              SET geometry = d.g, area_km = d.area_km, geometry_hash = NULL
+              FROM d
+              WHERE a.source_id = :source_id AND d.significant
+              RETURNING a.source_id
+            )
+            SELECT area_km, diff_km, EXISTS (SELECT 1 FROM w) AS written FROM d
             """,
             params,
         ).first()
@@ -348,11 +433,17 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
         _record_error(db, source_id, result)
         return result
 
-    # area_km is derived, so set it in the same pass rather than leaving it stale.
+    # Stamped whether or not the geometry moved: these operations are now built.
     db.run_query(
-        f"UPDATE map_bounds.map_area"
-        f" SET area_km = {_AREA_KM.format(geom='geometry')}"
-        f" WHERE source_id = :source_id",
+        f"""
+        UPDATE map_bounds.map_area
+        SET boundary_error = NULL,
+            ops_hash = (
+              SELECT {OPS_HASH} FROM map_bounds.boundary_op o
+              WHERE o.source_id = :source_id
+            )
+        WHERE source_id = :source_id
+        """,
         dict(source_id=source_id),
     )
     db.run_query(
@@ -362,7 +453,9 @@ def build(db: Database, source_id: int, *, init: bool = False, dry_run: bool = F
     )
     db.session.commit()
     result.area_km = row.area_km
-    result.written = True
+    result.diff_km = row.diff_km
+    result.written = row.written
+    result.unchanged = not row.written
     return result
 
 
