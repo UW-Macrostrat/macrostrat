@@ -8,7 +8,8 @@
    what the previous piece added.
 
    `:failed` selects pieces that failed before (a retry at another tolerance)
-   rather than pieces not yet attempted.
+   rather than pieces not yet attempted. `:piece_id`, when set, narrows the
+   batch to that one piece.
 */
 WITH pieces AS (
   SELECT t.id, t.geometry
@@ -16,6 +17,7 @@ WITH pieces AS (
   WHERE t.source_id = :map_id
     AND NOT t.noded
     AND (t.topology_error IS NOT NULL) = :failed
+    AND (CAST(:piece_id AS integer) IS NULL OR t.id = CAST(:piece_id AS integer))
   ORDER BY t.id
   LIMIT :batch_size
 ),

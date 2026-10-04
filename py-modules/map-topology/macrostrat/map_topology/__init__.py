@@ -15,6 +15,7 @@ from .manager import (
     get_maps_with_changed_geometries,
     proc,
     release_map,
+    vacuum_topology,
 )
 
 cli = Typer(no_args_is_help=True)
@@ -67,10 +68,17 @@ def _clean(
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
+    vacuum: bool = Option(
+        False,
+        "--vacuum",
+        help="Then compact the primitive tables noding has rewritten (VACUUM FULL)",
+    ),
 ):
     """Clean topology fixtures"""
     mgr = get_topo_manager()
     mgr.clean_topology()
+    if vacuum:
+        vacuum_topology(mgr.database)
 
 
 @cli.command("rebuild", rich_help_panel="Utils")
@@ -151,13 +159,30 @@ def _update(
     verbose: bool = Option(
         False, "--verbose", "-v", help="List maps already noded from current bounds"
     ),
+    one_at_a_time: bool = Option(
+        False,
+        "--one-at-a-time",
+        help="Node and commit each piece separately, reporting its time",
+    ),
+    piece_timeout: float = Option(
+        None,
+        "--piece-timeout",
+        help="Seconds before a piece is abandoned and recorded as failed;"
+        " implies --one-at-a-time",
+    ),
 ):
     """The one command after any edit to maps, bounds or compilations: node the
     maps whose bounds changed, recompile compilation bounds and priority paths,
     re-solve the faces whose owner changed, and rebuild member faces. `--bulk`
     re-nodes the selected maps from scratch."""
     mgr = get_topo_manager()
-    mgr.update_full(maps, bulk=bulk, verbose=verbose)
+    mgr.update_full(
+        maps,
+        bulk=bulk,
+        verbose=verbose,
+        one_at_a_time=one_at_a_time,
+        piece_timeout=piece_timeout,
+    )
 
 
 @cli.command("summary")

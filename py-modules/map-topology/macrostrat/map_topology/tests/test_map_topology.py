@@ -14,7 +14,9 @@ from macrostrat.map_topology.manager import (
     get_map_list,
     get_retired_maps,
     proc,
+    release_map,
     update_maps,
+    vacuum_topology,
 )
 
 
@@ -777,6 +779,57 @@ class TestMapTopology:
         assert summary.maps_released == 1
         assert not held()
         assert get_retired_maps(db) == []
+
+    def test_one_piece_at_a_time(self, ctx):
+        """Pieces noded singly give the same result, and a piece that runs past
+        `piece_timeout` is recorded as failed rather than stalling the run."""
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1011, 'test_source_11', true, 'active', 'large'),
+                   (1012, 'test_source_12', true, 'active', 'large')
+            """
+        )
+        # Thousands of vertices, so each is cut into several pieces.
+        add_polygons(
+            db,
+            {
+                1011: "ST_Buffer(ST_MakePoint(20, 20)::geography, 50000, 1000)::geometry",
+                1012: "ST_Buffer(ST_MakePoint(30, 20)::geography, 50000, 1000)::geometry",
+            },
+        )
+
+        def pieces(map_id):
+            return db.run_query(
+                """
+                SELECT count(*) AS n, count(*) FILTER (WHERE noded) AS noded,
+                  count(*) FILTER (WHERE topology_error LIKE 'timed out%') AS timed_out
+                FROM map_bounds.map_topo WHERE source_id = :map_id
+                """,
+                dict(map_id=map_id),
+            ).one()
+
+        update_maps(mgr, ["test_source_11"], one_at_a_time=True)
+        p = pieces(1011)
+        assert p.n > 1 and p.noded == p.n
+
+        update_maps(mgr, ["test_source_12"], piece_timeout=0.001)
+        p = pieces(1012)
+        assert p.n > 1 and p.timed_out > 0 and p.noded + p.timed_out == p.n
+
+        release_map(db, 1012)
+        db.session.commit()
+
+    def test_vacuum_topology(self, ctx):
+        """Compaction runs outside a transaction and leaves the primitives intact."""
+        db = ctx.database
+        count = "SELECT count(*) FROM map_bounds_topology.edge_data"
+        edges = db.run_query(count).scalar()
+        vacuum_topology(db)
+        assert db.run_query(count).scalar() == edges
 
 
 @dataclass
