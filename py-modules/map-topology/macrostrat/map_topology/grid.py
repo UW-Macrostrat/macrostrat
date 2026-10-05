@@ -153,14 +153,17 @@ def _node_line(db, line_id: int, tolerance: float) -> bool:
     try:
         # Consume the result: an unread result keeps its connection's transaction
         # open, and the next call then waits on a second connection for ever.
-        db.run_query(_NODE, dict(id=line_id, tolerance=tolerance)).scalar()
+        n_edges = db.run_query(_NODE, dict(id=line_id, tolerance=tolerance)).scalar()
+        error = None if n_edges else "noding produced no edges"
+    except DBAPIError as err:
+        error = str(err.orig).strip().splitlines()[0]
+    if error is None:
         db.session.commit()
         return True
-    except DBAPIError as err:
-        db.session.rollback()
-        db.run_query(
-            "UPDATE map_bounds.grid_line SET topology_error = :err WHERE id = :id",
-            dict(id=line_id, err=str(err.orig).strip().splitlines()[0]),
-        )
-        db.session.commit()
-        return False
+    db.session.rollback()
+    db.run_query(
+        "UPDATE map_bounds.grid_line SET topology_error = :err WHERE id = :id",
+        dict(id=line_id, err=error),
+    )
+    db.session.commit()
+    return False

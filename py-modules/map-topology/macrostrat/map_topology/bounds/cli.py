@@ -14,8 +14,13 @@ from rich.table import Table
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
+from macrostrat.map_integration.utils.map_info import (
+    MapExclude,
+    MapSelector,
+    MapState,
+    resolve_maps,
+)
 
-from ..manager import filter_maps
 from . import build as build_mod
 from .operations import CLI_OPERATIONS, OPENING_OPERATIONS, BoundaryOp
 
@@ -41,22 +46,38 @@ def _sources_with_bounds(db):
     ).all()
 
 
-def _resolve(maps: list[str]) -> list:
+def _resolve(
+    maps: list[str], exclude: list[str] | None = None, state: str | None = None
+) -> list:
+    """Resolve selectors as `macrostrat maps` does, keeping maps that have bounds."""
     db = get_database()
-    all_maps = _sources_with_bounds(db)
-    if maps:
-        all_maps = list(filter_maps(all_maps, maps))
-    if not all_maps:
-        print("[red]No matching maps[/]")
+    selected = resolve_maps(db, maps, exclude=exclude, state=state)
+    with_bounds = {m.map_id: m for m in _sources_with_bounds(db)}
+    missing = [m.slug for m in selected if m.id not in with_bounds]
+    if missing:
+        print(
+            f"[yellow]Skipping {len(missing)} maps with no bounds:[/] {', '.join(missing)}"
+        )
+    result = [with_bounds[m.id] for m in selected if m.id in with_bounds]
+    if not result:
+        print("[red]No matching maps have bounds[/]")
         raise typer.Exit(1)
-    return all_maps
+    return result
+
+
+def _resolve_one(map: str):
+    result = _resolve([map])
+    if len(result) > 1:
+        print(f"[red]{map!r} matches {len(result)} maps; this command takes one[/]")
+        raise typer.Exit(1)
+    return result[0]
 
 
 @cli.command("show")
-def show(maps: Annotated[list[str], Argument(help="Map slugs or source ids")]):
+def show(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Show a map's boundary operations and composed state."""
     db = get_database()
-    for m in _resolve(maps):
+    for m in _resolve(maps, exclude, state):
         ops = build_mod.load_ops(db, m.map_id)
         row = db.run_query(
             "SELECT area_km, boundary_error, geometry IS NULL AS empty"
@@ -91,8 +112,11 @@ def show(maps: Annotated[list[str], Argument(help="Map slugs or source ids")]):
 @cli.command("build")
 def build_cmd(
     maps: Annotated[
-        Optional[list[str]], Argument(help="Map slugs or source ids")
+        Optional[list[str]],
+        Argument(help="Map slugs, source ids, or slug globs (e.g. 'ngs-*')"),
     ] = None,
+    exclude: MapExclude = None,
+    state: MapState = None,
     all_maps: Annotated[
         bool,
         Option(
@@ -126,9 +150,12 @@ def build_cmd(
     if not maps and not all_maps:
         print("[red]Pass one or more maps, or --all[/]")
         raise typer.Exit(1)
+    if all_maps and (maps or exclude or state):
+        print("[red]--all takes no map selectors, --exclude or --state[/]")
+        raise typer.Exit(1)
     db = get_database()
     if not all_maps:
-        targets = _resolve(maps)
+        targets = _resolve(maps, exclude, state)
     elif rebuild:
         targets = _sources_with_bounds(db)
     else:
@@ -187,7 +214,7 @@ def open_cmd(
         print(f"[red]{operation} cannot open a boundary[/]")
         raise typer.Exit(1)
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     build_mod.set_opening(db, m.map_id, operation)
     db.session.commit()
     print(f"{m.slug} now opens with [bold]{operation}[/]")
@@ -201,7 +228,7 @@ def remove(
 ):
     """Remove a boundary operation."""
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     deleted = db.run_query(
         "DELETE FROM map_bounds.boundary_op"
         " WHERE id = :id AND source_id = :source_id RETURNING position, operation",
@@ -226,7 +253,7 @@ def move(
         print("[red]Position 0 is reserved for the opening operation[/]")
         raise typer.Exit(1)
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     ops = [o for o in build_mod.load_ops(db, m.map_id) if o.position > 0]
     target = next((o for o in ops if o.id == op_id), None)
     if target is None:
@@ -255,7 +282,7 @@ def move(
 def reset(map: Annotated[str, Argument(help="Map slug or source id")]):
     """Drop every boundary operation for a map."""
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     n = db.run_query(
         "SELECT count(*) FROM map_bounds.boundary_op WHERE source_id = :source_id",
         dict(source_id=m.map_id),
@@ -274,36 +301,49 @@ def reset(map: Annotated[str, Argument(help="Map slug or source id")]):
     print(f"Removed {n} operations")
 
 
-def _append(map: str, operation: str, model: BoundaryOp) -> None:
+def _append(
+    maps: list[str],
+    exclude: list[str] | None,
+    state: str | None,
+    operation: str,
+    model: BoundaryOp,
+) -> None:
     db = get_database()
-    m = _resolve([map])[0]
-    opening = build_mod.ensure_opening(db, m.map_id)
-    if opening is None:
+    targets = _resolve(maps, exclude, state)
+    no_geometry = []
+    for m in targets:
+        if build_mod.ensure_opening(db, m.map_id) is None:
+            no_geometry.append(m.slug)
+            continue
+        position = db.run_query(
+            "SELECT coalesce(max(position), 0) + 1 FROM map_bounds.boundary_op"
+            " WHERE source_id = :source_id",
+            dict(source_id=m.map_id),
+        ).scalar()
+        db.run_query(
+            """
+            INSERT INTO map_bounds.boundary_op
+              (source_id, position, operation, parameters)
+            VALUES (:source_id, :position, :operation, :parameters::jsonb)
+            """,
+            dict(
+                source_id=m.map_id,
+                position=position,
+                operation=operation,
+                parameters=model.model_dump_json(),
+            ),
+        )
+        print(f"Added [bold]{operation}[/] at position {position} on {m.slug}")
+    # One commit, so a selection is never left half-edited.
+    if no_geometry:
+        db.session.rollback()
         print(
-            f"[red]{m.slug} has no boundary geometry to build on.[/] "
-            "Run `macrostrat bounds build --init` first."
+            f"[red]{len(no_geometry)} maps have no boundary geometry to build on:[/] "
+            f"{', '.join(no_geometry)}. Run `macrostrat bounds build --init` on them,"
+            " or --exclude them. Nothing was added."
         )
         raise typer.Exit(1)
-    position = db.run_query(
-        "SELECT coalesce(max(position), 0) + 1 FROM map_bounds.boundary_op"
-        " WHERE source_id = :source_id",
-        dict(source_id=m.map_id),
-    ).scalar()
-    db.run_query(
-        """
-        INSERT INTO map_bounds.boundary_op
-          (source_id, position, operation, parameters)
-        VALUES (:source_id, :position, :operation, :parameters::jsonb)
-        """,
-        dict(
-            source_id=m.map_id,
-            position=position,
-            operation=operation,
-            parameters=model.model_dump_json(),
-        ),
-    )
     db.session.commit()
-    print(f"Added [bold]{operation}[/] at position {position} on {m.slug}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -322,9 +362,7 @@ def _register_one(op_id: str, model_cls: type[BoundaryOp]) -> None:
     fields = model_cls.model_fields
     params = [
         inspect.Parameter(
-            "map",
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=Annotated[str, Argument(help="Map slug or source id")],
+            "maps", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=MapSelector
         )
     ]
     for name, info in fields.items():
@@ -355,14 +393,26 @@ def _register_one(op_id: str, model_cls: type[BoundaryOp]) -> None:
             )
 
     def command(**kwargs):
-        map_ = kwargs.pop("map")
+        maps = kwargs.pop("maps")
+        exclude = kwargs.pop("exclude")
+        state = kwargs.pop("state")
         supplied = {k: v for k, v in kwargs.items() if v is not None}
         try:
             model = model_cls(**supplied)
         except Exception as err:  # noqa: BLE001 -- surfaced as a CLI message
             print(f"[red]{err}[/]")
             raise typer.Exit(1)
-        _append(map_, op_id, model)
+        _append(maps, exclude, state, op_id, model)
+
+    for name, annotation in (("exclude", MapExclude), ("state", MapState)):
+        params.append(
+            inspect.Parameter(
+                name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=None,
+                annotation=annotation,
+            )
+        )
 
     command.__signature__ = inspect.Signature(params)
     command.__name__ = op_id

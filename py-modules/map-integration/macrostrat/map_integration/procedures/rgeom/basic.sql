@@ -40,11 +40,11 @@ BEGIN
     -- We can convert the input distance into lat/long
     IF _srid = 4326 THEN
       geom = ST_Buffer(geom::geography, buffer_dist, 'endcap=round join=round');
-      geom = ST_Buffer(geom::geography, -buffer_dist, 'endcap=flat join=mitre');
+      geom = ST_Buffer(geom::geography, -buffer_dist, 'endcap=round join=round');
       geom = geom::geometry;
     ELSE
       geom := ST_Buffer(geom, buffer_dist, 'endcap=round join=round');
-      geom := ST_Buffer(geom, -buffer_dist, 'endcap=flat join=mitre');
+      geom := ST_Buffer(geom, -buffer_dist, 'endcap=round join=round');
     END IF;
     IF geom IS NULL THEN
       RAISE EXCEPTION 'Buffering failed';

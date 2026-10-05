@@ -183,7 +183,7 @@ class Buffer(BoundaryOp):
             grow = f"ST_Buffer({inner}, :buffer_dist, 'endcap=round join=round')"
             return (
                 "ST_Multi(ST_MakeValid("
-                f"ST_Buffer({grow}, -:buffer_dist, 'endcap=flat join=mitre')"
+                f"ST_Buffer({grow}, -:buffer_dist, 'endcap=round join=round')"
                 ", 'method=structure'))"
             )
         # Metric distances buffer on the geography type, matching basic.sql.
@@ -195,7 +195,7 @@ class Buffer(BoundaryOp):
         return (
             "ST_Multi(ST_MakeValid("
             f"ST_Buffer(({grow})::geography, -:buffer_dist, "
-            "'endcap=flat join=mitre')::geometry"
+            "'endcap=round join=round')::geometry"
             ", 'method=structure'))"
         )
 

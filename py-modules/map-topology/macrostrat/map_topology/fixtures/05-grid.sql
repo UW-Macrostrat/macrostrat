@@ -65,9 +65,14 @@ CREATE OR REPLACE FUNCTION map_bounds.node_grid_line(_id integer, _tol float8)
 RETURNS integer AS $$
 DECLARE
   _tg topology.topogeometry;
+  _layer integer := map_bounds.grid_layer_id();
 BEGIN
+  -- toTopoGeom is strict: a missing layer would set topo to NULL without error.
+  IF _layer IS NULL THEN
+    RAISE EXCEPTION USING MESSAGE = 'map_bounds.grid_line.topo has no topology layer';
+  END IF;
   UPDATE map_bounds.grid_line g
-  SET topo = topology.toTopoGeom(g.geometry, 'map_bounds_topology', map_bounds.grid_layer_id(), _tol),
+  SET topo = topology.toTopoGeom(g.geometry, 'map_bounds_topology', _layer, _tol),
       topology_error = NULL
   WHERE g.id = _id;
   -- Not `RETURNING g.topo INTO _tg`: with a composite target PL/pgSQL assigns
