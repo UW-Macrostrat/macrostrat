@@ -53,6 +53,7 @@ def create_topo_context(db: Database):
                 __dir__ / "fixtures" / "01-create-tables.sql",
                 __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
                 __dir__ / "fixtures" / "04-compilation-tables.sql",
+                __dir__ / "fixtures" / "05-grid.sql",
             ]
         ),
         notify_triggers=False,
@@ -111,6 +112,7 @@ TopologySchema = SchemaDefinition(
         __dir__ / "fixtures" / "01-create-tables.sql",
         __dir__ / "fixtures" / "02-boundary-ops-tables.sql",
         __dir__ / "fixtures" / "04-compilation-tables.sql",
+        __dir__ / "fixtures" / "05-grid.sql",
         # Last: the seed inserts boundary rows, whose trigger needs every function
         # above to exist. Host fixture 01 only fully applies on its second pass.
         seed_layer_bounds,

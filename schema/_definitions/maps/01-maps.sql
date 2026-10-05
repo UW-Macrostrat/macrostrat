@@ -70,6 +70,9 @@ CREATE TABLE maps.sources (
   description character varying,
   superseded_by integer REFERENCES maps.sources(source_id),
   is_served boolean NOT NULL DEFAULT true,
+  feature_url_template text
+    CONSTRAINT sources_feature_url_template_has_orig_id
+    CHECK (strpos(feature_url_template, '{orig_id}') > 0),
   CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
 );
 
@@ -82,6 +85,10 @@ COMMENT ON COLUMN maps.sources.is_served IS
   'not served still resolves inside every compilation it belongs to; a '
   'compilation that is not served exists to build others -- no faces are solved '
   'for it and it is skipped when naming the member a face belongs to. Authored.';
+
+COMMENT ON COLUMN maps.sources.feature_url_template IS
+  'A link to each feature''s own record at its publisher: `{orig_id}` is '
+  'replaced by the feature''s `orig_id`. NULL where the publisher has none.';
 
 COMMENT ON COLUMN maps.sources.superseded_by IS
   'The map that replaces this one, where a better product covers the same '

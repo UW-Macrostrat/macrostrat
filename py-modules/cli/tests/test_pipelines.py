@@ -2,17 +2,24 @@
 
 from pathlib import Path
 
-from pytest import raises
+from pytest import fixture, raises
 
+from macrostrat.cli import pipelines
 from macrostrat.cli.pipelines import (
     Pipeline,
     command_for,
     discover,
-    readme_status,
+    frontmatter,
     resolve,
     workbook_root,
 )
 from macrostrat.core.exc import MacrostratError
+
+
+@fixture(autouse=True)
+def no_configured_workbook(monkeypatch):
+    """Keep the developer's `sources.data_integration` out of these tests."""
+    monkeypatch.setattr(pipelines, "configured_workbook", lambda: None)
 
 
 def workbook(tmp_path: Path) -> Path:
@@ -68,6 +75,15 @@ def test_resolve_by_name_is_case_insensitive(tmp_path):
     assert resolve("nothing", cwd=tmp_path.parent) is None
 
 
+def test_resolve_falls_back_to_the_configured_workbook(tmp_path, monkeypatch):
+    (tmp_path / "wb").mkdir()
+    root = workbook(tmp_path / "wb")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.setattr(pipelines, "configured_workbook", lambda: root)
+    assert resolve("ngs", cwd=elsewhere) == root / "Maps" / "NGS"
+
+
 def test_resolve_prefers_an_existing_path(tmp_path, monkeypatch):
     root = workbook(tmp_path)
     monkeypatch.chdir(root)
@@ -102,11 +118,37 @@ def test_command_for_each_entrypoint(tmp_path):
         command_for(root / "Maps" / "Japan", [])
 
 
-def test_readme_status_reads_frontmatter_only(tmp_path):
+def test_frontmatter_reads_the_readme_header_only(tmp_path):
     d = tmp_path / "p"
     d.mkdir()
     (d / "README.md").write_text("# No frontmatter\n\nstatus: not this\n")
-    assert readme_status(d) is None
-    (d / "README.md").write_text('---\nstatus: "done"\n---\n')
-    assert readme_status(d) == "done"
-    assert Pipeline(d, "cli.py").matches("P")
+    assert frontmatter(d) == {}
+    (d / "README.md").write_text('---\nstatus: "done"\nreceived_on: 2026-10-03\n---\n')
+    assert frontmatter(d)["status"] == "done"
+    (d / "cli.py").write_text("")
+    pipeline = Pipeline.at(d)
+    assert pipeline.status == "done"
+    assert pipeline.matches("P")
+
+
+def test_frontmatter_overrides_name_description_and_entrypoint(tmp_path):
+    root = workbook(tmp_path)
+    usgs = root / "Geochronology" / "USGS-Geochronology-Database"
+    usgs.mkdir(parents=True)
+    (usgs / "load.sh").write_text("")
+    (usgs / "README.md").write_text(
+        "---\nname: geochron\ndescription: USGS dates\nentrypoint: load.sh\n---\n"
+    )
+    found = {p.name: p for p in discover(root)}
+    assert found["geochron"].description == "USGS dates"
+    assert found["geochron"].entrypoint == "load.sh"
+    assert resolve("geochron", cwd=root) == usgs
+    assert resolve("USGS-Geochronology-Database", cwd=root) is None
+    assert command_for(usgs, ["x"]) == (["./load.sh", "x"], usgs)
+
+
+def test_declared_entrypoint_must_exist(tmp_path):
+    root = workbook(tmp_path)
+    (root / "eodp-refs" / "README.md").write_text("---\nentrypoint: gone.py\n---\n")
+    with raises(MacrostratError):
+        discover(root)

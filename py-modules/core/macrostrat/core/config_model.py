@@ -306,7 +306,7 @@ class StorageTable(_TableCompat, BaseModel):
 
 
 class SourceRoots(_TableCompat, BaseModel):
-    """Checkouts of sibling repositories, for the local compose stack."""
+    """Checkouts of sibling repositories, for the local compose stack and pipelines."""
 
     model_config = ConfigDict(extra="allow")
 
@@ -316,6 +316,10 @@ class SourceRoots(_TableCompat, BaseModel):
     corelle: Optional[Path] = None
     web: Optional[Path] = None
     map_cache: Optional[Path] = None
+    data_integration: Optional[Path] = Field(
+        None,
+        description="Workbook `macrostrat run` and `macrostrat data` use outside any other.",
+    )
 
 
 class EnvironmentSettings(BaseModel):

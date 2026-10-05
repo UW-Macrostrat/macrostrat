@@ -14,6 +14,9 @@ def make_lookup(db: Database, source: MapInfo):
     colour for tiles.
     """
     refresh_lookup_table(db, source.id)
+
+    # Update the source's area from what's inserted into the mapping table (change from
+    # v1, where we used the staging table).
     update_source_stats(db, source.id)
 
 

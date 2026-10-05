@@ -564,6 +564,7 @@ def process_map(
             f" {state.failed_pieces} failed"
         )
 
+    t_node = time.time()
     result = node_pieces(
         db, map.map_id, one_at_a_time=one_at_a_time, piece_timeout=piece_timeout
     )
@@ -574,6 +575,7 @@ def process_map(
             if result.recovered
             else ""
         )
+        + f" in {_duration(time.time() - t_node)}"
     )
 
     # Every piece has been attempted: the topogeometry is what this geometry

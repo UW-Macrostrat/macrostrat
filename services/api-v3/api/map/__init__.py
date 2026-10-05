@@ -297,8 +297,9 @@ async def get_map_legend(
             raise HTTPException(404, f"No map or compilation matching '{ident}'")
         check_served_zoom(ident, zoom, source.min_zoom)
 
+        # `view` names `:bounds` in both forms, so it is bound even when unused.
         owners = _OWNERS_ALL
-        params = {"ident": ident, "zoom": zoom, "limit": limit}
+        params = {"ident": ident, "zoom": zoom, "limit": limit, "bounds": None}
         if geometry is not None:
             owners = _OWNERS_VISIBLE
             params["bounds"] = geometry.wkt

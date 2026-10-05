@@ -12,8 +12,15 @@ Python at all. What Macrostrat contributes is the environment. The child receive
 so that `--env`, the remembered environment and its lapse rules all apply to the
 pipeline exactly as they do to `macrostrat db`.
 
-Pipelines are named by their directory, case-insensitively, and found by walking
-the workbook that contains the current directory:
+Pipelines are found by walking the workbook that contains the current directory —
+or, outside any workbook, the one `sources.data_integration` names in
+`macrostrat.toml` — and named case-insensitively. A pipeline's README frontmatter may override the
+defaults:
+
+    name: ngs              # default: the directory name
+    description: …         # shown when listing
+    entrypoint: load.sh    # default: cli.py, then Makefile
+
 
     macrostrat run                       # list what is here
     macrostrat run ngs sources --apply   # Maps/NGS/cli.py sources --apply
@@ -39,28 +46,41 @@ from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.utils import env_text
 
-#: What makes a directory runnable, in order of preference.
+#: What makes a directory runnable without an `entrypoint:`, in order of preference.
 ENTRYPOINTS = ("cli.py", "Makefile")
 
 #: Never descended into: tool state, environments, and `legacy/`, which the workbook
 #: keeps as a record rather than as something to run.
 SKIP_DIRS = frozenset({".venv", "__pycache__", "node_modules", "legacy"})
 
-_STATUS = re.compile(r"^status:[ \t]*(.+?)[ \t]*$", re.M)
+_FRONTMATTER = re.compile(r"^---\n(.*?\n)---\n", re.S)
 
 
 @dataclass(frozen=True)
 class Pipeline:
     path: Path
     entrypoint: str
+    name: str
     status: str | None = None
+    description: str | None = None
 
-    @property
-    def name(self) -> str:
-        return self.path.name
+    @classmethod
+    def at(cls, directory: Path) -> Pipeline | None:
+        """The pipeline in `directory`, or None if it has no entrypoint."""
+        meta = frontmatter(directory)
+        entrypoint = entrypoint_for(directory, meta)
+        if entrypoint is None:
+            return None
+        return cls(
+            path=directory,
+            entrypoint=entrypoint,
+            name=_text(meta.get("name")) or directory.name,
+            status=_text(meta.get("status")),
+            description=_text(meta.get("description")),
+        )
 
     def matches(self, name: str) -> bool:
-        return self.path.name.lower() == name.lower()
+        return self.name.lower() == name.lower()
 
 
 def workbook_root(start: Path | None = None) -> Path | None:
@@ -72,17 +92,60 @@ def workbook_root(start: Path | None = None) -> Path | None:
     return None
 
 
-def readme_status(directory: Path) -> str | None:
-    """The `status:` a pipeline's README declares in its frontmatter, if any."""
+def configured_workbook() -> Path | None:
+    """`sources.data_integration` from `macrostrat.toml`, if set."""
+    value = app.settings.get("sources.data_integration", None)
+    if value is None:
+        return None
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = Path(app.settings.config_file).parent / path
+    if not (path / ".dvc").is_dir():
+        raise MacrostratError(
+            f"sources.data_integration is not a workbook: {path}",
+            details=f"Expected a .dvc/ directory there. Fix it in {app.settings.config_file}.",
+        )
+    return path.resolve()
+
+
+def find_workbook(start: Path | None = None) -> Path | None:
+    """The workbook around `start`, else the configured one."""
+    return workbook_root(start) or configured_workbook()
+
+
+def frontmatter(directory: Path) -> dict:
+    """The YAML frontmatter of a directory's README, or {} if there is none."""
+    import yaml
+
     readme = directory / "README.md"
     if not readme.is_file():
-        return None
-    text = readme.read_text(errors="replace")
-    match = re.match(r"^---\n(.*?\n)---\n", text, re.S)
+        return {}
+    match = _FRONTMATTER.match(readme.read_text(errors="replace"))
     if match is None:
-        return None
-    found = _STATUS.search(match.group(1))
-    return found.group(1).strip("'\"") if found else None
+        return {}
+    try:
+        data = yaml.safe_load(match.group(1))
+    except yaml.YAMLError as err:
+        raise MacrostratError(f"[item]{readme}[/item] has invalid frontmatter: {err}")
+    return data if isinstance(data, dict) else {}
+
+
+def entrypoint_for(directory: Path, meta: dict | None = None) -> str | None:
+    """The declared `entrypoint:`, else the first of ENTRYPOINTS present."""
+    meta = frontmatter(directory) if meta is None else meta
+    if declared := _text(meta.get("entrypoint")):
+        if not (directory / declared).is_file():
+            raise MacrostratError(
+                f"[item]{directory}[/item] declares entrypoint {declared}, "
+                "which does not exist"
+            )
+        return declared
+    return next((e for e in ENTRYPOINTS if (directory / e).is_file()), None)
+
+
+def _text(value) -> str | None:
+    # YAML reads dates and numbers as such; frontmatter values are labels.
+    return None if value is None else str(value).strip() or None
 
 
 def discover(root: Path) -> list[Pipeline]:
@@ -96,10 +159,10 @@ def discover(root: Path) -> list[Pipeline]:
         directory = Path(dirpath)
         if directory == root:
             continue
-        entrypoint = next((e for e in ENTRYPOINTS if e in filenames), None)
-        if entrypoint is None:
+        pipeline = Pipeline.at(directory)
+        if pipeline is None:
             continue
-        found.append(Pipeline(directory, entrypoint, readme_status(directory)))
+        found.append(pipeline)
         dirnames[:] = []
     return found
 
@@ -109,7 +172,7 @@ def resolve(command: str, cwd: Path | None = None) -> Path | None:
     path = Path(command)
     if path.exists():
         return path
-    root = workbook_root(cwd)
+    root = find_workbook(cwd)
     if root is None:
         return None
     matches = [p for p in discover(root) if p.matches(command)]
@@ -127,18 +190,25 @@ def command_for(path: Path, args: list[str]) -> tuple[list[str], Path | None]:
 
     A `cli.py` is preferred over a `Makefile` because it can take flags; the
     Makefile path remains for the pipelines that are genuinely one line. A single
-    file is run as a script from its own directory, so sibling imports resolve.
+    file is run from its own directory, so sibling imports resolve.
     """
-    if path.is_dir():
-        if (path / "cli.py").is_file():
-            return ["uv", "run", "python", "cli.py", *args], path
-        if (path / "Makefile").is_file():
-            return ["make", "-C", str(path), *args], None
+    if not path.is_dir():
+        return _command_for_file(path.name, args), path.parent
+    entrypoint = entrypoint_for(path)
+    if entrypoint is None:
         raise MacrostratError(
             f"[item]{path}[/item] has no cli.py or Makefile",
-            details="Point at a script instead, or add one.",
+            details="Point at a script instead, add one, or declare `entrypoint:`.",
         )
-    return ["uv", "run", "python", path.name, *args], path.parent
+    if Path(entrypoint).name == "Makefile":
+        return ["make", "-C", str(path / Path(entrypoint).parent), *args], None
+    return _command_for_file(entrypoint, args), path
+
+
+def _command_for_file(file: str, args: list[str]) -> list[str]:
+    if file.endswith(".py"):
+        return ["uv", "run", "python", file, *args]
+    return [f"./{file}", *args]
 
 
 def child_environment() -> dict[str, str]:
@@ -176,7 +246,10 @@ def list_pipelines(root: Path) -> None:
     table = Table(title=f"Pipelines in {root.name}", title_justify="left")
     table.add_column("name", style="bold")
     table.add_column("status")
+    table.add_column("description")
     table.add_column("path", style="dim")
     for p in pipelines:
-        table.add_row(p.name, p.status or "", str(p.path.relative_to(root)))
+        table.add_row(
+            p.name, p.status or "", p.description or "", str(p.path.relative_to(root))
+        )
     print(table)

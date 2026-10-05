@@ -831,6 +831,83 @@ class TestMapTopology:
         vacuum_topology(db)
         assert db.run_query(count).scalar() == edges
 
+    def test_grid(self, ctx):
+        """Grid lines split faces without changing what any map owns: their edges
+        survive cleaning, every map's barrier rows stay complete, no solved layer
+        is marked, and identity resolves as before.
+
+        Two maps of its own, away from the rest of the suite's. The late tests
+        leave the shared layers in a state where the solve builds no faces for a
+        new map (one world-sized map, mosaics), so what the solve produces is not
+        compared here; the barrier and attribution checks are what the grid can
+        break, and they are checked directly."""
+        from mapboard.topology_manager.commands.edge_relations import (
+            validate_edge_relations,
+        )
+
+        from macrostrat.map_topology.grid import node_grid, seed_grid
+
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+        insp = TopologyInspector(ctx)
+        layer = insp.map_layer_id("Large")
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            VALUES
+                (1021, 'test_source_21', ST_MakeEnvelope(20, 0, 24, 4, 4326), true, 'active', 'large'),
+                (1022, 'test_source_22', ST_MakeEnvelope(22, 2, 26, 6, 4326), true, 'active', 'large')
+            """
+        )
+        add_polygons(
+            db,
+            {
+                1021: "ST_MakeEnvelope(20, 0, 24, 4, 4326)",
+                1022: "ST_MakeEnvelope(22, 2, 26, 6, 4326)",
+            },
+        )
+        set_priority(db, "large", [(1021, 5), (1022, 6)])
+        points = [Point(21, 1), Point(23, 3), Point(25, 5)]
+
+        mgr.update_full()
+        ids_before = [get_identity_for_area(db, layer, p) for p in points]
+        assert ids_before == [1021, 1022, 1022]
+        primitives_before = insp.n_face_primitives()
+        assert validate_edge_relations(ctx).in_sync
+
+        # 2° lines over the two maps: they cross both maps' interiors and split
+        # their edges (x = 22, 24; y = 2, 4).
+        assert seed_grid(db, levels=(2,), extent=(18, -2, 28, 8)) > 0
+        noded, failed = node_grid(db, levels=(2,))
+        assert noded > 0 and failed == 0
+        assert insp.n_face_primitives() > primitives_before
+
+        # The segments' marks are gone and nothing fanned out to a solved layer.
+        assert (
+            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
+            == 0
+        )
+        # A segment splits a map's edge without splitting a face; the new half
+        # must still carry its owner's barrier row.
+        report = validate_edge_relations(ctx)
+        assert report.missing == 0 and report.extra == 0
+
+        mgr.clean_topology()
+        orphaned = db.run_query(
+            """
+            SELECT count(*) FROM map_bounds.grid_line g
+            WHERE NOT EXISTS (
+              SELECT 1 FROM map_bounds_topology.relation r
+              WHERE r.topogeo_id = (g.topo).id AND r.layer_id = (g.topo).layer_id
+            )
+            """
+        ).scalar()
+        assert orphaned == 0
+        assert validate_edge_relations(ctx).in_sync
+
+        mgr.update_full()
+        assert [get_identity_for_area(db, layer, p) for p in points] == ids_before
+
 
 @dataclass
 class MapFaceTestCase:

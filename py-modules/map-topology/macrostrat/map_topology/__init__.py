@@ -1,3 +1,5 @@
+import time
+
 from rich import print
 from typer import Argument, Option, Typer
 
@@ -6,8 +8,10 @@ from macrostrat.core.environment import WriteScope
 from macrostrat.core.safety import require_write_access, writes
 
 from .config import get_topo_manager
+from .grid import node_grid, seed_grid
 from .manager import (
     RETRY_TOLERANCE,
+    _duration,
     _print_map_info,
     filter_maps,
     get_held_maps,
@@ -79,6 +83,43 @@ def _clean(
     mgr.clean_topology()
     if vacuum:
         vacuum_topology(mgr.database)
+
+
+@cli.command("grid", rich_help_panel="Utils")
+@writes(WriteScope.Data, action="topology grid")
+def _grid(
+    extent: str = Option(
+        None,
+        help="Only segments touching this lon/lat box, as xmin,ymin,xmax,ymax; the"
+        " whole world otherwise",
+    ),
+):
+    """Seed the lon/lat grid and node its pending segments, so no face spans
+    the globe. The first run on a populated topology is slow: it splits the
+    largest faces, 90° lines first. Do not run it while `topo update` is noding."""
+    from mapboard.topology_manager.commands.edge_relations import (
+        validate_edge_relations,
+    )
+
+    mgr = get_topo_manager()
+    db = mgr.database
+    box = None
+    if extent is not None:
+        box = tuple(float(v) for v in extent.split(","))
+        if len(box) != 4:
+            raise ValueError("--extent takes four numbers: xmin,ymin,xmax,ymax")
+    seeded = seed_grid(db, extent=box)
+    print(f"[green]{seeded}[/] grid segments added")
+    t0 = time.time()
+    noded, failed = node_grid(db)
+    print(
+        f"[green]{noded}[/] noded, [red]{failed}[/] failed in {_duration(time.time() - t0)}"
+    )
+    report = validate_edge_relations(mgr.ctx)
+    if not report.in_sync:
+        print(
+            f"[red]barrier rows out of sync: {report.missing} missing, {report.extra} extra[/]"
+        )
 
 
 @cli.command("rebuild", rich_help_panel="Utils")

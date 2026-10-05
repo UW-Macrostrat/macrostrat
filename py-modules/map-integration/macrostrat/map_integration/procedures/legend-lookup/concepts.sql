@@ -13,7 +13,7 @@ WITH matched AS (
     legend.legend_id,
     legend.strat_name_ids,
     coalesce(
-      array_agg(DISTINCT anc.id) FILTER (WHERE anc.id IS NOT NULL), '{{}}'
+      array_agg(DISTINCT anc.id) FILTER (WHERE anc.id IS NOT NULL), '{}'
     ) AS ancestor_concept_ids,
     array_agg(DISTINCT lsn.concept_id) AS concept_ids
   FROM maps.legend
@@ -48,11 +48,11 @@ UPDATE maps.legend
 SET
   concept_ids = CASE
     WHEN array_length(legend.unit_ids, 1) = 0 OR legend.unit_ids IS NULL
-      THEN coalesce(more_strat_names.concept_ids, '{{}}')
+      THEN coalesce(more_strat_names.concept_ids, '{}')
     ELSE (
       SELECT array(
         SELECT DISTINCT unnest(array_cat(
-          coalesce(more_strat_names.concept_ids, '{{}}'),
+          coalesce(more_strat_names.concept_ids, '{}'),
           array_agg(DISTINCT lsn.concept_id)
         ))
       )
@@ -62,6 +62,6 @@ SET
       WHERE usn.unit_id = ANY(legend.unit_ids)
     )
   END,
-  strat_name_children = coalesce(more_strat_names.strat_name_children, '{{}}')
+  strat_name_children = coalesce(more_strat_names.strat_name_children, '{}')
 FROM more_strat_names
 WHERE more_strat_names.legend_id = legend.legend_id
