@@ -47,24 +47,17 @@ def create_rgeom(
 
     table = Identifier("sources", name)
     where = "not coalesce(omit, false)"
-    geom_column = Identifier("geometry")
+    # Staging tables use `geom`, as `prepare_fields` and `create_source_tables` set it.
+    geom_column = Identifier("geom")
 
     if use_maps_schema:
         table = Identifier("maps", "polygons")
         where = "source_id = :source_id"
-        geom_column = Identifier("geom")
     elif not table_exists(db, name, schema="sources"):
         raise ValueError(f"No table found for {name}")
     else:
-        # This is a hack to make sure the geometry is a multipolygon
-        # We need to make this more standardized and robust.
-        db.run_sql(
-            "ALTER TABLE {primary_table} RENAME COLUMN geom TO geometry",
-            {"primary_table": table},
-        )
-
         print(f"Validating geometry in sources.{row.primary_table}")
-        q = "UPDATE {primary_table} SET geometry = ST_Multi(ST_Buffer(geometry, 0))"
+        q = "UPDATE {primary_table} SET geom = ST_Multi(ST_Buffer(geom, 0))"
         db.run_sql(q, {"primary_table": table})
 
     print(f"Creating unioned geometry for {source.slug}...")

@@ -5,6 +5,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from mapboard.topology_manager import TopologyManager
+from mapboard.topology_manager.commands import remove_released_primitives
 from mapboard.topology_manager.commands.update_faces import (
     FaceUpdateStats,
     update_faces,
@@ -212,6 +213,18 @@ class MacrostratTopologyManager(TopologyManager):
         db.session.commit()
         with summary.timed("Dissolve dirty faces"):
             summary.faces = update_faces(self.ctx, incremental=True)
+        # Map faces emptied before re-noding served stale geometry until now.
+        db.run_query(
+            """
+            DELETE FROM map_bounds_topology.map_face f
+            WHERE f.topo IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM map_bounds_topology.dirty_face d
+                WHERE d.map_layer = f.map_layer
+              )
+            """
+        )
+        db.session.commit()
         with summary.timed("Clean topology"):
             self.clean_topology()
 
@@ -406,8 +419,29 @@ def update_maps(
                 release_map(db, _map.map_id)
         summary.maps_released = len(retired)
 
+    # Bounds changed since the last run released their old primitives; clear
+    # them before anything is noded over them.
+    with summary.timed("Remove released primitives"):
+        remove_released_primitives(mgr.ctx)
+
     all_maps = get_map_list(db, maps)
     summary.maps_checked = len(all_maps)
+
+    # Maps noded from scratch leave their solved faces first, so their old
+    # outlines are gone before the new ones are noded.
+    restart = get_maps_to_restart(db, all_maps, bulk=bulk)
+    if restart:
+        with summary.timed(f"Pre-remove {len(restart)} maps from solved faces"):
+            res = db.run_sql(
+                proc("pre-remove-stale-faces"),
+                dict(map_ids=[m.map_id for m in restart]),
+                raise_errors=True,
+            )[-1].one()
+            db.session.commit()
+            print(
+                f"  {res.released:,} faces released from {res.map_faces_touched:,}"
+                f" map faces; {res.primitives_removed:,} primitives removed"
+            )
 
     with summary.timed(f"Check {len(all_maps)} maps"):
         for _map in all_maps:
@@ -490,6 +524,34 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     ).all()
 
 
+def get_maps_to_restart(db, maps, *, bulk: bool = False) -> list:
+    """The maps `process_map` will node from scratch: not current, and no pieces
+    cut from their current bounds (or every map, with `bulk`)."""
+    ids = db.run_query(
+        """
+        WITH a AS MATERIALIZED (
+          SELECT source_id, md5(ST_AsBinary(geometry))::uuid AS bounds_hash
+          FROM map_bounds.map_area
+          WHERE source_id = ANY(:ids)
+        )
+        SELECT a.source_id
+        FROM a
+        JOIN map_bounds.map_area_sync sync ON sync.source_id = a.source_id
+        WHERE CAST(:bulk AS boolean)
+           OR (
+             NOT sync.is_current
+             AND NOT EXISTS (
+               SELECT 1 FROM map_bounds.map_topo t
+               WHERE t.source_id = a.source_id AND t.bounds_hash = a.bounds_hash
+             )
+           )
+        """,
+        dict(ids=[m.map_id for m in maps], bulk=bulk),
+    ).scalars()
+    restart = set(ids)
+    return [m for m in maps if m.map_id in restart]
+
+
 def process_map(
     mgr: MacrostratTopologyManager,
     map,
@@ -547,7 +609,8 @@ def process_map(
     if bulk or state.matching_pieces == 0:
         # Start over: pieces from another geometry (or none), so the
         # topogeometry must hold nothing from before. Emptying it releases its
-        # primitives and marks the faces it covered dirty, via the trigger.
+        # primitives and marks the faces it covered dirty, via the trigger, which
+        # also queues them for removal before the new pieces are noded.
         db.run_query(
             """
             UPDATE map_bounds.map_area
@@ -557,6 +620,7 @@ def process_map(
             dict(map_id=map.map_id),
         )
         db.session.commit()
+        remove_released_primitives(mgr.ctx)
         cut_pieces(db, map, subdivide_vertices=subdivide_vertices)
     else:
         print(

@@ -196,6 +196,8 @@ def pipeline(
         state=state,
         delete_existing=delete_existing,
         scale=scale,
+        # Its first step is the insert, so a map without polygons yet is the usual case.
+        requires=None,
     )
 
 
