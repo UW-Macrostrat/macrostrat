@@ -4,7 +4,9 @@ from enum import Enum
 
 from macrostrat.utils import get_logger
 
+from . import notices
 from .database import get_all_lith_attributes, get_all_liths
+from .proportions import ABUNDANCE_TERMS, split_proportion
 
 log = get_logger(__name__)
 
@@ -137,8 +139,30 @@ class LithsProcessor:
             return output
 
         split_lith = split_domains(lith)
-        for lith in split_lith:
-            res = self.process_domain(lith.strip().lower())
+        for domain in split_lith:
+            if not domain.strip():
+                continue
+            # A trailing `(60%)` / `(major)` belongs to the whole domain
+            body, proportion, bad = split_proportion(domain.lower())
+            if bad is not None:
+                notices.warning(
+                    "unreadable-proportion",
+                    f"Could not read the proportion {bad!r} in {domain.strip()!r}",
+                    column="lithology",
+                )
+            res = self.process_domain(body)
+            if len(res) == 0 and body.strip():
+                notices.warning(
+                    "unknown-lithology",
+                    f"No lithology recognised in {domain.strip()!r}",
+                    column="lithology",
+                    detail={"text": domain.strip()},
+                )
+            for found in res:
+                if proportion.value is not None:
+                    found.prop = proportion.value
+                if proportion.abundance is not None:
+                    found.dom = LithAbundance(proportion.abundance)
             output.update(res)
         for lith in output:
             if lith.dom is None:

@@ -21,6 +21,7 @@ import polars as pl
 
 from macrostrat.utils import get_logger
 
+from . import notices
 from .database import get_macrostrat_table
 from .reconciliation import (
     ReconciliationPlan,
@@ -83,12 +84,16 @@ def parse_ref_ids(value) -> list[str]:
 
 
 def get_reference_data(data_file) -> list[Reference]:
-    """Read the `refs` sheet.
+    """Read the `refs` sheet."""
+    return references_from_df(pl.read_excel(data_file, sheet_name="refs"))
 
-    Validation problems are collected and reported together rather than one per run.
+
+def references_from_df(df) -> list[Reference]:
+    """The `refs` sheet as `Reference`s.
+
+    Validation problems are collected and reported together rather than one per run —
+    as error notices when a run is collecting them, else as one `ReferenceError`.
     """
-    df = pl.read_excel(data_file, sheet_name="refs")
-
     references, problems, seen = [], [], set()
     for number, row in enumerate(df.iter_rows(named=True), start=2):
         local_id = _text(row.get("ref_id"))
@@ -134,9 +139,13 @@ def get_reference_data(data_file) -> list[Reference]:
         )
 
     if problems:
-        raise ReferenceError(
-            f"{len(problems)} problem(s) in the refs sheet:\n  " + "\n  ".join(problems)
-        )
+        if notices.current_notices() is None:
+            raise ReferenceError(
+                f"{len(problems)} problem(s) in the refs sheet:\n  "
+                + "\n  ".join(problems)
+            )
+        for problem in problems:
+            notices.error("invalid-reference", problem, sheet="refs")
     return references
 
 

@@ -48,6 +48,7 @@ from macrostrat.utils import get_logger
 
 from ..database import get_macrostrat_table
 from ..intervals import UNMODELED_INTERVAL
+from ..proportions import Proportion, share_remaining
 from ..reconciliation import ReconciliationPlan, reconcile
 from .parse import Unit
 
@@ -309,8 +310,10 @@ def reconcile_unit_liths(db, units: list[Unit]) -> ReconciliationPlan:
     desired = []
     attributes: list[set[int]] = []
     for unit in units:
-        n_liths = len(unit.lithology)
-        for lith in unit.lithology:
+        liths = sorted(unit.lithology, key=lambda l: l.id)
+        # Stated proportions are kept; the rest share what they leave, equally
+        shares = share_remaining([Proportion(l.prop) for l in liths])
+        for lith, share in zip(liths, shares):
             dom = lith.dom.value if lith.dom is not None else ""
             desired.append(
                 {
@@ -319,8 +322,8 @@ def reconcile_unit_liths(db, units: list[Unit]) -> ReconciliationPlan:
                     "dom": dom,
                     # TODO: dom and prop are equivalent for now
                     "prop": dom,
-                    "comp_prop": 1 / n_liths,
-                    "mod_prop": 1 / n_liths,
+                    "comp_prop": share,
+                    "mod_prop": share,
                     "toc": 0.0,
                     "ref_id": 0,
                 }

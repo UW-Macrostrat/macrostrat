@@ -19,6 +19,7 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from minio.error import S3Error
+from pydantic import BaseModel, Field
 
 from api.celery_app import celery_app
 from api.routes.security import TokenData, get_user_token_from_cookie, has_access
@@ -136,6 +137,46 @@ async def ingest_columns(
 
     task = celery_app.send_task("macrostrat.columns.ingest", args=[ref])
     return {"task_id": task.id, "key": ref.get("key"), "dry_run": dry_run}
+
+
+class ColumnSubmission(BaseModel):
+    """A column dataset as the column-ingestion format's tables, in JSON.
+
+    ``data`` holds the sheets by name — ``metadata`` as key/value pairs, the others
+    as lists of row objects — exactly as a workbook would. The editor builds this
+    from its units sheet, so a column edited in the browser and one uploaded as a
+    spreadsheet are checked and written by the same code.
+    """
+
+    data: dict = Field(..., description="Sheets by name: metadata, columns, units, …")
+    dry_run: bool = True
+
+
+@router.post("/submit")
+async def submit_columns(
+    submission: ColumnSubmission,
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+    user_has_access: bool = Depends(has_access),
+):
+    """Check — or, for an admin, write — a column dataset given as JSON.
+
+    Enqueues ``macrostrat.columns.ingest-data``; poll ``GET /columns/ingest/{task_id}``
+    for the result, which carries graded notices and the ingested data as the API
+    would serve it. Non-admins are confined to dry runs, as for uploads.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    dry_run = submission.dry_run
+    if not user_has_access:
+        dry_run = True
+    if "units" not in submission.data:
+        raise HTTPException(status_code=422, detail="`data.units` is required")
+
+    task = celery_app.send_task(
+        "macrostrat.columns.ingest-data",
+        args=[{"data": submission.data, "dry_run": dry_run}],
+    )
+    return {"task_id": task.id, "dry_run": dry_run}
 
 
 @router.get("/ingest/{task_id}")
