@@ -5,7 +5,6 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from mapboard.topology_manager import TopologyManager
-from mapboard.topology_manager.commands import remove_released_primitives
 from mapboard.topology_manager.commands.update_faces import (
     FaceUpdateStats,
     update_faces,
@@ -419,11 +418,6 @@ def update_maps(
                 release_map(db, _map.map_id)
         summary.maps_released = len(retired)
 
-    # Bounds changed since the last run released their old primitives; clear
-    # them before anything is noded over them.
-    with summary.timed("Remove released primitives"):
-        remove_released_primitives(mgr.ctx)
-
     all_maps = get_map_list(db, maps)
     summary.maps_checked = len(all_maps)
 
@@ -609,8 +603,7 @@ def process_map(
     if bulk or state.matching_pieces == 0:
         # Start over: pieces from another geometry (or none), so the
         # topogeometry must hold nothing from before. Emptying it releases its
-        # primitives and marks the faces it covered dirty, via the trigger, which
-        # also queues them for removal before the new pieces are noded.
+        # primitives and marks the faces it covered dirty, via the trigger.
         db.run_query(
             """
             UPDATE map_bounds.map_area
@@ -620,7 +613,6 @@ def process_map(
             dict(map_id=map.map_id),
         )
         db.session.commit()
-        remove_released_primitives(mgr.ctx)
         cut_pieces(db, map, subdivide_vertices=subdivide_vertices)
     else:
         print(

@@ -403,6 +403,53 @@ CREATE INDEX legend_strat_names_strat_name_id_idx
 CREATE INDEX legend_strat_names_manual_idx
     ON maps.legend_strat_names USING btree (legend_id) WHERE is_manual;
 
+/** How a map or a legend entry relates to a reference: the verbs of
+  `maps.map_refs` and `maps.legend_refs`, read from the map's side.
+
+  Rows rather than an enum, so a new verb is an insert. Provenance is stored, not
+  read off `map_bounds.compilation_member`: membership says how maps are stacked,
+  and `ngs-bedrock` stacks maps whose data came from the NGS release.
+*/
+CREATE TABLE maps.ref_type (
+    id text PRIMARY KEY,
+    /** The phrase a client renders before the citation. */
+    label text NOT NULL,
+    /** Whether APIs return it; internal relations are recorded but not served. */
+    is_public boolean NOT NULL DEFAULT true,
+    /** Order within a response. */
+    position smallint NOT NULL
+);
+
+INSERT INTO maps.ref_type (id, label, position) VALUES
+    ('original', 'Original', 1),
+    ('compiled-in', 'Compiled in', 2),
+    ('updated-by', 'Updated by', 3),
+    ('described-in', 'Described in', 4)
+ON CONFLICT DO NOTHING;
+
+/** A map's references. Any source, compilations included. */
+CREATE TABLE maps.map_refs (
+    source_id integer NOT NULL
+        REFERENCES maps.sources (source_id) ON DELETE CASCADE,
+    ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
+    relation text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (source_id, ref_id, relation)
+);
+
+CREATE INDEX map_refs_ref_id_idx ON maps.map_refs USING btree (ref_id);
+
+/** A legend entry's references, added to its map's. Sparse: only where they
+  vary within a map, as SGMC's primary references vary by unit. */
+CREATE TABLE maps.legend_refs (
+    legend_id integer NOT NULL
+        REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
+    ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
+    relation text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (legend_id, ref_id, relation)
+);
+
+CREATE INDEX legend_refs_ref_id_idx ON maps.legend_refs USING btree (ref_id);
+
 /** The rows `maps.map_strat_names` held before it became a view.
 
   Transitional, and meant to be dropped. Twelve additive match passes wrote

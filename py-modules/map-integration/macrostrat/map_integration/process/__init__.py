@@ -1,8 +1,8 @@
 """
 Map processing pipeline (v2)
 
-+ macrostrat process rgeom <source_id>
-+ macrostrat process web_geom <source_id>
++ macrostrat maps process insert <source_id>
++ macrostrat maps process bounds <source_id>
 + macrostrat process legend <source_id>
 + macrostrat match strat_names <source_id>
 + macrostrat match units <source_id>
@@ -35,7 +35,7 @@ from ..utils.map_info import (
     has_map_schema_data,
     resolve_maps,
 )
-from .geometry import create_rgeom, create_webgeom
+from .geometry import create_bounds
 from .insert import copy_to_maps, remove
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
@@ -52,11 +52,6 @@ _REQUIREMENTS = {
     "polygons": """
         SELECT DISTINCT source_id FROM maps.polygons
         WHERE source_id = ANY(CAST(:ids AS integer[]))
-    """,
-    # `rgeom`, because that is what the geometry steps read.
-    "bounds": """
-        SELECT source_id FROM maps.sources
-        WHERE source_id = ANY(CAST(:ids AS integer[])) AND rgeom IS NOT NULL
     """,
 }
 
@@ -130,6 +125,7 @@ def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = No
         print(e)
         if not delete_existing:
             print("Continuing with existing map data")
+    create_bounds(db, source)
     run_legend(source)
     match_strat_names(db, source)
     match_units(db, source)
@@ -146,30 +142,6 @@ def run_legend(map: MapInfo):
     db.run_sql(proc, {"source_id": map.id})
 
 
-@cli.command(name="rgeom", rich_help_panel="Sources")
-def rgeom(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Compose reference geometries for the selected map sources."""
-    for_each_map(maps, create_rgeom, exclude=exclude, state=state)
-
-
-@cli.command(name="web-geom", rich_help_panel="Sources")
-def web_geom(
-    maps: MapSelector,
-    legacy: bool = False,
-    exclude: MapExclude = None,
-    state: MapState = None,
-):
-    """Create simplified web geometries for the selected map sources."""
-    for_each_map(
-        maps,
-        create_webgeom,
-        exclude=exclude,
-        state=state,
-        legacy=legacy,
-        requires="bounds",
-    )
-
-
 @cli.command(name="pipeline", rich_help_panel="Process")
 def pipeline(
     maps: MapSelector,
@@ -183,6 +155,7 @@ def pipeline(
 
     This includes:
     - Copy to maps schema
+    - Boundary from the map's polygons
     - Legend lookup table generation
     - Match strat names
     - Match units
@@ -237,6 +210,22 @@ def insert(
         scale=scale,
         staging_prefix=staging_prefix,
         allow_unattributed=allow_unattributed,
+        requires=None,
+    )
+
+
+@cli.command(name="bounds", rich_help_panel=pipeline_steps_panel)
+def bounds(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
+    """Set each map's boundary to the union of its polygons.
+
+    Matching reads the boundary. Before the insert it comes from the staging
+    table. A boundary composed from operations belongs to `macrostrat bounds build`.
+    """
+    for_each_map(
+        maps,
+        partial(create_bounds, get_database()),
+        exclude=exclude,
+        state=state,
         requires=None,
     )
 

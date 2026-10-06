@@ -62,7 +62,7 @@ def match_units(db: Database, map_info: MapInfo):
     n_intersecting = db.run_query(
         """
         SELECT count(units.id)
-        FROM maps.sources
+        FROM map_bounds.map_area a
         JOIN (
             SELECT units.id, b_age, t_age,
                    ST_Buffer(ST_Envelope(poly_geom), :space_buffer) as poly_geom
@@ -71,8 +71,8 @@ def match_units(db: Database, map_info: MapInfo):
             JOIN macrostrat.units_sections ON units.id = units_sections.unit_id
             JOIN macrostrat.cols ON macrostrat.cols.id = units_sections.col_id
             WHERE macrostrat.cols.status_code='active'
-        ) units ON ST_Intersects(poly_geom, rgeom)
-        WHERE source_id = :source_id
+        ) units ON ST_Intersects(poly_geom, a.geometry)
+        WHERE a.id = :source_id
     """,
         {"source_id": source_id, "space_buffer": SPACE_BUFFER_DEGREES},
     ).scalar()

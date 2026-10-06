@@ -59,6 +59,8 @@ TABLES = (
         "maps.sources",
         "t.source_id = ANY(:ids)",
         "t.source_id",
+        # The trigger rebuilds it from `map_area` on import.
+        exclude=("rgeom",),
         extra=(("superseded_by_slug", _slug_of("t.superseded_by")),),
     ),
     TableSpec(

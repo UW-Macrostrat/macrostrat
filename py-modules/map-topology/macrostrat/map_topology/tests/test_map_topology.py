@@ -58,10 +58,10 @@ class TestMapTopology:
         # Insert two non-overlapping test sources
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1001, 'test_source_1', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
-                (1002, 'test_source_2', ST_MakeEnvelope(3, 0, 5, 2, 4326), true, 'active', 'large');
+                (1001, 'test_source_1', true, 'active', 'large'),
+                (1002, 'test_source_2', true, 'active', 'large');
             """
         )
         # A boundary is unioned from the map's own polygons, not read from
@@ -182,9 +182,9 @@ class TestMapTopology:
         # with five total faces.
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1003, 'test_source_3', ST_MakeEnvelope(1, 1, 4, 4, 4326), true, 'active', 'large')
+                (1003, 'test_source_3', true, 'active', 'large')
             """
         )
         add_polygons(db, {1003: "ST_MakeEnvelope(1, 1, 4, 4, 4326)"})
@@ -319,9 +319,9 @@ class TestMapTopology:
 
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1004, 'test_source_4', ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326), true, 'active', 'medium')
+                (1004, 'test_source_4', true, 'active', 'medium')
             """
         )
         add_polygons(
@@ -853,10 +853,10 @@ class TestMapTopology:
         layer = insp.map_layer_id("Large")
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1021, 'test_source_21', ST_MakeEnvelope(20, 0, 24, 4, 4326), true, 'active', 'large'),
-                (1022, 'test_source_22', ST_MakeEnvelope(22, 2, 26, 6, 4326), true, 'active', 'large')
+                (1021, 'test_source_21', true, 'active', 'large'),
+                (1022, 'test_source_22', true, 'active', 'large')
             """
         )
         add_polygons(

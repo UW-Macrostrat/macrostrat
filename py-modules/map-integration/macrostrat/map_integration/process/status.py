@@ -71,14 +71,9 @@ def _status_detail(db, map_info: MapInfo):
             details=f"Polygons: {counts.n_polygons}, Lines: {counts.n_lines}, Points: {counts.n_points}",
         ),
         MapProcessingStep(
-            name="web-geom",
-            description="Create a geometry for use on the web",
-            completed=geoms.has_web_geom,
-        ),
-        MapProcessingStep(
-            name="rgeom",
-            description="Create a unioned reference geometry",
-            completed=geoms.has_rgeom,
+            name="bounds",
+            description="Set the map's boundary and web geometry",
+            completed=geoms.has_bounds and geoms.has_web_geom,
         ),
     ]
 
@@ -125,7 +120,7 @@ def _status_summary(db, selected: list[MapInfo]):
           coalesce(lines.n, 0) AS n_lines,
           coalesce(points.n, 0) AS n_points,
           s.web_geom IS NOT NULL AS has_web_geom,
-          s.rgeom IS NOT NULL AS has_rgeom,
+          EXISTS (SELECT 1 FROM map_bounds.map_area a WHERE a.id = s.source_id) AS has_bounds,
           -- A compilation holds no polygons of its own unless it has been
           -- materialized, so "insert" is not a step it is missing. `to_regclass`
           -- because `map_bounds` belongs to the topology module, which a
@@ -154,8 +149,7 @@ def _status_summary(db, selected: list[MapInfo]):
     table.add_column("Poly", justify="right")
     table.add_column("Lines", justify="right")
     table.add_column("Pts", justify="right")
-    table.add_column("web", justify="center")
-    table.add_column("rgeom", justify="center")
+    table.add_column("bounds", justify="center")
 
     incomplete = []
     for row in rows:
@@ -163,10 +157,8 @@ def _status_summary(db, selected: list[MapInfo]):
         missing = []
         if not has_data and not row.is_compilation:
             missing.append("insert")
-        if not row.has_web_geom:
-            missing.append("web-geom")
-        if not row.has_rgeom and not row.is_compilation:
-            missing.append("rgeom")
+        if not (row.has_bounds and row.has_web_geom):
+            missing.append("bounds")
         if missing:
             incomplete.append((row.slug, missing))
 
@@ -186,8 +178,7 @@ def _status_summary(db, selected: list[MapInfo]):
             polygons,
             f"{row.n_lines:,}",
             f"{row.n_points:,}",
-            "✅" if row.has_web_geom else "❌",
-            "✅" if row.has_rgeom else "❌",
+            "✅" if row.has_bounds and row.has_web_geom else "❌",
         )
 
     print(table)
@@ -207,19 +198,21 @@ def _status_summary(db, selected: list[MapInfo]):
 
 class _GeometryFlags(BaseModel):
     has_web_geom: bool
-    has_rgeom: bool
+    has_bounds: bool
 
 
 def _geometry_flags(db, source_ids: list[int]) -> dict[int, _GeometryFlags]:
     rows = db.run_query(
         """
         SELECT source_id, web_geom IS NOT NULL AS has_web_geom,
-               rgeom IS NOT NULL AS has_rgeom
-        FROM maps.sources WHERE source_id = ANY(:ids)
+               EXISTS (SELECT 1 FROM map_bounds.map_area a WHERE a.id = s.source_id) AS has_bounds
+        FROM maps.sources s WHERE source_id = ANY(:ids)
         """,
         dict(ids=source_ids),
     ).all()
     return {
-        r.source_id: _GeometryFlags(has_web_geom=r.has_web_geom, has_rgeom=r.has_rgeom)
+        r.source_id: _GeometryFlags(
+            has_web_geom=r.has_web_geom, has_bounds=r.has_bounds
+        )
         for r in rows
     }

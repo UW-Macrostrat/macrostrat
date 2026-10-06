@@ -207,7 +207,8 @@ def unplaced_allowed(db: Database, slug: str) -> set[int]:
               rf.rgeom IS NULL
               OR EXISTS (
                 SELECT 1 FROM maps.sources s
-                WHERE s.slug = :slug AND ST_Intersects(rf.rgeom, s.rgeom)
+                JOIN map_bounds.map_area a ON a.id = s.source_id
+                WHERE s.slug = :slug AND ST_Intersects(rf.rgeom, a.geometry)
               )
             )
             """,
@@ -354,7 +355,7 @@ def corroborate(
 
     **Match first, then corroborate.** The obvious way round -- decide up front
     which names belong near the source, then match against those -- reads well
-    and is wrong at both ends. Blocking on `maps.sources.rgeom` is no constraint
+    and is wrong at both ends. Blocking on the source's boundary is no constraint
     at all for a national compilation like SGMC, which is what left `Lee
     Formation` matching `Lee Gneiss`; and blocking per legend entry up front
     means intersecting every polygon against every footprint, 312,286 x 48,536
