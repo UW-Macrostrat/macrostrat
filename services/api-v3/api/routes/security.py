@@ -225,7 +225,7 @@ def parse_redirect_uri():
 
     if hostname == "dev.macrostrat.org":
         cookie_domain = "macrostrat.org"
-        
+
     return parsed, hostname, cookie_domain, secure
 
 
