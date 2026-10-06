@@ -222,6 +222,10 @@ def parse_redirect_uri():
     scheme = parsed.scheme or "http"
     secure = scheme == "https"
     cookie_domain = None if hostname in ("localhost", "127.0.0.1") else hostname
+
+    if hostname == "dev.macrostrat.org":
+        cookie_domain = "macrostrat.org"
+        
     return parsed, hostname, cookie_domain, secure
 
 
