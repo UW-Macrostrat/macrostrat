@@ -46,6 +46,21 @@ def test_ingest_units(test_db):
     assert units[1].t_pos == 200
 
 
+def test_unit_named_by_strat_name(test_db):
+    """A blank unit_name falls back to the strat_name."""
+    df = read_df(
+        """
+col_id|pos|unit_name|strat_name|lith
+1|200|||
+1|100||Wood Canyon Formation|sandstone
+1|0|Lower member|Wood Canyon Formation|shale
+"""
+    )
+    units = flatten(get_sections_from_df(test_db, df)["1"])
+    units = sorted(units, key=lambda u: u.b_pos)
+    assert [u.name for u in units] == ["Lower member", "Wood Canyon Formation"]
+
+
 def test_db_ingest_units(test_db):
     """Test ingesting units into the database"""
     df = test_db.run_query("SELECT 1").one_or_none()
