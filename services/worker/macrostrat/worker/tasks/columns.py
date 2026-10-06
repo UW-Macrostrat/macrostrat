@@ -1,10 +1,13 @@
 """
-Column-ingestion Celery task.
+Column-ingestion Celery tasks.
 
-Takes the spreadsheet from the task message (dry runs) or from object storage
-(real ingests), then calls the existing `macrostrat.column_ingestion` ingest
-logic. `dry_run` is forwarded to that function, which rolls its transaction back
-instead of committing.
+`macrostrat.columns.ingest` takes a spreadsheet from the task message (dry runs)
+or from object storage (real ingests) and runs `macrostrat.column_ingestion` over
+it; `macrostrat.columns.ingest-data` runs the same logic over the format's tables
+given as JSON, which is how an editor submits a column. Both forward `dry_run`,
+which the ingest function enforces by rolling its transaction back, and both
+return the ingest's result: a summary, graded notices, and the ingested data as
+the web API would serve it.
 
 Requires the `columns` worker extra (`macrostrat.column-ingestion`).
 """
@@ -61,7 +64,7 @@ def ingest_columns_task(ref: dict) -> dict:
             tmp.flush()
         else:
             _storage().fget_object(BUCKET, ref["key"], tmp.name)
-        result = ingest_columns_from_file(db, tmp.name, dry_run=dry_run)
+        result = _run(ingest_columns_from_file, db, tmp.name, dry_run=dry_run)
 
     return {
         "key": ref.get("key"),
@@ -69,3 +72,39 @@ def ingest_columns_task(ref: dict) -> dict:
         "dry_run": dry_run,
         "result": result,
     }
+
+
+@app.task(name="macrostrat.columns.ingest-data")
+def ingest_column_data_task(payload: dict) -> dict:
+    """Ingest a column dataset given as the format's tables in JSON.
+
+    ``payload`` = ``{data: {metadata, columns, units, refs?, facies?}, dry_run}``.
+    """
+    from macrostrat.column_ingestion.ingest import ingest_column_data
+
+    dry_run = payload.get("dry_run", True)
+    db = _database()
+    result = _run(ingest_column_data, db, payload["data"], dry_run=dry_run)
+    return {"dry_run": dry_run, "result": result}
+
+
+def _run(fn, db, source, *, dry_run: bool) -> dict:
+    """Run an ingest, turning a validation refusal into a result rather than a failure.
+
+    A dataset with error-level notices is refused on a real write. That is an
+    outcome to report — the notices are the point — not a task failure, so it comes
+    back as the same result shape with ``ok: false`` and no summary.
+    """
+    from macrostrat.column_ingestion.notices import IngestValidationError
+
+    try:
+        return fn(db, source, dry_run=dry_run)
+    except IngestValidationError as err:
+        return {
+            "dry_run": dry_run,
+            "ok": False,
+            "summary": None,
+            "notices": err.notices.to_list(),
+            "notice_counts": err.notices.summary(),
+            "data": None,
+        }

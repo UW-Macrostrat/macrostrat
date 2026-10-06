@@ -9,7 +9,13 @@
 """
 
 from .geometry import ColumnGeometry, GeometryError, resolve_geometry
-from .parse import Column, get_column_data, get_sections, get_sections_from_df
+from .parse import (
+    Column,
+    columns_from_df,
+    get_column_data,
+    get_sections,
+    get_sections_from_df,
+)
 from .sections import (
     Section,
     ordered_sections,
@@ -27,6 +33,7 @@ __all__ = [
     "ColumnGeometry",
     "GeometryError",
     "Section",
+    "columns_from_df",
     "get_column_data",
     "get_sections",
     "get_sections_from_df",

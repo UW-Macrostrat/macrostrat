@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 from macrostrat.utils import get_logger
 
+from . import notices
 from .database import get_all_environs
 
 log = get_logger(__name__)
@@ -94,8 +95,14 @@ class EnvironsProcessor:
             else:
                 found.add(environ)
         if unknown:
-            raise UnknownEnvironError(
-                "unrecognised environment(s): " + ", ".join(repr(t) for t in unknown)
+            notices.error_or_raise(
+                UnknownEnvironError(
+                    "unrecognised environment(s): "
+                    + ", ".join(repr(t) for t in unknown)
+                ),
+                "unknown-environment",
+                column="environment",
+                detail={"unknown": unknown},
             )
         return found
 
