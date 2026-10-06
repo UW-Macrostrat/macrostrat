@@ -1,18 +1,15 @@
 """
 Column-ingestion Celery task.
 
-Downloads the uploaded spreadsheet from object storage, then calls the existing
-`macrostrat.column_ingestion` ingest logic. `dry_run` is forwarded to that
-function, which rolls its transaction back instead of committing.
+Takes the spreadsheet from the task message (dry runs) or from object storage
+(real ingests), then calls the existing `macrostrat.column_ingestion` ingest
+logic. `dry_run` is forwarded to that function, which rolls its transaction back
+instead of committing.
 
 Requires the `columns` worker extra (`macrostrat.column-ingestion`).
-
-NB: `ingest_columns_from_file` gains its `dry_run` parameter (and a structured
-return value) on the paired column-ingestion branch. Until that lands, this call
-raises `TypeError` — which fails safe (nothing is ingested) rather than silently
-committing.
 """
 
+import base64
 import os
 import tempfile
 from pathlib import Path
@@ -47,31 +44,27 @@ def _storage() -> Minio:
 def ingest_columns_task(ref: dict) -> dict:
     """Ingest a column spreadsheet previously uploaded to object storage.
 
-    ``ref`` = ``{bucket, key, filename, dry_run}``. Downloads the object to a temp
-    file and runs the ingest; on ``dry_run`` the ingest rolls back instead of
-    committing (enforced inside ``ingest_columns_from_file``).
+    ``ref`` = ``{filename, dry_run}`` plus either ``content`` (the file, base64 —
+    sent for dry runs) or ``{bucket, key}`` (an object in storage). Writes the file
+    to a temp file and runs the ingest; on ``dry_run`` the ingest rolls back
+    instead of committing (enforced inside ``ingest_columns_from_file``).
     """
     from macrostrat.column_ingestion.ingest import ingest_columns_from_file
 
     dry_run = ref.get("dry_run", True)
     db = _database()
-    client = _storage()
 
     suffix = Path(ref["filename"]).suffix or ".xlsx"
     with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
-        client.fget_object(BUCKET, ref["key"], tmp.name)
+        if "content" in ref:
+            tmp.write(base64.b64decode(ref["content"]))
+            tmp.flush()
+        else:
+            _storage().fget_object(BUCKET, ref["key"], tmp.name)
         result = ingest_columns_from_file(db, tmp.name, dry_run=dry_run)
 
-    # On a dry run the ingest validated and rolled back (nothing persisted), so
-    # remove the uploaded object rather than leaving dry-run test files in
-    # temp-storage. A real ingest keeps the file. We only reach here if the ingest
-    # returned without raising, so a file that failed validation is left for
-    # debugging.
-    if dry_run:
-        client.remove_object(BUCKET, ref["key"])
-
     return {
-        "key": ref["key"],
+        "key": ref.get("key"),
         "filename": ref["filename"],
         "dry_run": dry_run,
         "result": result,

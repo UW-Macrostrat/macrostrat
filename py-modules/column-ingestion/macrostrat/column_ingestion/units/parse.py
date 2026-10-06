@@ -181,7 +181,8 @@ def prepare_section_units(
             b_pos=row["b_pos"],
             t_pos=row["t_pos"],
             description=row.get("description"),
-            name=row.get("name"),
+            # A sheet may name a unit only by its formation.
+            name=row.get("name") or row.get("strat_name"),
             lithology=liths,
             color=row.get("color"),
         )

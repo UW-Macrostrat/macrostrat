@@ -24,6 +24,62 @@ class _DryRunRollback(Exception):
     pass
 
 
+def _age_fields(prefix: str, age) -> dict:
+    if age is None:
+        return {}
+    return {
+        f"{prefix}_int_id": age.interval.id,
+        f"{prefix}_int_name": age.interval.name,
+        f"{prefix}_prop": age.proportion,
+        f"{prefix}_age": age.model_age(),
+    }
+
+
+def _preview_unit(unit) -> dict:
+    """A unit in the v2 `/units?response=long` shape the web column editor loads."""
+    notes = [n for n in (unit.description, unit.comments) if n]
+    return {
+        "unit_id": unit.id,
+        "section_id": unit.section_id,
+        # The column renderer string-matches unit names, so never send null.
+        "unit_name": unit.name or "",
+        "strat_name_long": unit.name,
+        "b_pos": unit.b_pos,
+        "t_pos": unit.t_pos,
+        "color": unit.color,
+        "notes": "\n".join(notes) or None,
+        "lith": [
+            {
+                "lith_id": l.id,
+                "name": l.name,
+                "atts": sorted(a.name for a in (l.attributes or [])),
+                "prop": l.prop,
+            }
+            for l in unit.lithology
+        ],
+        "environ": [{"environ_id": e.id, "name": e.name} for e in unit.environment],
+        **_age_fields("b", unit.b_age),
+        **_age_fields("t", unit.t_age),
+    }
+
+
+def _preview_columns(columns: list[Column]) -> list[dict]:
+    """Parsed columns for the editor to render, so a dry run can be viewed unsaved."""
+    return [
+        {
+            "columnInfo": {
+                "col_name": col.name,
+                "col_type": col.col_type,
+                "axis_type": "height" if col.col_type == "section" else "age",
+                "project_id": col.project_id,
+            },
+            "units": [_preview_unit(u) for u in col.units],
+        }
+        for col in columns
+        if col.units
+    ]
+
+
 def ingest_columns_from_file(
     db,
     data_file,
@@ -71,7 +127,9 @@ def ingest_columns_from_file(
     if project is None:
         raise ValueError("Project not found in the data file")
 
-    ingest_columns(db, columns, project=project, references=references, dry_run=dry_run)
+    return ingest_columns(
+        db, columns, project=project, references=references, dry_run=dry_run
+    )
 
 
 def ingest_columns(
@@ -145,6 +203,7 @@ def ingest_columns(
                 "n_units": sum(len(col.units) for col in columns),
                 "n_references": len(references or []),
                 "dry_run": dry_run,
+                "columns": _preview_columns(columns),
             }
 
             if dry_run:
@@ -152,3 +211,4 @@ def ingest_columns(
             return summary
     except _DryRunRollback:
         print("Dry run — transaction rolled back; nothing was persisted.")
+        return summary
