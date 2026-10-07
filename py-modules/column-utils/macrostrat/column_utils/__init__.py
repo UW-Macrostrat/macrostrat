@@ -7,6 +7,13 @@ from .geometry import (
     resolve_geometry,
     write_column_footprint,
 )
+from .lithologies import (
+    LithAbundance,
+    LithAtt,
+    Lithology,
+    LithsProcessor,
+    MultipleLithologiesError,
+)
 
 __all__ = [
     "POINT_AREA_KM2",
@@ -14,4 +21,9 @@ __all__ = [
     "GeometryError",
     "resolve_geometry",
     "write_column_footprint",
+    "LithAbundance",
+    "LithAtt",
+    "Lithology",
+    "LithsProcessor",
+    "MultipleLithologiesError",
 ]

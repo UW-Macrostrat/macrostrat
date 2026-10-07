@@ -97,14 +97,12 @@ def get_or_create_project(
     return None
 
 
-def get_all_liths(db):
-    """Get all lithologies from the database."""
-    return db.run_query("SELECT id, lith name FROM macrostrat.liths").fetchall()
-
-
-def get_all_lith_attributes(db):
-    """Get all lithology attributes from the database."""
-    return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
+# Lith vocabulary lookups moved to macrostrat.column_utils.queries (so the API can
+# run the matcher without the importer); re-exported here for existing callers.
+from macrostrat.column_utils.queries import (  # noqa: E402, F401
+    get_all_lith_attributes,
+    get_all_liths,
+)
 
 
 def get_all_environs(db):
