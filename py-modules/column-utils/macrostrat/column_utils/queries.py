@@ -12,6 +12,4 @@ def get_all_liths(db):
 
 def get_all_lith_attributes(db):
     """Every lithology attribute as `(id, name)` rows (`name` from `lith_att`)."""
-    return db.run_query(
-        "SELECT id, lith_att name FROM macrostrat.lith_atts"
-    ).fetchall()
+    return db.run_query("SELECT id, lith_att name FROM macrostrat.lith_atts").fetchall()
