@@ -104,15 +104,45 @@ ALTER TABLE ONLY user_features.user_locations
 ALTER TABLE ONLY user_features.location_tags_intersect
     ADD CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES macrostrat_auth."user"(id) ON DELETE CASCADE;
 
-CREATE POLICY pl_ul_delete ON user_features.user_locations FOR DELETE TO web_user, web_admin USING ((((user_features.current_app_role() = 'web_user'::text) AND (user_id = user_features.current_app_user_id())) OR (user_features.current_app_role() = 'web_admin'::text)));
+-- A saved location belongs to the account that made it, whatever tier that
+-- account holds (web_user, web_authorized, ...); an administrator sees and
+-- manages all of them. Ownership is the test, not the role name: an earlier
+-- version compared the role to 'web_user' literally, which would have locked
+-- an authorized user out of their own locations. `TO web_user, web_admin`
+-- reaches every tier, since each is a member of web_user.
+CREATE POLICY pl_ul_select ON user_features.user_locations FOR SELECT TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
 
-CREATE POLICY pl_ul_insert ON user_features.user_locations FOR INSERT TO web_user, web_admin WITH CHECK ((((user_features.current_app_role() = 'web_user'::text) AND (user_id = user_features.current_app_user_id())) OR (user_features.current_app_role() = 'web_admin'::text)));
+CREATE POLICY pl_ul_insert ON user_features.user_locations FOR INSERT TO web_user, web_admin
+    WITH CHECK (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
 
-CREATE POLICY pl_ul_select ON user_features.user_locations FOR SELECT TO web_user, web_admin USING ((((user_features.current_app_role() = 'web_user'::text) AND (user_id = user_features.current_app_user_id())) OR (user_features.current_app_role() = 'web_admin'::text)));
+CREATE POLICY pl_ul_update ON user_features.user_locations FOR UPDATE TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin')
+    WITH CHECK (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
 
-CREATE POLICY pl_ul_update ON user_features.user_locations FOR UPDATE TO web_user, web_admin USING (((user_features.current_app_role() = 'web_user'::text) AND (user_id = user_features.current_app_user_id()))) WITH CHECK ((user_id = user_features.current_app_user_id()));
+CREATE POLICY pl_ul_delete ON user_features.user_locations FOR DELETE TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
 
 ALTER TABLE user_features.user_locations ENABLE ROW LEVEL SECURITY;
+
+-- The tag links are owned the same way. Without this, any signed-in user could
+-- tag or untag anyone's locations through the macrostrat_api view.
+CREATE POLICY pl_lti_select ON user_features.location_tags_intersect FOR SELECT TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
+
+CREATE POLICY pl_lti_insert ON user_features.location_tags_intersect FOR INSERT TO web_user, web_admin
+    WITH CHECK (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
+
+CREATE POLICY pl_lti_update ON user_features.location_tags_intersect FOR UPDATE TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin')
+    WITH CHECK (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
+
+CREATE POLICY pl_lti_delete ON user_features.location_tags_intersect FOR DELETE TO web_user, web_admin
+    USING (user_id = user_features.current_app_user_id() OR user_features.current_app_role() = 'web_admin');
+
+ALTER TABLE user_features.location_tags_intersect ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE user_features.location_tags_intersect TO web_user, web_admin;
 
 GRANT SELECT,DELETE ON TABLE user_features.user_locations TO web_user;
 

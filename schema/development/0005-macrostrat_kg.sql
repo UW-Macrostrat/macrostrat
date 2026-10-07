@@ -464,25 +464,22 @@ GRANT USAGE ON SCHEMA macrostrat_kg TO web_anon;
 
 GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat_kg TO web_anon;
 
-GRANT SELECT, USAGE ON SEQUENCE
-  macrostrat_kg.extraction_feedback_note_id_seq,
-  macrostrat_kg.extraction_feedback_type_type_id_seq
-  TO web_anon;
-
-GRANT SELECT, USAGE ON ALL SEQUENCES IN SCHEMA macrostrat_kg TO web_user;
-
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
   GRANT SELECT ON TABLES TO web_anon;
 
-/** Logged in users can create feedback */
+/** Feedback on an extraction is an edit of record, so it takes an
+    administrator. A signed-in user (web_user) is anyone with an ORCID iD and
+    is never granted a write; see schema/core/0000-roles.sql for the tiers. */
 GRANT INSERT, UPDATE, DELETE ON TABLE
   macrostrat_kg.extraction_feedback,
   macrostrat_kg.extraction_feedback_type,
   macrostrat_kg.lookup_extraction_type
-  TO web_user;
+  TO web_admin;
+
+GRANT SELECT, USAGE ON ALL SEQUENCES IN SCHEMA macrostrat_kg TO web_admin;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
-  GRANT SELECT, USAGE ON SEQUENCES TO web_user;
+  GRANT SELECT, USAGE ON SEQUENCES TO web_admin;
 
 
 -- xdd_writer write access. These tables used to be owned by xdd_writer, which gave it

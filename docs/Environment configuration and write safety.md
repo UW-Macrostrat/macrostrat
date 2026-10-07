@@ -86,7 +86,9 @@ error that lists the environments the file does define.
 
 > **One scale, two uses.** The class also decides which schema layers apply:
 > the development-only definitions (`schema/_dev_definitions`, `schema/development`)
-> in `local` and `development`, the local seed data in `local` only. Schema
+> in `local` and `development`, the staging-level ones (`schema/_staging_definitions`,
+> e.g. the people directory the website reads) up to `staging`, the local seed
+> data in `local` only. Schema
 > selection never keys on an environment's *name*, so `local-ingestion` gets
 > what its declared class says.
 >

@@ -33,23 +33,29 @@ CREATE ROLE postgrest LOGIN NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;
 -- For someone who is not logged in
 CREATE ROLE web_anon NOLOGIN;
 
--- For a general logged-in user
+-- For a general logged-in user. Anyone with an ORCID iD can sign in on their
+-- own recognizance, so this tier gains nothing substantial over web_anon.
 CREATE ROLE web_user NOLOGIN;
 
--- For a Macrostrat administrator
+-- For a user an administrator has designated: may *view* anything, including
+-- work in progress, but makes no edits of record. Grant read access for
+-- signed-in collaborators here rather than to web_user.
+CREATE ROLE web_authorized NOLOGIN;
+
+-- For a Macrostrat administrator: the only tier that makes real edits.
 CREATE ROLE web_admin NOLOGIN;
 
 -- Postgrest is our 'authenticator' role
 -- We need to allow it to switch to the web roles
 GRANT web_anon TO postgrest;
 GRANT web_user TO postgrest;
+GRANT web_authorized TO postgrest;
 GRANT web_admin TO postgrest;
 
--- Grant web_anon capabilities to web_user
+-- The tiers nest: each inherits everything granted to the one below it.
 GRANT web_anon TO web_user;
-
--- Grant web_user capabilities to web_admin
-GRANT web_user TO web_admin;
+GRANT web_user TO web_authorized;
+GRANT web_authorized TO web_admin;
 
 
 GRANT REFERENCES ON spatial_ref_sys TO macrostrat;

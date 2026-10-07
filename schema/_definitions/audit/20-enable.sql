@@ -46,3 +46,12 @@ select audit.enable('macrostrat.sections');
 select audit.enable('macrostrat.units');
 select audit.enable('macrostrat.unit_liths');
 select audit.enable('macrostrat.unit_boundaries');
+
+-- Accounts and credentials. Who was promoted to which role, and who minted or
+-- revoked which token, is exactly the history worth having when a permission
+-- is questioned later. api-v3 attributes these writes to the acting admin via
+-- audit.set_context (it writes as the owner, not through PostgREST, so the JWT
+-- fallback does not apply); the CLI's `macrostrat auth` commands are tagged
+-- the same way. Token rows hold only a digest, so the trail leaks no secret.
+select audit.enable('macrostrat_auth.user');
+select audit.enable('macrostrat_auth.token');

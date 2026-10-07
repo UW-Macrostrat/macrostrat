@@ -2,6 +2,9 @@
 -- development/9000-macrostrat_api.sql (pg_dump). The core views/functions are
 -- defined cleanly in 01-views.sql / 02-functions.sql; these are the remainder
 -- (extra views, the auth/people functions + triggers) plus the API grants.
+-- The people directory itself (ecosystem tables, macrostrat_api.people* views
+-- and their grants) lives in schema/_staging_definitions/ecosystem, so it
+-- reaches staging; only the two unused people trigger functions remain here.
 
 CREATE FUNCTION macrostrat_api.auth_status() RETURNS jsonb
     LANGUAGE sql
@@ -231,7 +234,9 @@ CREATE VIEW macrostrat_api.location_tags AS
     location_tags.color
    FROM user_features.location_tags;
 
-CREATE VIEW macrostrat_api.location_tags_intersect AS
+-- security_invoker so the base table's row security applies to the caller
+-- rather than to the view's owner, who bypasses it.
+CREATE VIEW macrostrat_api.location_tags_intersect WITH (security_invoker='true') AS
  SELECT location_tags_intersect.tag_id,
     location_tags_intersect.user_id,
     location_tags_intersect.location_id
@@ -403,37 +408,6 @@ CREATE VIEW macrostrat_api.new_legend AS
      LEFT JOIN strat_names_agg s ON ((s.legend_id = legend.legend_id)))
      LEFT JOIN macrostrat.intervals min_intervals ON (((min_intervals.interval_name)::text = legend_ages.min_age)))
      LEFT JOIN macrostrat.intervals max_intervals ON (((max_intervals.interval_name)::text = legend_ages.max_age)));
-
-CREATE VIEW macrostrat_api.people AS
- SELECT people.person_id,
-    people.name,
-    people.email,
-    people.title,
-    people.website,
-    people.img_id,
-    people.active_start,
-    people.active_end
-   FROM ecosystem.people;
-
-CREATE VIEW macrostrat_api.people_roles AS
- SELECT people_roles.person_id,
-    people_roles.role_id
-   FROM ecosystem.people_roles;
-
-CREATE VIEW macrostrat_api.people_with_roles AS
- SELECT p.person_id,
-    p.name,
-    p.email,
-    p.title,
-    p.website,
-    p.img_id,
-    p.active_start,
-    p.active_end,
-    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE (r.role_id IS NOT NULL))) AS roles
-   FROM ((ecosystem.people p
-     LEFT JOIN ecosystem.people_roles pr ON ((p.person_id = pr.person_id)))
-     LEFT JOIN ecosystem.roles r ON ((pr.role_id = r.role_id)))
-  GROUP BY p.person_id;
 
 CREATE VIEW macrostrat_api.rockd_stats AS
  SELECT count(*) AS total_rows,
@@ -876,7 +850,10 @@ GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
 
-GRANT ALL ON FUNCTION macrostrat_api.combine_sections(section_ids integer[]) TO web_anon;
+-- These two rewrite the column tree. EXECUTE on a function is PUBLIC by
+-- default, so it is revoked outright and granted to administrators alone.
+REVOKE ALL ON FUNCTION macrostrat_api.combine_sections(section_ids integer[]) FROM PUBLIC, web_anon;
+GRANT EXECUTE ON FUNCTION macrostrat_api.combine_sections(section_ids integer[]) TO web_admin;
 
 GRANT ALL ON FUNCTION macrostrat_api.get_col_strat_names(_col_id integer) TO web_anon;
 
@@ -884,7 +861,8 @@ GRANT ALL ON FUNCTION macrostrat_api.get_strat_name_info(strat_name_id integer) 
 
 GRANT ALL ON FUNCTION macrostrat_api.get_strat_names_col_priority(_col_id integer) TO web_anon;
 
-GRANT ALL ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) TO web_anon;
+REVOKE ALL ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) FROM PUBLIC, web_anon;
+GRANT EXECUTE ON FUNCTION macrostrat_api.split_section(unit_ids integer[]) TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.col_filters TO web_anon;
 
@@ -914,11 +892,13 @@ GRANT SELECT ON TABLE macrostrat_api.environ_unit TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.environs TO web_anon;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.extraction_feedback TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.extraction_feedback_combined TO web_anon;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback_type TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.extraction_feedback_type TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.extraction_feedback_type TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.fossils TO web_anon;
 
@@ -946,17 +926,18 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.location_tags_intersec
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.location_tags_intersect TO web_admin;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.lookup_extraction_type TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.lookup_extraction_type TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.lookup_extraction_type TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.macrostrat_stats TO web_anon;
 
-GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.map_ingest TO web_user;
 
 GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.map_ingest TO web_anon;
 
-GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.map_ingest_tags TO web_user;
 
 GRANT SELECT,UPDATE ON TABLE macrostrat_api.map_ingest_tags TO web_admin;
 
@@ -966,7 +947,7 @@ GRANT SELECT ON TABLE macrostrat_api.mapped_sources TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.mapped_sources TO web_user;
 
-GRANT SELECT,UPDATE ON TABLE macrostrat_api.maps_sources TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.maps_sources TO web_user;
 
 GRANT SELECT,UPDATE ON TABLE macrostrat_api.maps_sources TO web_admin;
 
@@ -978,11 +959,6 @@ GRANT SELECT ON TABLE macrostrat_api.minerals TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.new_legend TO web_anon;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people TO web_anon;
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people_roles TO web_anon;
-
-GRANT SELECT ON TABLE macrostrat_api.people_with_roles TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.projects TO web_anon;
 

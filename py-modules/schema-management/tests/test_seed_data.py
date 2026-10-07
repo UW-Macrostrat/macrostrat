@@ -96,7 +96,12 @@ def test_auth_roles_are_seeded_and_resynced(schema_harness):
     """
     db = schema_harness.load_schema(target="macrostrat")
     chunks = schema_harness.chunks()
-    expected = {"user": "web_user", "admin": "web_admin", "test": "web_user"}
+    expected = {
+        "user": "web_user",
+        "authorized": "web_authorized",
+        "admin": "web_admin",
+        "test": "web_user",
+    }
 
     with db.transaction(rollback=True):
 

@@ -39,6 +39,9 @@ log = get_logger(__name__)
 # production do not.
 _DEV_ENVS = classes_up_to(EnvironmentClass.Development)
 _LOCAL_ONLY = classes_up_to(EnvironmentClass.Local)
+# Subsystems the public website depends on but that are not (yet) part of the
+# production schema: everything up to and including staging.
+_STAGING_ENVS = classes_up_to(EnvironmentClass.Staging)
 
 # Foundational files (roles, globals, public schema), applied before everything.
 # This is the one chunk that runs as the connector (superuser): it creates roles,
@@ -115,6 +118,11 @@ def all_chunks() -> list[SchemaDefinition]:
         ),
         TopologySchema,
         *_raster_layers_chunks(),
+        *discover_chunks(
+            schema_dir / "_staging_definitions",
+            owner=APP_OWNER,
+            environments=_STAGING_ENVS,
+        ),
         *discover_chunks(
             schema_dir / "_dev_definitions", owner=APP_OWNER, environments=_DEV_ENVS
         ),

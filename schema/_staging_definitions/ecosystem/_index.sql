@@ -1,18 +1,17 @@
-
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
+-- @subsystem: ecosystem
+-- @depends-on: core
+/**
+ * The people directory behind the website's /community page: who has worked
+ * on Macrostrat, in which roles, with which contributions.
+ *
+ * Applied in local, development and staging (see `_STAGING_ENVS` in
+ * schema_management/chunks.py) rather than development only, because the
+ * public website reads it. The directory is public to read through the
+ * macrostrat_api views; changing it is an administrator's job, and a signed-in
+ * user (web_user) is never granted a write.
+ */
 
 CREATE SCHEMA ecosystem;
-SET default_tablespace = '';
-SET default_table_access_method = heap;
 
 CREATE TABLE ecosystem.contributions (
     contribution_id integer NOT NULL,
@@ -122,9 +121,55 @@ ALTER TABLE ONLY ecosystem.people_roles
 ALTER TABLE ONLY ecosystem.people_roles
     ADD CONSTRAINT people_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES ecosystem.roles(role_id) ON DELETE CASCADE;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ecosystem.people TO web_anon;
+-- The people directory is public to read; changing it is an administrator's job.
+GRANT SELECT ON TABLE ecosystem.people TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE ecosystem.people TO web_admin;
 
-GRANT SELECT,USAGE ON SEQUENCE ecosystem.people_person_id_seq TO web_anon;
+GRANT SELECT,USAGE ON SEQUENCE ecosystem.people_person_id_seq TO web_admin;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ecosystem.people_roles TO web_anon;
+GRANT SELECT ON TABLE ecosystem.people_roles TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE ecosystem.people_roles TO web_admin;
 
+
+-- ---------------------------------------------------------------------------
+-- PostgREST surface. `macrostrat_api` is created by core.
+-- ---------------------------------------------------------------------------
+
+CREATE VIEW macrostrat_api.people AS
+ SELECT people.person_id,
+    people.name,
+    people.email,
+    people.title,
+    people.website,
+    people.img_id,
+    people.active_start,
+    people.active_end
+   FROM ecosystem.people;
+
+CREATE VIEW macrostrat_api.people_roles AS
+ SELECT people_roles.person_id,
+    people_roles.role_id
+   FROM ecosystem.people_roles;
+
+CREATE VIEW macrostrat_api.people_with_roles AS
+ SELECT p.person_id,
+    p.name,
+    p.email,
+    p.title,
+    p.website,
+    p.img_id,
+    p.active_start,
+    p.active_end,
+    COALESCE(json_agg(json_build_object('name', r.name, 'description', r.description)) FILTER (WHERE (r.role_id IS NOT NULL))) AS roles
+   FROM ((ecosystem.people p
+     LEFT JOIN ecosystem.people_roles pr ON ((p.person_id = pr.person_id)))
+     LEFT JOIN ecosystem.roles r ON ((pr.role_id = r.role_id)))
+  GROUP BY p.person_id;
+
+GRANT SELECT ON TABLE macrostrat_api.people TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.people_roles TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people_roles TO web_admin;
+
+GRANT SELECT ON TABLE macrostrat_api.people_with_roles TO web_anon;

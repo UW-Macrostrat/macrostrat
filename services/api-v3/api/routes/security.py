@@ -37,13 +37,25 @@ SCOPE_EXAMPLE = "rasters:emit-minerals"
 # application role to one of these lives in `macrostrat_auth.role.postgres_role`;
 # this set is the guard against a bad mapping turning into an unusable — or
 # over-privileged — `role` claim.
-POSTGREST_ROLES = frozenset({"web_admin", "web_user"})
 DEFAULT_POSTGREST_ROLE = "web_user"
+AUTHORIZED_POSTGREST_ROLE = "web_authorized"
 ADMIN_POSTGREST_ROLE = "web_admin"
+# The tiers nest (each inherits the one below it in Postgres), so a session may
+# be *degraded* to any lower rank but never raised above the stored one.
+POSTGREST_ROLE_RANK = {
+    DEFAULT_POSTGREST_ROLE: 1,
+    AUTHORIZED_POSTGREST_ROLE: 2,
+    ADMIN_POSTGREST_ROLE: 3,
+}
+POSTGREST_ROLES = frozenset(POSTGREST_ROLE_RANK)
 
 # Application roles (`macrostrat_auth.role.id`). `role` has no database default,
-# so a new user is created in DEFAULT_ROLE explicitly.
+# so a new user is created in DEFAULT_ROLE explicitly. Anyone with an ORCID iD
+# can sign in and become a `user`, so that tier confers nothing substantial;
+# `authorized` users are designated by an admin and may view anything; only
+# `admin` makes real edits.
 DEFAULT_ROLE = "user"
+AUTHORIZED_ROLE = "authorized"
 ADMIN_ROLE = "admin"
 
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -54,10 +66,132 @@ log = get_logger("uvicorn")
 
 
 class TokenData(BaseModel):
-    """The claims this service reads back out of an access JWT."""
+    """The claims this service reads back out of an access JWT.
+
+    `actual_role` is present only on a *degraded* session: an admin who asked
+    (via `POST /security/role`) to browse with a lesser Postgres role. `role`
+    is then what PostgREST and `has_access` see; `actual_role` is what the
+    stored user record would grant, so the UI can offer to restore it.
+    """
 
     sub: str
     role: str | None = None
+    actual_role: str | None = None
+
+    @property
+    def degraded(self) -> bool:
+        return self.actual_role is not None and self.actual_role != self.role
+
+
+class AssumeRoleRequest(BaseModel):
+    """Body of `POST /security/role`. A null `role` restores the stored one."""
+
+    role: str | None = None
+
+
+class SessionRole(BaseModel):
+    """The role claims of the caller's (re-minted) session."""
+
+    role: str
+    actual_role: str
+    degraded: bool
+
+
+class UserInfo(BaseModel):
+    """A user record, as the dashboard and the admin user table see it.
+
+    `role` is the application role (`user`, `admin`); `postgres_role` the role a
+    fresh session in it assumes. Never carries anything a user did not supply
+    themselves plus the role, so it is safe to show an admin.
+    """
+
+    id: int
+    sub: str
+    name: str | None = None
+    display_name: str | None = None
+    email: str | None = None
+    role: str
+    postgres_role: str
+    created_on: datetime
+    updated_on: datetime
+
+    @classmethod
+    def from_user(cls, user: schemas.User) -> "UserInfo":
+        return cls(
+            id=user.id,
+            sub=user.sub,
+            name=user.name,
+            display_name=user.display_name,
+            email=user.email,
+            role=user.role,
+            postgres_role=role_claim(user),
+            created_on=user.created_on,
+            updated_on=user.updated_on,
+        )
+
+
+class CurrentUser(BaseModel):
+    """`GET /security/me`: the stored record plus the session's role claims.
+
+    `role` means the same thing here as the JWT claim the web app already
+    reads — the Postgres role the *current cookie* carries, what PostgREST
+    assumes and the web guards compare against — so a client can treat the
+    server-rendered claims and this record interchangeably. `actual_role` is
+    the Postgres role the stored record grants; the two differ only on a
+    degraded session. `app_role` is the application role (`user`, `admin`).
+    """
+
+    id: int
+    sub: str
+    name: str | None = None
+    display_name: str | None = None
+    email: str | None = None
+    role: str
+    actual_role: str
+    app_role: str
+    degraded: bool
+    created_on: datetime
+    updated_on: datetime
+
+    @classmethod
+    def from_user(cls, user: schemas.User, session_role: str | None) -> "CurrentUser":
+        actual = role_claim(user)
+        role = session_role or actual
+        return cls(
+            id=user.id,
+            sub=user.sub,
+            name=user.name,
+            display_name=user.display_name,
+            email=user.email,
+            role=role,
+            actual_role=actual,
+            app_role=user.role,
+            degraded=role != actual,
+            created_on=user.created_on,
+            updated_on=user.updated_on,
+        )
+
+
+class SetUserRoleRequest(BaseModel):
+    role: str
+
+
+class AuthChange(BaseModel):
+    """One row of the change-tracking trail for the account tables."""
+
+    id: int
+    changed_at: datetime
+    actor_id: str | None = None
+    table_name: str
+    action: str
+    record_pk: dict | None = None
+    changed: dict | None = None
+
+
+class RoleInfo(BaseModel):
+    id: str
+    postgres_role: str
+    description: str | None = None
 
 
 class DelegateTokenRequest(BaseModel):
@@ -103,6 +237,9 @@ class DelegateTokenInfo(BaseModel):
     token_type: str
     scopes: list[str] | None = None
     user_id: int | None = None
+    # The delegated user's ORCID iD, so a listing can name who a token stands
+    # for without a second lookup.
+    user_sub: str | None = None
     created_by: int | None = None
     created_on: datetime
     expires_on: datetime
@@ -111,12 +248,14 @@ class DelegateTokenInfo(BaseModel):
 
     @classmethod
     def from_token(cls, token: schemas.Token, *, now: datetime) -> "DelegateTokenInfo":
+        user = token.user
         return cls(
             id=token.id,
             label=token.label,
             token_type=token.token_type,
             scopes=token.scopes,
             user_id=token.user_id,
+            user_sub=user.sub if user is not None else None,
             created_by=token.created_by,
             created_on=token.created_on,
             expires_on=token.expires_on,
@@ -214,6 +353,56 @@ def role_claim(user: schemas.User) -> str:
     return DEFAULT_POSTGREST_ROLE
 
 
+def resolve_assumed_role(actual_role: str, requested: str | None) -> str:
+    """The Postgres role a session may carry, given what its user is entitled to.
+
+    `None` means "the stored role" — the way back from a degraded session. A
+    role may be assumed only downward: an admin may browse as `web_authorized`
+    or `web_user` (to see the site as they do), but nobody can claim more than
+    their record grants, and nothing outside the roles PostgREST knows is a
+    session at all.
+    """
+    if requested is None or requested == actual_role:
+        return actual_role
+    if requested not in POSTGREST_ROLES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown role {requested!r}; expected one of "
+            + ", ".join(sorted(POSTGREST_ROLES)),
+        )
+    if POSTGREST_ROLE_RANK[requested] < POSTGREST_ROLE_RANK.get(actual_role, 0):
+        return requested
+    raise HTTPException(
+        status_code=403,
+        detail=f"Your account cannot assume the {requested} role",
+    )
+
+
+def audit_actor(token: TokenData) -> str:
+    """How the change-tracking trail names this session's user.
+
+    Same spelling as the audit trigger's own fallback for PostgREST writes
+    (`'orcid:' || sub`), so a change made through api-v3 and one made through
+    PostgREST read as the same person.
+    """
+    return f"orcid:{token.sub}"
+
+
+def session_claims(user: schemas.User, role: str | None = None) -> dict:
+    """The claims of an access JWT for `user`, optionally in an assumed role.
+
+    One place builds the login claims, so the callback, the refresh, and the
+    role switch cannot drift apart. `actual_role` rides along only when the
+    session is degraded, so an ordinary token is exactly what it always was.
+    """
+    actual = role_claim(user)
+    effective = role or actual
+    claims = {"sub": user.sub, "role": effective, "name": user.display_name}
+    if effective != actual:
+        claims["actual_role"] = actual
+    return claims
+
+
 def parse_redirect_uri():
     """Parse REDIRECT_URI_ENV once and reuse consistently."""
     uri = os.environ["REDIRECT_URI_ENV"]
@@ -225,11 +414,83 @@ def parse_redirect_uri():
     return parsed, hostname, cookie_domain, secure
 
 
-def clear_auth_cookies(response: Response):
+class CookieParams(BaseModel):
+    """The attributes every auth cookie is issued with.
+
+    One derivation, used by the login callback, the refresh, the role switch and
+    the logout alike: a cookie set under one domain and re-issued under another
+    leaves the browser holding two, and whichever it sends first wins.
     """
-    Attempt to delete cookies for both host-only and domain cookies"""
+
+    domain: str | None
+    samesite: str | None
+    secure: bool
+
+
+def auth_cookie_params() -> CookieParams:
+    """Where and how the session cookies are scoped.
+
+    Production: the API's own host, `SameSite=Lax`, `Secure` under https.
+
+    Local development reaches the API at a `.local` subdomain (e.g.
+    `api.macrostrat.local`) from a site served elsewhere (`https://macrostrat.local`
+    or `http://localhost:3000`), so the cookie is scoped to the parent domain and
+    sent cross-site: `SameSite=None`, which must be the string "none" rather than
+    Python None (that drops the attribute and defaults to Lax) and requires
+    `Secure`, so it falls back to Lax over plain http.
+    """
+    parsed, hostname, cookie_domain, secure = parse_redirect_uri()
+    samesite: str | None = "lax"
+    if (
+        cookie_domain
+        and cookie_domain.endswith(".local")
+        and cookie_domain.count(".") > 1
+    ):
+        cookie_domain = ".".join(cookie_domain.split(".")[-2:])
+        samesite = "none" if secure else "lax"
+    return CookieParams(domain=cookie_domain, samesite=samesite, secure=secure)
+
+
+def set_access_cookie(response: Response, access_token: str):
+    """Issue (or re-issue) the access cookie.
+
+    Its lifetime tracks the token's `exp`, so a browser stops auto-sending it
+    the moment it expires. Caddy then adds no Authorization header and
+    PostgREST falls back to web_anon instead of 401ing on a stale token.
+    """
+    params = auth_cookie_params()
+    response.set_cookie(
+        access_token_key,
+        f"Bearer {access_token}",
+        domain=params.domain,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        samesite=params.samesite,
+        secure=params.secure,
+    )
+
+
+def set_refresh_cookie(response: Response, refresh_jwt: str):
+    """Issue the refresh cookie. It outlives the access cookie (7d vs 24h); once
+    it too expires the browser drops it and the user is fully anonymous."""
+    params = auth_cookie_params()
+    response.set_cookie(
+        refresh_token_key,
+        refresh_jwt,
+        domain=params.domain,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        httponly=True,
+        samesite=params.samesite,
+        secure=params.secure,
+    )
+
+
+def clear_auth_cookies(response: Response):
+    """Delete the session cookies under every domain they may have been set for:
+    the one issued now, the API's own host, and the host-only forms."""
     _, hostname, cookie_domain, _ = parse_redirect_uri()
-    for dom in {None, cookie_domain, "localhost", "127.0.0.1", hostname}:
+    issued = auth_cookie_params().domain
+    for dom in {None, issued, cookie_domain, "localhost", "127.0.0.1", hostname}:
         response.delete_cookie(key=access_token_key, domain=dom)
         response.delete_cookie(key=refresh_token_key, domain=dom)
 
@@ -308,7 +569,8 @@ async def get_user_token_from_cookie(
         )
         sub: str = payload.get("sub")
         role: str | None = payload.get("role")
-        token_data = TokenData(sub=sub, role=role)
+        actual_role: str | None = payload.get("actual_role")
+        token_data = TokenData(sub=sub, role=role, actual_role=actual_role)
     except JWTError as e:
         return None
 
@@ -387,8 +649,6 @@ async def redirect_callback(
         "redirect_uri": uri,
     }
 
-    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
-
     async with aiohttp.ClientSession() as session:
         async with session.post(
             os.environ["OAUTH_TOKEN_URL"], data=data
@@ -433,51 +693,14 @@ async def redirect_callback(
                     database.async_sessionmaker,
                 )
 
-            # validate jwt https://dev.macrostrat.org/dev/me
-            access_token = create_access_token(
-                data={
-                    "sub": user.sub,
-                    "role": role_claim(user),  # For PostgREST
-                    "name": user.display_name,
-                }
-            )
+            # The `role` claim is for PostgREST; inspect a session at /dashboard
+            access_token = create_access_token(data=session_claims(user))
 
             log.info("Created access token: %s", access_token)
 
             response = RedirectResponse(state if state else "/")
+            set_access_cookie(response, access_token)
 
-            samesite = "lax"
-
-            # Overrides for local development
-            # Remove subdomins for .local domains (for local development)
-            if cookie_domain.endswith(".local") and cookie_domain.count(".") > 1:
-                parts = cookie_domain.split(".")
-                # Remove the subdomain
-                cookie_domain = ".".join(parts[-2:])
-                # Must be the string "none" (not Python None, which drops the attribute and defaults to Lax). lets the
-                # cookie allow cross-site fetches from http://localhost:3000 to https://macrostrat.local.
-                samesite = None
-
-            log.info("Redirecting to %s", cookie_domain)
-
-            secure = parsed_url.scheme == "https"
-            if not secure:
-                # Samesite none requires secure cookies
-                samesite = "lax"
-
-            response.set_cookie(
-                access_token_key,
-                f"Bearer {access_token}",
-                domain=cookie_domain,
-                # Cookie lifetime tracks the access-token `exp`, so a
-                # browser stops auto-sending it the moment it expires. Caddy then
-                # adds no Authorization header and PostgREST falls back to
-                # web_anon instead of 401ing on a stale token.
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                samesite=samesite,
-                secure=secure,
-            )
             # TODO remove the token type
             refresh_jwt = jwt.encode(
                 {
@@ -490,18 +713,7 @@ async def redirect_callback(
                 os.environ["SECRET_KEY"],
                 algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
             )
-
-            response.set_cookie(
-                refresh_token_key,
-                refresh_jwt,
-                domain=cookie_domain,
-                # Refresh cookie outlives the access cookie (7d vs 24h); once it
-                # too expires the browser drops it and the user is fully anon.
-                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                httponly=True,
-                samesite=samesite,
-                secure=secure,
-            )
+            set_refresh_cookie(response, refresh_jwt)
 
             return response
 
@@ -541,25 +753,46 @@ async def refresh_token(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # setting new access cookie
-    access_token = create_access_token(
-        data={"sub": user.sub, "role": role_claim(user), "name": user.display_name}
-    )
-
-    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
-
-    response.set_cookie(
-        access_token_key,
-        f"Bearer {access_token}",
-        domain=cookie_domain,
-        # Same as the callback: cookie lifetime tracks the fresh access-token exp.
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True,
-        samesite="lax",
-        secure=(parsed_url.scheme == "https"),
-    )
+    # A refresh always restores the stored role: a degraded admin session that
+    # lapses comes back as a full one, the same as logging in again would.
+    set_access_cookie(response, create_access_token(data=session_claims(user)))
 
     return {"status": "refreshed"}
+
+
+@router.post("/role", response_model=SessionRole)
+async def assume_role(
+    body: AssumeRoleRequest,
+    response: Response,
+    database: DatabaseDep,
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+):
+    """Re-mint the session cookie in a lesser Postgres role, or restore it.
+
+    This is a tool for admins to see the site as a user does: with
+    `{"role": "web_user"}` the new cookie carries `role: web_user` — so
+    PostgREST, `has_access` and the web guards all treat the session as an
+    ordinary user — and `actual_role: web_admin`, so the UI can show the
+    degraded state and offer the way back. `{"role": null}` (or logging out
+    and in, or a token refresh) restores the stored role.
+
+    Entitlement comes from the stored user record, never from the cookie being
+    replaced: a degraded session can restore itself, and no session can climb.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = await get_user(user_token.sub, database.async_sessionmaker)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    actual = role_claim(user)
+    effective = resolve_assumed_role(actual, body.role)
+
+    set_access_cookie(
+        response, create_access_token(data=session_claims(user, role=effective))
+    )
+    return SessionRole(role=effective, actual_role=actual, degraded=effective != actual)
 
 
 async def require_admin(
@@ -568,16 +801,16 @@ async def require_admin(
 ) -> TokenData:
     """Require a web_admin session, and hand back who it is.
 
-    Token administration is the same three operations as
+    Token and user administration are the same operations as
     `macrostrat auth …` in the CLI. The CLI's authorization is possession of
     database credentials; here it is the `web_admin` role on the caller's JWT.
+    A degraded admin session (see `assume_role`) carries `web_user` and is
+    refused here like any other user — that is what degrading is for.
     """
     if user_token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     if not user_has_access:
-        raise HTTPException(
-            status_code=403, detail="Only admins can administer API tokens"
-        )
+        raise HTTPException(status_code=403, detail="Only admins can do this")
     return user_token
 
 
@@ -634,6 +867,7 @@ async def create_delegate_token(
         created_by=issuer.id if issuer is not None else None,
         label=token_request.label,
         scopes=token_request.scopes,
+        actor=audit_actor(user_token),
     )
 
     return DelegateToken(
@@ -668,7 +902,7 @@ async def list_delegate_tokens(
 async def revoke_delegate_token(
     token_id: int,
     database: DatabaseDep,
-    _admin: TokenData = Depends(require_admin),
+    admin: TokenData = Depends(require_admin),
 ):
     """Revoke a token by expiring it now. Admin only.
 
@@ -677,7 +911,9 @@ async def revoke_delegate_token(
     up to a minute to take effect.
     """
 
-    outcome = await db.revoke_token(database.async_engine, token_id)
+    outcome = await db.revoke_token(
+        database.async_engine, token_id, actor=audit_actor(admin)
+    )
 
     if outcome == "not_found":
         raise HTTPException(status_code=404, detail=f"No token with id {token_id}")
@@ -691,27 +927,106 @@ async def logout(response: Response):
     return {"status": "success"}
 
 
-@router.get("/me")
+@router.get("/me", response_model=CurrentUser)
 async def read_users_me(
     database: DatabaseDep,
     user_token_data: TokenData = Depends(get_user_token_from_cookie),
 ):
-    """Return the caller's stored user record"""
+    """The caller's stored user record, with the role their session carries.
+
+    `role` comes from the cookie and `actual_role` from the record; they
+    differ only on a degraded session (`degraded` says so directly).
+    """
 
     if user_token_data is None:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-    async with database.async_session() as session:
-        user_stmt = select(schemas.User).filter(schemas.User.sub == user_token_data.sub)
-        user = await session.scalar(user_stmt)
+    user = await get_user(user_token_data.sub, database.async_sessionmaker)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
-        return {
-            "sub": user.sub,
-            "email": user.email,
-            "id": user.id,
-            "display_name": user.display_name,
-            "created_on": user.created_on,
-            "updated_on": user.updated_on,
-        }
+    return CurrentUser.from_user(user, user_token_data.role)
+
+
+@router.get("/roles", response_model=list[RoleInfo])
+async def list_roles(
+    database: DatabaseDep,
+    _admin: TokenData = Depends(require_admin),
+):
+    """The application roles a user can be moved between. Admin only."""
+    roles = await db.list_roles(database.async_sessionmaker)
+    return [
+        RoleInfo(id=r.id, postgres_role=r.postgres_role, description=r.description)
+        for r in roles
+    ]
+
+
+@router.get("/users", response_model=list[UserInfo])
+async def list_users(
+    database: DatabaseDep,
+    q: str | None = None,
+    limit: int = 500,
+    _admin: TokenData = Depends(require_admin),
+):
+    """Users, newest first. Admin only.
+
+    `q` narrows by name, display name, email or ORCID iD (case-insensitive
+    substring). The listing is bounded (`limit`, at most 2000) because it is
+    for a table, not an export.
+    """
+    users = await db.list_users(
+        database.async_sessionmaker, query=q, limit=max(1, min(limit, 2000))
+    )
+    return [UserInfo.from_user(u) for u in users]
+
+
+@router.get("/history", response_model=list[AuthChange])
+async def list_auth_history(
+    database: DatabaseDep,
+    limit: int = 100,
+    _admin: TokenData = Depends(require_admin),
+):
+    """Recent changes to users and tokens, newest first. Admin only.
+
+    Read from the change-tracking trail (`audit.changes`), which records who
+    moved whom to which role and who minted or revoked which token. Empty when
+    the audit subsystem is not installed in this database.
+    """
+    rows = await db.list_auth_history(
+        database.async_engine, limit=max(1, min(limit, 1000))
+    )
+    return [AuthChange(**row) for row in rows]
+
+
+@router.patch("/users/{user_id}", response_model=UserInfo)
+async def set_user_role(
+    user_id: int,
+    body: SetUserRoleRequest,
+    database: DatabaseDep,
+    admin: TokenData = Depends(require_admin),
+):
+    """Move a user to another application role. Admin only.
+
+    An admin cannot change their own role: demoting yourself would leave the
+    instance with one admin fewer and nobody at the keyboard to undo it. Have
+    another admin do it, or use the database directly.
+    """
+    roles = {r.id for r in await db.list_roles(database.async_sessionmaker)}
+    if body.role not in roles:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown role {body.role!r}; expected one of "
+            + ", ".join(sorted(roles)),
+        )
+
+    user = await db.get_user_by_id(database.async_sessionmaker, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"No user with id {user_id}")
+    if user.sub == admin.sub:
+        raise HTTPException(status_code=403, detail="You cannot change your own role")
+
+    await db.set_user_role(
+        database.async_engine, user_id, body.role, actor=audit_actor(admin)
+    )
+    user = await db.get_user_by_id(database.async_sessionmaker, user_id)
+    return UserInfo.from_user(user)

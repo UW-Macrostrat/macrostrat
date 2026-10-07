@@ -173,6 +173,57 @@ async def get_schema_tables(engine: AsyncEngine, schema: str):
         return map(lambda x: x[0], result.fetchall())
 
 
+async def set_audit_actor(conn: AsyncConnection, actor: str | None):
+    """Attribute the writes of this transaction in the change-tracking trail.
+
+    api-v3 writes as the schema owner, not through PostgREST, so the audit
+    trigger's JWT fallback never sees who asked; the actor has to be declared
+    (`audit.set_context`, transaction-scoped) before the write, in the same
+    transaction. A no-op when no actor is given or the audit subsystem is not
+    installed, so a database without it keeps working.
+    """
+    if actor is None:
+        return
+    installed = await conn.scalar(
+        text(
+            "SELECT to_regprocedure('audit.set_context(text,text,boolean)') IS NOT NULL"
+        )
+    )
+    if not installed:
+        return
+    await conn.execute(
+        text("SELECT audit.set_context(:actor, NULL, true)"), {"actor": actor}
+    )
+
+
+async def list_auth_history(engine: AsyncEngine, limit: int = 100) -> list[dict]:
+    """Recent audit rows for the account tables, newest first.
+
+    Empty when the audit subsystem is not installed. The old and new row images
+    are left out: the diff (`changed`) says what moved, and the images of a user
+    row carry an email address nobody needs to see in a listing.
+    """
+    async with engine.connect() as conn:
+        installed = await conn.scalar(
+            text("SELECT to_regclass('audit.changes') IS NOT NULL")
+        )
+        if not installed:
+            return []
+        result = await conn.execute(
+            text(
+                """
+                SELECT id, changed_at, actor_id, table_name, action, record_pk, changed
+                FROM audit.changes
+                WHERE schema_name = 'macrostrat_auth'
+                ORDER BY id DESC
+                LIMIT :limit
+                """
+            ),
+            {"limit": limit},
+        )
+        return [dict(row) for row in result.mappings()]
+
+
 async def insert_token(
     engine: AsyncEngine,
     *,
@@ -183,6 +234,7 @@ async def insert_token(
     created_by: int | None = None,
     label: str | None = None,
     scopes: list[str] | None = None,
+    actor: str | None = None,
 ) -> int:
     """Store an issued token into the macrostrat_auth.token table and return its id.
 
@@ -190,8 +242,10 @@ async def insert_token(
      The token must be associated to a macrostrat user_id (created when a user creates a macrostrat
      orcid account) or a label (assigned when generating
      a delegated 3rd party token). This is enforced by the `token_has_subject` check constraint in the db.
+     `actor` names who did it in the change-tracking trail (see `set_audit_actor`).
     """
     async with engine.begin() as conn:
+        await set_audit_actor(conn, actor)
         q = (
             insert(schemas.Token)
             .values(
@@ -259,14 +313,18 @@ async def list_tokens(
         return list(await session.scalars(stmt))
 
 
-async def revoke_token(engine: AsyncEngine, token_id: int) -> str:
+async def revoke_token(
+    engine: AsyncEngine, token_id: int, actor: str | None = None
+) -> str:
     """Expire a token now. Returns what happened.
 
     The row is kept rather than deleted, so the record of who was issued what
     survives a revocation. Guarded on `expires_on > now()` so an already
     expired token is reported honestly instead of silently "succeeding".
+    `actor` names who did it in the change-tracking trail.
     """
     async with engine.begin() as conn:
+        await set_audit_actor(conn, actor)
         stmt = (
             update(schemas.Token)
             .where(
@@ -286,6 +344,63 @@ async def revoke_token(engine: AsyncEngine, token_id: int) -> str:
             select(schemas.Token.id).where(schemas.Token.id == token_id)
         )
         return "already_expired" if exists.scalar() is not None else "not_found"
+
+
+async def list_users(
+    async_session: async_sessionmaker[AsyncSession],
+    query: str | None = None,
+    limit: int = 500,
+) -> list[schemas.User]:
+    """Users, newest first, optionally narrowed by a case-insensitive search
+    over name, display name, email and ORCID iD (`sub`)."""
+    async with async_session() as session:
+        stmt = select(schemas.User).order_by(schemas.User.id.desc()).limit(limit)
+        term = (query or "").strip()
+        if term:
+            pattern = f"%{term}%"
+            stmt = stmt.where(
+                schemas.User.name.ilike(pattern)
+                | schemas.User.display_name.ilike(pattern)
+                | schemas.User.email.ilike(pattern)
+                | schemas.User.sub.ilike(pattern)
+            )
+        return list(await session.scalars(stmt))
+
+
+async def get_user_by_id(
+    async_session: async_sessionmaker[AsyncSession], user_id: int
+) -> schemas.User | None:
+    async with async_session() as session:
+        return await session.get(schemas.User, user_id)
+
+
+async def list_roles(
+    async_session: async_sessionmaker[AsyncSession],
+) -> list[schemas.Role]:
+    """Every application role, in a stable order."""
+    async with async_session() as session:
+        stmt = select(schemas.Role).order_by(schemas.Role.id)
+        return list(await session.scalars(stmt))
+
+
+async def set_user_role(
+    engine: AsyncEngine, user_id: int, role: str, actor: str | None = None
+) -> bool:
+    """Move a user to another application role. False if there is no such user.
+
+    The role itself is validated by the foreign key, so an unknown name raises
+    rather than being stored. `actor` names who did it in the change-tracking
+    trail — the one record that matters when a permission is questioned later.
+    """
+    async with engine.begin() as conn:
+        await set_audit_actor(conn, actor)
+        stmt = (
+            update(schemas.User)
+            .where(schemas.User.id == user_id)
+            .values(role=role)
+            .returning(schemas.User.id)
+        )
+        return (await conn.execute(stmt)).scalar() is not None
 
 
 #

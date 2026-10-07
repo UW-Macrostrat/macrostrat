@@ -39,7 +39,7 @@ from rich import print
 from rich.table import Table
 from typer import Argument, Option, Typer
 
-from macrostrat.core.database import get_database
+from macrostrat.core.database import get_database, set_audit_context
 from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import writes
@@ -126,6 +126,11 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def _cli_actor(orcid: Optional[str]) -> str:
+    """The audit actor for a CLI write: the named admin, else the CLI itself."""
+    return f"orcid:{orcid}" if orcid else "system:cli"
+
+
 def _user_id_for(db, sub: str) -> int:
     """Resolve an ORCID iD to a user id, or fail loudly."""
     sql = 'SELECT id FROM macrostrat_auth."user" WHERE sub = :sub'
@@ -181,6 +186,11 @@ def create_token(
 
     user_id = _user_id_for(db, sub) if sub else None
     issuer_id = _user_id_for(db, created_by) if created_by else None
+
+    # Name the issuer in the change-tracking trail the way api-v3 does for the
+    # same write, so a token minted here and one minted on the website read
+    # alike; without --created-by the trail says the CLI did it.
+    set_audit_context(db, _cli_actor(created_by), local=False)
 
     expires_on = datetime.now(timezone.utc) + timedelta(days=days)
     token = sign_delegated_token(label, expires_on)
@@ -322,6 +332,7 @@ def revoke_token(
     """Revoke a token by expiring it. The row is kept for the record."""
 
     db = get_database()
+    set_audit_context(db, _cli_actor(None), local=False)
     revoked = db.run_query(_REVOKE_TOKEN, {"token_id": token_id}).scalar()
     db.session.commit()
 

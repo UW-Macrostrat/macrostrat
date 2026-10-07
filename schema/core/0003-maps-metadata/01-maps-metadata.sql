@@ -148,6 +148,7 @@ ALTER TABLE ONLY maps_metadata.map_files
 ALTER TABLE ONLY maps_metadata.map_files
     ADD CONSTRAINT map_files_object_id_fkey FOREIGN KEY (object_id) REFERENCES storage.objects(id);
 
-GRANT SELECT,UPDATE ON TABLE maps_metadata.ingest_process TO web_user;
+GRANT SELECT ON TABLE maps_metadata.ingest_process TO web_user;
+GRANT UPDATE ON TABLE maps_metadata.ingest_process TO web_admin;
 
 GRANT USAGE ON SCHEMA maps_metadata TO web_admin;

@@ -1,6 +1,10 @@
 CREATE SCHEMA IF NOT EXISTS macrostrat_api;
 
-GRANT SELECT, UPDATE ON maps_metadata.ingest_process TO web_user;
+-- Reading the ingestion queue is open; changing it is an administrator's
+-- job. A signed-in user (web_user) is anyone with an ORCID iD, so writes are
+-- never granted to that tier.
+GRANT SELECT ON maps_metadata.ingest_process TO web_user;
+GRANT UPDATE ON maps_metadata.ingest_process TO web_admin;
 
 -- removed duplicate map_ingest_metadata
 CREATE OR REPLACE VIEW macrostrat_api.map_ingest AS
@@ -40,9 +44,12 @@ create or replace view macrostrat_api.maps_sources AS
 
 
 
-GRANT SELECT, UPDATE ON macrostrat_api.map_ingest TO web_user, web_admin;
-GRANT SELECT, UPDATE ON macrostrat_api.map_ingest_tags TO web_user, web_admin;
-GRANT SELECT, UPDATE ON macrostrat_api.maps_sources TO web_user, web_admin;
+GRANT SELECT ON macrostrat_api.map_ingest TO web_user;
+GRANT SELECT ON macrostrat_api.map_ingest_tags TO web_user;
+GRANT SELECT ON macrostrat_api.maps_sources TO web_user;
+GRANT UPDATE ON macrostrat_api.map_ingest TO web_admin;
+GRANT UPDATE ON macrostrat_api.map_ingest_tags TO web_admin;
+GRANT UPDATE ON macrostrat_api.maps_sources TO web_admin;
 
 
 GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
