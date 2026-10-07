@@ -288,6 +288,59 @@ async def revoke_token(engine: AsyncEngine, token_id: int) -> str:
         return "already_expired" if exists.scalar() is not None else "not_found"
 
 
+async def list_users(
+    async_session: async_sessionmaker[AsyncSession],
+    query: str | None = None,
+    limit: int = 500,
+) -> list[schemas.User]:
+    """Users, newest first, optionally narrowed by a case-insensitive search
+    over name, display name, email and ORCID iD (`sub`)."""
+    async with async_session() as session:
+        stmt = select(schemas.User).order_by(schemas.User.id.desc()).limit(limit)
+        term = (query or "").strip()
+        if term:
+            pattern = f"%{term}%"
+            stmt = stmt.where(
+                schemas.User.name.ilike(pattern)
+                | schemas.User.display_name.ilike(pattern)
+                | schemas.User.email.ilike(pattern)
+                | schemas.User.sub.ilike(pattern)
+            )
+        return list(await session.scalars(stmt))
+
+
+async def get_user_by_id(
+    async_session: async_sessionmaker[AsyncSession], user_id: int
+) -> schemas.User | None:
+    async with async_session() as session:
+        return await session.get(schemas.User, user_id)
+
+
+async def list_roles(
+    async_session: async_sessionmaker[AsyncSession],
+) -> list[schemas.Role]:
+    """Every application role, in a stable order."""
+    async with async_session() as session:
+        stmt = select(schemas.Role).order_by(schemas.Role.id)
+        return list(await session.scalars(stmt))
+
+
+async def set_user_role(engine: AsyncEngine, user_id: int, role: str) -> bool:
+    """Move a user to another application role. False if there is no such user.
+
+    The role itself is validated by the foreign key, so an unknown name raises
+    rather than being stored.
+    """
+    async with engine.begin() as conn:
+        stmt = (
+            update(schemas.User)
+            .where(schemas.User.id == user_id)
+            .values(role=role)
+            .returning(schemas.User.id)
+        )
+        return (await conn.execute(stmt)).scalar() is not None
+
+
 #
 # Here starts the use on the engine object directly
 #
