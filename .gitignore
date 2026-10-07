@@ -9,6 +9,9 @@ macrostrat.toml
 .idea
 .idea/data_source_mapping.xml
 
+# Worktrees
+.worktrees
+
 macrostrat_staging_context.json
 
 ~*.xlsx
