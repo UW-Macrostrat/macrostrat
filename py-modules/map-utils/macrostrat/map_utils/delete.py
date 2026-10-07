@@ -11,6 +11,8 @@ from psycopg.sql import Identifier
 
 from macrostrat.database import Database
 
+from .slugs import staging_table
+
 
 @dataclass
 class StorageConfig:
@@ -24,7 +26,7 @@ class StorageConfig:
 
 
 def _delete_staging_objects(db: Database, slug: str, storage: StorageConfig) -> int:
-    """removes of every staged map under ``<slug>/``.
+    """removes every staged object linked to the map in ``maps_metadata.map_files``.
     this deletes all matching objects with no promp. The database is the source of truth:
      for each object we unlink its ingest references, delete the storage row, then remove it from MinIO.
     """
@@ -33,15 +35,17 @@ def _delete_staging_objects(db: Database, slug: str, storage: StorageConfig) -> 
     objects = (
         db.run_query(
             """
-            SELECT id, key
-            FROM storage.objects
-            WHERE scheme = 's3'
-              AND host = :host
-              AND bucket = :bucket
-              AND key LIKE :prefix
-            ORDER BY key
+            SELECT o.id, o.key
+            FROM storage.objects o
+            JOIN maps_metadata.map_files f ON f.object_id = o.id
+            JOIN maps.sources s ON s.source_id = f.source_id
+            WHERE o.scheme = 's3'
+              AND o.host = :host
+              AND o.bucket = :bucket
+              AND s.slug = :slug
+            ORDER BY o.key
             """,
-            dict(host=storage.endpoint, bucket=storage.bucket, prefix=f"{slug}/%"),
+            dict(host=storage.endpoint, bucket=storage.bucket, slug=slug),
         )
         .mappings()
         .all()
@@ -91,10 +95,10 @@ def delete_map(
     line_table = tables.primary_line_table if tables is not None else None
     poly_table = tables.primary_table if tables is not None else None
     if line_table is None:
-        line_table = f"{slug}_lines"
+        line_table = staging_table(slug, "lines")
     if poly_table is None:
-        poly_table = f"{slug}_polygons"
-    points_table = f"{slug}_points"
+        poly_table = staging_table(slug, "polygons")
+    points_table = staging_table(slug, "points")
 
     for table in (line_table, poly_table, points_table):
         db.run_sql(

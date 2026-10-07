@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.prompt import Prompt
 from typer import Argument, Option
 
+from macrostrat.core.exc import MacrostratError
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
     PointsTableUpdater,
@@ -24,8 +25,10 @@ from macrostrat.map_integration.utils import IngestionCLI
 from macrostrat.map_integration.utils.map_info import (
     MapExclude,
     MapSelector,
+    get_map_info,
     resolve_maps,
 )
+from macrostrat.map_utils.slugs import slug_forms, staging_table, table_prefix
 
 console = Console()
 
@@ -177,7 +180,7 @@ def resolve_target(
         # Context table belongs to a different slug; re-derive its layer suffix.
         for suffix in ("_polygons", "_lines", "_points"):
             if table.endswith(suffix):
-                return TableTarget(schema="sources", table=slug + suffix)
+                return TableTarget(schema="sources", table=table_prefix(slug) + suffix)
         raise ValueError(
             f"Cannot infer a layer from context table '{table}'. Pass --layer."
         )
@@ -186,7 +189,7 @@ def resolve_target(
     if layer not in ("polygons", "lines", "points"):
         raise ValueError("--layer must be one of: polygons, lines, points")
 
-    return TableTarget(schema="sources", table=f"{slug}_{layer}")
+    return TableTarget(schema="sources", table=staging_table(slug, layer))
 
 
 # Options appended to every context-driven command by the --slug/--layer override.
@@ -217,10 +220,15 @@ def strip_strat_name_suffixes(value: str) -> str:
 def set_current_map(slug: str):
     """Set the current map slug and default base table."""
     slug = validate_identifier(slug, "slug")
+    try:
+        # Recorded as `maps.sources` has it, for the lookups that match it exactly
+        slug = get_map_info(get_database(), slug).slug
+    except MacrostratError:
+        pass
     context = load_map_context()
     context["schema"] = "sources"
     context["slug"] = slug
-    context["table"] = slug
+    context["table"] = table_prefix(slug)
     save_map_context(context)
 
 
@@ -235,7 +243,7 @@ def set_current_layer(layer: str):
     if not slug:
         raise ValueError("No slug is set. Run 'set-map <slug>' first.")
 
-    context["table"] = f"{slug}_{layer}"
+    context["table"] = staging_table(slug, layer)
     save_map_context(context)
 
 
@@ -291,7 +299,7 @@ def append_ingest_comment_for_current_slug(
             WHEN comments LIKE '%' || :comment || '%' THEN comments
             ELSE comments || ' ' || :comment
         END
-        WHERE slug = :slug
+        WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
         """,
         dict(
             slug=slug,
@@ -1776,7 +1784,7 @@ def update_ingest_status(
         """
         SELECT count(*)
         FROM maps_metadata.ingest_process
-        WHERE slug = :slug
+        WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
         """,
         dict(slug=slug),
     ).scalar()
@@ -1793,7 +1801,7 @@ def update_ingest_status(
         """
         UPDATE maps_metadata.ingest_process
         SET state = :state
-        WHERE slug = :slug
+        WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
         """,
         dict(slug=slug, state=state),
     )
@@ -1802,7 +1810,7 @@ def update_ingest_status(
         """
     UPDATE maps_metadata.ingest_process
     SET comments = 'metadata manually processed; polygons processed; lines processed; points processed;'
-    WHERE slug = :slug
+    WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
     """,
         dict(slug=slug, state=state),
     )
@@ -2127,7 +2135,7 @@ def _has_ingest_process_tag(db, slug: str, tag: str) -> bool:
             SELECT 1
             FROM maps_metadata.ingest_process_tag t
             JOIN maps_metadata.ingest_process i ON i.source_id = t.source_id
-            WHERE i.slug = :slug
+            WHERE i.source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
               AND t.tag = :tag
             """,
             dict(slug=slug, tag=tag),
@@ -2167,7 +2175,7 @@ def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         INSERT INTO maps_metadata.ingest_process_tag (source_id, tag)
         SELECT i.source_id, :tag
         FROM maps_metadata.ingest_process i
-        WHERE i.slug = :slug
+        WHERE i.source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
         ON CONFLICT DO NOTHING
         """,
         dict(slug=slug, tag=tag),
@@ -2213,7 +2221,7 @@ def remove_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
         DELETE FROM maps_metadata.ingest_process_tag t
         USING maps_metadata.ingest_process i
         WHERE t.source_id = i.source_id
-          AND i.slug = :slug
+          AND i.source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
           AND t.tag = :tag
         """,
         dict(slug=slug, tag=tag),
@@ -2274,7 +2282,7 @@ def update_process_flag_for_current_context(dry_run: bool = False):
         """
         SELECT count(*)
         FROM maps_metadata.ingest_process
-        WHERE slug = :slug
+        WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
         """,
         dict(slug=slug),
     ).scalar()
@@ -2297,7 +2305,7 @@ def update_process_flag_for_current_context(dry_run: bool = False):
             i.source_id,
             :tag
         FROM maps_metadata.ingest_process i
-        WHERE i.slug = :slug
+        WHERE i.source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
           AND NOT EXISTS (
               SELECT 1
               FROM maps_metadata.ingest_process_tag t
@@ -4631,7 +4639,7 @@ def normalize_points_review_orientation(
     selected = resolve_maps(db, maps, exclude=exclude)
 
     for i, m in enumerate(selected, start=1):
-        target = TableTarget(schema="sources", table=f"{m.slug}_points")
+        target = TableTarget(schema="sources", table=staging_table(m.slug, "points"))
         console.print(f"\n[bold cyan]({i}/{len(selected)}) {m.slug}[/bold cyan]")
         try:
             review_orientation_values(target=target, dry_run=dry_run)
@@ -5047,15 +5055,16 @@ def apply_japan_line_point_types_from_temp(
     slugs = list(
         db.run_query(
             """
-            SELECT slug
-            FROM maps_metadata.ingest_process
-            WHERE slug ILIKE 'japan%'
-            ORDER BY slug
+            SELECT s.slug
+            FROM maps.sources s
+            JOIN maps_metadata.ingest_process USING (source_id)
+            WHERE s.slug ILIKE 'japan%'
+            ORDER BY s.slug
             """
         ).scalars()
     )
     if only is not None:
-        slugs = [s for s in slugs if s == only]
+        slugs = [s for s in slugs if s in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Japan slug matches '{only}'")
 
@@ -5063,8 +5072,8 @@ def apply_japan_line_point_types_from_temp(
     for position, slug in enumerate(slugs, start=1):
         console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
         try:
-            points = TableTarget(schema="sources", table=slug + "_points")
-            lines = TableTarget(schema="sources", table=slug + "_lines")
+            points = TableTarget(schema="sources", table=staging_table(slug, "points"))
+            lines = TableTarget(schema="sources", table=staging_table(slug, "lines"))
 
             n = db.run_query(
                 """
@@ -5135,7 +5144,7 @@ def get_japan_descrips_points_lines():
     db = get_database()
 
     slugs = db.run_query(
-        "select slug from maps_metadata.ingest_process where slug ilike 'japan%';"
+        "select s.slug from maps.sources s join maps_metadata.ingest_process using (source_id) where s.slug ilike 'japan%';"
     ).scalars()
 
     for slug in slugs:
@@ -5145,14 +5154,14 @@ def get_japan_descrips_points_lines():
             SELECT DISTINCT descrip FROM {table}
             WHERE descrip IS NOT NULL AND coalesce(omit, false) = false
             ON CONFLICT DO NOTHING;""",
-            dict(table=Identifier("sources", slug + "_points")),
+            dict(table=Identifier("sources", staging_table(slug, "points"))),
         )
         db.run_sql(
             """INSERT INTO temp.japan_line_types (description) 
             SELECT DISTINCT descrip FROM {table}
             WHERE descrip IS NOT NULL AND coalesce(omit, false) = false
             ON CONFLICT DO NOTHING;""",
-            dict(table=Identifier("sources", slug + "_lines")),
+            dict(table=Identifier("sources", staging_table(slug, "lines"))),
         )
         db.session.commit()
 
@@ -5164,7 +5173,7 @@ def store_az_line_point_types_to_temp():
     db = get_database()
 
     slugs = db.run_query(
-        "select slug from maps_metadata.ingest_process where slug ilike 'arizona%' and slug not ilike 'arizona_adgm%';"
+        "select s.slug from maps.sources s join maps_metadata.ingest_process using (source_id) where s.slug ilike 'arizona%' and s.slug not ilike 'arizona_adgm%';"
     ).scalars()
 
     for slug in slugs:
@@ -5175,14 +5184,14 @@ def store_az_line_point_types_to_temp():
             SELECT DISTINCT point_type FROM {table}
             WHERE point_type IS NOT NULL AND coalesce(omit, false) = false
             ON CONFLICT DO NOTHING;""",
-            dict(table=Identifier("sources", slug + "_points")),
+            dict(table=Identifier("sources", staging_table(slug, "points"))),
         )
         db.run_sql(
             """INSERT INTO temp.arizona_line_types (orig_line_type) 
             SELECT DISTINCT type FROM {table}
             WHERE type IS NOT NULL AND coalesce(omit, false) = false
             ON CONFLICT DO NOTHING;""",
-            dict(table=Identifier("sources", slug + "_lines")),
+            dict(table=Identifier("sources", staging_table(slug, "lines"))),
         )
         db.session.commit()
 
@@ -5204,16 +5213,17 @@ def apply_az_line_point_types_from_temp(
     slugs = list(
         db.run_query(
             """
-            SELECT slug
-            FROM maps_metadata.ingest_process
-            WHERE slug ILIKE 'arizona%'
-              AND slug NOT ILIKE 'arizona_adgm%'
-            ORDER BY slug
+            SELECT s.slug
+            FROM maps.sources s
+            JOIN maps_metadata.ingest_process USING (source_id)
+            WHERE s.slug ILIKE 'arizona%'
+              AND s.slug NOT ILIKE 'arizona_adgm%'
+            ORDER BY s.slug
             """
         ).scalars()
     )
     if only is not None:
-        slugs = [s for s in slugs if s == only]
+        slugs = [s for s in slugs if s in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Arizona slug matches '{only}'")
 
@@ -5221,8 +5231,8 @@ def apply_az_line_point_types_from_temp(
     for position, slug in enumerate(slugs, start=1):
         console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
         try:
-            points = TableTarget(schema="sources", table=slug + "_points")
-            lines = TableTarget(schema="sources", table=slug + "_lines")
+            points = TableTarget(schema="sources", table=staging_table(slug, "points"))
+            lines = TableTarget(schema="sources", table=staging_table(slug, "lines"))
 
             # The join reads pre-update values within a single statement, so
             # overwriting the join column here is safe.
@@ -5312,19 +5322,23 @@ def normalize_az(
     slugs = list(
         db.run_query(
             """
-            SELECT slug
-            FROM maps_metadata.ingest_process
-            WHERE slug ILIKE 'arizona%'
-              AND slug NOT ILIKE 'arizona_adgm%'
-            ORDER BY slug
+            SELECT s.slug
+            FROM maps.sources s
+            JOIN maps_metadata.ingest_process USING (source_id)
+            WHERE s.slug ILIKE 'arizona%'
+              AND s.slug NOT ILIKE 'arizona_adgm%'
+            ORDER BY s.slug
             """
         ).scalars()
     )
     if only is not None:
-        slugs = [slug for slug in slugs if slug == only]
+        slugs = [slug for slug in slugs if slug in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Arizona slug matches '{only}'")
     elif start_after is not None:
+        start_after = next(
+            (s for s in slug_forms(start_after) if s in slugs), start_after
+        )
         if start_after not in slugs:
             raise ValueError(f"No Arizona slug matches '{start_after}'")
         slugs = slugs[slugs.index(start_after) + 1 :]
@@ -5363,7 +5377,7 @@ def _normalize_az_slug(db, slug: str, layers: list[str]):
     """Normalize every layer of one Arizona map, committing on success."""
     for layer in layers:
         # add preferred columns
-        target = TableTarget(schema="sources", table=slug + layer)
+        target = TableTarget(schema="sources", table=table_prefix(slug) + layer)
         try:
             add_preferred_columns(target=target)
         except ValueError as e:

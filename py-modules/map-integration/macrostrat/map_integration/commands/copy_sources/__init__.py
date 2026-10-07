@@ -15,6 +15,7 @@ from typer import Argument, Option
 from macrostrat.database import Database
 from macrostrat.database.postgresql import on_conflict, table_exists
 from macrostrat.database.transfer import move_tables
+from macrostrat.map_utils.slugs import staging_table
 from macrostrat.utils import get_logger
 
 from ...database import get_database
@@ -121,7 +122,7 @@ def copy_macrostrat_source(
     from_db: Database, to_db: Database, slug: str, message: str, replace: bool
 ):
     tables = [
-        Identifier("sources", slug + "_" + dtype)
+        Identifier("sources", staging_table(slug, dtype))
         for dtype in ["points", "lines", "polygons"]
     ]
     # TODO: this only includes a very restricted set of tables per source, but maybe it needs to

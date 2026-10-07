@@ -3,7 +3,7 @@
 Geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are drawn in the
 web boundary editor (`/dev/map/bounds/<slug>`) or in QGIS, which edits
 `map_bounds.boundary_op` directly as a PostGIS layer. This CLI covers the
-parameter-only operations, ordering, inspection and building.
+parameter-only operations, polar caps, ordering, inspection and building.
 """
 
 import inspect
@@ -220,6 +220,38 @@ def open_cmd(
     build_mod.set_opening(db, m.map_id, operation)
     db.session.commit()
     print(f"{m.slug} now opens with [bold]{operation}[/]")
+    print("[dim]Run `macrostrat bounds build` to apply.[/]")
+
+
+@cli.command("cap")
+def cap(
+    map: Annotated[str, Argument(help="Map slug or source id")],
+    edge: Annotated[
+        float,
+        Option(help="Latitude of the cap's edge; negative for a south polar cap"),
+    ],
+    note: Annotated[
+        Optional[str], Option(help="Why the boundary opens this way")
+    ] = None,
+):
+    """Open a boundary with a polar cap: everything poleward of a latitude.
+
+    For a polar map, whose union of features is fraught across the pole and the
+    antimeridian. Replaces the opening operation; the operations after it are
+    kept, so slivers can be added to or subtracted from the cap.
+    """
+    db = get_database()
+    m = _resolve_one(map)
+    side = "south" if edge < 0 else "north"
+    try:
+        edit.open_cap(
+            db, m.map_id, edge, note or f"The {side} polar cap poleward of {edge}°"
+        )
+    except edit.EditError as err:
+        print(f"[red]{err}[/]")
+        raise typer.Exit(1)
+    db.session.commit()
+    print(f"{m.slug} now opens with the {side} polar cap poleward of {edge}°")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 

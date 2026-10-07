@@ -52,6 +52,7 @@ ENV GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR \
 
 # NEED TO specify another build context for the py-modules directory
 COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
+COPY --from=py-modules map-utils /py-modules/map-utils
 
 # Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \

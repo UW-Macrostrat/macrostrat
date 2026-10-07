@@ -279,22 +279,21 @@ def confirm_delete(count: int) -> bool:
 
 
 def get_objects_for_slug(db, *, host: str, bucket: str, slug: str) -> list[dict]:
+    # Through map_files, not the key: keys keep the slug they were uploaded under.
     return (
         db.run_query(
             """
-        SELECT id, key
-        FROM storage.objects 
-        WHERE scheme = 's3'
-          AND host = :host
-          AND bucket = :bucket
-          AND key LIKE :prefix
-        ORDER BY key
+        SELECT o.id, o.key
+        FROM storage.objects o
+        JOIN maps_metadata.map_files f ON f.object_id = o.id
+        JOIN maps.sources s ON s.source_id = f.source_id
+        WHERE o.scheme = 's3'
+          AND o.host = :host
+          AND o.bucket = :bucket
+          AND s.slug = :slug
+        ORDER BY o.key
         """,
-            dict(
-                host=host,
-                bucket=bucket,
-                prefix=f"{slug}/%",
-            ),
+            dict(host=host, bucket=bucket, slug=slug),
         )
         .mappings()
         .all()

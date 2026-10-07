@@ -6,11 +6,10 @@ import geopandas as G
 import pandas as pd
 
 from macrostrat.core.database import get_database
+from macrostrat.map_utils.slugs import slugify
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
-
-SLUG_SAFE_CHARS = re.compile(r"[^a-z0-9_]+")
 
 
 def default_filter(path: Path) -> bool:
@@ -70,65 +69,44 @@ def normalize_slug(prefix: str, path: Path) -> tuple[str, str, str]:
     """
     Normalize a slug and also return a human-readable name and the file extension.
     Returns:
-        slug:  e.g. "arizona_adamsmesa"
+        slug:  e.g. "arizona-adamsmesa"
         name:  e.g. "Adams Mesa, Arizona"
         ext:   e.g. ".gdb"
     """
     ext = path.suffix.lower()
-    # base filename without extension, e.g. "SaddleMountain" from "SaddleMountain.gdb"
-    stem_for_slug = path.stem.strip()
-    stem_for_slug = re.sub(r"\s+", "_", stem_for_slug)
-    stem_for_slug = stem_for_slug.lower()
-
-    clean_stem = SLUG_SAFE_CHARS.sub("", stem_for_slug)
-    clean_stem = re.sub(r"_+", "_", clean_stem).strip("_")
-
-    slug = f"{prefix}_{clean_stem}"
+    slug = f"{slugify(prefix)}-{slugify(path.stem)}"
     filename = path.stem.replace("_", " ")
     filename = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", filename)
     filename = re.sub(r"\s+", " ", filename).strip()
-    region = prefix.replace("_", " ").title()
-    name = f"{filename}, {region}"
+    name = f"{filename}, {_title(slugify(prefix))}"
 
     return slug, name, ext
 
 
 def resolve_slug_from_path(prefix: str, path: Path) -> tuple[str, str, str]:
     """
-    If path.stem is already in slug format and begins with '<prefix>_',
-    use it directly. Otherwise fall back to normalize_slug(prefix, path).
+    If path.stem already names the map under '<prefix>', use it as the slug.
+    Otherwise fall back to normalize_slug(prefix, path).
 
     Example:
       prefix='japan', path='japan_shiriya_zaki' ->
-          ('japan_shiriya_zaki', 'Shiriya Zaki, Japan', '')
+          ('japan-shiriya-zaki', 'Shiriya Zaki, Japan', '')
       prefix='japan', path='Shiriya Zaki' ->
-          ('japan_shiriya_zaki', 'Shiriya Zaki, Japan', '')
+          ('japan-shiriya-zaki', 'Shiriya Zaki, Japan', '')
     """
     ext = path.suffix.lower()
-    stem = path.stem.strip()
+    clean_prefix = slugify(prefix)
+    candidate = slugify(path.stem)
 
-    clean_prefix = prefix.strip().lower()
-    clean_prefix = re.sub(r"\s+", "_", clean_prefix)
-    clean_prefix = SLUG_SAFE_CHARS.sub("", clean_prefix)
-    clean_prefix = re.sub(r"_+", "_", clean_prefix).strip("_")
-
-    candidate = stem.lower().strip()
-    candidate = re.sub(r"_+", "_", candidate)
-
-    already_prefixed = candidate.startswith(f"{clean_prefix}_")
-    slug_safe = SLUG_SAFE_CHARS.sub("", candidate) == candidate
-
-    if already_prefixed and slug_safe:
-        slug = candidate
-
-        place = slug[len(clean_prefix) + 1 :]
-        place_name = place.replace("_", " ").title()
-        region_name = clean_prefix.replace("_", " ").title()
-        name = f"{place_name}, {region_name}"
-
-        return slug, name, ext
+    if candidate.startswith(f"{clean_prefix}-"):
+        place = candidate[len(clean_prefix) + 1 :]
+        return candidate, f"{_title(place)}, {_title(clean_prefix)}", ext
 
     return normalize_slug(prefix, path)
+
+
+def _title(slug: str) -> str:
+    return slug.replace("-", " ").title()
 
 
 def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
@@ -136,32 +114,29 @@ def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
     Generates a human-readable name from a slug, handling prefix-first
     or prefix-last ordering.
     """
+    slug = slug.replace("_", "-")
     region = ""
     place = ""
 
     if prefix:
-        # Clean the prefix just in case it has spaces or odd casing
-        clean_prefix = prefix.lower().replace(" ", "_")
-        # Check if the slug STARTS with the prefix (e.g., "arizona_mesa")
-        if slug.startswith(f"{clean_prefix}_"):
+        clean_prefix = slugify(prefix)
+        # Check if the slug STARTS with the prefix (e.g., "arizona-mesa")
+        if slug.startswith(f"{clean_prefix}-"):
             place = slug[len(clean_prefix) + 1 :]
             region = clean_prefix
-        # Check if the slug ENDS with the prefix (e.g., "mesa_arizona")
-        elif slug.endswith(f"_{clean_prefix}"):
+        # Check if the slug ENDS with the prefix (e.g., "mesa-arizona")
+        elif slug.endswith(f"-{clean_prefix}"):
             place = slug[: -(len(clean_prefix) + 1)]
             region = clean_prefix
     # If no prefix was passed (or it didn't match), fallback to the default assumption
     if not region:
-        parts = slug.split("_", 1)
+        parts = slug.split("-", 1)
         if len(parts) == 2:
             region, place = parts
         else:
-            return slug.title()
-    # Format both parts to Title Case
-    region_name = region.replace("_", " ").title()
-    place_name = place.replace("_", " ").title()
+            return _title(slug)
 
-    return f"{place_name}, {region_name}"
+    return f"{_title(place)}, {_title(region)}"
 
 
 def get_age_interval_df(db) -> pd.DataFrame:
@@ -314,8 +289,7 @@ def process_sources_metadata(
 
 
 def insert_sources_metadata(db, data_path, slug: str):
-    get_name_from_slug(slug)
-    slug, name, ext = normalize_slug(prefix, Path(data_path))
+    name = get_name_from_slug(slug)
     source_id = db.run_query(
         "SELECT source_id FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),

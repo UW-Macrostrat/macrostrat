@@ -11,6 +11,8 @@ from typing import Any
 import requests
 from requests import HTTPAdapter
 
+from macrostrat.map_utils.slugs import slugify
+
 SESSION = requests.Session()
 SESSION.mount("https://", HTTPAdapter(max_retries=5))
 TIMEOUT = 10  # seconds
@@ -59,9 +61,7 @@ def main() -> None:
 
     for map in maps:
         collection_id = map["collection_id"]
-        normalized_id = re.sub(r"\W", "_", collection_id).lower()
-
-        slug = f"arizona_{normalized_id}"
+        slug = slugify(f"arizona-{collection_id}")
         name = map["metadata"]["title"]
 
         website_url = None

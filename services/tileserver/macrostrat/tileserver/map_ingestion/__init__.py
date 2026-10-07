@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, Response
 from sqlparse import format as format_sql
 from titiler.core.models.mapbox import TileJSON
 
+from macrostrat.map_utils.slugs import is_slug, staging_table
 from macrostrat.tileserver_utils import MimeTypes
 from macrostrat.utils import get_logger
 
@@ -52,6 +53,10 @@ async def tilejson(
     slug: str,
 ):
     """Return TileJSON document."""
+    # Old underscore slugs name the same staging tables
+    slug = slug.replace("_", "-")
+    if not is_slug(slug):
+        return Response(status_code=404, content=f"No map {slug!r}")
     url_path = request.url_for(
         "tile", **{"slug": slug, "z": "{z}", "x": "{x}", "y": "{y}"}
     )
@@ -59,9 +64,8 @@ async def tilejson(
     tile_endpoint = str(url_path)
     tile_endpoint = tile_endpoint.replace("http://", "https://")
     base_queries = [
-        f"SELECT geom FROM sources.{slug}_polygons",
-        f"SELECT geom FROM sources.{slug}_lines",
-        f"SELECT geom FROM sources.{slug}_points",
+        f"SELECT geom FROM sources.{staging_table(slug, kind)}"
+        for kind in ("polygons", "lines", "points")
     ]
 
     bounds = None
@@ -100,6 +104,10 @@ async def tile(
     #    return Response(status_code=404, content="Only polygons are supported for now")
 
     """Get a tile from the tileserver."""
+    # Old underscore slugs name the same staging tables
+    slug = slug.replace("_", "-")
+    if not is_slug(slug):
+        return Response(status_code=404, content=f"No map {slug!r}")
     pool = request.app.state.pool
 
     data = b""
@@ -121,7 +129,7 @@ async def tile(
 
 async def get_layer(pool, slug, layer: FeatureType, **params):
     async with pool.acquire() as con:
-        table_name = f"{slug}_{layer.value}"
+        table_name = staging_table(slug, layer.value)
         alias = "s"
         column_dict = await get_table_columns(con, table_name, schema="sources")
 

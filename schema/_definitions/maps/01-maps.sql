@@ -73,7 +73,9 @@ CREATE TABLE maps.sources (
   feature_url_template text
     CONSTRAINT sources_feature_url_template_has_orig_id
     CHECK (strpos(feature_url_template, '{orig_id}') > 0),
-  CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id)
+  CONSTRAINT sources_not_self_superseding CHECK (superseded_by <> source_id),
+  -- Kebab-case; table names derive from it with underscores (map_utils.slugs)
+  CONSTRAINT sources_slug_kebab CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')
 );
 
 CREATE INDEX sources_superseded_by_idx ON maps.sources USING btree (superseded_by);

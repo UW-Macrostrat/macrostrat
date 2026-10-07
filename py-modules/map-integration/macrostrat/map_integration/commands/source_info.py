@@ -1,6 +1,8 @@
 from psycopg2.sql import Identifier
 from rich import print
 
+from macrostrat.map_utils.slugs import staging_table
+
 from ..database import get_database
 from ..utils import MapInfo, feature_counts, table_exists
 
@@ -17,7 +19,7 @@ def source_info(source: MapInfo):
     # Check table contents
 
     for table in ["polygons", "lines", "points"]:
-        table_name = f"{info.slug}_{table}"
+        table_name = staging_table(info.slug, table)
         exists = table_exists(db, table_name, schema="sources")
         print(f"{table_name}: {exists}")
         identifier = Identifier("sources", table_name)

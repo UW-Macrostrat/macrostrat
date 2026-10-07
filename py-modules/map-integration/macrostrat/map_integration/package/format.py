@@ -29,6 +29,8 @@ import pyogrio
 import shapely
 from sqlalchemy import text
 
+from macrostrat.map_utils.slugs import STAGING_KINDS, slugify, staging_table
+
 FORMAT_NAME = "macrostrat-map-package"
 # The newest version this code reads. Full packages are still written as 1, so
 # older readers load them; partial packages (version 2) must be refused there.
@@ -55,7 +57,7 @@ def quote(name: str) -> str:
 
 
 def qualified(table: str) -> str:
-    """Quote a `schema.table` name; slugs contain hyphens."""
+    """Quote a `schema.table` name; packages from before kebab slugs have hyphens."""
     schema, name = table.split(".", 1)
     return quote(schema) + "." + quote(name)
 
@@ -342,7 +344,7 @@ class Package:
             df = pyogrio.read_dataframe(
                 self.path, layer=name, skip_features=skip, max_features=CHUNK_SIZE
             )
-            yield _decode(df, layer)
+            yield [_kebab(row) for row in _decode(df, layer)]
 
     def all_rows(self, name: str) -> list[dict]:
         return [row for chunk in self.rows(name) for row in chunk]
@@ -359,6 +361,28 @@ class Package:
                     f"SELECT DISTINCT {quote(column)} FROM {quote(name)}"
                 )
             }
+
+
+# Packages written before slugs were kebab-case carry the old forms.
+SLUG_COLUMNS = ("slug", "superseded_by_slug", "compilation_slug", "member_slug")
+
+
+def _kebab(row: dict) -> dict:
+    for col in SLUG_COLUMNS:
+        if row.get(col) is not None:
+            row[col] = slugify(row[col])
+    return row
+
+
+def _staging_layer(table: str, owner: Optional[str]) -> tuple[str, Optional[str]]:
+    """An owned staging table, renamed to the prefix its kebab slug derives."""
+    if owner is None:
+        return table, None
+    slug = slugify(owner)
+    for kind in STAGING_KINDS:
+        if table == f"sources.{owner}_{kind}":
+            return f"sources.{staging_table(slug, kind)}", slug
+    return table, slug
 
 
 def _decode(df: P.DataFrame, layer: Layer) -> list[dict]:
@@ -406,6 +430,7 @@ def read_package(path) -> Package:
                     (name,),
                 )
             ]
+            table, owner = _staging_layer(table, owner)
             pkg.layers[name] = Layer(
                 name, table, columns, geom, srid or 0, count, owner
             )

@@ -11,7 +11,7 @@ from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.map_info import get_map_info
 
 SOURCE_ID = 999001
-SLUG = "test_bounds"
+SLUG = "test-bounds"
 
 # Disjoint, so the union keeps two parts.
 POLYGONS = [

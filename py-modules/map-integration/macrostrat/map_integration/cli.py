@@ -13,6 +13,7 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.environment import WriteScope
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
@@ -22,13 +23,19 @@ from macrostrat.map_integration.commands.prepare_fields.utils import PointsTable
 from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
-    normalize_slug,
     process_sources_metadata,
     resolve_slug_from_path,
 )
-from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_integration.utils.map_info import (
+    MapExclude,
+    MapSelector,
+    MapState,
+    get_map_info,
+    resolve_maps,
+)
 from macrostrat.map_integration.utils.s3_file_management import *
 from macrostrat.map_utils import StorageConfig, delete_map
+from macrostrat.map_utils.slugs import check_slug, staging_table
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -68,7 +75,14 @@ def set_active_map(map: MapInfo = None):
 cli.add_command(ingest_map, name="ingest")
 cli.add_command(export_command, name="export")
 cli.add_command(patch_command, name="patch")
-cli.add_command(prepare_fields, name="prepare-fields")
+cli.add_command(
+    prepare_fields,
+    name="prepare-fields",
+    deprecated=True,
+    help="Prepare empty fields for manual cleaning. Superseded by"
+    " `maps sources normalize`, which also reports, repairs and re-runs safely;"
+    " kept for --all and --recover.",
+)
 
 
 @cli.command(name="create-tables")
@@ -93,7 +107,7 @@ def create_tables(
 
     db = get_database()
     kinds = tuple(kind) if kind else tuple(COLUMN_SPECS)
-    for name in create_source_tables(db, normalize_slug(slug), kinds=kinds, srid=srid):
+    for name in create_source_tables(db, check_slug(slug), kinds=kinds, srid=srid):
         console.print(f"[green]created[/] {name}")
 
 
@@ -138,12 +152,58 @@ def _staging_storage_config() -> "StorageConfig | None":
     )
 
 
+@sources.command(name="normalize")
+def normalize_sources(
+    maps: MapSelector,
+    exclude: MapExclude = None,
+    state: MapState = None,
+    dry_run: bool = Option(False, "--dry-run", help="Report changes without writing"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
+):
+    """Make maps' staging tables ready to insert.
+
+    Brings each table to the standard columns (what `prepare-fields` did): the
+    geometry column named `geom`, `_pkid`, `source_id`, and legacy intervals and
+    `omit`, filled only where empty. Then changes single-part geometry columns
+    to multi, repairs invalid geometries, and fills an empty orig_id from a column
+    that obviously identifies features: integer-valued, never null, and unique or
+    nearly so.
+    """
+    from .commands.normalize_sources import normalize
+
+    db = get_database()
+    selected = resolve_maps(db, maps, exclude=exclude, state=state)
+    if not dry_run:
+        require_write_access(
+            WriteScope.Data,
+            assume_yes=yes,
+            action=f"normalizing staging tables of {len(selected)} map(s)",
+        )
+    for m in selected:
+        console.print(f"[bold]{m.slug}[/] [dim]#{m.id}[/]")
+        reports = normalize(db, m, apply=not dry_run)
+        if not reports:
+            console.print("  [yellow]no staging tables[/]")
+        for report in reports:
+            if not report.changes and not report.notes:
+                console.print(f"  [dim]{report.table}: nothing to do[/]")
+            for change in report.changes:
+                console.print(f"  {report.table}: [green]{change}[/]")
+            for note in report.notes:
+                console.print(f"  {report.table}: [yellow]{note}[/]")
+        if not dry_run:
+            db.session.commit()
+    if dry_run:
+        console.print("[dim]Dry run; nothing was written[/]")
+
+
 @sources.command(name="delete")
 def delete_sources(
     slug: list[str] = Argument(
         ...,
-        help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
-        + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
+        help="Slugs or source ids; or a file listing one per line; or - for stdin",
     ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
@@ -160,9 +220,23 @@ def delete_sources(
         with open(slug[0]) as file:
             slug = [line.strip() for line in file if line.strip()]
 
+    # Resolved before anything is deleted, so one bad name stops the whole batch
+    maps = []
+    missing = []
+    for identifier in slug:
+        try:
+            maps.append(get_map_info(db, identifier))
+        except MacrostratError:
+            missing.append(identifier)
+    if missing:
+        raise MacrostratError(
+            f"No map found for {len(missing)} of {len(slug)} names",
+            details="\n".join(missing),
+        )
+
     if dry_run:
         print("Deleting maps:")
-        print("  " + "\n  ".join(slug))
+        print("  " + "\n  ".join(f"{m.slug} ({m.id})" for m in maps))
 
         print("\nDry run; not actually deleting anything")
         return
@@ -175,26 +249,20 @@ def delete_sources(
         WriteScope.Data,
         assume_yes=yes,
         action=(
-            f"deletion of {len(slug)} map source(s)"
+            f"deletion of {len(maps)} map source(s)"
             + (" and their published data" if all_data else "")
         ),
     )
 
     storage = _staging_storage_config()
-    for s in slug:
-        print(f"Deleting map {s}")
-        # The published-data (`--all-data`) removal needs the source_id while the
-        # source row still exists, so handle it here before delegating the
-        # staging delete to the shared, GIS-free helper in macrostrat.map_utils.
+    for m in maps:
+        print(f"Deleting map {m.slug} ({m.id})")
+        # Published data goes first, while the source row it references remains;
+        # the staging delete is the shared, GIS-free helper in macrostrat.map_utils.
         if all_data:
-            source_id = db.run_query(
-                "SELECT source_id FROM maps.sources WHERE slug = :slug",
-                dict(slug=s),
-            ).scalar()
-            if source_id is not None:
-                _delete_map_data(db, source_id)
+            _delete_map_data(db, m.id)
 
-        delete_map(db, s, storage=storage)
+        delete_map(db, m.slug, storage=storage)
 
 
 @cli.command(name="change-slug")
@@ -210,8 +278,7 @@ def change_slug(
 
     db = get_database()
 
-    # Normalize the new slug
-    new_slug = new_slug.lower().replace(" ", "_").replace("_", "-")
+    new_slug = check_slug(new_slug)
 
     if new_slug == map.slug:
         return
@@ -237,15 +304,14 @@ def change_slug(
     with db.transaction():
         # Change sources table names
         for table in ["polygons", "lines", "points"]:
-            # Check if the table exists
-            if not table_exists(db, f"{map.slug}_{table}", schema="sources"):
+            old_table = staging_table(map.slug, table)
+            new_table = staging_table(new_slug, table)
+            if not table_exists(db, old_table, schema="sources"):
                 continue
 
             if dry_run:
-                print(f"Would rename {map.slug}_{table} to {new_slug}_{table}")
+                print(f"Would rename {old_table} to {new_table}")
                 continue
-            old_table = f"{map.slug}_{table}"
-            new_table = f"{new_slug}_{table}"
             db.run_query(
                 "ALTER TABLE {old_table} RENAME TO {new_table}",
                 dict(
@@ -258,8 +324,22 @@ def change_slug(
             return
 
         db.run_query(
-            "UPDATE maps.sources SET slug = :new_slug WHERE source_id = :source_id",
-            dict(new_slug=new_slug, source_id=map.id),
+            """
+            UPDATE maps.sources SET slug = :new_slug,
+              primary_table = CASE WHEN primary_table = :old_polygons
+                THEN :new_polygons ELSE primary_table END,
+              primary_line_table = CASE WHEN primary_line_table = :old_lines
+                THEN :new_lines ELSE primary_line_table END
+            WHERE source_id = :source_id
+            """,
+            dict(
+                new_slug=new_slug,
+                source_id=map.id,
+                old_polygons=staging_table(map.slug, "polygons"),
+                new_polygons=staging_table(new_slug, "polygons"),
+                old_lines=staging_table(map.slug, "lines"),
+                new_lines=staging_table(new_slug, "lines"),
+            ),
         )
         db.session.commit()
         print(f"Changed slug from {map.slug} to {new_slug}")
@@ -420,8 +500,8 @@ def staging(
     # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-        VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, polygon_state, line_state, point_state)
+        VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :polygon_state, :line_state, :point_state);
         """,
         dict(
             state=ingest_results["state"],
@@ -429,7 +509,6 @@ def staging(
             ingested_by="macrostrat-admin",
             ingest_pipeline=ingest_results["ingest_pipeline"],
             comments=ingest_results["comments"],
-            slug=slug,
             polygon_state=ingest_results["polygon_state"],
             line_state=ingest_results["line_state"],
             point_state=ingest_results["point_state"],
@@ -479,7 +558,7 @@ def cmd_reingest_points(
     """
     slug = _reingest_points_for_path(Path(data_path), prefix, crs=crs, filter=filter)
     console.print(
-        f"[green]Done:[/green] re-ingested sources.{slug}_points. "
+        f"[green]Done:[/green] re-ingested sources.{staging_table(slug, 'points')}. "
         f"Now run: [bold]normalize normalize_az --only {slug} --layer points[/bold]"
     )
 
@@ -522,7 +601,7 @@ def _reingest_points_for_path(
     )
 
     # Re-add _pkid, source_id, and the preferred point columns to the new table.
-    PointsTableUpdater(db, f"{slug}_points", "sources").run(source_id)
+    PointsTableUpdater(db, staging_table(slug, "points"), "sources").run(source_id)
     return slug
 
 
@@ -913,8 +992,8 @@ def staging_bulk(
 
         db.run_sql(
             """
-            INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-            VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+            INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, polygon_state, line_state, point_state)
+            VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :polygon_state, :line_state, :point_state);
             """,
             dict(
                 state=ingest_results["state"],
@@ -922,7 +1001,6 @@ def staging_bulk(
                 ingested_by="macrostrat-admin",
                 ingest_pipeline=ingest_results["ingest_pipeline"],
                 comments=ingest_results["comments"],
-                slug=slug,
                 polygon_state=ingest_results["polygon_state"],
                 line_state=ingest_results["line_state"],
                 point_state=ingest_results["point_state"],

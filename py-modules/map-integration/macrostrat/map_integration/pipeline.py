@@ -64,6 +64,7 @@ from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.errors import IngestError
 from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
+from macrostrat.map_utils.slugs import check_slug, staging_table
 
 from .config import get_minio_client
 
@@ -96,13 +97,6 @@ console = Console()
 # Assorted helper functions.
 
 default_s3_bucket = config.S3_BUCKET
-
-
-def normalize_slug(slug: str) -> str:
-    """
-    Replace characters that are invalid in an sql table name with an underscore.
-    """
-    return re.sub(r"\W", "_", slug).lower()
 
 
 def strify_list(xs: list[Any]) -> list[str]:
@@ -444,16 +438,13 @@ def create_slug(
     Ensure that a map exists in the database with the provided metadata.
     """
 
-    ## Normalize identifiers.
-
-    slug = normalize_slug(slug)
-    console.print(f"Normalized the provided slug to {slug}")
+    slug = check_slug(slug)
 
     ## Create the `sources` record.
 
     metadata = {
         "slug": slug,
-        "primary_table": f"{slug}_polygons",
+        "primary_table": staging_table(slug, "polygons"),
         "scale": scale,
     }
     if name:
@@ -630,10 +621,7 @@ def upload_file(
     if s3_prefix.endswith("/"):
         s3_prefix = s3_prefix[:-1]
 
-    ## Normalize identifiers.
-
-    slug = normalize_slug(slug)
-    console.print(f"Normalized the provided slug to {slug}")
+    slug = check_slug(slug)
 
     out_name = local_file.name
 

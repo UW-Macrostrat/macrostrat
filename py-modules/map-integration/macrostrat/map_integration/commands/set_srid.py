@@ -1,5 +1,7 @@
 from psycopg2.sql import Identifier
 
+from macrostrat.map_utils.slugs import table_prefix
+
 from ..database import get_database
 from ..utils import MapInfo
 
@@ -22,7 +24,7 @@ def apply_srid(source: MapInfo, srid: int, force: bool = False):
     }
 
     for ftype in ["points", "linework", "polygons"]:
-        table = Identifier("sources", f"{source.slug}_{ftype}")
+        table = Identifier("sources", f"{table_prefix(source.slug)}_{ftype}")
         print(f"Setting georeference for {source.slug} to {srid}")
         sql = "UPDATE {table} SET geom = ST_Transform(geom, :srid)"
         if force:

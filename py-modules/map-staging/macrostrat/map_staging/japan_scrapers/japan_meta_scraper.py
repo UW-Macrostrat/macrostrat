@@ -7,6 +7,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from macrostrat.map_utils.slugs import slugify
+
 DOWNLOAD_LOG_CSV = Path(
     "/Users/afromandi/Macrostrat/Maps/Japan/quad_series/download_log.csv"
 )
@@ -237,7 +239,7 @@ def get_slug_from_shapefiles_dir(map_name: str, shapefiles_dir: Path) -> str:
     Example:
       webpage map_name: KYOTO-SEIHOKUBU
       directory:        Japan_Kyoto_Seihokubu
-      slug:             japan_kyoto_seihokubu
+      slug:             japan-kyoto-seihokubu
     """
     normalized_target_dirname = normalize_name_like_shapefile_dir(
         map_name,
@@ -249,7 +251,7 @@ def get_slug_from_shapefiles_dir(map_name: str, shapefiles_dir: Path) -> str:
             continue
 
         if path.name == normalized_target_dirname:
-            return path.name.lower()
+            return slugify(path.name)
 
     return ""
 

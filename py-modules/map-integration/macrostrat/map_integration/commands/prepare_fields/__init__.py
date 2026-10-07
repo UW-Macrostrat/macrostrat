@@ -5,8 +5,11 @@ from rich import print
 from sqlalchemy.exc import NoSuchTableError
 from typer import Option
 
+from macrostrat.core.exc import MacrostratError
+from macrostrat.map_utils.slugs import staging_table
+
 from ...database import get_database
-from ...utils import MapInfo, create_sources_record
+from ...utils import MapInfo, create_sources_record, get_map_info
 from .utils import LineworkTableUpdater, PointsTableUpdater, PolygonTableUpdater
 
 
@@ -34,23 +37,20 @@ def _recover_sources_row(identifier):
         f"[bold yellow]Attempting to recover source record for [bold cyan]{identifier}"
     )
     try:
-        return create_sources_record(db, identifier)
+        return create_sources_record(get_database(), identifier)
     except ValueError:
         print(f"[bold red]Failed to recover source record for [bold cyan]{identifier}")
 
 
-def _prepare_fields(map: MapInfo | None, recover: bool = False):
-    """Prepare empty fields for manual cleaning."""
-    identifier = map.slug
-
+def _prepare_fields(
+    info: MapInfo | None, recover: bool = False, identifier: str | None = None
+):
+    """Prepare empty fields for manual cleaning; `identifier` names a map with no record."""
+    identifier = identifier or info.slug
     print(f"[bold]Preparing fields for source [cyan]{identifier}")
 
     schema = "sources"
-    info = map
-    # print(
-    #     f"[gray dim]Use [bold]--recover[/] to attempt to recover the record in the [bold]maps.sources[/] table."
-    # )
-    if recover:
+    if info is None and recover:
         info = _recover_sources_row(identifier)
     if info is None:
         print()
@@ -77,7 +77,7 @@ def update_tables(source_id, slug, schema):
     db = get_database()
     for table_type, updater in updaters.items():
         try:
-            updater(db, f"{slug}_{table_type}", schema).run(source_id)
+            updater(db, staging_table(slug, table_type), schema).run(source_id)
         except NoSuchTableError:
             print(f"[bold orange]No {table_type} table found for [bold cyan]{slug}")
 
@@ -90,8 +90,13 @@ def prepare_fields_for_all_sources(recover=False):
         / "procedures"
         / "all-candidate-source-slugs.sql"
     )
-    for table in db.run_query(sql):
-        prepare_fields(table.slug, recover=recover)
+    # A candidate read off a table name is a prefix; `get_map_info` also tries it hyphenated.
+    for slug in sorted({row.slug for row in db.run_query(sql)}):
+        try:
+            info = get_map_info(db, slug)
+        except MacrostratError:
+            info = None
+        _prepare_fields(info, recover=recover, identifier=slug)
 
 
 def get_sources_record(slug):

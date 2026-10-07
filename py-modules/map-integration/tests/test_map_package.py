@@ -24,7 +24,7 @@ from macrostrat.map_integration.utils.map_info import get_map_info, resolve_maps
 
 SEED = """
 INSERT INTO maps.sources (slug, name, scale, primary_table, keywords) VALUES
-  ('pkg-a', 'Map A', 'large', 'pkg-a_polygons', ARRAY['one', 'two']),
+  ('pkg-a', 'Map A', 'large', 'pkg_a_polygons', ARRAY['one', 'two']),
   ('pkg-b', 'Map B', 'large', NULL, NULL),
   ('pkg-comp', 'Compilation', 'large', NULL, NULL),
   ('pkg-other', 'Not exported', 'large', NULL, NULL);
@@ -58,8 +58,8 @@ SELECT ml.legend_id, c.map_id FROM maps.polygons c
 JOIN maps.map_legend ml ON ml.map_id = c.orig_id::integer
 WHERE c.source_id = map_bounds.source_id('pkg-comp');
 
-INSERT INTO maps_metadata.ingest_process (source_id, slug, state, comments, polygon_state)
-VALUES (map_bounds.source_id('pkg-a'), 'pkg-a', 'ingested', 'fine', '{"status": "ingested"}');
+INSERT INTO maps_metadata.ingest_process (source_id, state, comments, polygon_state)
+VALUES (map_bounds.source_id('pkg-a'), 'ingested', 'fine', '{"status": "ingested"}');
 INSERT INTO maps_metadata.ingest_process_tag (source_id, tag)
 VALUES (map_bounds.source_id('pkg-a'), 'test');
 
@@ -100,7 +100,7 @@ def source_db(base_db):
             create_source_tables(db, slug, kinds=("polygons",))
         db.run_sql(
             """
-            INSERT INTO sources."pkg-a_polygons" (source_id, name, geom)
+            INSERT INTO sources.pkg_a_polygons (source_id, name, geom)
             VALUES (map_bounds.source_id('pkg-a'), 'staged', ST_Multi(ST_MakeEnvelope(0, 0, 1, 1, 4326))),
                    -- Appended since `prepare-fields`: still the owner's
                    (NULL, 'unassigned', NULL);
@@ -169,7 +169,7 @@ def test_package_contents(package):
     # A shared staging table contributes only the exported maps' rows
     assert pkg.layers["sources__pkg_polygons"].row_count == 2
     assert pkg.layers["sources__pkg_polygons"].owner is None
-    assert pkg.layers["sources__pkg-a_polygons"].owner == "pkg-a"
+    assert pkg.layers["sources__pkg_a_polygons"].owner == "pkg-a"
     # Derived topology state stays behind
     assert pkg.layers["map_area"].column("topo") is None
 
@@ -321,10 +321,10 @@ def test_import(target_db, package):
     )
     assert staged == ["pkg-a", "pkg-b"]
     assert db.run_query(
-        'SELECT source_id FROM sources."pkg-a_polygons" ORDER BY _pkid'
+        "SELECT source_id FROM sources.pkg_a_polygons ORDER BY _pkid"
     ).scalars().all() == [a, None]
     # ... and stay usable
-    db.run_sql("INSERT INTO sources.\"pkg-a_polygons\" (name) VALUES ('more')")
+    db.run_sql("INSERT INTO sources.\"pkg_a_polygons\" (name) VALUES ('more')")
 
     assert (
         scalar(

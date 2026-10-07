@@ -9,6 +9,8 @@ import sys
 import bs4
 import requests
 
+from macrostrat.map_utils.slugs import slugify
+
 TIMEOUT = 10  # seconds
 
 
@@ -50,7 +52,7 @@ def main() -> None:
                 source = None
 
                 if website_url.startswith("http"):
-                    slug = "criticalmaas_09_ngmdb_" + row["NGMDB ProdID"]
+                    slug = slugify("criticalmaas-09-ngmdb-" + row["NGMDB ProdID"])
                     name = f"TA1 NGMDB {row['NGMDB ProdID']}"
 
                     resp = requests.get(website_url, timeout=TIMEOUT)
@@ -71,7 +73,7 @@ def main() -> None:
                         ):
                             year = match.group(2).strip()
                 else:
-                    slug = "criticalmaas_09_cog_" + row["COG ID"][:16]
+                    slug = slugify("criticalmaas-09-cog-" + row["COG ID"][:16])
                     name = f"TA1 COG {row['COG ID']}"
 
                 writer.writerow(

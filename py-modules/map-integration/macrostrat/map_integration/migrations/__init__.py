@@ -3,6 +3,7 @@ from pathlib import Path
 from psycopg2.sql import Identifier
 
 from macrostrat.database import Database
+from macrostrat.map_utils.slugs import staging_table
 from macrostrat.utils import get_logger
 
 from ..utils import table_exists
@@ -71,8 +72,12 @@ def add_missing_table_names(db: Database):
     ).fetchall()
 
     for row in all_tables:
-        _add_missing_table_name(db, row, "primary_table", row.slug + "_polygons")
-        _add_missing_table_name(db, row, "primary_line_table", row.slug + "_lines")
+        _add_missing_table_name(
+            db, row, "primary_table", staging_table(row.slug, "polygons")
+        )
+        _add_missing_table_name(
+            db, row, "primary_line_table", staging_table(row.slug, "lines")
+        )
 
         db.session.commit()
 

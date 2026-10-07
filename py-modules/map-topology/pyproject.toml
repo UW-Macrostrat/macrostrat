@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 topology = [
     "macrostrat.core",
+    "macrostrat.map_utils",
     "mapboard.topology-manager",
     "pytest>=8.3.4,<10",
 ]
@@ -32,3 +33,4 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 "mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
 "macrostrat.core" = { path = "../core", editable = true }
+"macrostrat.map_utils" = { path = "../map-utils", editable = true }

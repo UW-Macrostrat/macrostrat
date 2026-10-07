@@ -17,6 +17,7 @@ dependencies = [
     "requests>=2.31,<2.34",
     "macrostrat.cli",
     "macrostrat.core",
+    "macrostrat.map_utils",
     "macrostrat.map_integration",
 ]
 
@@ -45,6 +46,7 @@ target-version = ["py39", "py310", "py311", "py312"]
 [tool.uv.sources]
 "macrostrat.cli" = { path = "../cli", editable = true }
 "macrostrat.core" = { path = "../core", editable = true }
+"macrostrat.map_utils" = { path = "../map-utils", editable = true }
 "macrostrat.map_integration" = { path = "../map-integration", editable = true }
 
 [tool.isort]

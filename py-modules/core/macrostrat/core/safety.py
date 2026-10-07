@@ -62,10 +62,8 @@ class Refusal(ApplicationError, ClickException):
     to retry harder or assume the tool is broken, which is the opposite of
     what a guard rail should communicate.
 
-    (The CLI's own `setup_exception_handling` wrapper, which would render every
-    `ApplicationError` this way, is commented out in `cli/entrypoint.py` — so
-    every `MacrostratError` currently surfaces as a traceback. Worth fixing
-    separately; this class does not depend on it either way.)
+    (The CLI also reports every `MacrostratError` without a traceback, in
+    `MacrostratControlCommand`; this class does not depend on it.)
     """
 
     def __init__(self, message: str, details: Optional[str] = None):

@@ -10,6 +10,7 @@ from rich.console import Console
 from sqlalchemy import text
 
 from macrostrat.database import Database
+from macrostrat.map_utils.slugs import STAGING_KINDS, staging_table, table_prefix
 
 from ..utils.map_info import _MapInfo
 from .format import (
@@ -125,8 +126,6 @@ TABLES = (
     ),
 )
 
-STAGING_KINDS = ("polygons", "lines", "points")
-
 
 def compilation_tree(db: Database, compilation: _MapInfo) -> list[int]:
     """A compilation and every map beneath it, at any depth."""
@@ -154,12 +153,12 @@ def _staging_tables(conn, maps: list[_MapInfo], prefixes: set[str]) -> dict[str,
         dict(ids=[m.id for m in maps]),
     ).all()
     for slug, *tables in recorded:
-        for name in [*tables, *(f"{slug}_{k}" for k in STAGING_KINDS)]:
+        for name in [*tables, *(staging_table(slug, k) for k in STAGING_KINDS)]:
             if name is not None:
                 found.setdefault(name, slug)
     for prefix in prefixes:
         for kind in STAGING_KINDS:
-            found.setdefault(f"{prefix}_{kind}", None)
+            found.setdefault(f"{table_prefix(prefix)}_{kind}", None)
     return found
 
 

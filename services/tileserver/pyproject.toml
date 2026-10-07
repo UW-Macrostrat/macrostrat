@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.27.2,<0.28",
     "mapbox-vector-tile>=2.1.0,<3",
     "macrostrat.tileserver-utils",
+    "macrostrat.map_utils",
     # Previously pulled in transitively through the vendored timvt fork; used
     # directly here, so declared directly now that the fork is gone.
     "buildpg>=0.4,<0.5",
@@ -51,6 +52,7 @@ dev = [
 
 [tool.uv.sources]
 "macrostrat.tileserver_utils" = { path = "../../py-modules/tileserver-utils", editable = true }
+"macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

@@ -712,5 +712,3 @@ for entry_point in discovered_plugins:
     plugin = entry_point.load()
     if isinstance(plugin, typer.Typer):
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
-
-# main = setup_exception_handling(main)

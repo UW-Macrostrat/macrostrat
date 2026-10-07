@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import (
 import api.schemas as schemas
 from api.query_parser import QueryParser
 from macrostrat.database import Database
+from macrostrat.map_utils.slugs import staging_table
 
 load_dotenv()
 
@@ -326,7 +327,7 @@ async def get_table(
 ) -> Table:
     metadata = MetaData(schema="sources")
     table_slug = await source_id_to_slug(conn, table_id)
-    table_name = f"{table_slug}_{geometry_type}"
+    table_name = staging_table(table_slug, geometry_type)
     table = await conn.run_sync(
         lambda sync_conn: Table(table_name, metadata, autoload_with=sync_conn)
     )
