@@ -111,6 +111,23 @@ def annotate(db: Database, source_id: int, op_id: int, note: str | None) -> None
         raise EditError(f"No operation {op_id} on source {source_id}")
 
 
+def set_geometry(
+    db: Database, source_id: int, op_id: int, geometry: dict | str
+) -> None:
+    """Replace a drawn operation's polygon with GeoJSON."""
+    target = next((o for o in load_ops(db, source_id) if o.id == op_id), None)
+    if target is None:
+        raise EditError(f"No operation {op_id} on source {source_id}")
+    if not target.op.geometry_authored:
+        raise EditError(f"{target.operation} has no drawn geometry to replace")
+    if isinstance(geometry, dict):
+        geometry = json.dumps(geometry)
+    db.run_query(
+        f"UPDATE map_bounds.boundary_op SET geometry = {_GEOMETRY} WHERE id = :id",
+        dict(id=op_id, geometry=geometry),
+    )
+
+
 def _movable(ops: list[OpRow], op_id: int, source_id: int) -> OpRow:
     target = next((o for o in ops if o.id == op_id), None)
     if target is None:

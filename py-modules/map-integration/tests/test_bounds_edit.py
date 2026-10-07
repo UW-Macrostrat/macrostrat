@@ -111,3 +111,24 @@ def test_append_move_annotate_remove(db):
     with pytest.raises(edit.EditError):
         edit.remove(db, SOURCE_ID, opening)
     db.session.rollback()
+
+
+def test_set_geometry(db):
+    added = edit.append(db, SOURCE_ID, edit.validate("subtract", {}), geometry=DRAWN)
+    db.session.commit()
+    moved = {
+        "type": "Polygon",
+        "coordinates": [[[30, 0], [30, 2], [32, 2], [32, 0], [30, 0]]],
+    }
+    edit.set_geometry(db, SOURCE_ID, added, moved)
+    db.session.commit()
+    xmin = db.run_query(
+        "SELECT ST_XMin(geometry) FROM map_bounds.boundary_op WHERE id = :id",
+        dict(id=added),
+    ).scalar()
+    assert xmin == 30
+
+    fill = next(o for o in build.load_ops(db, SOURCE_ID) if o.operation == "fill_holes")
+    with pytest.raises(edit.EditError):
+        edit.set_geometry(db, SOURCE_ID, fill.id, moved)
+    db.session.rollback()
