@@ -492,6 +492,80 @@ def match_info():
     return MATCH_STRAT_NAMES_INFO
 
 
+# --- Lithology matching -------------------------------------------------------
+# The importer's LithsProcessor (now in macrostrat.column_utils), exposed so the
+# lith text parse that `ingest_columns_from_file` runs can be previewed.
+
+# Built once and reused: the processor loads the lith + attribute vocabularies at
+# construction and is read-only afterwards, so one instance serves every request.
+_lith_processor = None
+_lith_colors = None
+
+
+def _get_lith_processor(db):
+    global _lith_processor
+    if _lith_processor is None:
+        from macrostrat.column_utils.lithologies import LithsProcessor
+
+        _lith_processor = LithsProcessor(db)
+    return _lith_processor
+
+
+def _get_lith_colors(db) -> dict:
+    """`{lith_id: color}` for rendering matches with the lexicon's color scheme.
+
+    `liths.lith_color` is the hex the lexicon colors lithologies by. Loaded once
+    and reused, like the processor itself. (Attribute colors aren't a column —
+    the web page reads those from the v2 `/defs/lithology_attributes` defs, the
+    same source the lith-atts lexicon page uses.)
+    """
+    global _lith_colors
+    if _lith_colors is None:
+        rows = db.run_query("SELECT id, lith_color FROM macrostrat.liths").fetchall()
+        _lith_colors = {row.id: row.lith_color for row in rows}
+    return _lith_colors
+
+
+def _serialize_lith(lith) -> dict:
+    attributes = sorted(
+        ({"id": att.id, "name": att.name} for att in (lith.attributes or [])),
+        key=lambda a: a["name"],
+    )
+    return {
+        "id": lith.id,
+        "name": lith.name,
+        "attributes": attributes,
+        "dom": lith.dom.value if lith.dom is not None else None,
+        "prop": lith.prop,
+    }
+
+
+@router.get("/liths")
+def match_liths(text: str, database: DatabaseDep):
+    """Match free lithology text with the column-ingestion matcher.
+
+    Returns the lithologies the importer would recognise in `text` — the same
+    parse `ingest_columns_from_file` runs on a unit's lithology column — with any
+    attributes, abundance (`dom`/`sub`) and proportion it read, plus notices (an
+    unreadable proportion, a word matched to no lithology).
+    """
+    from macrostrat.column_utils import notices
+
+    db = database.sync
+    try:
+        processor = _get_lith_processor(db)
+        with notices.collect_notices() as collected:
+            liths = processor.process_text(text)
+        colors = _get_lith_colors(db)
+        serialized = [_serialize_lith(lith) for lith in liths]
+        for item in serialized:
+            item["color"] = colors.get(item["id"])
+        serialized.sort(key=lambda item: (item["dom"] or "", item["name"]))
+        return {"text": text, "liths": serialized, "notices": collected.to_list()}
+    finally:
+        db.session.remove()
+
+
 @router.get("/strat-names")
 def match_units(
     query: Annotated[MatchSingleQueryParams, Query()],
