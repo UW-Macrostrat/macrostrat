@@ -2,13 +2,13 @@
 
 - `parse` — spreadsheet rows to `Column` objects, and the units sheet to each column's
   sections of units.
-- `geometry` — resolving lat/lng or polygon WKT into everything `cols` needs, via PostGIS.
 - `sections` — the `Section` model, the strategies for deriving sections where a source
   has none, and their reconciliation ahead of the units that reference them.
 - `writer` — column groups and columns, reconciled rather than replaced.
 """
 
-from .geometry import ColumnGeometry, GeometryError, resolve_geometry
+from macrostrat.column_utils import ColumnGeometry, GeometryError, resolve_geometry
+
 from .parse import (
     Column,
     columns_from_df,
