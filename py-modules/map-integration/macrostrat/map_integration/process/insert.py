@@ -2,6 +2,7 @@ from psycopg2.sql import Identifier, Literal
 from rich import print
 
 from macrostrat.core.exc import MacrostratError
+from macrostrat.map_utils.slugs import table_prefix
 from macrostrat.utils import get_logger
 
 from ..database import get_database, sql_file
@@ -44,7 +45,7 @@ def copy_to_maps(
     for a map that genuinely has none of the attribute in question.
     """
     source_id = source.id
-    prefix = staging_prefix or source.slug
+    prefix = staging_prefix or table_prefix(source.slug)
 
     data = feature_counts(db, source)
 

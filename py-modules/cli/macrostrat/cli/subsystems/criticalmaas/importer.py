@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from macrostrat.core.config import PG_DATABASE
+from macrostrat.map_utils.slugs import slugify, staging_table
 
 INGEST_URL = (
     os.getenv("INGEST_URL") or "https://web.development.svc.macrostrat.org/api/ingest"
@@ -86,6 +87,8 @@ async def import_criticalmaas(file: Path):
     )
 
     hash = "_temp_" + str(math.floor(random.random() * 100))
+    slug = slugify(f"{map['id']}{hash}")
+    polygon_table_name = staging_table(slug, "polygons")
 
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -95,13 +98,23 @@ async def import_criticalmaas(file: Path):
     async with async_engine.connect() as conn:
         # TODO: Remove the string prefix that prevents id duplication
         source_insert_stmt = text(
-            f"INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug) VALUES ('{map['title']}', '{map['id']}{hash}_polygons', '{map['source_url']}', '{map['title']}', '{map['authors']}', '{map['year']}', '{map['year']}', '{map['id']}{hash}')"
+            "INSERT INTO macrostrat.maps.sources (name, primary_table, url, ref_title, authors, ref_year, scale, slug)"
+            " VALUES (:title, :table, :url, :title, :authors, :year, :year, :slug)"
         )
-        await conn.execute(source_insert_stmt)
+        await conn.execute(
+            source_insert_stmt,
+            dict(
+                title=map["title"],
+                table=polygon_table_name,
+                url=map["source_url"],
+                authors=map["authors"],
+                year=map["year"],
+                slug=slug,
+            ),
+        )
         await conn.commit()
 
     # Create the polygon table
-    polygon_table_name = f"{map['id']}{hash}_polygons"
     polygon_schema_name = "sources"
 
     SourcePolygons = SourcePolygonsFactory(

@@ -13,6 +13,8 @@ from typing import Iterable, Mapping
 
 from psycopg.sql import SQL, Identifier
 
+from macrostrat.map_utils.slugs import staging_table
+
 __all__ = [
     "COLUMN_SPECS",
     "GEOMETRY_TYPES",
@@ -97,7 +99,10 @@ def create_source_table(
     extra_columns: Mapping[str, str] | None = None,
     srid: int = 4326,
 ) -> str:
-    """Create one `<schema>.<slug>_<kind>` table at the current standard.
+    """Create one `<schema>.<prefix>_<kind>` table at the current standard.
+
+    The prefix is the slug's, from `map_utils.slugs`; a shared staging prefix
+    (NGS's `ngs`) passes through unchanged.
 
     `kind` is `polygons`, `lines` or `points`. `extra_columns` adds
     source-specific fields the standard has no home for -- an ingestion should
@@ -114,7 +119,7 @@ def create_source_table(
             f"Unknown table kind {kind!r}; expected one of {', '.join(COLUMN_SPECS)}"
         )
 
-    table_name = f"{slug}_{kind}"
+    table_name = staging_table(slug, kind)
     table = Identifier(schema, table_name)
     columns = {**COLUMN_SPECS[kind], **(extra_columns or {})}
 

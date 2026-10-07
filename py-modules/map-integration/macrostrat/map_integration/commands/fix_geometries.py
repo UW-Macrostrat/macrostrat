@@ -3,6 +3,8 @@ from typing import Annotated, Optional
 from psycopg.sql import SQL, Identifier
 from typer import Option
 
+from macrostrat.map_utils.slugs import table_prefix
+
 from ..database import get_database
 from ..utils import MapInfo
 
@@ -43,7 +45,7 @@ def fix_geometries(
     it unchanged, so the filter changes no outcome -- but without it a map like
     NGS's Alaska member rewrites 216,462 geometries to repair two.
     """
-    prefix = staging_prefix or map.slug
+    prefix = staging_prefix or table_prefix(map.slug)
     for table, repair in REPAIR.items():
         ident = Identifier("sources", f"{prefix}_{table}")
         db.run_sql(

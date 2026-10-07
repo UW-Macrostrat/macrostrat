@@ -17,6 +17,7 @@ from sqlalchemy.exc import DBAPIError
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
+from macrostrat.map_utils.slugs import selector
 
 from . import carto_v1
 from .manager import filter_maps, proc
@@ -33,7 +34,7 @@ def _resolve(name: str) -> tuple[int, str]:
         SELECT source_id, slug FROM maps.sources
         WHERE slug = :name OR source_id::text = :name
         """,
-        dict(name=name),
+        dict(name=selector(name)),
     ).first()
     if row is None:
         print(f"[red]No map matching[/] {name}")
@@ -922,7 +923,9 @@ def place_by_scale(
     if maps:
         pending = list(filter_maps(pending, maps))
     if exclude:
-        pending = [r for r in pending if not any(fnmatch(r.slug, p) for p in exclude)]
+        pending = [
+            r for r in pending if not any(fnmatch(r.slug, selector(p)) for p in exclude)
+        ]
     if not pending:
         print("[green]No uncategorized maps in the selection.[/]")
         return

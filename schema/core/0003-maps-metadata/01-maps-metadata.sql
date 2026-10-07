@@ -55,9 +55,7 @@ CREATE TABLE maps_metadata.ingest_process (
     point_state jsonb,
     -- Which pipeline was used to ingest
     ingest_pipeline text,
-    ingested_by text,
-    -- Redundant but useful for debugging
-    slug text references maps.sources (slug)
+    ingested_by text
 );
 
 --M:M relationship so no PK defined

@@ -159,6 +159,7 @@ dependencies = [
     { name = "macrostrat-column-utils" },
     { name = "macrostrat-database" },
     { name = "macrostrat-map-topology" },
+    { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
     { name = "minio" },
     { name = "morecantile" },
@@ -187,6 +188,7 @@ requires-dist = [
     { name = "macrostrat-column-utils", editable = "py-modules/column-utils" },
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
+    { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
@@ -1419,6 +1421,7 @@ dependencies = [
 [package.optional-dependencies]
 topology = [
     { name = "macrostrat-core" },
+    { name = "macrostrat-map-utils" },
     { name = "mapboard-topology-manager" },
     { name = "pytest" },
 ]
@@ -1427,6 +1430,7 @@ topology = [
 requires-dist = [
     { name = "macrostrat-core", marker = "extra == 'topology'", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
+    { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "py-modules/map-utils" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },

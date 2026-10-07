@@ -1,4 +1,3 @@
-import re
 import urllib.parse
 from typing import List, Literal, Union
 
@@ -31,6 +30,7 @@ from api.models.geometries import (
 )
 from api.query_parser import ParserException
 from api.routes.security import has_access
+from macrostrat.map_utils.slugs import InvalidSlug, check_slug, staging_table
 
 router = APIRouter(
     prefix="/sources",
@@ -129,8 +129,12 @@ async def post_source(
         )
 
     if source.slug is None:
-        source.slug = re.sub(r"\W", "_", slugify(source.name, max_length=30))
-    source.primary_table = source.slug + "_polygons"
+        source.slug = slugify(source.name, max_length=30)
+    try:
+        check_slug(source.slug)
+    except InvalidSlug as err:
+        raise HTTPException(status_code=422, detail=str(err))
+    source.primary_table = staging_table(source.slug, "polygons")
 
     async with database.async_session() as session:
         insert_stmt = (

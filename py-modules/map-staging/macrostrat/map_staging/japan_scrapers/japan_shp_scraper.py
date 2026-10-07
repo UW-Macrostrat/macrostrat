@@ -9,6 +9,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
+from macrostrat.map_utils.slugs import selector, slugify
+
 DOWNLOAD_DIR = Path("/Users/afromandi/Macrostrat/Maps/Japan/quad_series")
 METADATA_CSV = Path(
     "/Users/afromandi/Macrostrat/Projects/macrostrat/py-modules/map-staging/"
@@ -39,13 +41,7 @@ def extract_zip(zip_path: Path, target_dir: Path):
 
 
 def slugify_text(text: str) -> str:
-    cleaned = text.strip().lower()
-    cleaned = cleaned.replace("&", " and ")
-    cleaned = cleaned.replace("-", "_")
-    cleaned = re.sub(r"[^\w\s_]", "", cleaned)
-    cleaned = re.sub(r"\s+", "_", cleaned)
-    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
-    return cleaned
+    return slugify(text.replace("&", " and "))
 
 
 def generate_slug_candidates(map_name: str) -> list[str]:
@@ -53,16 +49,16 @@ def generate_slug_candidates(map_name: str) -> list[str]:
     candidates = []
 
     def add_candidate(value: str):
-        value = value.strip("_")
+        value = value.strip("-")
         if not value:
             return
-        slug = f"{value}_japan"
+        slug = f"{value}-japan"
         if slug not in candidates:
             candidates.append(slug)
 
     add_candidate(base)
 
-    parts = [p for p in base.split("_") if p]
+    parts = [p for p in base.split("-") if p]
     if len(parts) > 1:
         for part in parts:
             add_candidate(part)
@@ -81,7 +77,7 @@ def load_existing_slugs(metadata_csv: Path) -> set[str]:
         for row in reader:
             slug = (row.get("slug") or "").strip()
             if slug:
-                existing_slugs.add(slug)
+                existing_slugs.add(selector(slug))
 
     return existing_slugs
 

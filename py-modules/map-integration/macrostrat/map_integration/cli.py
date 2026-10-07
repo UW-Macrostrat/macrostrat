@@ -22,13 +22,13 @@ from macrostrat.map_integration.commands.prepare_fields.utils import PointsTable
 from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
-    normalize_slug,
     process_sources_metadata,
     resolve_slug_from_path,
 )
 from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_integration.utils.s3_file_management import *
 from macrostrat.map_utils import StorageConfig, delete_map
+from macrostrat.map_utils.slugs import check_slug, staging_table
 
 from . import pipeline
 from .commands.copy_sources import copy_macrostrat_sources
@@ -93,7 +93,7 @@ def create_tables(
 
     db = get_database()
     kinds = tuple(kind) if kind else tuple(COLUMN_SPECS)
-    for name in create_source_tables(db, normalize_slug(slug), kinds=kinds, srid=srid):
+    for name in create_source_tables(db, check_slug(slug), kinds=kinds, srid=srid):
         console.print(f"[green]created[/] {name}")
 
 
@@ -210,8 +210,7 @@ def change_slug(
 
     db = get_database()
 
-    # Normalize the new slug
-    new_slug = new_slug.lower().replace(" ", "_").replace("_", "-")
+    new_slug = check_slug(new_slug)
 
     if new_slug == map.slug:
         return
@@ -237,15 +236,14 @@ def change_slug(
     with db.transaction():
         # Change sources table names
         for table in ["polygons", "lines", "points"]:
-            # Check if the table exists
-            if not table_exists(db, f"{map.slug}_{table}", schema="sources"):
+            old_table = staging_table(map.slug, table)
+            new_table = staging_table(new_slug, table)
+            if not table_exists(db, old_table, schema="sources"):
                 continue
 
             if dry_run:
-                print(f"Would rename {map.slug}_{table} to {new_slug}_{table}")
+                print(f"Would rename {old_table} to {new_table}")
                 continue
-            old_table = f"{map.slug}_{table}"
-            new_table = f"{new_slug}_{table}"
             db.run_query(
                 "ALTER TABLE {old_table} RENAME TO {new_table}",
                 dict(
@@ -258,8 +256,22 @@ def change_slug(
             return
 
         db.run_query(
-            "UPDATE maps.sources SET slug = :new_slug WHERE source_id = :source_id",
-            dict(new_slug=new_slug, source_id=map.id),
+            """
+            UPDATE maps.sources SET slug = :new_slug,
+              primary_table = CASE WHEN primary_table = :old_polygons
+                THEN :new_polygons ELSE primary_table END,
+              primary_line_table = CASE WHEN primary_line_table = :old_lines
+                THEN :new_lines ELSE primary_line_table END
+            WHERE source_id = :source_id
+            """,
+            dict(
+                new_slug=new_slug,
+                source_id=map.id,
+                old_polygons=staging_table(map.slug, "polygons"),
+                new_polygons=staging_table(new_slug, "polygons"),
+                old_lines=staging_table(map.slug, "lines"),
+                new_lines=staging_table(new_slug, "lines"),
+            ),
         )
         db.session.commit()
         print(f"Changed slug from {map.slug} to {new_slug}")
@@ -420,8 +432,8 @@ def staging(
     # add map_url later
     db.run_sql(
         """
-        INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-        VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+        INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, polygon_state, line_state, point_state)
+        VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :polygon_state, :line_state, :point_state);
         """,
         dict(
             state=ingest_results["state"],
@@ -429,7 +441,6 @@ def staging(
             ingested_by="macrostrat-admin",
             ingest_pipeline=ingest_results["ingest_pipeline"],
             comments=ingest_results["comments"],
-            slug=slug,
             polygon_state=ingest_results["polygon_state"],
             line_state=ingest_results["line_state"],
             point_state=ingest_results["point_state"],
@@ -479,7 +490,7 @@ def cmd_reingest_points(
     """
     slug = _reingest_points_for_path(Path(data_path), prefix, crs=crs, filter=filter)
     console.print(
-        f"[green]Done:[/green] re-ingested sources.{slug}_points. "
+        f"[green]Done:[/green] re-ingested sources.{staging_table(slug, 'points')}. "
         f"Now run: [bold]normalize normalize_az --only {slug} --layer points[/bold]"
     )
 
@@ -522,7 +533,7 @@ def _reingest_points_for_path(
     )
 
     # Re-add _pkid, source_id, and the preferred point columns to the new table.
-    PointsTableUpdater(db, f"{slug}_points", "sources").run(source_id)
+    PointsTableUpdater(db, staging_table(slug, "points"), "sources").run(source_id)
     return slug
 
 
@@ -913,8 +924,8 @@ def staging_bulk(
 
         db.run_sql(
             """
-            INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, slug, polygon_state, line_state, point_state)
-            VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :slug, :polygon_state, :line_state, :point_state);
+            INSERT INTO maps_metadata.ingest_process (state, source_id, ingested_by, ingest_pipeline, comments, polygon_state, line_state, point_state)
+            VALUES (:state, :source_id, :ingested_by, :ingest_pipeline, :comments, :polygon_state, :line_state, :point_state);
             """,
             dict(
                 state=ingest_results["state"],
@@ -922,7 +933,6 @@ def staging_bulk(
                 ingested_by="macrostrat-admin",
                 ingest_pipeline=ingest_results["ingest_pipeline"],
                 comments=ingest_results["comments"],
-                slug=slug,
                 polygon_state=ingest_results["polygon_state"],
                 line_state=ingest_results["line_state"],
                 point_state=ingest_results["point_state"],

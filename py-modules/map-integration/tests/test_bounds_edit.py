@@ -12,7 +12,7 @@ from macrostrat.map_integration.utils.map_info import get_map_info
 from macrostrat.map_topology.bounds import build, edit
 
 SOURCE_ID = 999002
-SLUG = "test_bounds_edit"
+SLUG = "test-bounds-edit"
 
 # A 10° square with one large hole (~12,000 km²) and one small one (~1 km²).
 POLYGON = (

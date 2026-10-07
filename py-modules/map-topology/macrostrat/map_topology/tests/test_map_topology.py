@@ -34,7 +34,7 @@ def ctx(test_db_base):
         """
         DELETE FROM maps.polygons
         WHERE source_id IN (
-          SELECT source_id FROM maps.sources WHERE starts_with(slug, 'test_source_')
+          SELECT source_id FROM maps.sources WHERE starts_with(slug, 'test-source-')
         )
         """
     )
@@ -60,8 +60,8 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1001, 'test_source_1', true, 'active', 'large'),
-                (1002, 'test_source_2', true, 'active', 'large');
+                (1001, 'test-source-1', true, 'active', 'large'),
+                (1002, 'test-source-2', true, 'active', 'large');
             """
         )
         # A boundary is unioned from the map's own polygons, not read from
@@ -184,7 +184,7 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1003, 'test_source_3', true, 'active', 'large')
+                (1003, 'test-source-3', true, 'active', 'large')
             """
         )
         add_polygons(db, {1003: "ST_MakeEnvelope(1, 1, 4, 4, 4326)"})
@@ -321,7 +321,7 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1004, 'test_source_4', true, 'active', 'medium')
+                (1004, 'test-source-4', true, 'active', 'medium')
             """
         )
         add_polygons(
@@ -645,7 +645,7 @@ class TestMapTopology:
         db.run_query(
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
-            VALUES (1005, 'test_source_5', false, 'active', 'large')
+            VALUES (1005, 'test-source-5', false, 'active', 'large')
             """
         )
         db.run_query(
@@ -735,7 +735,7 @@ class TestMapTopology:
         db.run_query(
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
-            VALUES (1007, 'test_source_7', true, 'active', 'large')
+            VALUES (1007, 'test-source-7', true, 'active', 'large')
             """
         )
         add_polygons(db, {1007: "ST_MakeEnvelope(10, 10, 11, 11, 4326)"})
@@ -756,7 +756,7 @@ class TestMapTopology:
         for statement in (
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
-            VALUES (1008, 'test_source_8', false, 'active', 'large')
+            VALUES (1008, 'test-source-8', false, 'active', 'large')
             """,
             """
             INSERT INTO map_bounds.compilation (source_id, assembly_mode)
@@ -789,8 +789,8 @@ class TestMapTopology:
         db.run_query(
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
-            VALUES (1011, 'test_source_11', true, 'active', 'large'),
-                   (1012, 'test_source_12', true, 'active', 'large')
+            VALUES (1011, 'test-source-11', true, 'active', 'large'),
+                   (1012, 'test-source-12', true, 'active', 'large')
             """
         )
         # Thousands of vertices, so each is cut into several pieces.
@@ -812,11 +812,11 @@ class TestMapTopology:
                 dict(map_id=map_id),
             ).one()
 
-        update_maps(mgr, ["test_source_11"], one_at_a_time=True)
+        update_maps(mgr, ["test-source-11"], one_at_a_time=True)
         p = pieces(1011)
         assert p.n > 1 and p.noded == p.n
 
-        update_maps(mgr, ["test_source_12"], piece_timeout=0.001)
+        update_maps(mgr, ["test-source-12"], piece_timeout=0.001)
         p = pieces(1012)
         assert p.n > 1 and p.timed_out > 0 and p.noded + p.timed_out == p.n
 
@@ -855,8 +855,8 @@ class TestMapTopology:
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1021, 'test_source_21', true, 'active', 'large'),
-                (1022, 'test_source_22', true, 'active', 'large')
+                (1021, 'test-source-21', true, 'active', 'large'),
+                (1022, 'test-source-22', true, 'active', 'large')
             """
         )
         add_polygons(

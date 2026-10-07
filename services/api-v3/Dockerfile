@@ -11,6 +11,7 @@ ENV UV_COMPILE_BYTECODE=1
 COPY --from=py-modules match-utils /py-modules/match-utils
 COPY --from=py-modules map-topology /py-modules/map-topology
 COPY --from=py-modules column-utils /py-modules/column-utils
+COPY --from=py-modules map-utils /py-modules/map-utils
 
 # Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \

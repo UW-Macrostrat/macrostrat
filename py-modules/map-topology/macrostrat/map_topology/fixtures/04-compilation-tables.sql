@@ -262,10 +262,10 @@ SELECT EXISTS (
 );
 $$ LANGUAGE SQL STABLE;
 
-/** Resolve any source by slug. */
+/** Resolve any source by slug. Underscores read as hyphens, for pre-kebab names. */
 CREATE OR REPLACE FUNCTION map_bounds.source_id(_slug text)
   RETURNS integer AS $$
-SELECT source_id FROM maps.sources WHERE slug = _slug;
+SELECT source_id FROM maps.sources WHERE slug = replace(_slug, '_', '-');
 $$ LANGUAGE SQL STABLE;
 
 /** A source named the way a route names it: a slug, or an integer id as text

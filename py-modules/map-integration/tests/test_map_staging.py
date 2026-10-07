@@ -12,6 +12,7 @@ from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_utils.slugs import slugify, staging_table
 
 
 # Override the test database fixture to use the full database with maps tables.
@@ -81,7 +82,7 @@ def test_map_staging(test_db, region_path):
     Ingest a map, update metadata, prepare fields, and build geometries.
     """
     db = test_db
-    slug = f"test_{region_path.stem.lower()}"
+    slug = f"test-{slugify(region_path.stem)}"
     name = region_path.stem
     data_path = region_path
     print(f"\n🚀 Ingesting map for region: {name} at {data_path}")
@@ -146,7 +147,9 @@ def test_map_staging(test_db, region_path):
     assert ingest_process.state == "ingested"
 
     # Data exists
-    count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
+    count = db.run_query(
+        f"SELECT COUNT(*) FROM sources.{staging_table(slug, 'polygons')}"
+    ).scalar()
     assert count > 0
 
     bounds = db.run_query(

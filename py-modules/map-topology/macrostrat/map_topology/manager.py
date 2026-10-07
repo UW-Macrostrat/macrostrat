@@ -13,6 +13,7 @@ from rich import print
 from rich.progress import Progress
 
 from macrostrat.database import run_sql
+from macrostrat.map_utils.slugs import selector
 
 __dir__ = Path(__file__).parent
 
@@ -380,7 +381,7 @@ def split_ids_and_slugs(map_ids):
         try:
             ids.append(int(m))
         except ValueError:
-            slugs.append(m)
+            slugs.append(selector(m))
     return ids, slugs
 
 

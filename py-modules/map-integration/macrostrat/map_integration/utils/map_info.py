@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
+from macrostrat.map_utils.slugs import check_slug, selector, staging_table
 
 from ..database import get_database
 from ._database import table_exists
@@ -32,7 +33,7 @@ def complete_map_slugs(incomplete: str):
     return (
         db.run_query(
             "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
-            {"incomplete": f"{incomplete}%"},
+            {"incomplete": f"{selector(incomplete)}%"},
         )
         .scalars()
         .all()
@@ -80,7 +81,7 @@ def resolve_maps(
     matching nothing raises rather than being skipped quietly -- a typo'd glob
     would otherwise look like a successful run over no maps.
 
-    `exclude` drops slugs matching any of the given globs (e.g. `arizona_adgm_*`)
+    `exclude` drops slugs matching any of the given globs (e.g. `arizona-adgm-*`)
     from the resolved selection, applied after the selectors above so it can
     carve members back out of a broader pattern or a whole compilation.
 
@@ -89,33 +90,35 @@ def resolve_maps(
     state to match, so it drops out along with the rest.
     """
     found: dict[int, _MapInfo] = {}
-    for selector in selectors:
-        if selector in ("-", "active"):
+    for value in selectors:
+        if value in ("-", "active"):
             active = app.state.get("active_map")
             if active is None:
                 raise MacrostratError("No active map set")
-            selector = active
+            value = active
 
-        if any(ch in selector for ch in "*?"):
+        if any(ch in value for ch in "*?"):
             rows = db.run_query(
                 "SELECT source_id, slug, name, url FROM maps.sources"
                 " WHERE slug LIKE :pattern ORDER BY source_id",
-                dict(pattern=_selector_to_like(selector)),
+                dict(pattern=_selector_to_like(selector(value))),
             ).all()
             if not rows:
-                raise MacrostratError(f"No maps match {selector!r}")
+                raise MacrostratError(f"No maps match {value!r}")
             for r in rows:
                 found[r.source_id] = MapInfo(
                     id=r.source_id, slug=r.slug, url=r.url, name=r.name
                 )
         else:
-            info = get_map_info(db, selector)
+            info = get_map_info(db, value)
             found[info.id] = info
 
     result = [found[k] for k in sorted(found)]
 
     if exclude:
-        result = [m for m in result if not any(fnmatch(m.slug, pat) for pat in exclude)]
+        result = [
+            m for m in result if not any(fnmatch(m.slug, selector(p)) for p in exclude)
+        ]
         if not result:
             raise MacrostratError("--exclude left no maps in the selection")
 
@@ -147,7 +150,7 @@ MapExclude = Annotated[
     Optional[list[str]],
     Option(
         "--exclude",
-        help="Slug globs to leave out of the selection (e.g. 'arizona_adgm_*')",
+        help="Slug globs to leave out of the selection (e.g. 'arizona-adgm-*')",
     ),
 ]
 
@@ -170,9 +173,8 @@ def get_map_info(db: Database, identifier: str | int) -> MapInfo:
         query += " WHERE source_id = %(source_id)s"
         params["source_id"] = map_id
     except ValueError:
-        map_slug = identifier
         query += " WHERE slug = %(slug)s"
-        params["slug"] = map_slug
+        params["slug"] = selector(identifier)
 
     res = db.run_query(query, params).one_or_none()
     if res is None:
@@ -191,11 +193,12 @@ def create_sources_record(db, slug) -> MapInfo:
     """
     Create sources record for an existing set of database tables
     """
+    check_slug(slug)
     params = {
-        "primary_table": f"{slug}_polygons",
-        "primary_line_table": f"{slug}_lines",
+        "primary_table": staging_table(slug, "polygons"),
+        "primary_line_table": staging_table(slug, "lines"),
         # Doesn't exist yet, but in prep
-        "primary_point_table": f"{slug}_points",
+        "primary_point_table": staging_table(slug, "points"),
     }
     has_a_table = False
     for k, v in params.items():

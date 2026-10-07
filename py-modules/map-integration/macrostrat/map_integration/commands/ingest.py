@@ -21,6 +21,7 @@ from macrostrat.map_integration.utils.gems_utils import (
     map_t_b_intervals,
     transform_gdb_layer,
 )
+from macrostrat.map_utils.slugs import check_slug, staging_table, table_prefix
 
 from ..database import get_database
 from ..errors import IngestError
@@ -255,7 +256,8 @@ def ingest_map(
 
     # Add to map-sources table
     db.run_sql(
-        f"INSERT INTO maps.sources (primary_table, slug) VALUES ('{slug}_polygons', '{slug}') ON CONFLICT DO NOTHING"
+        "INSERT INTO maps.sources (primary_table, slug) VALUES (:table, :slug) ON CONFLICT DO NOTHING",
+        dict(table=staging_table(check_slug(slug), "polygons"), slug=slug),
     )
 
     success_count = 0
@@ -411,7 +413,7 @@ def ingest_map(
         for col in df.columns:
             console.print(f"- {col}")
 
-        table = f"{slug}_{feature_suffix}"
+        table = f"{table_prefix(slug)}_{feature_suffix}"
         schema = "sources"
 
         db.run_sql(f"CREATE SCHEMA IF NOT EXISTS {schema}")
@@ -557,7 +559,6 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
 
 
 def _print_layer_info(df, _console: Console):
-
     # If there is no geometry, skip
     if "geometry" not in df.columns:
         _console.print("No geometry column found. Skipping.")
