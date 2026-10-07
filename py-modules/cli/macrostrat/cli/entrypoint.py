@@ -368,7 +368,7 @@ def environments():
 
 main.add_typer(cfg_app)
 
-from macrostrat.map_topology import cli as topo_cli
+from macrostrat.map_topology.commands import cli as topo_cli
 
 main.add_typer(
     topo_cli,
@@ -377,7 +377,7 @@ main.add_typer(
     short_help="Manage the Macrostrat maps topology",
 )
 
-from macrostrat.map_topology.bounds import cli as bounds_cli
+from macrostrat.map_topology.bounds.commands import cli as bounds_cli
 
 main.add_typer(
     bounds_cli,

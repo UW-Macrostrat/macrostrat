@@ -1,8 +1,9 @@
 """`macrostrat bounds` -- compose map boundaries from ordered operations.
 
-Geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are authored in
-QGIS, which edits `map_bounds.boundary_op` directly as a PostGIS layer. This CLI
-covers the parameter-only operations, ordering, inspection and building.
+Geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are drawn in the
+web boundary editor (`/dev/map/bounds/<slug>`) or in QGIS, which edits
+`map_bounds.boundary_op` directly as a PostGIS layer. This CLI covers the
+parameter-only operations, ordering, inspection and building.
 """
 
 import inspect
@@ -22,6 +23,7 @@ from macrostrat.map_integration.utils.map_info import (
 )
 
 from . import build as build_mod
+from . import edit
 from .operations import CLI_OPERATIONS, OPENING_OPERATIONS, BoundaryOp
 
 cli = Typer(no_args_is_help=True, short_help="Compose and edit map boundaries")
@@ -29,7 +31,7 @@ cli = Typer(no_args_is_help=True, short_help="Compose and edit map boundaries")
 add_cli = Typer(
     no_args_is_help=True,
     help="Add a boundary operation. One command per operation type; geometry-"
-    "bearing operations are authored in QGIS instead.",
+    "bearing operations are drawn in the web boundary editor or QGIS instead.",
 )
 cli.add_typer(add_cli, name="add")
 
@@ -226,19 +228,16 @@ def remove(
     map: Annotated[str, Argument(help="Map slug or source id")],
     op_id: Annotated[int, Argument(help="Operation id, from `bounds show`")],
 ):
-    """Remove a boundary operation."""
+    """Remove a boundary operation, closing the gap in positions."""
     db = get_database()
     m = _resolve_one(map)
-    deleted = db.run_query(
-        "DELETE FROM map_bounds.boundary_op"
-        " WHERE id = :id AND source_id = :source_id RETURNING position, operation",
-        dict(id=op_id, source_id=m.map_id),
-    ).first()
-    if deleted is None:
-        print(f"[red]No operation {op_id} on {m.slug}[/]")
+    try:
+        removed = edit.remove(db, m.map_id, op_id)
+    except edit.EditError as err:
+        print(f"[red]{err}[/]")
         raise typer.Exit(1)
     db.session.commit()
-    print(f"Removed {deleted.operation} at position {deleted.position}")
+    print(f"Removed {removed.operation} from position {removed.position}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -249,32 +248,15 @@ def move(
     position: Annotated[int, Argument(help="New position (1 or greater)")],
 ):
     """Reorder a boundary operation."""
-    if position < 1:
-        print("[red]Position 0 is reserved for the opening operation[/]")
-        raise typer.Exit(1)
     db = get_database()
     m = _resolve_one(map)
-    ops = [o for o in build_mod.load_ops(db, m.map_id) if o.position > 0]
-    target = next((o for o in ops if o.id == op_id), None)
-    if target is None:
-        print(f"[red]No movable operation {op_id} on {m.slug}[/]")
+    try:
+        landed = edit.move(db, m.map_id, op_id, position)
+    except edit.EditError as err:
+        print(f"[red]{err}[/]")
         raise typer.Exit(1)
-
-    ops.remove(target)
-    ops.insert(min(position, len(ops) + 1) - 1, target)
-
-    # Renumber the whole list rather than swapping pairs: the unique constraint
-    # is only satisfied again once every row has moved, so defer it for the
-    # transaction and write a clean 1..N sequence.
-    db.run_query("SET CONSTRAINTS map_bounds.boundary_op_unique_position DEFERRED")
-    for index, o in enumerate(ops, start=1):
-        if o.position != index:
-            db.run_query(
-                "UPDATE map_bounds.boundary_op SET position = :position WHERE id = :id",
-                dict(id=o.id, position=index),
-            )
     db.session.commit()
-    print(f"Moved operation {op_id} to position {ops.index(target) + 1}")
+    print(f"Moved operation {op_id} to position {landed}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -312,28 +294,12 @@ def _append(
     targets = _resolve(maps, exclude, state)
     no_geometry = []
     for m in targets:
-        if build_mod.ensure_opening(db, m.map_id) is None:
+        try:
+            edit.append(db, m.map_id, model)
+        except edit.EditError:
             no_geometry.append(m.slug)
             continue
-        position = db.run_query(
-            "SELECT coalesce(max(position), 0) + 1 FROM map_bounds.boundary_op"
-            " WHERE source_id = :source_id",
-            dict(source_id=m.map_id),
-        ).scalar()
-        db.run_query(
-            """
-            INSERT INTO map_bounds.boundary_op
-              (source_id, position, operation, parameters)
-            VALUES (:source_id, :position, :operation, :parameters::jsonb)
-            """,
-            dict(
-                source_id=m.map_id,
-                position=position,
-                operation=operation,
-                parameters=model.model_dump_json(),
-            ),
-        )
-        print(f"Added [bold]{operation}[/] at position {position} on {m.slug}")
+        print(f"Added [bold]{operation}[/] on {m.slug}")
     # One commit, so a selection is never left half-edited.
     if no_geometry:
         db.session.rollback()

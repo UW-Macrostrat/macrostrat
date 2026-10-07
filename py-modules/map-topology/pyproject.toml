@@ -5,8 +5,15 @@ description = "Utilities to tile geologic maps globally"
 authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.11"
 readme = "README.md"
+# The base install is the `bounds` library, which the API uses; the topology
+# manager and its CLI need the `topology` extra.
 dependencies = [
     "macrostrat.database>=4.2.0",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+topology = [
     "macrostrat.core",
     "mapboard.topology-manager",
     "pytest>=8.3.4,<10",
