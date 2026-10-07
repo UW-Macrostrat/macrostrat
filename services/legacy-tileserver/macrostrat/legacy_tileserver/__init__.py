@@ -22,7 +22,8 @@ from macrostrat.tileserver_utils import (
 )
 from macrostrat.utils import get_logger, setup_stderr_logs
 
-from .image_tiles import MapnikMapPool, get_image_tile
+from .image_tiles import MapnikMapPool, get_image_tile, tile_sources
+from .image_tiles.config import BANDS_QUERY, ScaleBands
 
 log = get_logger(__name__)
 
@@ -51,8 +52,18 @@ async def startup_event():
         max_size=10,
         server_settings={"application_name": "image-tileserver-cache"},
     )
+    # Which carto member draws each scale band: the compilation system's
+    # answer, as the vector tiles give it.
+    async with app.state.pool.acquire() as conn:
+        app.state.bands = ScaleBands(await conn.fetch(BANDS_QUERY))
+    for scale, min_zoom, layer_id in app.state.bands.bands:
+        if layer_id is None:
+            log.warning(f"No carto member with faces for scale {scale}")
+        else:
+            log.info(f"Scale {scale} from z{min_zoom}: map layer {layer_id}")
+
     app.state.map_pool = MapnikMapPool(mapnik_pool_size)
-    await app.state.map_pool.setup(db_url)
+    await app.state.map_pool.setup(db_url, app.state.bands)
 
 
 class MapCompilation(Enum):
@@ -80,9 +91,14 @@ async def tile(
         mode=cache,
     )
 
-    return await handle_cached_tile_request(
+    response = await handle_cached_tile_request(
         request, request.app.state.pool, background_tasks, get_image_tile, args
     )
+    # Names the maps drawn, for the usage-stats pipeline; same as the vector route.
+    sources = await tile_sources(request, tile)
+    if sources is not None:
+        response.headers["X-Macrostrat-Sources"] = sources
+    return response
 
 
 @app.get("/{layer}/{z}/{x}/{y}.mvt")

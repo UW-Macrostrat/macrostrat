@@ -75,6 +75,28 @@ CREATE TABLE IF NOT EXISTS usage_stats.tileserver_location_index (
 CREATE INDEX IF NOT EXISTS tileserver_location_index_zxy
   ON usage_stats.tileserver_location_index (z, x, y);
 
+-- One row per map per day: the requests whose tile drew the map, read from the
+-- tileserver's X-Macrostrat-Sources response header (a tile of a compilation
+-- names the resolved maps whose faces meet it). A request naming several maps
+-- credits each in full, so sums across maps exceed the request count. Only
+-- responses carrying the header count: the legacy carto build names no maps.
+-- No lineage flag -- there is no legacy data for this index -- so `reset`
+-- clears it whole.
+CREATE TABLE IF NOT EXISTS usage_stats.tileserver_source_index (
+  source_id integer NOT NULL,
+  layer text NOT NULL,
+  ext text NOT NULL,
+  date timestamp without time zone NOT NULL,
+  num_requests integer NOT NULL,
+  is_bot boolean NOT NULL DEFAULT false,
+  CONSTRAINT tileserver_source_index_unique
+    UNIQUE (source_id, layer, ext, date, is_bot)
+);
+
+-- Per-map views over time: the question this index exists to answer.
+CREATE INDEX IF NOT EXISTS tileserver_source_index_source_date
+  ON usage_stats.tileserver_source_index (source_id, date);
+
 --------------------------------------------------------------------------------
 -- Rockd dashboard pipeline
 --------------------------------------------------------------------------------

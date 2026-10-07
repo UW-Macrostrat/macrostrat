@@ -16,10 +16,12 @@ from macrostrat.tileserver.map_tiles import (
     LEGACY_CARTO,
     PUBLIC_SLUGS,
     SCOPE,
+    SOURCES_HEADER,
     Detail,
     cache_profile,
     faces_sql,
     is_public,
+    sources_header,
 )
 
 
@@ -72,6 +74,23 @@ class TestPolicy:
         import re
 
         assert re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$", SCOPE)
+
+
+class TestSourcesHeader:
+    """What a tile says it draws, for the usage-stats pipeline to credit."""
+
+    def test_ids_ascending_and_deduplicated(self):
+        assert sources_header([3401, 133, 3401, 7]) == "7,133,3401"
+
+    def test_nothing_drawn_means_no_header(self):
+        assert sources_header([]) is None
+        assert sources_header(None) is None
+
+    def test_header_is_exposed_to_pages(self, app):
+        from starlette.middleware.cors import CORSMiddleware
+
+        cors = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
+        assert SOURCES_HEADER in cors.kwargs["expose_headers"]
 
 
 class TestRouting:

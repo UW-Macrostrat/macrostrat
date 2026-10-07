@@ -49,6 +49,9 @@ app = FastAPI(
             allow_origins=["*"],
             allow_methods=["*"],
             allow_headers=["*"],
+            # Readable from a page: which maps a tile draws, and whether the
+            # database cache answered.
+            expose_headers=["X-Macrostrat-Sources", "X-Tile-Cache"],
         )
     ],
 )

@@ -1,10 +1,12 @@
 """Tileserver request pipeline.
 
-Aggregates tile requests out of the access logs into two long-term indexes:
-`tileserver_day_index` (per layer/day/referrer/cache-status) and
+Aggregates tile requests out of the access logs into three long-term indexes:
+`tileserver_day_index` (per layer/day/referrer/cache-status),
 `tileserver_location_index` (z<=8 spatial cells, for the request-density
-heatmap). Raw per-request rows are never stored — at tile volume they are
-enormous and the indexes are the durable artifact.
+heatmap) and `tileserver_source_index` (per map and day: the maps a tile drew,
+read from the tileserver's `X-Macrostrat-Sources` response header). Raw
+per-request rows are never stored — at tile volume they are enormous and the
+indexes are the durable artifact.
 """
 
 import re
@@ -24,7 +26,15 @@ TILE_PATH_RE = re.compile(
 # hosts, garbled layer names (`carto/lite`, `carto|PNG`, `tiles/carto`, …),
 # subsidiary/dev layers, and scraper noise — is dropped before aggregation.
 KEEP_HOSTS = {"tiles.macrostrat.org"}
-KEEP_LAYERS = {"carto", "carto-slim"}
+# `map/carto` is the compilation-system carto (`/map/carto/{z}/{x}/{y}`), which
+# the legacy routes redirect to once an environment switches over; `dev/carto`
+# its deprecated alias.
+KEEP_LAYERS = {"carto", "carto-slim", "map/carto", "dev/carto"}
+
+# The tileserver names the maps a tile draws, as comma-separated source ids, in
+# `X-Macrostrat-Sources`. Traefik keeps it in the access log under the
+# `downstream_` prefix it gives every response header.
+SOURCES_FIELD = "downstream_X-Macrostrat-Sources"
 
 # Known automated clients (cache-warmers, prefetchers, scrapers) by source IP.
 # Their requests are still aggregated, but tagged `is_bot` so organic traffic
@@ -86,6 +96,23 @@ def referrer_host(rec: dict) -> str:
     return host.lower()
 
 
+def parse_sources(value: str | None) -> list[int]:
+    """The source ids named by an `X-Macrostrat-Sources` header value.
+
+    Empty when the header is absent -- the legacy build and responses from
+    before the header existed -- so those requests credit no map. A token that
+    is not an integer is skipped rather than failing the record.
+    """
+    if not value:
+        return []
+    ids = []
+    for token in value.split(","):
+        token = token.strip()
+        if token.isdigit():
+            ids.append(int(token))
+    return ids
+
+
 def is_relevant_request(host: str | None, layer: str) -> bool:
     """Whether a tile request counts toward the stats: production host + a
     canonical layer. Tweak KEEP_HOSTS / KEEP_LAYERS to widen coverage."""
@@ -121,6 +148,19 @@ LOCATION_UPSERT = """
     ON CONFLICT (layer, ext, x, y, z, orig_z, new_system, is_bot)
     DO UPDATE SET num_requests =
         usage_stats.tileserver_location_index.num_requests + EXCLUDED.num_requests
+"""
+
+
+# One row per map per day: how many kept requests drew it. A request naming
+# several maps credits each of them in full, so sums across maps exceed the
+# request count by design.
+SOURCE_UPSERT = """
+    INSERT INTO usage_stats.tileserver_source_index
+        (source_id, layer, ext, date, num_requests, is_bot)
+    VALUES (:source_id, :layer, :ext, :date, :num_requests, :is_bot)
+    ON CONFLICT (source_id, layer, ext, date, is_bot)
+    DO UPDATE SET num_requests =
+        usage_stats.tileserver_source_index.num_requests + EXCLUDED.num_requests
 """
 
 
@@ -164,14 +204,17 @@ class TileserverPipeline:
             # pre-config-change logs). downstream_* is what the client got.
             "x_cache": (rec.get("downstream_X-Cache") or "").lower(),
             "x_tile_cache": (rec.get("downstream_X-Tile-Cache") or "").lower(),
+            "sources": parse_sources(rec.get(SOURCES_FIELD)),
         }
 
     def write(self, db, rows: list[dict]) -> None:
-        day_rows, loc_rows = aggregate(rows)
+        day_rows, loc_rows, source_rows = aggregate(rows)
         if day_rows:
             db.run_query(DAY_UPSERT, day_rows)
         if loc_rows:
             db.run_query(LOCATION_UPSERT, loc_rows)
+        if source_rows:
+            db.run_query(SOURCE_UPSERT, source_rows)
 
     def daily_series(self, db, *, skip_bots: bool = False, **_) -> list[dict]:
         """Daily tile-request totals, split by pipeline lineage.
@@ -192,15 +235,21 @@ class TileserverPipeline:
         n_loc = db.run_query(
             "DELETE FROM usage_stats.tileserver_location_index WHERE new_system"
         ).rowcount
-        return f"{n_day} day rows, {n_loc} location rows (legacy lineage kept)"
+        # Entirely from the log dumps: no legacy lineage to keep.
+        n_src = db.run_query("DELETE FROM usage_stats.tileserver_source_index").rowcount
+        return (
+            f"{n_day} day rows, {n_loc} location rows, {n_src} source rows"
+            " (legacy lineage kept)"
+        )
 
 
-def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Roll parsed requests up into day_index and location_index upsert rows.
-    Location cells are downsampled to z<=8 (the index's heatmap resolution),
-    keeping the original zoom as orig_z."""
+def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    """Roll parsed requests up into day_index, location_index and source_index
+    upsert rows. Location cells are downsampled to z<=8 (the index's heatmap
+    resolution), keeping the original zoom as orig_z."""
     day: dict[tuple, int] = defaultdict(int)
     loc: dict[tuple, int] = defaultdict(int)
+    src: dict[tuple, int] = defaultdict(int)
     for r in rows:
         bot = r["is_bot"]
         z, x, y = r["z"], r["x"], r["y"]
@@ -212,6 +261,8 @@ def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
         t = r["time"]
         if t is not None:
             date = datetime(t.year, t.month, t.day)
+            for source_id in r.get("sources", ()):
+                src[(source_id, r["layer"], r["ext"], date, bot)] += 1
             # Referrer and cache status are day_index-only dimensions (kept off
             # location_index to avoid multiplying its cardinality).
             day[
@@ -252,4 +303,15 @@ def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict]]:
         }
         for k, n in loc.items()
     ]
-    return day_rows, loc_rows
+    source_rows = [
+        {
+            "source_id": k[0],
+            "layer": k[1],
+            "ext": k[2],
+            "date": k[3],
+            "is_bot": k[4],
+            "num_requests": n,
+        }
+        for k, n in src.items()
+    ]
+    return day_rows, loc_rows, source_rows

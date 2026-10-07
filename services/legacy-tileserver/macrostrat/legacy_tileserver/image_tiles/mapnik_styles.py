@@ -7,10 +7,9 @@ from json import dumps
 from pathlib import Path
 from subprocess import CalledProcessError, check_output
 from textwrap import dedent
+from typing import Optional
 
 from mapnik import Datasource
-
-from .config import layer_order
 
 __here__ = Path(__file__).parent
 
@@ -30,8 +29,8 @@ def make_datasource(db_url, **kwargs):
     )
 
 
-def make_line_datasource(db_url, scale):
-    line_query = create_line_query(scale)
+def make_line_datasource(db_url, layer_id):
+    line_query = create_line_query(layer_id)
     return make_datasource(
         db_url,
         table=f"({line_query}) subset",
@@ -43,8 +42,8 @@ def make_line_datasource(db_url, scale):
     )
 
 
-def make_polygon_datasource(db_url, scale):
-    polygon_query = create_polygon_query(scale)
+def make_polygon_datasource(db_url, layer_id):
+    polygon_query = create_polygon_query(layer_id)
     pg_credentials = get_credentials(db_url)
     return Datasource(
         type="postgis",
@@ -160,43 +159,28 @@ def get_credentials(db_url=None):
     }
 
 
-def create_polygon_query(scale):
+# Mapnik fills `!bbox!` (the render box, in the layer's SRID) and
+# `!pixel_width!` (map units per pixel) per render, and adds no bbox filter of
+# its own when the subquery carries the token. `layer_id` is the map layer of
+# the carto member for the scale: NULL draws nothing, for a band carto has no
+# solved member for.
+def create_polygon_query(layer_id: Optional[int]) -> str:
     return dedent(
         f"""
-    SELECT
-        z.map_id,
-        nullif(l.color, '') AS color,
-        z.geom FROM carto.polygons z
-    LEFT JOIN maps.map_legend
-      ON z.map_id = map_legend.map_id
-    LEFT JOIN maps.legend AS l
-      ON l.legend_id = map_legend.legend_id
-    LEFT JOIN maps.sources
-      ON l.source_id = sources.source_id
-    WHERE sources.status_code = 'active'
-      AND l.color IS NOT NULL
-      AND l.color != ''
-      AND z.scale = '{scale}'
-    """
-    )
-
-
-def create_line_query(scale: str) -> str:
-    return dedent(
-        f"""
-        SELECT
-          x.geom AS geom,
-          x.line_id,
-          ml.direction_legacy AS direction,
-          ml.type_legacy AS type
-        FROM carto.lines x
-        JOIN maps.sources s
-          ON s.source_id = x.source_id
-         AND s.status_code = 'active'
-        LEFT JOIN maps.lines ml
-          ON ml.line_id = x.line_id
-          AND ml.scale = x.scale
-        WHERE x.scale = '{scale}'
-          AND x.geom && !bbox!
+        SELECT map_id, color, geom
+        FROM tile_layers.carto_image_units(!bbox!, {_sql_int(layer_id)}, !pixel_width!)
         """
     )
+
+
+def create_line_query(layer_id: Optional[int]) -> str:
+    return dedent(
+        f"""
+        SELECT line_id, direction, type, geom
+        FROM tile_layers.carto_image_lines(!bbox!, {_sql_int(layer_id)}, !pixel_width!)
+        """
+    )
+
+
+def _sql_int(value: Optional[int]) -> str:
+    return "NULL::integer" if value is None else str(int(value))
