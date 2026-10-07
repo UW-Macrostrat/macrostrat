@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- `/mobile/map_query_v2` returns `refs` on each `mapData` item: the polygon's references from its map, legend entry and own links, as `{ref_type, label, ref_id, citation, doi, url}`. Left out where the database lacks `maps.polygon_refs_for`; `ref` is unchanged
 - `/mobile/map_query_v2` takes `compilation` (a map or compilation slug or source id, e.g. `carto`; `sys:carto-legacy` for the materialized build): units and lines then come from the compilation system through `map_bounds.units_at` / `lines_at`, with the legend from `maps.legend`. Absent, the legacy query runs unchanged
 - `/elevation` (and so `/mobile/map_query_v2` and `/mobile/dashboard`) can be served by the tile server's COG-backed elevation service instead of the `elevation` Postgres database: set `ELEVATION_SERVICE_URL` (e.g. `https://tiles.macrostrat.org/elevation`). Response shapes are unchanged. Unset, the legacy database is used as before
 

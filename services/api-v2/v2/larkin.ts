@@ -11,6 +11,7 @@ import defs from "./defs";
 
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
+  MAP_REFS = "map-refs",
 }
 
 (function () {
@@ -730,6 +731,18 @@ enum APICapability {
       larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
     } catch (e) {
       console.log("Composite projects not supported");
+    }
+
+    // MAP REFERENCES
+    // `refs` on map polygons, combined across levels by the database
+    try {
+      await larkin.queryPgAsync(
+        "burwell",
+        `SELECT * FROM maps.polygon_refs_for(0)`,
+      );
+      larkin.capabilities.add(APICapability.MAP_REFS);
+    } catch (e) {
+      console.log("Map references not supported");
     }
 
     if (larkin.capabilities.size > 0) {

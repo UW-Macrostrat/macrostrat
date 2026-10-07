@@ -5,6 +5,21 @@ const _ = require("underscore");
 
 const LINE_TOLERANCE = 20;
 
+/* A polygon's references at every level, in the order a client lists them,
+   where the database combines them (`maps.polygon_refs_for`); absent, `refs`
+   is left out of the response. */
+function refsSelect() {
+  if (!larkin.hasCapability("map-refs")) return "";
+  return `,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'ref_type', r.ref_type, 'label', r.label, 'ref_id', r.ref_id,
+          'citation', r.citation, 'doi', r.doi, 'url', r.url
+        ) ORDER BY r.ordinality)
+        FROM maps.polygon_refs_for(m.map_id) WITH ORDINALITY r
+      ), '[]') AS refs`;
+}
+
 const scaleLookup = {
   0: "tiny",
   1: "tiny",
@@ -246,7 +261,7 @@ function buildSQL(scale, where) {
         COALESCE(sources.authors, '') authors,
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
-        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
+        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
     FROM carto_new.${scale} y
     JOIN (
       ${scaleJoin}
@@ -280,7 +295,8 @@ function buildSQL(scale, where) {
    it, leaves the default behaviour untouched. `carto` becomes the default once
    the new design is the only one served. */
 
-const COMPILATION_SELECT = `
+function compilationSelect() {
+  return `
     SELECT
       m.map_id,
       m.source_id,
@@ -329,7 +345,7 @@ const COMPILATION_SELECT = `
         COALESCE(sources.authors, '') authors,
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
-        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
+        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
     FROM map_bounds.units_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
     JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
     JOIN maps.sources ON m.source_id = sources.source_id
@@ -338,9 +354,10 @@ const COMPILATION_SELECT = `
     LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
     LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
 `;
+}
 
 function buildCompilationSQL(where) {
-  return `${COMPILATION_SELECT} ${where} ORDER BY u.priority_path DESC NULLS LAST, m.map_id`;
+  return `${compilationSelect()} ${where} ORDER BY u.priority_path DESC NULLS LAST, m.map_id`;
 }
 
 /* Lines within the click tolerance, through `map_bounds.lines_at` over a
@@ -442,7 +459,7 @@ module.exports = (req, res, next) => {
   req.query.z = parseInt(req.query.z || 0);
 
   // A compilation slug or source id selects the compilation path; absent, the
-  // legacy carto query runs unchanged. See `COMPILATION_SELECT`.
+  // legacy carto query runs unchanged. See `compilationSelect`.
   const compilation = req.query.compilation ? String(req.query.compilation) : null;
 
   async.parallel(
