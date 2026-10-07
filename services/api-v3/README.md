@@ -48,7 +48,13 @@ The tiers nest, each inheriting the grants of the one below:
 | `admin`                                   | `web_admin`       | Makes real edits and administers users and tokens.               |
 
 Grant read access for signed-in collaborators to `web_authorized`, never to
-`web_user`, since anyone can hold the latter.
+`web_user`, since anyone can hold the latter. **No write of record is granted
+below `web_admin`.** The one exception is a user's own saved locations
+(`user_features`), which are guarded by row ownership rather than by role, so
+every signed-in tier keeps its own rows. The `web-write-lockdown` migration
+revokes the writes `web_anon` and `web_user` used to hold (people directory,
+knowledge-graph feedback, the ingestion queue, the section-rewriting RPC
+functions) from an existing database.
 
 The routes under `/security`:
 

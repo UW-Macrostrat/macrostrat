@@ -122,9 +122,12 @@ ALTER TABLE ONLY ecosystem.people_roles
 ALTER TABLE ONLY ecosystem.people_roles
     ADD CONSTRAINT people_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES ecosystem.roles(role_id) ON DELETE CASCADE;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ecosystem.people TO web_anon;
+-- The people directory is public to read; changing it is an administrator's job.
+GRANT SELECT ON TABLE ecosystem.people TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE ecosystem.people TO web_admin;
 
-GRANT SELECT,USAGE ON SEQUENCE ecosystem.people_person_id_seq TO web_anon;
+GRANT SELECT,USAGE ON SEQUENCE ecosystem.people_person_id_seq TO web_admin;
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE ecosystem.people_roles TO web_anon;
+GRANT SELECT ON TABLE ecosystem.people_roles TO web_anon;
+GRANT INSERT,DELETE,UPDATE ON TABLE ecosystem.people_roles TO web_admin;
 
