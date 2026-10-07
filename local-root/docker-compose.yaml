@@ -19,6 +19,7 @@ services:
     #image: ${PG_DATABASE_CONTAINER:-imresamu/postgis:15-3.4}
     # Set an arbitary tag to avoid repeated builds
     image: macrostrat.local/database:latest
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     restart: unless-stopped
     labels:
       - dev.orbstack.domains=database.macrostrat.local
@@ -41,6 +42,7 @@ services:
       - 5432
     volumes:
       - db_cluster:/var/lib/postgresql/data
+      - ./configs/postgres:/etc/postgresql:ro
   #redis broker for the Celery task queue. Exposed on the host so a locally-run worker
   #can share the same broker as api_v3
   redis:

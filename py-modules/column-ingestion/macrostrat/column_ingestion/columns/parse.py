@@ -13,8 +13,10 @@ import polars as pl
 
 from macrostrat.utils import get_logger
 
+from .. import notices
 from ..refs import parse_ref_ids
 from ..units.parse import (
+    ROW_COLUMN,
     PositionAxisType,
     Unit,
     prepare_section_units,
@@ -35,7 +37,9 @@ class Column:
     project_id: int | None = None
     status_code: str = "in process"
     col_type: str = "column"
-    #: A point location, used when no polygon is supplied. `geometry.resolve_geometry`
+    #: Which way positions run: `height`, `depth` or `age` (the workbook's `axis_type`).
+    axis_type: str | None = None
+    #: A point location, used when no polygon is supplied. `column_utils.resolve_geometry`
     #: treats a polygon as authoritative when both are present.
     lat: float | None = None
     lng: float | None = None
@@ -66,18 +70,41 @@ class Column:
         self.sections = single_section(units)
 
 
-def _as_float(value) -> float | None:
+def _as_float(value, column: str | None = None) -> float | None:
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     try:
         return float(value)
     except (TypeError, ValueError):
+        if column is not None:
+            notices.warning(
+                "unreadable-number",
+                f"`{column}` is not a number: {value!r}",
+                column=column,
+            )
         return None
 
 
-def get_column_data(data_file, meta) -> list[Column]:
-    df = pl.read_excel(data_file, sheet_name="columns")
+def _text(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
+
+def _coalesce(*values):
+    for value in values:
+        if value is not None and not (isinstance(value, str) and not value.strip()):
+            return value
+    return None
+
+
+def get_column_data(data_file, meta) -> list[Column]:
+    return columns_from_df(pl.read_excel(data_file, sheet_name="columns"), meta)
+
+
+def columns_from_df(df, meta) -> list[Column]:
+    """The `columns` sheet as `Column` objects. Defaults come from the metadata."""
     df = df.rename(
         {
             "name": "col_name",
@@ -87,28 +114,47 @@ def get_column_data(data_file, meta) -> list[Column]:
         strict=False,
     )
 
-    print(df.head())
-
     columns = []
-    for row in df.iter_rows(named=True):
-        geom = row.get("rgeom", getattr(meta, "rgeom", None))
+    seen: set[str] = set()
+    for number, row in enumerate(df.iter_rows(named=True), start=2):
+        local_id = _text(row.get("col_id"))
+        with notices.notice_context(sheet="columns", row=number, col_id=local_id):
+            if local_id is None:
+                if len(df) == 1:
+                    local_id = "1"
+                else:
+                    notices.error("column-missing-id", "A column needs a `col_id`")
+                    continue
+            if local_id in seen:
+                notices.error("column-duplicate-id", f"Duplicate col_id {local_id!r}")
+                continue
+            seen.add(local_id)
+            name = _text(row.get("col_name"))
+            if name is None:
+                notices.error("column-missing-name", "A column needs a `col_name`")
+                name = f"Column {local_id}"
 
-        col = Column(
-            # TODO: implement ID upgrading to handle existing columns
-            local_id=str(row.get("col_id")),
-            name=row.get("col_name"),
-            description=row.get("description"),
-            status_code=row.get(
-                "status_code", getattr(meta, "status_code", "in process")
-            ),
-            col_type=row.get("col_type", getattr(meta, "col_type", "column")),
-            lat=_as_float(row.get("lat")),
-            lng=_as_float(row.get("lng")),
-            ref_ids=parse_ref_ids(row.get("ref_ids")),
-            geom=row.get("geom"),
-            rgeom=geom,
-        )
-        columns.append(col)
+            col = Column(
+                # TODO: implement ID upgrading to handle existing columns
+                local_id=local_id,
+                name=name,
+                description=_text(row.get("description")),
+                status_code=_coalesce(
+                    row.get("status_code"), getattr(meta, "status_code", None)
+                )
+                or "in process",
+                col_type=_coalesce(row.get("col_type"), getattr(meta, "col_type", None))
+                or "column",
+                axis_type=_coalesce(
+                    row.get("axis_type"), getattr(meta, "axis_type", None)
+                ),
+                lat=_as_float(row.get("lat"), "lat"),
+                lng=_as_float(row.get("lng"), "lng"),
+                ref_ids=parse_ref_ids(row.get("ref_ids")),
+                geom=_text(row.get("geom")),
+                rgeom=_text(_coalesce(row.get("rgeom"), getattr(meta, "rgeom", None))),
+            )
+            columns.append(col)
     return columns
 
 
@@ -119,7 +165,12 @@ def get_sections(db, data_file, **kwargs) -> dict[str, list[Section]]:
 
 
 def get_sections_from_df(
-    db, df, *, position: PositionAxisType = PositionAxisType.HEIGHT, fill_values=False
+    db,
+    df,
+    *,
+    position: PositionAxisType = PositionAxisType.HEIGHT,
+    fill_values=False,
+    vocab=None,
 ) -> dict[str, list[Section]]:
     """Group the units sheet into columns and sections, and parse each section's units.
 
@@ -145,11 +196,20 @@ def get_sections_from_df(
     )
 
     for warning in warnings:
-        log.warning(warning)
+        notices.warning("ambiguous-columns", warning, sheet="units")
 
     # Ensure that either b_pos or t_pos is present
     if "b_pos" not in df.columns and "t_pos" not in df.columns:
         raise ValueError("Either b_pos or t_pos must be present in the data frame.")
+
+    # Remember each row's place in the sheet (header is row 1) before sorting
+    if ROW_COLUMN not in df.columns:
+        df = df.with_row_index(ROW_COLUMN, offset=2)
+    if "col_id" not in df.columns:
+        # A single-column workbook may leave the column id out
+        df = df.with_columns(pl.lit("1").alias("col_id"))
+    if "section_id" in df.columns:
+        df = df.with_columns(pl.col("section_id").cast(pl.Utf8, strict=False))
 
     # Create the columns that don't exist
     for col in ["b_pos", "t_pos"]:
@@ -160,24 +220,34 @@ def get_sections_from_df(
         df = df.with_columns(newcol)
 
     res = {}
-    for (col_id,), column_rows in df.group_by(["col_id"]):
-        print(f"Column ID: {col_id}")
-        if (
-            "section_id" not in column_rows.columns
-            or column_rows["section_id"].is_null().all()
-        ):
-            units = prepare_section_units(
-                db, column_rows, position=position, fill_values=fill_values
-            )
-            res[str(col_id)] = single_section(units)
-            continue
+    for (col_id,), column_rows in df.group_by(["col_id"], maintain_order=True):
+        with notices.notice_context(sheet="units", col_id=str(col_id)):
+            if (
+                "section_id" not in column_rows.columns
+                or column_rows["section_id"].is_null().all()
+            ):
+                units = prepare_section_units(
+                    db,
+                    column_rows,
+                    position=position,
+                    fill_values=fill_values,
+                    vocab=vocab,
+                )
+                res[str(col_id)] = single_section(units)
+                continue
 
-        sections = []
-        for (section_id,), section_rows in column_rows.group_by(["section_id"]):
-            print(f"Section ID: {section_id}")
-            units = prepare_section_units(
-                db, section_rows, position=position, fill_values=fill_values
-            )
-            sections.append(Section(orig_id=section_id, units=units))
-        res[str(col_id)] = sections
+            sections = []
+            for (section_id,), section_rows in column_rows.group_by(
+                ["section_id"], maintain_order=True
+            ):
+                with notices.notice_context(section=section_id):
+                    units = prepare_section_units(
+                        db,
+                        section_rows,
+                        position=position,
+                        fill_values=fill_values,
+                        vocab=vocab,
+                    )
+                sections.append(Section(orig_id=section_id, units=units))
+            res[str(col_id)] = sections
     return res

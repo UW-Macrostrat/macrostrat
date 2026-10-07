@@ -5,6 +5,7 @@ import polars as pl
 
 from macrostrat.utils import get_logger
 
+from .. import notices
 from ..boundary_status import BoundaryStatus
 from ..boundary_type import BoundaryType
 from ..environs import Environ, EnvironsProcessor
@@ -51,6 +52,9 @@ class Unit:
     #: hand.
     orig_id: str | None = None
 
+    #: The spreadsheet row this unit came from, for notices. `None` off-workbook.
+    row: int | None = None
+
     # Relative age positioning
     b_age: RelativeAge | None = None
     t_age: RelativeAge | None = None
@@ -85,13 +89,27 @@ class PositionAxisType(str, Enum):
     ORDINAL = "ordinal"
 
 
+#: The original spreadsheet row of each unit row, carried through sorting and grouping.
+ROW_COLUMN = "_row"
+
+
 def prepare_section_units(
     db,
     df,
     *,
     position: PositionAxisType = PositionAxisType.HEIGHT,
     fill_values: bool = True,
+    vocab=None,
 ) -> list[Unit]:
+    """The rows of one section as `Unit`s.
+
+    `vocab` is the run's `Vocabulary` (lithology and environment processors); one is
+    built here when a caller has none, at the cost of a lookup fetch.
+    """
+    if vocab is None:
+        from ..vocabulary import Vocabulary
+
+        vocab = Vocabulary(db)
     # Sort by b_pos (descending if height)
     # TODO: figure out how to switch conventions for depth
     df = df.sort("b_pos", descending=True)
@@ -122,15 +140,18 @@ def prepare_section_units(
             .alias(t_col)
         )
 
-    n_rows = df.shape[0]
-
-    # Remove any rows where t_pos or b_pos is null
+    # Rows without both positions cannot be placed; say which, then drop them
+    unplaced = df.filter(df["t_pos"].is_null() | df["b_pos"].is_null())
+    for row in unplaced.iter_rows(named=True):
+        notices.warning(
+            "unit-missing-position",
+            f"Unit {row.get('name') or ''!r} has no bottom or top position and was "
+            "left out",
+            row=row.get(ROW_COLUMN),
+            unit=row.get("name"),
+            column="b_pos",
+        )
     df = df.filter((df["t_pos"].is_not_null()) & (df["b_pos"].is_not_null()))
-
-    n_rows_2 = df.shape[0]
-
-    # Allow for one null at the top and one at the bottom
-    assert n_rows_2 >= (n_rows - 2)
 
     fill_specs = [
         "lithology",
@@ -158,59 +179,73 @@ def prepare_section_units(
             .alias(spec)
         )
 
-    # Get unique lithologies in the column
-    for col in ["lithology", "minor_lith", "strat_name"]:
-        if col not in df.columns:
-            continue
-        lithologies = df[col].unique().to_list()
-        if len(lithologies) > 0:
-            print_list(col, lithologies)
-
     res = []
-    liths_processor = LithsProcessor(db)
-    environs_processor = EnvironsProcessor(db)
     for row in df.iter_rows(named=True):
-        lith = row.get("lithology")
-        liths = liths_processor(lith, LithAbundance.DOMINANT)
-        # Process minor lithologies if they are present
-        liths |= liths_processor(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
-
-        unit = Unit(
-            environment=environs_processor(row.get("environment")),
-            comments=row.get("comments"),
-            b_pos=row["b_pos"],
-            t_pos=row["t_pos"],
-            description=row.get("description"),
-            name=row.get("name"),
-            lithology=liths,
-            color=row.get("color"),
-        )
-
-        # Only relative age positioning is supported for now
-        b_int = get_interval_from_text(db, row.get("b_int"))
-        if b_int is not None:
-            unit.b_age = RelativeAge(
-                interval=b_int, proportion=coalesce(row.get("b_prop"), 0)
-            )
-
-        t_int = get_interval_from_text(db, row.get("t_int"))
-        if t_int is not None:
-            unit.t_age = RelativeAge(
-                interval=t_int, proportion=coalesce(row.get("t_prop"), 1)
-            )
-
-        res.append(unit)
+        with notices.notice_context(row=row.get(ROW_COLUMN), unit=row.get("name")):
+            res.append(_unit_from_row(db, row, vocab))
 
     return res
+
+
+def _unit_from_row(db, row: dict, vocab) -> Unit:
+    lith = row.get("lithology")
+    liths = vocab.liths(lith, LithAbundance.DOMINANT)
+    # Process minor lithologies if they are present
+    liths |= vocab.liths(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
+    environs = vocab.environs(row.get("environment"))
+
+    unit = Unit(
+        environment=environs,
+        comments=row.get("comments"),
+        b_pos=row["b_pos"],
+        t_pos=row["t_pos"],
+        description=row.get("description"),
+        # A sheet may name a unit only by its formation.
+        name=row.get("name") or row.get("strat_name"),
+        lithology=liths,
+        color=row.get("color"),
+        row=row.get(ROW_COLUMN),
+    )
+
+    # Only relative age positioning is supported for now
+    with notices.notice_context(column="b_int"):
+        b_int = get_interval_from_text(db, row.get("b_int"))
+    if b_int is not None:
+        unit.b_age = RelativeAge(
+            interval=b_int, proportion=_proportion(row.get("b_prop"), 0, "b_prop")
+        )
+
+    with notices.notice_context(column="t_int"):
+        t_int = get_interval_from_text(db, row.get("t_int"))
+    if t_int is not None:
+        unit.t_age = RelativeAge(
+            interval=t_int, proportion=_proportion(row.get("t_prop"), 1, "t_prop")
+        )
+    return unit
+
+
+def _proportion(value, default: float, column: str) -> float:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return default
+    try:
+        proportion = float(value)
+    except (TypeError, ValueError):
+        notices.error(
+            "unreadable-proportion",
+            f"`{column}` must be a number, got {value!r}",
+            column=column,
+        )
+        return default
+    if not 0 <= proportion <= 1:
+        notices.error(
+            "proportion-out-of-range",
+            f"`{column}` must be between 0 and 1, got {proportion:g}",
+            column=column,
+        )
+    return proportion
 
 
 def coalesce(value, default):
     if value is None:
         return default
     return value
-
-
-def print_list(title, lst):
-    print(f"{title}:")
-    for item in lst:
-        print(f"  {item}")

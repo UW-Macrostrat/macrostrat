@@ -16,6 +16,7 @@ from api.map import router as map_router
 from api.map_bounds import router as map_bounds_router
 from api.match import router as match_router
 from api.routes.cache import router as cache_router
+from api.routes.column_geometry import router as column_geometry_router
 from api.routes.columns import router as columns_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
@@ -62,6 +63,7 @@ app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
 app.include_router(columns_router)
+app.include_router(column_geometry_router)
 app.include_router(sources_router)
 app.include_router(compilations_router)
 app.include_router(map_bounds_router)

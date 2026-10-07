@@ -7,13 +7,13 @@
 # b_int: Ediacaran
 # t_int: Cambrian
 # rgeom: POLYGON ((15.91375 -24.484649, 16.442625 -24.484649, 16.442625 -24.026397, 15.91375 -24.026397, 15.91375 -24.484649))
-import sys
 from dataclasses import dataclass
 from typing import Optional
 
 import polars as pl
 from pydantic import BaseModel
-from rich import print
+
+from . import notices
 
 
 class ProjectIdentifier(BaseModel):
@@ -45,59 +45,93 @@ class Metadata:
     rgeom: str | None = None
 
 
-def warn(msg: str):
-    print("[yellow]!! ")
-
-
-def get_metadata(data_file) -> Metadata:
-    df = pl.read_excel(
+def read_metadata_sheet(data_file) -> pl.DataFrame:
+    """The `metadata` sheet as two columns, `key` and `value`."""
+    return pl.read_excel(
         data_file,
         sheet_name="metadata",
         read_options={"header_row": None, "column_names": ["key", "value"]},
     )
-    # Drop everything below the "Documentation" row
-    # Get index of the first occurrence of "Documentation" in the "key" column
-    ix = df["key"].index_of("Documentation")
-    df = df.slice(0, ix)
 
-    # Turn the metadata into a dictionary
-    metadata = dict(zip(df["key"], df["value"]))
-    project = None
-    print("Metadata:")
-    for key, value in metadata.items():
-        print(f"  {key}: {value}")
 
-    # Get project name
-    project_name = metadata.get("project_name", None)
-    project_id = metadata.get("project_id", None)
-    project_slug = metadata.get("project_slug", None)
+def get_metadata(data_file) -> Metadata:
+    return metadata_from_df(read_metadata_sheet(data_file))
+
+
+def metadata_from_df(df: pl.DataFrame) -> Metadata:
+    """The metadata sheet, read as key/value rows down to the `Documentation` marker."""
+    if "key" not in df.columns or "value" not in df.columns:
+        # A sheet read with a header row: its first two columns are the pairs
+        df = df.select(
+            pl.col(df.columns[0]).alias("key"), pl.col(df.columns[1]).alias("value")
+        )
+    df = df.with_columns(pl.col("key").cast(pl.Utf8), pl.col("value").cast(pl.Utf8))
+    # Drop everything below the "Documentation" row, where the template explains itself
+    try:
+        ix = df["key"].index_of("Documentation")
+    except Exception:
+        ix = None
+    if ix is not None:
+        df = df.slice(0, ix)
+    metadata = {
+        str(key).strip(): value
+        for key, value in zip(df["key"], df["value"])
+        if key is not None and str(key).strip()
+    }
+    return metadata_from_dict(metadata)
+
+
+def _text(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def metadata_from_dict(metadata: dict) -> Metadata:
+    """Metadata from plain key/value pairs — the sheet's, or a JSON submission's."""
+    project_name = _text(metadata.get("project_name"))
+    project_id = _text(metadata.get("project_id"))
+    project_slug = _text(metadata.get("project_slug"))
     # Ensure that project_id is a valid integer
     if project_id is not None:
         try:
-            project_id = int(project_id)
+            project_id = int(float(project_id))
         except ValueError:
             if project_slug is None:
                 # Interpret the project_id as a slug
-
                 project_slug = project_id
                 project_id = None
             else:
-                raise ValueError("project_id must be a valid integer")
+                notices.error(
+                    "bad-project-id",
+                    f"project_id must be an integer, got {project_id!r}",
+                    sheet="metadata",
+                )
+                project_id = None
 
-    print(f"Project: {project_name} ({project_id}, {project_slug})")
+    project = None
+    if project_id or project_slug or project_name:
+        project = ProjectIdentifier(id=project_id, slug=project_slug, name=project_name)
 
-    project = ProjectIdentifier(id=project_id, slug=project_slug, name=project_name)
-
-    col_type = metadata.get("col_type", "column")
+    col_type = _text(metadata.get("col_type")) or "column"
+    if col_type not in ("column", "section"):
+        notices.warning(
+            "unknown-column-type",
+            f"col_type should be `column` or `section`, got {col_type!r}",
+            sheet="metadata",
+        )
 
     default_axis_type = "age" if col_type == "column" else "height"
-    axis_type = metadata.get("axis_type", default_axis_type)
+    axis_type = _text(metadata.get("axis_type")) or default_axis_type
+
+    fill_values = _text(metadata.get("fill_values")) or "n"
 
     return Metadata(
         project=project,
-        compiler=metadata.get("compiler_name"),
+        compiler=_text(metadata.get("compiler_name")),
         col_type=col_type,
         axis_type=axis_type,
-        fill_values=metadata.get("fill_values", "n").lower() in ["y", "yes", "true"],
-        rgeom=metadata.get("rgeom"),
+        fill_values=fill_values.lower() in ["y", "yes", "true"],
+        rgeom=_text(metadata.get("rgeom")),
     )

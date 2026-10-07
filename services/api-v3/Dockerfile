@@ -10,6 +10,7 @@ ENV UV_COMPILE_BYTECODE=1
 # NEED TO specify another build context for the py-modules directory
 COPY --from=py-modules match-utils /py-modules/match-utils
 COPY --from=py-modules map-topology /py-modules/map-topology
+COPY --from=py-modules column-utils /py-modules/column-utils
 
 # Install dependencies
 RUN --mount=type=cache,target=/root/.cache/uv \

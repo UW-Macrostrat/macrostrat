@@ -2,8 +2,7 @@ import re
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 
-from rich import print
-
+from . import notices
 from .database import get_all_intervals
 
 #: Placeholder written into `units.fo` / `units.lo` by an ingest that has not yet built
@@ -171,18 +170,29 @@ def get_interval_from_text(db, text: str | None):
         if match:
             ints.append(match)
         else:
-            print(f"[red]No match for {a}")
+            notices.error(
+                "unknown-interval",
+                f"No interval named {a!r}",
+                detail={"text": text},
+            )
 
     if len(ints) == 0:
         return None
 
     # Order by age width descending
     ints.sort(key=lambda i: i.age_bottom - i.age_top, reverse=True)
-    # Ensure that intervals all overlap
+    # Every named interval must overlap the narrowest, which is the one used
     last_int = ints[-1]
     for _int in ints[:-1]:
-        assert _int.age_bottom >= last_int.age_top
-        assert _int.age_top <= last_int.age_bottom
+        overlaps = (
+            _int.age_bottom >= last_int.age_top and _int.age_top <= last_int.age_bottom
+        )
+        if not overlaps:
+            notices.error(
+                "interval-mismatch",
+                f"Intervals {_int.name!r} and {last_int.name!r} do not overlap",
+                detail={"text": text},
+            )
     return last_int
 
 

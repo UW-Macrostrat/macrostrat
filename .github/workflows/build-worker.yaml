@@ -13,6 +13,7 @@ on:
       # must rebuild the image.
       - py-modules/map-utils/**
       - py-modules/column-ingestion/**
+      - py-modules/column-utils/**
       - py-modules/core/**
       - .github/workflows/build-worker.yaml
   pull_request:
@@ -22,6 +23,7 @@ on:
       - services/worker/**
       - py-modules/map-utils/**
       - py-modules/column-ingestion/**
+      - py-modules/column-utils/**
       - py-modules/core/**
       - .github/workflows/build-worker.yaml
 jobs:

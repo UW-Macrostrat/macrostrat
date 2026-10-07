@@ -1,15 +1,15 @@
 """
 Column-ingestion API routes.
 
-`POST /columns/ingest` accepts an uploaded column spreadsheet, stashes it in
-object storage (so the separate worker container can read it — a Redis/JSON task
-message can't carry the file itself), and enqueues the `macrostrat.columns.ingest`
-Celery task. `GET /columns/ingest/{task_id}` reports the task's status/result.
+`POST /columns/ingest` accepts an uploaded column spreadsheet and enqueues the
+`macrostrat.columns.ingest` Celery task. A dry run carries the file inline in the
+task message; a real ingest stashes it in object storage, where it is kept. `GET /columns/ingest/{task_id}` reports the task's status/result.
 
 The API only *forwards* the `dry_run` flag; the worker (and the ingest function it
 calls) enforce it. See the "Column ingestion task" feature-area note.
 """
 
+import base64
 import os
 import re
 from uuid import uuid4
@@ -19,6 +19,7 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from minio.error import S3Error
+from pydantic import BaseModel, Field
 
 from api.celery_app import celery_app
 from api.routes.security import TokenData, get_user_token_from_cookie, has_access
@@ -67,6 +68,9 @@ BUCKET = "temp-storage"
 # endpoint can never serve another user's in-flight upload elsewhere in the bucket.
 EXAMPLE_PREFIX = "column-ingest/ff5d060b-36f4-4bf7-888b-e2c075822d9d/"
 
+# Cap on a dry-run upload carried inline in the task message.
+MAX_INLINE_BYTES = 10 * 1024 * 1024
+
 
 def _storage_client() -> minio.Minio:
     """MinIO client for the temp-storage bucket (api-v3's S3 credentials)."""
@@ -99,8 +103,9 @@ async def ingest_columns(
     web_user can only ever validate — never write. This server-side enforcement
     is the real boundary; the web checkbox is only a convenience mirror of it.
 
-    Stores the file in object storage and hands the worker a reference, then
-    returns the Celery task id to poll via ``GET /columns/ingest/{task_id}``.
+    A dry run sends the file to the worker inline; a real ingest stores it in
+    object storage and hands the worker a reference. Returns the Celery task id
+    to poll via ``GET /columns/ingest/{task_id}``.
     ``dry_run`` is forwarded to the worker, which validates the file without
     persisting.
     """
@@ -111,31 +116,67 @@ async def ingest_columns(
     if not user_has_access:
         dry_run = True
 
-    client = _storage_client()
-    bucket = BUCKET
-    key = f"column-ingest/{uuid4()}/{file.filename}"
-    client.put_object(
-        bucket_name=bucket,
-        object_name=key,
-        data=file.file,
-        length=file.size,
-        content_type=file.content_type,
-    )
+    ref = {"filename": file.filename, "dry_run": dry_run}
+    if dry_run:
+        # A dry run's file is never kept, so it travels in the task message
+        # rather than through object storage.
+        content = await file.read()
+        if len(content) > MAX_INLINE_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
+        ref["content"] = base64.b64encode(content).decode("ascii")
+    else:
+        ref["bucket"] = BUCKET
+        ref["key"] = f"column-ingest/{uuid4()}/{file.filename}"
+        _storage_client().put_object(
+            bucket_name=BUCKET,
+            object_name=ref["key"],
+            data=file.file,
+            length=file.size,
+            content_type=file.content_type,
+        )
 
-    # The worker fetches `bucket`/`key` itself (using its own S3 endpoint/creds),
-    # so the payload only carries the small reference, not the file.
+    task = celery_app.send_task("macrostrat.columns.ingest", args=[ref])
+    return {"task_id": task.id, "key": ref.get("key"), "dry_run": dry_run}
+
+
+class ColumnSubmission(BaseModel):
+    """A column dataset as the column-ingestion format's tables, in JSON.
+
+    ``data`` holds the sheets by name — ``metadata`` as key/value pairs, the others
+    as lists of row objects — exactly as a workbook would. The editor builds this
+    from its units sheet, so a column edited in the browser and one uploaded as a
+    spreadsheet are checked and written by the same code.
+    """
+
+    data: dict = Field(..., description="Sheets by name: metadata, columns, units, …")
+    dry_run: bool = True
+
+
+@router.post("/submit")
+async def submit_columns(
+    submission: ColumnSubmission,
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+    user_has_access: bool = Depends(has_access),
+):
+    """Check — or, for an admin, write — a column dataset given as JSON.
+
+    Enqueues ``macrostrat.columns.ingest-data``; poll ``GET /columns/ingest/{task_id}``
+    for the result, which carries graded notices and the ingested data as the API
+    would serve it. Non-admins are confined to dry runs, as for uploads.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    dry_run = submission.dry_run
+    if not user_has_access:
+        dry_run = True
+    if "units" not in submission.data:
+        raise HTTPException(status_code=422, detail="`data.units` is required")
+
     task = celery_app.send_task(
-        "macrostrat.columns.ingest",
-        args=[
-            {
-                "bucket": bucket,
-                "key": key,
-                "filename": file.filename,
-                "dry_run": dry_run,
-            }
-        ],
+        "macrostrat.columns.ingest-data",
+        args=[{"data": submission.data, "dry_run": dry_run}],
     )
-    return {"task_id": task.id, "key": key, "dry_run": dry_run}
+    return {"task_id": task.id, "dry_run": dry_run}
 
 
 @router.get("/ingest/{task_id}")

@@ -25,10 +25,44 @@ def ingest_command(
 ):
     """Ingest columns from tabular data."""
     from .ingest import ingest_columns_from_file
+    from .notices import IngestValidationError
 
     db = get_database()
-    summary = ingest_columns_from_file(db, data_file, dry_run=dry_run)
-    console.print(summary)
+    try:
+        result = ingest_columns_from_file(db, data_file, dry_run=dry_run)
+    except IngestValidationError as err:
+        print_notices(err.notices.to_list())
+        console.print("[red bold]Not written:[/] the data has errors (see above).")
+        raise SystemExit(1)
+    print_notices(result["notices"])
+    summary = result["summary"]
+    if summary is not None:
+        verb = "Would write" if dry_run else "Wrote"
+        console.print(
+            f"{verb} {summary['n_columns']} column(s), {summary['n_units']} unit(s) "
+            f"into project [bold]{summary['project']['name']}[/]"
+        )
+    if dry_run:
+        console.print("[dim]Dry run — nothing was persisted.[/]")
+
+
+NOTICE_STYLES = {"error": "red bold", "warning": "yellow", "info": "dim"}
+
+
+def print_notices(items: list[dict]):
+    """One line per notice: level, code, where, message."""
+    for notice in items:
+        level = notice["level"]
+        where = [
+            f"{key} {notice[key]}"
+            for key in ("sheet", "row", "col_id", "unit", "column")
+            if notice.get(key) is not None
+        ]
+        location = f" [dim]({', '.join(where)})[/]" if where else ""
+        console.print(
+            f"[{NOTICE_STYLES.get(level, '')}]{level:7}[/] {notice['code']}: "
+            f"{notice['message']}{location}"
+        )
 
 
 age_model_app = Typer(

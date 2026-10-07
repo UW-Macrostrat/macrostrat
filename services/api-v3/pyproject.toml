@@ -26,6 +26,7 @@ dependencies = [
     "macrostrat.database>=4.0.0,<5",
     "macrostrat.match-utils",
     "macrostrat.map-topology",
+    "macrostrat.column-utils",
     "morecantile>=7.0.2",
     "pydantic-settings>2",
     "celery[redis]>=5.3,<6"
@@ -49,3 +50,4 @@ build-backend = "hatchling.build"
 [tool.uv.sources]
 "macrostrat.match-utils" = { editable = true, path = "../../py-modules/match-utils" }
 "macrostrat.map-topology" = { editable = true, path = "../../py-modules/map-topology" }
+"macrostrat.column-utils" = { editable = true, path = "../../py-modules/column-utils" }
