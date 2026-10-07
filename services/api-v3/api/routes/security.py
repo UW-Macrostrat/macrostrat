@@ -37,13 +37,25 @@ SCOPE_EXAMPLE = "rasters:emit-minerals"
 # application role to one of these lives in `macrostrat_auth.role.postgres_role`;
 # this set is the guard against a bad mapping turning into an unusable — or
 # over-privileged — `role` claim.
-POSTGREST_ROLES = frozenset({"web_admin", "web_user"})
 DEFAULT_POSTGREST_ROLE = "web_user"
+AUTHORIZED_POSTGREST_ROLE = "web_authorized"
 ADMIN_POSTGREST_ROLE = "web_admin"
+# The tiers nest (each inherits the one below it in Postgres), so a session may
+# be *degraded* to any lower rank but never raised above the stored one.
+POSTGREST_ROLE_RANK = {
+    DEFAULT_POSTGREST_ROLE: 1,
+    AUTHORIZED_POSTGREST_ROLE: 2,
+    ADMIN_POSTGREST_ROLE: 3,
+}
+POSTGREST_ROLES = frozenset(POSTGREST_ROLE_RANK)
 
 # Application roles (`macrostrat_auth.role.id`). `role` has no database default,
-# so a new user is created in DEFAULT_ROLE explicitly.
+# so a new user is created in DEFAULT_ROLE explicitly. Anyone with an ORCID iD
+# can sign in and become a `user`, so that tier confers nothing substantial;
+# `authorized` users are designated by an admin and may view anything; only
+# `admin` makes real edits.
 DEFAULT_ROLE = "user"
+AUTHORIZED_ROLE = "authorized"
 ADMIN_ROLE = "admin"
 
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -162,6 +174,18 @@ class CurrentUser(BaseModel):
 
 class SetUserRoleRequest(BaseModel):
     role: str
+
+
+class AuthChange(BaseModel):
+    """One row of the change-tracking trail for the account tables."""
+
+    id: int
+    changed_at: datetime
+    actor_id: str | None = None
+    table_name: str
+    action: str
+    record_pk: dict | None = None
+    changed: dict | None = None
 
 
 class RoleInfo(BaseModel):
@@ -333,9 +357,10 @@ def resolve_assumed_role(actual_role: str, requested: str | None) -> str:
     """The Postgres role a session may carry, given what its user is entitled to.
 
     `None` means "the stored role" — the way back from a degraded session. A
-    role may be assumed only downward: an admin may browse as `web_user` (to see
-    the site as a user does), but nobody can claim more than their record grants,
-    and nothing below the roles PostgREST knows is a session at all.
+    role may be assumed only downward: an admin may browse as `web_authorized`
+    or `web_user` (to see the site as they do), but nobody can claim more than
+    their record grants, and nothing outside the roles PostgREST knows is a
+    session at all.
     """
     if requested is None or requested == actual_role:
         return actual_role
@@ -345,12 +370,22 @@ def resolve_assumed_role(actual_role: str, requested: str | None) -> str:
             detail=f"Unknown role {requested!r}; expected one of "
             + ", ".join(sorted(POSTGREST_ROLES)),
         )
-    if actual_role == ADMIN_POSTGREST_ROLE and requested == DEFAULT_POSTGREST_ROLE:
+    if POSTGREST_ROLE_RANK[requested] < POSTGREST_ROLE_RANK.get(actual_role, 0):
         return requested
     raise HTTPException(
         status_code=403,
         detail=f"Your account cannot assume the {requested} role",
     )
+
+
+def audit_actor(token: TokenData) -> str:
+    """How the change-tracking trail names this session's user.
+
+    Same spelling as the audit trigger's own fallback for PostgREST writes
+    (`'orcid:' || sub`), so a change made through api-v3 and one made through
+    PostgREST read as the same person.
+    """
+    return f"orcid:{token.sub}"
 
 
 def session_claims(user: schemas.User, role: str | None = None) -> dict:
@@ -379,11 +414,83 @@ def parse_redirect_uri():
     return parsed, hostname, cookie_domain, secure
 
 
-def clear_auth_cookies(response: Response):
+class CookieParams(BaseModel):
+    """The attributes every auth cookie is issued with.
+
+    One derivation, used by the login callback, the refresh, the role switch and
+    the logout alike: a cookie set under one domain and re-issued under another
+    leaves the browser holding two, and whichever it sends first wins.
     """
-    Attempt to delete cookies for both host-only and domain cookies"""
+
+    domain: str | None
+    samesite: str | None
+    secure: bool
+
+
+def auth_cookie_params() -> CookieParams:
+    """Where and how the session cookies are scoped.
+
+    Production: the API's own host, `SameSite=Lax`, `Secure` under https.
+
+    Local development reaches the API at a `.local` subdomain (e.g.
+    `api.macrostrat.local`) from a site served elsewhere (`https://macrostrat.local`
+    or `http://localhost:3000`), so the cookie is scoped to the parent domain and
+    sent cross-site: `SameSite=None`, which must be the string "none" rather than
+    Python None (that drops the attribute and defaults to Lax) and requires
+    `Secure`, so it falls back to Lax over plain http.
+    """
+    parsed, hostname, cookie_domain, secure = parse_redirect_uri()
+    samesite: str | None = "lax"
+    if (
+        cookie_domain
+        and cookie_domain.endswith(".local")
+        and cookie_domain.count(".") > 1
+    ):
+        cookie_domain = ".".join(cookie_domain.split(".")[-2:])
+        samesite = "none" if secure else "lax"
+    return CookieParams(domain=cookie_domain, samesite=samesite, secure=secure)
+
+
+def set_access_cookie(response: Response, access_token: str):
+    """Issue (or re-issue) the access cookie.
+
+    Its lifetime tracks the token's `exp`, so a browser stops auto-sending it
+    the moment it expires. Caddy then adds no Authorization header and
+    PostgREST falls back to web_anon instead of 401ing on a stale token.
+    """
+    params = auth_cookie_params()
+    response.set_cookie(
+        access_token_key,
+        f"Bearer {access_token}",
+        domain=params.domain,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        samesite=params.samesite,
+        secure=params.secure,
+    )
+
+
+def set_refresh_cookie(response: Response, refresh_jwt: str):
+    """Issue the refresh cookie. It outlives the access cookie (7d vs 24h); once
+    it too expires the browser drops it and the user is fully anonymous."""
+    params = auth_cookie_params()
+    response.set_cookie(
+        refresh_token_key,
+        refresh_jwt,
+        domain=params.domain,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        httponly=True,
+        samesite=params.samesite,
+        secure=params.secure,
+    )
+
+
+def clear_auth_cookies(response: Response):
+    """Delete the session cookies under every domain they may have been set for:
+    the one issued now, the API's own host, and the host-only forms."""
     _, hostname, cookie_domain, _ = parse_redirect_uri()
-    for dom in {None, cookie_domain, "localhost", "127.0.0.1", hostname}:
+    issued = auth_cookie_params().domain
+    for dom in {None, issued, cookie_domain, "localhost", "127.0.0.1", hostname}:
         response.delete_cookie(key=access_token_key, domain=dom)
         response.delete_cookie(key=refresh_token_key, domain=dom)
 
@@ -542,8 +649,6 @@ async def redirect_callback(
         "redirect_uri": uri,
     }
 
-    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
-
     async with aiohttp.ClientSession() as session:
         async with session.post(
             os.environ["OAUTH_TOKEN_URL"], data=data
@@ -594,39 +699,8 @@ async def redirect_callback(
             log.info("Created access token: %s", access_token)
 
             response = RedirectResponse(state if state else "/")
+            set_access_cookie(response, access_token)
 
-            samesite = "lax"
-
-            # Overrides for local development
-            # Remove subdomins for .local domains (for local development)
-            if cookie_domain.endswith(".local") and cookie_domain.count(".") > 1:
-                parts = cookie_domain.split(".")
-                # Remove the subdomain
-                cookie_domain = ".".join(parts[-2:])
-                # Must be the string "none" (not Python None, which drops the attribute and defaults to Lax). lets the
-                # cookie allow cross-site fetches from http://localhost:3000 to https://macrostrat.local.
-                samesite = None
-
-            log.info("Redirecting to %s", cookie_domain)
-
-            secure = parsed_url.scheme == "https"
-            if not secure:
-                # Samesite none requires secure cookies
-                samesite = "lax"
-
-            response.set_cookie(
-                access_token_key,
-                f"Bearer {access_token}",
-                domain=cookie_domain,
-                # Cookie lifetime tracks the access-token `exp`, so a
-                # browser stops auto-sending it the moment it expires. Caddy then
-                # adds no Authorization header and PostgREST falls back to
-                # web_anon instead of 401ing on a stale token.
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                httponly=True,
-                samesite=samesite,
-                secure=secure,
-            )
             # TODO remove the token type
             refresh_jwt = jwt.encode(
                 {
@@ -639,18 +713,7 @@ async def redirect_callback(
                 os.environ["SECRET_KEY"],
                 algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
             )
-
-            response.set_cookie(
-                refresh_token_key,
-                refresh_jwt,
-                domain=cookie_domain,
-                # Refresh cookie outlives the access cookie (7d vs 24h); once it
-                # too expires the browser drops it and the user is fully anon.
-                max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-                httponly=True,
-                samesite=samesite,
-                secure=secure,
-            )
+            set_refresh_cookie(response, refresh_jwt)
 
             return response
 
@@ -695,21 +758,6 @@ async def refresh_token(
     set_access_cookie(response, create_access_token(data=session_claims(user)))
 
     return {"status": "refreshed"}
-
-
-def set_access_cookie(response: Response, access_token: str):
-    """Re-issue the access cookie on an existing session (refresh, role switch)."""
-    parsed_url, hostname, cookie_domain, secure = parse_redirect_uri()
-    response.set_cookie(
-        access_token_key,
-        f"Bearer {access_token}",
-        domain=cookie_domain,
-        # Same as the callback: cookie lifetime tracks the fresh access-token exp.
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True,
-        samesite="lax",
-        secure=(parsed_url.scheme == "https"),
-    )
 
 
 @router.post("/role", response_model=SessionRole)
@@ -819,6 +867,7 @@ async def create_delegate_token(
         created_by=issuer.id if issuer is not None else None,
         label=token_request.label,
         scopes=token_request.scopes,
+        actor=audit_actor(user_token),
     )
 
     return DelegateToken(
@@ -853,7 +902,7 @@ async def list_delegate_tokens(
 async def revoke_delegate_token(
     token_id: int,
     database: DatabaseDep,
-    _admin: TokenData = Depends(require_admin),
+    admin: TokenData = Depends(require_admin),
 ):
     """Revoke a token by expiring it now. Admin only.
 
@@ -862,7 +911,9 @@ async def revoke_delegate_token(
     up to a minute to take effect.
     """
 
-    outcome = await db.revoke_token(database.async_engine, token_id)
+    outcome = await db.revoke_token(
+        database.async_engine, token_id, actor=audit_actor(admin)
+    )
 
     if outcome == "not_found":
         raise HTTPException(status_code=404, detail=f"No token with id {token_id}")
@@ -929,6 +980,24 @@ async def list_users(
     return [UserInfo.from_user(u) for u in users]
 
 
+@router.get("/history", response_model=list[AuthChange])
+async def list_auth_history(
+    database: DatabaseDep,
+    limit: int = 100,
+    _admin: TokenData = Depends(require_admin),
+):
+    """Recent changes to users and tokens, newest first. Admin only.
+
+    Read from the change-tracking trail (`audit.changes`), which records who
+    moved whom to which role and who minted or revoked which token. Empty when
+    the audit subsystem is not installed in this database.
+    """
+    rows = await db.list_auth_history(
+        database.async_engine, limit=max(1, min(limit, 1000))
+    )
+    return [AuthChange(**row) for row in rows]
+
+
 @router.patch("/users/{user_id}", response_model=UserInfo)
 async def set_user_role(
     user_id: int,
@@ -956,6 +1025,8 @@ async def set_user_role(
     if user.sub == admin.sub:
         raise HTTPException(status_code=403, detail="You cannot change your own role")
 
-    await db.set_user_role(database.async_engine, user_id, body.role)
+    await db.set_user_role(
+        database.async_engine, user_id, body.role, actor=audit_actor(admin)
+    )
     user = await db.get_user_by_id(database.async_sessionmaker, user_id)
     return UserInfo.from_user(user)

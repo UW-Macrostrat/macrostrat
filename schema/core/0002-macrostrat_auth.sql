@@ -31,17 +31,24 @@ CREATE TABLE macrostrat_auth.role (
     -- surface as a session that silently falls back to the default role.
     postgres_role text not null
         constraint role_postgres_role_is_a_web_role
-        check (postgres_role in ('web_user', 'web_admin', 'web_anon')),
+        check (postgres_role in ('web_user', 'web_authorized', 'web_admin', 'web_anon')),
     description   text
 );
 
 -- Seeded, not defaulted. `ON CONFLICT ... DO UPDATE` (rather than DO NOTHING)
 -- so `macrostrat schema sync` converges the mapping columns too, not just the
 -- set of role names.
+--
+-- The tiers: anyone can become a `user` by signing in, so that tier confers
+-- nothing beyond anonymous access. An administrator designates `authorized`
+-- users, who may view anything (work in progress included) but edit nothing of
+-- record; only `admin` makes real edits. Administration happens at
+-- /dashboard/admin on the website.
 INSERT INTO macrostrat_auth.role (id, postgres_role, description) VALUES
-    ('user',  'web_user',  'A signed-in Macrostrat user'),
-    ('admin', 'web_admin', 'A Macrostrat administrator'),
-    ('test',  'web_user',  'A synthetic account used by the test suite')
+    ('user',       'web_user',       'A signed-in Macrostrat user'),
+    ('authorized', 'web_authorized', 'A user designated by an administrator to view everything'),
+    ('admin',      'web_admin',      'A Macrostrat administrator'),
+    ('test',       'web_user',       'A synthetic account used by the test suite')
 ON CONFLICT (id) DO UPDATE
     SET postgres_role = EXCLUDED.postgres_role,
         description   = EXCLUDED.description;

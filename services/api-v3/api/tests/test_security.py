@@ -27,7 +27,11 @@ ALGORITHM = os.environ["JWT_ENCRYPTION_ALGORITHM"]
 
 def fake_user(role: str = "admin", sub: str = "0000-0000-0000-0001"):
     """Enough of `schemas.User` for `role_claim` and `session_claims`."""
-    postgres_role = {"admin": "web_admin", "user": "web_user"}[role]
+    postgres_role = {
+        "admin": "web_admin",
+        "authorized": "web_authorized",
+        "user": "web_user",
+    }[role]
     return SimpleNamespace(
         id=46,
         sub=sub,
@@ -57,13 +61,72 @@ def test_resolve_assumed_role_restores_and_degrades():
     assert security.resolve_assumed_role("web_admin", None) == "web_admin"
     assert security.resolve_assumed_role("web_admin", "web_admin") == "web_admin"
     assert security.resolve_assumed_role("web_admin", "web_user") == "web_user"
+    assert (
+        security.resolve_assumed_role("web_admin", "web_authorized") == "web_authorized"
+    )
+    assert security.resolve_assumed_role("web_authorized", "web_user") == "web_user"
     assert security.resolve_assumed_role("web_user", None) == "web_user"
 
 
-def test_resolve_assumed_role_never_climbs():
+@pytest.mark.parametrize(
+    "actual,requested",
+    [
+        ("web_user", "web_admin"),
+        ("web_user", "web_authorized"),
+        ("web_authorized", "web_admin"),
+    ],
+)
+def test_resolve_assumed_role_never_climbs(actual, requested):
     with pytest.raises(HTTPException) as info:
-        security.resolve_assumed_role("web_user", "web_admin")
+        security.resolve_assumed_role(actual, requested)
     assert info.value.status_code == 403
+
+
+def test_audit_actor_matches_the_trigger_fallback():
+    token = security.TokenData(sub="0000-0001-2345-6789", role="web_admin")
+    assert security.audit_actor(token) == "orcid:0000-0001-2345-6789"
+
+
+# --------------------------------------------------------------------------- #
+# Cookie scoping, shared by every route that issues or clears a session
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "redirect_uri,domain,samesite,secure",
+    [
+        # Production: the API's own host, first-party.
+        (
+            "https://macrostrat.org/api/v3/security/callback",
+            "macrostrat.org",
+            "lax",
+            True,
+        ),
+        # Local stack: scoped to the parent .local domain and sent cross-site
+        # (from https://macrostrat.local or http://localhost:3000).
+        (
+            "https://api.macrostrat.local/security/callback",
+            "macrostrat.local",
+            "none",
+            True,
+        ),
+        # The same over plain http: SameSite=None needs Secure, so Lax.
+        (
+            "http://api.macrostrat.local/security/callback",
+            "macrostrat.local",
+            "lax",
+            False,
+        ),
+        # Bare localhost: a host-only cookie.
+        ("http://localhost:8000/security/callback", None, "lax", False),
+    ],
+)
+def test_auth_cookie_params(monkeypatch, redirect_uri, domain, samesite, secure):
+    monkeypatch.setenv("REDIRECT_URI_ENV", redirect_uri)
+    params = security.auth_cookie_params()
+    assert params.domain == domain
+    assert params.samesite == samesite
+    assert params.secure is secure
 
 
 def test_resolve_assumed_role_rejects_unknown_roles():
@@ -190,6 +253,42 @@ def test_admin_can_degrade_and_restore(client):
     claims = decode_cookie(issued_cookie(res))
     assert claims["role"] == "web_admin"
     assert "actual_role" not in claims
+
+
+def test_role_switch_issues_cookie_with_login_scoping(client, monkeypatch):
+    """The re-issued cookie must land where the login callback put the original,
+    or the browser ends up holding two and sends whichever it likes."""
+    monkeypatch.setenv(
+        "REDIRECT_URI_ENV", "https://api.macrostrat.local/security/callback"
+    )
+    user = fake_user("admin")
+    client.users[user.sub] = user
+    cookies = cookie_for(security.session_claims(user))
+
+    res = client.post("/security/role", json={"role": "web_user"}, headers=cookies)
+    assert res.status_code == 200, res.text
+    set_cookie = res.headers["set-cookie"].lower()
+    assert "domain=macrostrat.local" in set_cookie
+    assert "samesite=none" in set_cookie
+    assert "secure" in set_cookie
+    assert "httponly" in set_cookie
+
+
+def test_authorized_user_can_degrade_to_user_but_not_climb(client):
+    user = fake_user("authorized")
+    client.users[user.sub] = user
+    cookies = cookie_for(security.session_claims(user))
+
+    res = client.post("/security/role", json={"role": "web_user"}, headers=cookies)
+    assert res.status_code == 200, res.text
+    assert res.json() == {
+        "role": "web_user",
+        "actual_role": "web_authorized",
+        "degraded": True,
+    }
+
+    res = client.post("/security/role", json={"role": "web_admin"}, headers=cookies)
+    assert res.status_code == 403
 
 
 def test_user_cannot_claim_admin(client):
