@@ -81,7 +81,7 @@ def append_operation(
     return _boundary(db, source)
 
 
-@router.patch("/{ident}/operations/{op_id}", summary="Move or annotate an operation")
+@router.patch("/{ident}/operations/{op_id}", summary="Edit an operation")
 def edit_operation(
     ident: str,
     op_id: int,
@@ -89,12 +89,14 @@ def edit_operation(
     database: DatabaseDep,
     user: AdminDep,
 ) -> MapBoundary:
-    """Move an operation and/or replace its note. Admin only."""
+    """Move an operation, replace its note, or redraw its polygon. Admin only."""
     db = database.sync
     source = _source(db, ident)
     with _edit(db):
         if body.note is not None:
             edit.annotate(db, source.source_id, op_id, body.note or None)
+        if body.geometry is not None:
+            edit.set_geometry(db, source.source_id, op_id, body.geometry)
         if body.position is not None:
             edit.move(db, source.source_id, op_id, body.position)
     return _boundary(db, source)

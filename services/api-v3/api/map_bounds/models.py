@@ -57,6 +57,8 @@ class OperationEdit(BaseModel):
     position: Optional[int] = None
     #: Replaces the note; an empty string clears it.
     note: Optional[str] = None
+    #: Replaces a drawn operation's polygon (GeoJSON).
+    geometry: Optional[dict[str, Any]] = None
 
 
 class BuildReport(BaseModel):
