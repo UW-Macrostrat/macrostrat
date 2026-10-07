@@ -6,6 +6,8 @@
    Columbia appears once, as `bc-surface`, rather than as its two maps.
    `level=map` draws the maps at the bottom instead -- the referenceable units of
    mapping -- which is a different and equally legitimate question.
+   `level=self` draws the source's own boundary, compilation or not: what the
+   boundary editor edits.
 */
 WITH tile AS (
   SELECT
@@ -19,7 +21,7 @@ WITH tile AS (
   SELECT DISTINCT r.member_id AS source_id, r.member_id
   FROM root
   CROSS JOIN LATERAL map_bounds.resolved_maps(root.source_id) r
-  WHERE :level <> 'map'
+  WHERE :level = 'member'
   UNION
   -- Every map at the bottom, whether or not something above it is materialized.
   SELECT m.source_id, m.source_id
@@ -33,7 +35,7 @@ WITH tile AS (
   -- Without this the route is silently empty for every map.
   SELECT root.source_id, root.source_id
   FROM root
-  WHERE NOT map_bounds.is_compilation(root.source_id)
+  WHERE NOT map_bounds.is_compilation(root.source_id) OR :level = 'self'
 ), sources AS (
   SELECT
     s.source_id,
