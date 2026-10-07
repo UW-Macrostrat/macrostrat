@@ -13,7 +13,6 @@ from macrostrat.column_ingestion.columns import (
     single_section,
     split_at_gaps,
 )
-from macrostrat.column_ingestion.columns.geometry import POINT_AREA_KM2
 from macrostrat.column_ingestion.database import ProjectIdentifier
 from macrostrat.column_ingestion.ingest import ingest_columns, ingest_columns_from_file
 from macrostrat.column_ingestion.intervals import (
@@ -22,6 +21,7 @@ from macrostrat.column_ingestion.intervals import (
     RelativeAge,
 )
 from macrostrat.column_ingestion.units import BoundaryType, Unit
+from macrostrat.column_utils import POINT_AREA_KM2, write_column_footprint
 
 SQUARE = "POLYGON((0 0, 1 0, 1 1, 0 1, 0 0))"
 
@@ -223,14 +223,14 @@ def test_section_bounds_ignore_units_missing_one_side():
 
 class TestGeometry:
     def test_point_geometry(self, db):
-        geom = resolve_geometry(db, lat=43.07, lng=-89.4)
+        geom = resolve_geometry(db.session, lat=43.07, lng=-89.4)
 
         assert (geom.lat, geom.lng) == (43.07, -89.4)
         assert geom.area_km2 == POINT_AREA_KM2, "a point has no footprint"
         assert geom.poly_geom is None and geom.wkt is None
 
     def test_polygon_derives_point_and_geodesic_area(self, db):
-        geom = resolve_geometry(db, geom=SQUARE)
+        geom = resolve_geometry(db.session, geom=SQUARE)
 
         assert (geom.lat, geom.lng) == (
             0.5,
@@ -241,13 +241,27 @@ class TestGeometry:
         assert geom.wkt == SQUARE
 
     def test_polygon_wins_over_a_supplied_point(self, db):
-        geom = resolve_geometry(db, lat=80.0, lng=80.0, geom=SQUARE)
+        geom = resolve_geometry(db.session, lat=80.0, lng=80.0, geom=SQUARE)
 
         assert (geom.lat, geom.lng) == (0.5, 0.5)
 
+    def test_kept_point_inside_the_polygon(self, db):
+        geom = resolve_geometry(
+            db.session, lat=0.25, lng=0.75, geom=SQUARE, keep_point=True
+        )
+
+        assert (geom.lat, geom.lng) == (0.25, 0.75)
+        assert geom.area_km2 > 12_000
+
+    def test_kept_point_outside_the_polygon_is_an_error(self, db):
+        with raises(GeometryError, match="outside the polygon"):
+            resolve_geometry(
+                db.session, lat=80.0, lng=80.0, geom=SQUARE, keep_point=True
+            )
+
     def test_missing_geometry_is_an_error(self, db):
         try:
-            resolve_geometry(db, label="column 7")
+            resolve_geometry(db.session, label="column 7")
         except GeometryError as err:
             assert "column 7" in str(err)
         else:
@@ -255,7 +269,7 @@ class TestGeometry:
 
     def test_non_polygon_geometry_is_rejected(self, db):
         try:
-            resolve_geometry(db, geom="LINESTRING(0 0, 1 1)")
+            resolve_geometry(db.session, geom="LINESTRING(0 0, 1 1)")
         except GeometryError as err:
             assert "POLYGON" in str(err)
         else:
@@ -264,7 +278,7 @@ class TestGeometry:
     def test_invalid_polygon_is_rejected(self, db):
         # A bowtie: self-intersecting, so ST_IsValid is false.
         try:
-            resolve_geometry(db, geom="POLYGON((0 0, 1 1, 1 0, 0 1, 0 0))")
+            resolve_geometry(db.session, geom="POLYGON((0 0, 1 1, 1 0, 0 1, 0 0))")
         except GeometryError as err:
             assert "invalid geometry" in str(err)
         else:
@@ -339,6 +353,44 @@ class TestIngestedColumns:
         polygons = [r for r in rows if r.has_poly]
         assert polygons, "the workbook has polygon columns"
         assert all(r.col_area > 0 for r in polygons), "polygons get a geodesic area"
+
+    def test_column_footprint_is_rewritten(
+        self, db, test_project, default_age_model_ref, excel_file
+    ):
+        """A footprint written on its own replaces the column's point, polygon and
+        `col_areas` row; a point alone leaves no `col_areas` row."""
+        ingest_columns_from_file(db, excel_file)
+        col_id = db.run_query("SELECT min(id) FROM macrostrat.cols").scalar()
+
+        def footprint():
+            return db.run_query(
+                """
+                SELECT c.lat, c.lng, c.col_area, c.poly_geom IS NOT NULL has_poly,
+                  count(a.id) n_areas, max(a.wkt) area_wkt
+                FROM macrostrat.cols c
+                LEFT JOIN macrostrat.col_areas a ON a.col_id = c.id
+                WHERE c.id = :col_id GROUP BY c.id
+                """,
+                {"col_id": col_id},
+            ).one()
+
+        region = resolve_geometry(
+            db.session, lat=0.25, lng=0.75, geom=SQUARE, keep_point=True
+        )
+        assert write_column_footprint(db.session, col_id, region)
+        row = footprint()
+        assert (float(row.lat), float(row.lng)) == (0.25, 0.75)
+        assert row.col_area > 12_000 and row.has_poly
+        assert row.n_areas == 1 and row.area_wkt == SQUARE
+
+        point = resolve_geometry(db.session, lat=10.0, lng=20.0)
+        assert write_column_footprint(db.session, col_id, point)
+        row = footprint()
+        assert (float(row.lat), float(row.lng)) == (10.0, 20.0)
+        assert row.col_area == POINT_AREA_KM2 and not row.has_poly
+        assert row.n_areas == 0
+
+        assert not write_column_footprint(db.session, -1, point), "no such column"
 
 
 # --- ingested sections: the source divides the column ----------------------------

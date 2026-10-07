@@ -39,7 +39,7 @@ class Column:
     col_type: str = "column"
     #: Which way positions run: `height`, `depth` or `age` (the workbook's `axis_type`).
     axis_type: str | None = None
-    #: A point location, used when no polygon is supplied. `geometry.resolve_geometry`
+    #: A point location, used when no polygon is supplied. `column_utils.resolve_geometry`
     #: treats a polygon as authoritative when both are present.
     lat: float | None = None
     lng: float | None = None

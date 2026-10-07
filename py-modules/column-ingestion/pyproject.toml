@@ -20,12 +20,14 @@ dependencies = [
     # after cloning it, which the session-scoped source fixture relies on.
     "macrostrat.database>=4.6.1,<5.0.0",
     "macrostrat.core",
+    "macrostrat.column-utils",
     "scipy>=1.17.1",
     "xlsxwriter>=3.2.9",
 ]
 
 [tool.uv.sources]
 "macrostrat.core" = { editable = true, path = "../core" }
+"macrostrat.column-utils" = { editable = true, path = "../column-utils" }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

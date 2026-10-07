@@ -3,7 +3,7 @@
 Replaces the previous `get_or_create_column`, which matched on `(col_name, project_id)`
 and filled the NOT NULL columns it did not understand with placeholder zeros —
 `col_position=""`, `col_area=0`, `col=0`, `lat=0`, `lng=0`. Geometry now comes from
-`geometry.resolve_geometry` (PostGIS via `geoalchemy2`), and the rest goes through the
+`column_utils.resolve_geometry` (PostGIS via `geoalchemy2`), and the rest goes through the
 shared reconciler.
 
 Natural keys
@@ -22,11 +22,11 @@ identifier — see `column_identity` for why an ingested dataset cannot rely on 
 
 from datetime import datetime, timezone
 
+from macrostrat.column_utils import resolve_geometry
 from macrostrat.utils import get_logger
 
 from ..database import get_macrostrat_table
 from ..reconciliation import ReconciliationPlan, reconcile
-from .geometry import resolve_geometry
 from .parse import Column
 
 log = get_logger(__name__)
@@ -151,7 +151,7 @@ def _column_number(col: Column, fallback: int) -> float:
 
 def _desired_column_row(db, col: Column, ordinal: int) -> dict:
     geometry = resolve_geometry(
-        db,
+        db.session,
         lat=col.lat,
         lng=col.lng,
         geom=col.geom or col.rgeom,
