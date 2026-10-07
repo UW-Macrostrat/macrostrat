@@ -10,9 +10,9 @@ against a scratch row, so the geometry never leaves the database and a failure
 is attributable to a single operation.
 
 The geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are
-authored in QGIS, which edits `map_bounds.boundary_op` directly as a PostGIS
-layer. They are modelled here so that `show` and `build` understand them, but
-they are not exposed as CLI commands.
+drawn: in the web boundary editor (`edit.append`, through the API) or in QGIS,
+which edits `map_bounds.boundary_op` directly as a PostGIS layer. They are not
+exposed as CLI commands.
 """
 
 from typing import Any, ClassVar, Literal
@@ -35,7 +35,7 @@ class BoundaryOp(BaseModel):
     op_id: ClassVar[str]
     #: Whether this operation carries an operand geometry.
     takes_geometry: ClassVar[bool] = False
-    #: Whether QGIS (rather than the CLI) is the place to create it.
+    #: Whether it is drawn (web editor, QGIS) rather than created by the CLI.
     geometry_authored: ClassVar[bool] = False
 
     model_config = {"extra": "forbid"}
@@ -220,14 +220,14 @@ class FillHoles(BoundaryOp):
             )
         params["fill_max_area"] = self.max_area.square_meters
         # Rebuild each part keeping only interior rings above the threshold, so
-        # small holes are filled and large ones survive.
+        # small holes are filled and large ones survive. ST_DumpRings walks a
+        # part once; ST_InteriorRingN per index re-reads it for every ring, which
+        # spilled hundreds of GB on a boundary with 73k holes in one part.
         kept_rings = (
-            "COALESCE((SELECT array_agg(rings.ring) FROM ("
-            "  SELECT ST_InteriorRingN((d).geom, i) AS ring"
-            "  FROM generate_series(1, ST_NumInteriorRings((d).geom)) AS i"
-            " ) rings"
-            " WHERE ST_Area(ST_MakePolygon(rings.ring)::geography)"
-            " > :fill_max_area), ARRAY[]::geometry[])"
+            "ARRAY(SELECT ST_ExteriorRing(r.geom)"
+            " FROM ST_DumpRings((d).geom) AS r"
+            " WHERE r.path[1] > 0"
+            " AND ST_Area(r.geom::geography) > :fill_max_area)"
         )
         return (
             "(SELECT ST_Multi(ST_Union("

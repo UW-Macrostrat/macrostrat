@@ -24,7 +24,7 @@ dependencies = [
     "results>=1.4.0,<1.5.0",
     "testcontainers>=4.14.2",
     "httpx>=0.28.1",
-    "macrostrat.map-topology",
+    "macrostrat.map-topology[topology]",
     "macrostrat.core"
 ]
 

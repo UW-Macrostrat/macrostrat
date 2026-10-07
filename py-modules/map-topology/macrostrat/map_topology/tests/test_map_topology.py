@@ -6,7 +6,7 @@ from pytest import approx, fixture, mark, raises
 from shapely.geometry import Point
 from sqlalchemy.exc import DBAPIError
 
-from macrostrat.map_topology import _set_dirty
+from macrostrat.map_topology.commands import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import (
     MacrostratTopologyManager,
