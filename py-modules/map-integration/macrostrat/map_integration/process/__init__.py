@@ -1,8 +1,8 @@
 """
 Map processing pipeline (v2)
 
-+ macrostrat process rgeom <source_id>
-+ macrostrat process web_geom <source_id>
++ macrostrat maps process insert <source_id>
++ macrostrat maps process bounds <source_id>
 + macrostrat process legend <source_id>
 + macrostrat match strat_names <source_id>
 + macrostrat match units <source_id>
@@ -35,7 +35,7 @@ from ..utils.map_info import (
     has_map_schema_data,
     resolve_maps,
 )
-from .geometry import create_rgeom, create_webgeom
+from .geometry import create_bounds
 from .insert import copy_to_maps, remove
 from .legend_lookup import legend_lookup
 from .lookup import make_lookup
@@ -45,18 +45,13 @@ cli = IngestionCLI(
     no_args_is_help=True, name="process", help="Process map data once ingested"
 )
 
-cli.add_command(processing_status, name="status")
+pipeline_steps_panel = "[dim]Pipeline steps[/]"
 
 
 _REQUIREMENTS = {
     "polygons": """
         SELECT DISTINCT source_id FROM maps.polygons
         WHERE source_id = ANY(CAST(:ids AS integer[]))
-    """,
-    # `rgeom`, because that is what the geometry steps read.
-    "bounds": """
-        SELECT source_id FROM maps.sources
-        WHERE source_id = ANY(CAST(:ids AS integer[])) AND rgeom IS NOT NULL
     """,
 }
 
@@ -130,6 +125,7 @@ def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = No
         print(e)
         if not delete_existing:
             print("Continuing with existing map data")
+    create_bounds(db, source)
     run_legend(source)
     match_strat_names(db, source)
     match_units(db, source)
@@ -139,7 +135,14 @@ def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = No
     finalize_one(source)
 
 
-@cli.command(name="pipeline")
+def run_legend(map: MapInfo):
+    """Update legend lookup tables for one map source."""
+    db = get_database()
+    proc = sql_file("update-legend")
+    db.run_sql(proc, {"source_id": map.id})
+
+
+@cli.command(name="pipeline", rich_help_panel="Process")
 def pipeline(
     maps: MapSelector,
     delete_existing: bool = False,
@@ -152,6 +155,7 @@ def pipeline(
 
     This includes:
     - Copy to maps schema
+    - Boundary from the map's polygons
     - Legend lookup table generation
     - Match strat names
     - Match units
@@ -165,41 +169,12 @@ def pipeline(
         state=state,
         delete_existing=delete_existing,
         scale=scale,
+        # Its first step is the insert, so a map without polygons yet is the usual case.
+        requires=None,
     )
 
 
-def run_legend(map: MapInfo):
-    """Update legend lookup tables for one map source."""
-    db = get_database()
-    proc = sql_file("update-legend")
-    db.run_sql(proc, {"source_id": map.id})
-
-
-@cli.command(name="rgeom", rich_help_panel="Sources")
-def rgeom(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Compose reference geometries for the selected map sources."""
-    for_each_map(maps, create_rgeom, exclude=exclude, state=state)
-
-
-@cli.command(name="web-geom", rich_help_panel="Sources")
-def web_geom(
-    maps: MapSelector,
-    legacy: bool = False,
-    exclude: MapExclude = None,
-    state: MapState = None,
-):
-    """Create simplified web geometries for the selected map sources."""
-    for_each_map(
-        maps,
-        create_webgeom,
-        exclude=exclude,
-        state=state,
-        legacy=legacy,
-        requires="bounds",
-    )
-
-
-@cli.command(name="insert", rich_help_panel="Map")
+@cli.command(name="insert", rich_help_panel=pipeline_steps_panel)
 def insert(
     maps: MapSelector,
     delete_existing: bool = False,
@@ -221,7 +196,7 @@ def insert(
     exclude: MapExclude = None,
     state: MapState = None,
 ):
-    """Copy staged data to the maps schema for the selected map sources.
+    """Copy staged data to the maps schema.
 
     A compilation whose members share one staging table passes it once:
     `insert 'ngs-*' --staging-prefix ngs` covers all 114.
@@ -239,27 +214,40 @@ def insert(
     )
 
 
-@cli.command(name="remove", rich_help_panel="Utils")
-def delete(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Delete all data from the maps schema for the selected map sources."""
-    db = get_database()
-    for_each_map(maps, partial(remove, db), exclude=exclude, state=state)
+@cli.command(name="bounds", rich_help_panel=pipeline_steps_panel)
+def bounds(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
+    """Set each map's boundary to the union of its polygons.
+
+    Matching reads the boundary. Before the insert it comes from the staging
+    table. A boundary composed from operations belongs to `macrostrat bounds build`.
+    """
+    for_each_map(
+        maps,
+        partial(create_bounds, get_database()),
+        exclude=exclude,
+        state=state,
+        requires=None,
+    )
 
 
-@cli.command(name="legend", rich_help_panel="Map")
+@cli.command(name="legend", rich_help_panel=pipeline_steps_panel)
 def legend(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Update legend lookup tables for the selected map sources."""
-    for_each_map(maps, run_legend, exclude=exclude, state=state)
+    """Update legend lookup tables and colors."""
+    try:
+        for_each_map(maps, run_legend, exclude=exclude, state=state)
+    finally:
+        # Stale estimates flip the strat-name footprint query into a full spatial join.
+        get_database().run_sql("ANALYZE maps.legend, maps.map_legend")
 
 
-@cli.command(name="strat-names", rich_help_panel="Matching")
+@cli.command(name="strat-names", rich_help_panel=pipeline_steps_panel)
 def strat_names(
     maps: MapSelector,
     field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
     exclude: MapExclude = None,
     state: MapState = None,
 ):
-    """Match the selected map sources to Macrostrat stratigraphic names."""
+    """Match stratigraphic names."""
     db = get_database()
     for_each_map(
         maps,
@@ -269,16 +257,16 @@ def strat_names(
     )
 
 
-@cli.command(name="units", rich_help_panel="Matching")
+@cli.command(name="units", rich_help_panel=pipeline_steps_panel)
 def units(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Match the selected map sources to Macrostrat units."""
+    """Match column units."""
     db = get_database()
     for_each_map(maps, partial(match_units, db), exclude=exclude, state=state)
 
 
-@cli.command(name="liths", rich_help_panel="Matching")
+@cli.command(name="liths", rich_help_panel=pipeline_steps_panel)
 def liths(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
-    """Match the selected map sources to Macrostrat lithologies."""
+    """Match lithologies."""
     db = get_database()
     for_each_map(maps, partial(match_liths, db), exclude=exclude, state=state)
 
@@ -297,59 +285,21 @@ def _match_fields(field: str | None) -> tuple:
     return (field,)
 
 
-@cli.command(name="strat-names-report", rich_help_panel="Matching")
-def strat_names_report(
-    pattern: str = Argument(..., help="Source slug or SQL LIKE pattern, e.g. `ngs-%`"),
-    examples: int = Option(4, help="Lost/gained examples to print per source"),
-    field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
-    examples_from: str = Option(
-        None,
-        "--examples-from",
-        help="Show worked examples of matches from this field instead of the"
-        " lost/gained lists. Matching is unaffected.",
-    ),
-    full_text: bool = Option(
-        False,
-        "--full-text",
-        help="Print the whole source text of each example, with the matched"
-        " names highlighted. A description match cannot be judged without it.",
-    ),
-):
-    """Score the prototype matcher against what the current pipeline produced.
-
-    Read-only. Writes nothing and touches no pipeline table -- it reports what a
-    legend-grain matcher *would* find, beside `maps.legend.strat_name_ids` as it
-    stands, so the two can be compared before anything is replaced.
-    """
-    from ..match.strat_names_report import strat_names_report as report
-
-    report(
-        get_database(),
-        pattern,
-        fields=_match_fields(field),
-        examples=examples,
-        examples_from=examples_from,
-        full_text=full_text,
-    )
-
-
-@cli.command(name="lookup", rich_help_panel="Lookup")
+@cli.command(name="lookup", rich_help_panel=pipeline_steps_panel)
 def lookup(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Refresh the lookup tables for the selected map sources."""
     db = get_database()
-    for_each_map(maps, partial(make_lookup, db), exclude=exclude, state=state)
+    for_each_map(maps, partial(lookup_combined, db), exclude=exclude, state=state)
 
 
-@cli.command(name="legend-lookup", rich_help_panel="Lookup")
-def legend_lookup_cmd(
-    maps: MapSelector, exclude: MapExclude = None, state: MapState = None
-):
-    """Refresh legend lookup tables for the selected map sources."""
-    db = get_database()
-    for_each_map(maps, partial(legend_lookup, db), exclude=exclude, state=state)
+def lookup_combined(db, source: MapInfo):
+    """Refresh the lookup tables for one map source."""
+    # Note: merges the v1 lookup and legend-lookup commands
+    make_lookup(db, source)
+    legend_lookup(db, source)
 
 
-@cli.command(name="finalize", rich_help_panel="Map")
+@cli.command(name="finalize", rich_help_panel=pipeline_steps_panel)
 def finalize(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Finalize the selected map sources."""
     for_each_map(maps, finalize_one, exclude=exclude, state=state)
@@ -383,3 +333,48 @@ def set_finalized(map: MapInfo):
         dict(map_id=map.id),
     )
     db.session.commit()
+
+
+@cli.command(name="names-report", rich_help_panel="Utils")
+def strat_names_report(
+    pattern: str = Argument(..., help="Source slug or SQL LIKE pattern, e.g. `ngs-%`"),
+    examples: int = Option(4, help="Lost/gained examples to print per source"),
+    field: str = Option(None, help="Match only on this legend field (e.g. descrip)"),
+    examples_from: str = Option(
+        None,
+        "--examples-from",
+        help="Show worked examples of matches from this field instead of the"
+        " lost/gained lists. Matching is unaffected.",
+    ),
+    full_text: bool = Option(
+        False,
+        "--full-text",
+        help="Print the whole source text of each example, with the matched"
+        " names highlighted. A description match cannot be judged without it.",
+    ),
+):
+    """Score the strat-names matcher against what the current pipeline produced.
+
+    Read-only; reports what a
+    legend-grain matcher *would* find relative to the current matches
+    """
+    from ..match.strat_names_report import strat_names_report as report
+
+    report(
+        get_database(),
+        pattern,
+        fields=_match_fields(field),
+        examples=examples,
+        examples_from=examples_from,
+        full_text=full_text,
+    )
+
+
+cli.add_command(processing_status, name="status", rich_help_panel="Utils")
+
+
+@cli.command(name="remove", rich_help_panel="[red]Destructive[/red]")
+def delete(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
+    """Delete all data from the maps schema for the selected map sources."""
+    db = get_database()
+    for_each_map(maps, partial(remove, db), exclude=exclude, state=state)

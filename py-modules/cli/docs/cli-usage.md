@@ -85,3 +85,13 @@ macrostrat db psql -c "DROP SCHEMA macrostrat_kg CASCADE; CREATE SCHEMA macrostr
 cat "2024_02_10.sql" | macrostrat db psql
 macrostrat db update-schema --subsystems knowledge-graph
 ```
+
+```bash
+# Copy one map's staged polygons into the maps schema on the development cluster,
+# without switching the active environment
+MACROSTRAT_ENV=development macrostrat db psql <<'SQL'
+INSERT INTO maps.polygons_small (source_id, scale, orig_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval, geom)
+SELECT source_id, 'small'::maps.map_scale, orig_id, name, strat_name, age, lith, descrip, comments, t_interval, b_interval, geom
+FROM sources.ngs_polygons WHERE source_id = 4647 AND NOT coalesce(omit, false);
+SQL
+```

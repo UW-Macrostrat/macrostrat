@@ -9,7 +9,7 @@ from macrostrat.database import Database
 from macrostrat.database.utils import template_database
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.ingestion_utils import find_gis_files
 from macrostrat.map_integration.utils.map_info import get_map_info
 
@@ -125,10 +125,8 @@ def test_map_staging(test_db, region_path):
 
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
-    # The new fix-antimeridian logic causes a LWGeom error with
-    # the third testing map, so we'll skip it for now.
-    create_rgeom(map_info, fix_antimeridian=False)
-    create_webgeom(map_info)
+    # Before the insert, the boundary comes from the staging table.
+    assert create_bounds(db, map_info)
 
     # Metadata assertions
     row = db.run_query(
@@ -151,21 +149,16 @@ def test_map_staging(test_db, region_path):
     count = db.run_query(f"SELECT COUNT(*) FROM sources.{slug}_polygons").scalar()
     assert count > 0
 
-    # Geometry column assertions
-    rgeom = db.run_query(
+    bounds = db.run_query(
         """
-        SELECT rgeom FROM maps.sources WHERE slug = :slug
+        SELECT a.geometry IS NOT NULL AS has_bounds, s.web_geom IS NOT NULL AS has_web_geom
+        FROM maps.sources s
+        LEFT JOIN map_bounds.map_area a ON a.id = s.source_id
+        WHERE s.source_id = :source_id
         """,
-        dict(slug=slug),
-    ).fetchone()
-    assert rgeom is not None
-
-    web_geom = db.run_query(
-        """
-        SELECT web_geom FROM maps.sources WHERE slug = :slug
-        """,
-        dict(slug=slug),
-    ).fetchone()
-    assert web_geom is not None
+        dict(source_id=source_id),
+    ).one()
+    assert bounds.has_bounds
+    assert bounds.has_web_geom
 
     print(f"✅ {region_path.name} passed the map ingestion staging test suite!\n")

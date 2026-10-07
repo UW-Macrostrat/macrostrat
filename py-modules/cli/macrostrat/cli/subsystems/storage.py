@@ -5,10 +5,11 @@ Storage system management
 import subprocess
 from functools import wraps
 from os import environ, path
+from pathlib import Path
 from textwrap import dedent
 
 from rich import print
-from typer import Option, Typer
+from typer import Argument, Option, Typer
 
 from macrostrat.core import app as app_
 from macrostrat.utils import get_logger
@@ -116,6 +117,64 @@ def _bucket_credentials(endpoint_name: str, legacy_prefix: str):
             ),
         )
     return access, secret
+
+
+#: Our Ceph RGW rejects botocore ≥1.36's default checksums (`MissingContentLength`).
+CEPH_CLIENT_SETTINGS = {
+    "request_checksum_calculation": "when_required",
+    "response_checksum_validation": "when_required",
+}
+
+
+def _set_ini_section(file: Path, header: str, values: dict[str, str]):
+    """Replace one section of an INI file, keeping the rest and its comments."""
+    lines = file.read_text().splitlines() if file.exists() else []
+    kept = []
+    in_section = False
+    for line in lines:
+        if line.strip().startswith("["):
+            in_section = line.strip() == f"[{header}]"
+        if not in_section:
+            kept.append(line)
+    while kept and not kept[-1].strip():
+        kept.pop()
+    if kept:
+        kept.append("")
+    kept.append(f"[{header}]")
+    kept.extend(f"{key} = {value}" for key, value in values.items())
+
+    file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    file.touch(mode=0o600)
+    file.write_text("\n".join(kept) + "\n")
+
+
+@app.command(name="add-profile")
+def add_profile(
+    uid: str = Argument("macrostrat", help="Storage user whose keys the profile holds"),
+    name: str = Option("macrostrat", "--name", help="AWS profile to write"),
+):
+    """Write an AWS profile for S3 clients (DVC, aws, boto3) using Macrostrat storage."""
+    from macrostrat.radosgw_admin.cli import get_connection
+
+    key = get_connection().get_user(uid)["keys"][0]
+
+    config = Path(environ.get("AWS_CONFIG_FILE", "~/.aws/config")).expanduser()
+    credentials = Path(
+        environ.get("AWS_SHARED_CREDENTIALS_FILE", "~/.aws/credentials")
+    ).expanduser()
+    _set_ini_section(config, f"profile {name}", CEPH_CLIENT_SETTINGS)
+    _set_ini_section(
+        credentials,
+        name,
+        {
+            "aws_access_key_id": key["access_key"],
+            "aws_secret_access_key": key["secret_key"],
+        },
+    )
+    print(
+        f"Wrote AWS profile [bold]{name}[/] for storage user [bold]{uid}[/] "
+        f"to {config} and {credentials}"
+    )
 
 
 @app.command()

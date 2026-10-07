@@ -146,6 +146,7 @@ dependencies = [
     { name = "httpx" },
     { name = "macrostrat-column-utils" },
     { name = "macrostrat-database" },
+    { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
     { name = "minio" },
     { name = "morecantile" },
@@ -183,6 +184,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27.0,<0.29" },
     { name = "macrostrat-column-utils", editable = "../../py-modules/column-utils" },
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-map-topology", editable = "../../py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "../../py-modules/match-utils" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
@@ -856,7 +858,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.0.1"
+version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -870,10 +872,29 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/cc/f273aba5901ec0bb514746a51b75360b28e80c5163b7c586a332b16bdac4/macrostrat_database-4.0.1.tar.gz", hash = "sha256:4c06d18ea07ab8854267781fa3a47391eef38f42707af25d20fdf95f5bffcb9b", size = 19084, upload-time = "2026-04-29T15:32:25.762Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/c5/4ca3cf28eba6eefbd6be68b7562c3fd08f312cf4cc74e580e25bfc8fb785/macrostrat_database-4.7.0.tar.gz", hash = "sha256:447cab4bb0aaf8e9376ebb9d85e4423871a5306dc7c3a1b51082bcfa16593083", size = 29189, upload-time = "2026-09-23T19:21:50.559Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/5f/f7008260e431d0105940738601cd1ca0637171ec423602b8aa5ec0e81744/macrostrat_database-4.0.1-py3-none-any.whl", hash = "sha256:3c81e7017e74ab98cd208a9077b802be82177c6d0a3b440474bca7255ca5e284", size = 25610, upload-time = "2026-04-29T15:32:24.514Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/33/1a0a05e2ee44a093794ace321f931e14e23726b4689ae77929294d19af26/macrostrat_database-4.7.0-py3-none-any.whl", hash = "sha256:15edca9851a27b8436338317b9b905fbd390f95e19f6dc91a00559ccbd0a9191", size = 36740, upload-time = "2026-09-23T19:21:49.505Z" },
 ]
+
+[[package]]
+name = "macrostrat-map-topology"
+version = "0.1.0"
+source = { editable = "../../py-modules/map-topology" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-core", marker = "extra == 'topology'", editable = "../../py-modules/core" },
+    { name = "macrostrat-database", specifier = ">=4.2.0" },
+    { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "../../submodules/topology-manager" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
+]
+provides-extras = ["topology"]
 
 [[package]]
 name = "macrostrat-match-utils"

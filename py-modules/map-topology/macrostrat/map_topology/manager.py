@@ -12,6 +12,8 @@ from mapboard.topology_manager.commands.update_faces import (
 from rich import print
 from rich.progress import Progress
 
+from macrostrat.database import run_sql
+
 __dir__ = Path(__file__).parent
 
 proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
@@ -139,13 +141,26 @@ class MacrostratTopologyManager(TopologyManager):
         self.clean_topology()
 
     def update_full(
-        self, maps: list[str] = None, *, bulk: bool = False, verbose: bool = False
+        self,
+        maps: list[str] = None,
+        *,
+        bulk: bool = False,
+        verbose: bool = False,
+        one_at_a_time: bool = False,
+        piece_timeout: float | None = None,
     ) -> UpdateSummary:
         """The one command after any edit: node what needs it, then rebuild
         everything downstream -- compilation bounds, priority paths, the faces
         whose identity changed, and the member faces built from them."""
         db = self.database
-        summary = update_maps(self, maps, bulk=bulk, verbose=verbose)
+        summary = update_maps(
+            self,
+            maps,
+            bulk=bulk,
+            verbose=verbose,
+            one_at_a_time=one_at_a_time,
+            piece_timeout=piece_timeout,
+        )
 
         # Only maps the rule nodes: a retired map outside the selection keeps
         # its pieces until it is released, and is not a noding failure.
@@ -199,6 +214,18 @@ class MacrostratTopologyManager(TopologyManager):
         db.session.commit()
         with summary.timed("Dissolve dirty faces"):
             summary.faces = update_faces(self.ctx, incremental=True)
+        # Map faces emptied before re-noding served stale geometry until now.
+        db.run_query(
+            """
+            DELETE FROM map_bounds_topology.map_face f
+            WHERE f.topo IS NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM map_bounds_topology.dirty_face d
+                WHERE d.map_layer = f.map_layer
+              )
+            """
+        )
+        db.session.commit()
         with summary.timed("Clean topology"):
             self.clean_topology()
 
@@ -365,6 +392,8 @@ def update_maps(
     bulk: bool = False,
     subdivide_vertices: int = 256,
     verbose: bool = False,
+    one_at_a_time: bool = False,
+    piece_timeout: float | None = None,
 ) -> UpdateSummary:
     """Node every selected map that needs it, then refresh what derives from it.
 
@@ -394,6 +423,26 @@ def update_maps(
     all_maps = get_map_list(db, maps)
     summary.maps_checked = len(all_maps)
 
+    # Maps noded from scratch leave their solved faces first, so their old
+    # outlines are gone before the new ones are noded.
+    restart = get_maps_to_restart(db, all_maps, bulk=bulk)
+    if restart:
+        with summary.timed(f"Pre-remove {len(restart)} maps from solved faces"):
+            # One connection throughout: its temp tables are per session, and the
+            # session's pool may hand each statement a different one.
+            db.session.commit()
+            with db.engine.connect() as conn:
+                res = run_sql(
+                    conn,
+                    proc("pre-remove-stale-faces"),
+                    dict(map_ids=[m.map_id for m in restart]),
+                    raise_errors=True,
+                )[-1].one()
+            print(
+                f"  {res.released:,} faces released from {res.map_faces_touched:,}"
+                f" map faces; {res.primitives_removed:,} primitives removed"
+            )
+
     with summary.timed(f"Check {len(all_maps)} maps"):
         for _map in all_maps:
             result = process_map(
@@ -402,6 +451,8 @@ def update_maps(
                 bulk=bulk,
                 subdivide_vertices=subdivide_vertices,
                 verbose=verbose,
+                one_at_a_time=one_at_a_time,
+                piece_timeout=piece_timeout,
             )
             if result is not None:
                 summary.maps_noded += 1
@@ -473,6 +524,34 @@ def get_maps_with_changed_geometries(mgr: MacrostratTopologyManager):
     ).all()
 
 
+def get_maps_to_restart(db, maps, *, bulk: bool = False) -> list:
+    """The maps `process_map` will node from scratch: not current, and no pieces
+    cut from their current bounds (or every map, with `bulk`)."""
+    ids = db.run_query(
+        """
+        WITH a AS MATERIALIZED (
+          SELECT source_id, md5(ST_AsBinary(geometry))::uuid AS bounds_hash
+          FROM map_bounds.map_area
+          WHERE source_id = ANY(:ids)
+        )
+        SELECT a.source_id
+        FROM a
+        JOIN map_bounds.map_area_sync sync ON sync.source_id = a.source_id
+        WHERE CAST(:bulk AS boolean)
+           OR (
+             NOT sync.is_current
+             AND NOT EXISTS (
+               SELECT 1 FROM map_bounds.map_topo t
+               WHERE t.source_id = a.source_id AND t.bounds_hash = a.bounds_hash
+             )
+           )
+        """,
+        dict(ids=[m.map_id for m in maps], bulk=bulk),
+    ).scalars()
+    restart = set(ids)
+    return [m for m in maps if m.map_id in restart]
+
+
 def process_map(
     mgr: MacrostratTopologyManager,
     map,
@@ -480,6 +559,8 @@ def process_map(
     bulk: bool = False,
     subdivide_vertices: int = 256,
     verbose: bool = False,
+    one_at_a_time: bool = False,
+    piece_timeout: float | None = None,
 ) -> NodingResult | None:
     """Node a map's bounds into its topogeometry, piece by piece.
 
@@ -545,7 +626,10 @@ def process_map(
             f" {state.failed_pieces} failed"
         )
 
-    result = node_pieces(db, map.map_id)
+    t_node = time.time()
+    result = node_pieces(
+        db, map.map_id, one_at_a_time=one_at_a_time, piece_timeout=piece_timeout
+    )
     print(
         f"  noded {result.noded}, failed {result.failed}"
         + (
@@ -553,6 +637,7 @@ def process_map(
             if result.recovered
             else ""
         )
+        + f" in {_duration(time.time() - t_node)}"
     )
 
     # Every piece has been attempted: the topogeometry is what this geometry
@@ -577,6 +662,36 @@ def process_map(
     return result
 
 
+#: The tables noding rewrites hardest: a face split relabels every edge around
+#: the face, leaving the old row versions as empty space that plain VACUUM
+#: does not return. Dev's `edge_data` held 88 MB of rows in 1.25 GB.
+VACUUM_TABLES = ("edge_data", "face", "node", "relation")
+
+
+def vacuum_topology(db):
+    """Rewrite the topology's primitive tables and their indexes compactly.
+
+    `VACUUM FULL` locks each table while it runs, so readers wait; seconds for
+    a topology the size of Macrostrat's once compacted.
+    """
+    db.session.commit()
+    size = "SELECT pg_total_relation_size(CAST(:table AS regclass))"
+    # VACUUM cannot run inside a transaction block.
+    with db.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        for name in VACUUM_TABLES:
+            table = f"map_bounds_topology.{name}"
+            before = db.run_query(size, dict(table=table)).scalar()
+            db.session.commit()
+            t0 = time.time()
+            conn.exec_driver_sql(f"VACUUM (FULL, ANALYZE) {table}")
+            after = db.run_query(size, dict(table=table)).scalar()
+            db.session.commit()
+            print(
+                f"  {table}: {before / 2**20:,.0f} MB -> {after / 2**20:,.0f} MB"
+                f" in {time.time() - t0:.1f} s"
+            )
+
+
 def cut_pieces(db, _map, *, subdivide_vertices: int = 256) -> int:
     """Cut a map's bounds into the pieces it is noded from (see `cut-pieces.sql`)."""
     simplify_amount = 0.0001
@@ -598,17 +713,75 @@ def cut_pieces(db, _map, *, subdivide_vertices: int = 256) -> int:
     return n
 
 
-def _node_batch(db, map_id: int, *, failed: bool, tolerance: float):
+def _node_batch(
+    db,
+    map_id: int,
+    *,
+    failed: bool,
+    tolerance: float,
+    piece_id: int | None = None,
+    timeout: float | None = None,
+):
+    if timeout is not None:
+        # `SET` takes no bind parameters; LOCAL ends with the batch's commit.
+        db.run_query(f"SET LOCAL statement_timeout = {int(timeout * 1000)}")
     res = db.run_query(
         proc("node-pieces"),
-        dict(map_id=map_id, batch_size=PIECE_BATCH, tolerance=tolerance, failed=failed),
+        dict(
+            map_id=map_id,
+            batch_size=PIECE_BATCH,
+            tolerance=tolerance,
+            failed=failed,
+            piece_id=piece_id,
+        ),
     ).one()
     db.session.commit()
     return res.noded or 0, res.failed or 0
 
 
-def node_pieces(db, map_id: int) -> NodingResult:
-    """Node every pending piece of a map, then retry the failures once."""
+def _node_one(db, map_id: int, piece, *, failed: bool, tolerance: float, timeout):
+    """Node one piece in its own statement; a timeout is recorded as its failure."""
+    from sqlalchemy.exc import OperationalError
+
+    try:
+        return _node_batch(
+            db,
+            map_id,
+            failed=failed,
+            tolerance=tolerance,
+            piece_id=piece.id,
+            timeout=timeout,
+        )
+    except OperationalError as err:
+        # Only a cancelled statement is a piece's verdict; anything else is ours.
+        code = getattr(err.orig, "sqlstate", None) or getattr(err.orig, "pgcode", None)
+        if code != "57014":
+            raise
+        db.session.rollback()
+        db.run_query(
+            "UPDATE map_bounds.map_topo SET topology_error = :err, tolerance = :tol"
+            " WHERE id = :id",
+            dict(id=piece.id, err=f"timed out after {timeout:g} s", tol=tolerance),
+        )
+        db.session.commit()
+        return 0, 1
+
+
+def node_pieces(
+    db,
+    map_id: int,
+    *,
+    one_at_a_time: bool = False,
+    piece_timeout: float | None = None,
+) -> NodingResult:
+    """Node every pending piece of a map, then retry the failures once.
+
+    `one_at_a_time` nodes and commits each piece in its own statement and
+    reports its time, to isolate a pathological piece; a `piece_timeout`
+    implies it, and records a piece that runs over as failed.
+    """
+    if one_at_a_time or piece_timeout is not None:
+        return _node_pieces_singly(db, map_id, timeout=piece_timeout)
     result = NodingResult()
     pending = db.run_query(
         """
@@ -638,4 +811,45 @@ def node_pieces(db, map_id: int) -> NodingResult:
             break
         result.recovered += noded
         result.failed -= noded
+    return result
+
+
+_PIECES = """
+SELECT id, ST_NPoints(geometry) AS n_points
+FROM map_bounds.map_topo
+WHERE source_id = :map_id AND NOT noded AND (topology_error IS NOT NULL) = :failed
+ORDER BY id
+"""
+
+
+def _node_pieces_singly(db, map_id: int, *, timeout: float | None) -> NodingResult:
+    result = NodingResult()
+    timings = []
+    for failed, tolerance in ((False, NODING_TOLERANCE), (True, RETRY_TOLERANCE)):
+        pieces = db.run_query(_PIECES, dict(map_id=map_id, failed=failed)).all()
+        for piece in pieces:
+            t0 = time.time()
+            noded, n_failed = _node_one(
+                db, map_id, piece, failed=failed, tolerance=tolerance, timeout=timeout
+            )
+            elapsed = time.time() - t0
+            timings.append((elapsed, piece))
+            status = "[green]noded[/]" if noded else "[red]failed[/]"
+            if failed:
+                status = "[green]recovered[/]" if noded else "[dim]still failed[/]"
+            print(
+                f"    piece {piece.id} ({piece.n_points} pts) {status}"
+                f" in {elapsed:.2f} s"
+            )
+            if failed:
+                result.recovered += noded
+                result.failed -= noded
+            else:
+                result.noded += noded
+                result.failed += n_failed
+
+    if timings:
+        slowest = sorted(timings, key=lambda t: t[0], reverse=True)[:5]
+        listed = ", ".join(f"{p.id} ({e:.1f} s)" for e, p in slowest)
+        print(f"  [dim]slowest pieces: {listed}[/]")
     return result

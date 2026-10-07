@@ -279,8 +279,10 @@ class _Importer:
             console.print(f"  [cyan]{layer}[/] [dim]{n} rows[/]")
 
     def load_sources(self, plan):
+        # `rgeom` in older packages: only the `map_area` trigger writes it.
         cols = self.common(
-            "maps_sources", skip=("source_id", "superseded_by", "superseded_by_slug")
+            "maps_sources",
+            skip=("source_id", "superseded_by", "superseded_by_slug", "rgeom"),
         )
         names = [c.name for c in cols]
         values = [f"CAST(:p{i} AS {c.type})" for i, c in enumerate(cols)]

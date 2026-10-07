@@ -40,7 +40,10 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_area (
   map_layer integer REFERENCES map_bounds.map_layer(id),
   area_km double precision,
   /** Set when replaying the operation list failed; cleared on a clean compose. */
-  boundary_error text
+  boundary_error text,
+  /** The operation list `geometry` was last built from; `bounds build --all`
+    skips a map whose operations still hash to it. */
+  ops_hash uuid
 );
 
 /** Create a topogeometry column for the area of full maps. */

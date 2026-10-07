@@ -6,7 +6,7 @@ from pytest import approx, fixture, mark, raises
 from shapely.geometry import Point
 from sqlalchemy.exc import DBAPIError
 
-from macrostrat.map_topology import _set_dirty
+from macrostrat.map_topology.commands import _set_dirty
 from macrostrat.map_topology.config import create_topo_context
 from macrostrat.map_topology.manager import (
     MacrostratTopologyManager,
@@ -14,7 +14,9 @@ from macrostrat.map_topology.manager import (
     get_map_list,
     get_retired_maps,
     proc,
+    release_map,
     update_maps,
+    vacuum_topology,
 )
 
 
@@ -56,10 +58,10 @@ class TestMapTopology:
         # Insert two non-overlapping test sources
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1001, 'test_source_1', ST_MakeEnvelope(0, 0, 2, 2, 4326), true, 'active', 'large'),
-                (1002, 'test_source_2', ST_MakeEnvelope(3, 0, 5, 2, 4326), true, 'active', 'large');
+                (1001, 'test_source_1', true, 'active', 'large'),
+                (1002, 'test_source_2', true, 'active', 'large');
             """
         )
         # A boundary is unioned from the map's own polygons, not read from
@@ -180,9 +182,9 @@ class TestMapTopology:
         # with five total faces.
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1003, 'test_source_3', ST_MakeEnvelope(1, 1, 4, 4, 4326), true, 'active', 'large')
+                (1003, 'test_source_3', true, 'active', 'large')
             """
         )
         add_polygons(db, {1003: "ST_MakeEnvelope(1, 1, 4, 4, 4326)"})
@@ -317,9 +319,9 @@ class TestMapTopology:
 
         db.run_query(
             """
-            INSERT INTO maps.sources (source_id, slug, rgeom, is_finalized, status_code, scale)
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES
-                (1004, 'test_source_4', ST_SetSRID(ST_Buffer(ST_MakePoint(2, 2), 6, 'quad_segs=64'), 4326), true, 'active', 'medium')
+                (1004, 'test_source_4', true, 'active', 'medium')
             """
         )
         add_polygons(
@@ -475,6 +477,47 @@ class TestMapTopology:
             "SELECT ST_XMin(geometry), ST_XMax(geometry) FROM map_bounds.map_area WHERE source_id = 1001"
         ).first()
         assert (xmin, xmax) == (-180, 180)
+
+    def test_build_skips_unchanged(self, ctx):
+        """A rebuild writes only a boundary that moved beyond tolerance, and
+        `needs_build` follows the operation list, not the geometry."""
+        from macrostrat.map_topology.bounds import build as build_mod
+
+        db = ctx.database
+        assert 1001 not in build_mod.needs_build(db)
+
+        res = build_mod.build(db, 1001)
+        assert res.error is None
+        assert res.unchanged and not res.written and res.diff_km == 0
+
+        def punch(size):
+            db.run_query(
+                """
+                UPDATE map_bounds.map_area
+                SET geometry = ST_Multi(ST_Difference(
+                  ST_MakeEnvelope(-180, -90, 180, 90, 4326),
+                  ST_MakeEnvelope(0, 0, :size, :size, 4326)))
+                WHERE source_id = 1001
+                """,
+                dict(size=size),
+            )
+            db.session.commit()
+
+        # ~0.012 km²: drift on a world-sized boundary, not worth re-noding.
+        punch(0.001)
+        res = build_mod.build(db, 1001)
+        assert res.unchanged and 0 < res.diff_km < build_mod.TOLERANCE_KM
+        assert build_mod.build(db, 1001, strict=True).written
+
+        # ~12,000 km² is over the absolute threshold, however small relatively.
+        punch(1)
+        res = build_mod.build(db, 1001)
+        assert res.written and res.diff_km > build_mod.TOLERANCE_KM
+
+        build_mod.set_opening(db, 1001, "world")
+        db.session.commit()
+        assert 1001 in build_mod.needs_build(db)
+        assert build_mod.build(db, 1001).error is None
 
     def test_multiscale_carto(self, ctx):
         """`carto` is one multiscale compilation over the four served tiers, and
@@ -736,6 +779,134 @@ class TestMapTopology:
         assert summary.maps_released == 1
         assert not held()
         assert get_retired_maps(db) == []
+
+    def test_one_piece_at_a_time(self, ctx):
+        """Pieces noded singly give the same result, and a piece that runs past
+        `piece_timeout` is recorded as failed rather than stalling the run."""
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES (1011, 'test_source_11', true, 'active', 'large'),
+                   (1012, 'test_source_12', true, 'active', 'large')
+            """
+        )
+        # Thousands of vertices, so each is cut into several pieces.
+        add_polygons(
+            db,
+            {
+                1011: "ST_Buffer(ST_MakePoint(20, 20)::geography, 50000, 1000)::geometry",
+                1012: "ST_Buffer(ST_MakePoint(30, 20)::geography, 50000, 1000)::geometry",
+            },
+        )
+
+        def pieces(map_id):
+            return db.run_query(
+                """
+                SELECT count(*) AS n, count(*) FILTER (WHERE noded) AS noded,
+                  count(*) FILTER (WHERE topology_error LIKE 'timed out%') AS timed_out
+                FROM map_bounds.map_topo WHERE source_id = :map_id
+                """,
+                dict(map_id=map_id),
+            ).one()
+
+        update_maps(mgr, ["test_source_11"], one_at_a_time=True)
+        p = pieces(1011)
+        assert p.n > 1 and p.noded == p.n
+
+        update_maps(mgr, ["test_source_12"], piece_timeout=0.001)
+        p = pieces(1012)
+        assert p.n > 1 and p.timed_out > 0 and p.noded + p.timed_out == p.n
+
+        release_map(db, 1012)
+        db.session.commit()
+
+    def test_vacuum_topology(self, ctx):
+        """Compaction runs outside a transaction and leaves the primitives intact."""
+        db = ctx.database
+        count = "SELECT count(*) FROM map_bounds_topology.edge_data"
+        edges = db.run_query(count).scalar()
+        vacuum_topology(db)
+        assert db.run_query(count).scalar() == edges
+
+    def test_grid(self, ctx):
+        """Grid lines split faces without changing what any map owns: their edges
+        survive cleaning, every map's barrier rows stay complete, no solved layer
+        is marked, and identity resolves as before.
+
+        Two maps of its own, away from the rest of the suite's. The late tests
+        leave the shared layers in a state where the solve builds no faces for a
+        new map (one world-sized map, mosaics), so what the solve produces is not
+        compared here; the barrier and attribution checks are what the grid can
+        break, and they are checked directly."""
+        from mapboard.topology_manager.commands.edge_relations import (
+            validate_edge_relations,
+        )
+
+        from macrostrat.map_topology.grid import node_grid, seed_grid
+
+        db = ctx.database
+        mgr = MacrostratTopologyManager(ctx)
+        insp = TopologyInspector(ctx)
+        layer = insp.map_layer_id("Large")
+        db.run_query(
+            """
+            INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
+            VALUES
+                (1021, 'test_source_21', true, 'active', 'large'),
+                (1022, 'test_source_22', true, 'active', 'large')
+            """
+        )
+        add_polygons(
+            db,
+            {
+                1021: "ST_MakeEnvelope(20, 0, 24, 4, 4326)",
+                1022: "ST_MakeEnvelope(22, 2, 26, 6, 4326)",
+            },
+        )
+        set_priority(db, "large", [(1021, 5), (1022, 6)])
+        points = [Point(21, 1), Point(23, 3), Point(25, 5)]
+
+        mgr.update_full()
+        ids_before = [get_identity_for_area(db, layer, p) for p in points]
+        assert ids_before == [1021, 1022, 1022]
+        primitives_before = insp.n_face_primitives()
+        assert validate_edge_relations(ctx).in_sync
+
+        # 2° lines over the two maps: they cross both maps' interiors and split
+        # their edges (x = 22, 24; y = 2, 4).
+        assert seed_grid(db, levels=(2,), extent=(18, -2, 28, 8)) > 0
+        noded, failed = node_grid(db, levels=(2,))
+        assert noded > 0 and failed == 0
+        assert insp.n_face_primitives() > primitives_before
+
+        # The segments' marks are gone and nothing fanned out to a solved layer.
+        assert (
+            db.run_query("SELECT count(*) FROM map_bounds_topology.dirty_face").scalar()
+            == 0
+        )
+        # A segment splits a map's edge without splitting a face; the new half
+        # must still carry its owner's barrier row.
+        report = validate_edge_relations(ctx)
+        assert report.missing == 0 and report.extra == 0
+
+        mgr.clean_topology()
+        orphaned = db.run_query(
+            """
+            SELECT count(*) FROM map_bounds.grid_line g
+            WHERE NOT EXISTS (
+              SELECT 1 FROM map_bounds_topology.relation r
+              WHERE r.topogeo_id = (g.topo).id AND r.layer_id = (g.topo).layer_id
+            )
+            """
+        ).scalar()
+        assert orphaned == 0
+        assert validate_edge_relations(ctx).in_sync
+
+        mgr.update_full()
+        assert [get_identity_for_area(db, layer, p) for p in points] == ids_before
 
 
 @dataclass

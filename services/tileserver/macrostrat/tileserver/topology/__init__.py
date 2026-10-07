@@ -71,10 +71,11 @@ async def get_tile(
 ):
     """Bounds of a compilation's members.
 
-    The members the compilation presents (`level=member`, the default), or the
-    maps at the bottom that it ultimately resolves to (`level=map`).
+    The members the compilation presents (`level=member`, the default), the
+    maps at the bottom that it ultimately resolves to (`level=map`), or the
+    source's own boundary (`level=self`).
     """
-    _check_level(level)
+    _check_level(level, allowed=("member", "map", "self"))
     if map_layer is None:
         return await _render_tile(
             request, get_query("all-maps"), z=z, x=x, y=y, map_layer=map_layer
@@ -84,9 +85,9 @@ async def get_tile(
     )
 
 
-def _check_level(level: str):
-    if level not in ("member", "map"):
-        raise HTTPException(400, "level must be 'member' or 'map'")
+def _check_level(level: str, allowed=("member", "map")):
+    if level not in allowed:
+        raise HTTPException(400, f"level must be one of {', '.join(allowed)}")
 
 
 async def _render_tile(request: Request, sql: str, **query_params: Any):

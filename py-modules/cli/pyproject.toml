@@ -27,7 +27,7 @@ dependencies = [
     "macrostrat.schema-management",
     "macrostrat.integrations",
     "macrostrat.map-integration",
-    "macrostrat.map-topology",
+    "macrostrat.map-topology[topology]",
     "macrostrat.match-utils",
     # "criticalmaas.ta1-geopackage>=0.2.0,<0.3",
     "macrostrat.column-ingestion",

@@ -1,131 +1,81 @@
-import time
-
 from psycopg.sql import SQL, Identifier
+from rich import print
 
-from ..database import get_database, sql_file
+from ..database import sql_file
 from ..utils import MapInfo, table_exists
 
+_BOUNDARY_STATE = """
+SELECT
+  EXISTS (SELECT 1 FROM map_bounds.map_area WHERE id = :source_id) AS has_bounds,
+  count(o.id) AS n_ops,
+  count(o.id) FILTER (WHERE o.position > 0 OR o.operation <> 'union') AS n_composed
+FROM map_bounds.boundary_op o
+WHERE o.source_id = :source_id
+"""
 
-def create_rgeom(
-    source: MapInfo,
-    *,
-    use_maps_schema: bool = None,
-    approach: str = "basic",
-    srid: int = 4326,
-    buffer: float = 0,
-    fill_holes: bool = False,
-    fix_antimeridian: bool = True,
-    database: str = None,
-):
-    """Create a unioned reference geometry for a map source.
+_SET_WEB_GEOM = """
+UPDATE maps.sources s
+SET web_geom = ST_Envelope(a.geometry)
+FROM map_bounds.map_area a
+WHERE a.id = s.source_id
+  AND s.source_id = :source_id
+"""
 
-    Available approaches:
-        - basic: Dissolves all map polygons into a single geometry.
-        - legacy: A more complex, ring-based approach
+
+def create_bounds(db, source: MapInfo) -> bool:
+    """Set a map's `map_area` boundary to the union of its features.
+
+    Reads the map's polygons in `maps`, or its staging table when it has none
+    there yet, so a staged map has bounds before it is inserted. Only a boundary
+    this step wrote is replaced: one composed from operations belongs to
+    `macrostrat bounds build`, and one with no operations pre-dates them.
+    The web geometry is refreshed either way. Returns whether a boundary was written.
     """
-    db = database or get_database()
-    start = time.time()
-    # TODO: we should run this in a transaction, but it makes tests fail.
-    source_id = source.id
+    params = dict(source_id=source.id)
+    state = db.run_query(_BOUNDARY_STATE, params).one()
+    written = False
 
-    q = "SELECT primary_table FROM maps.sources WHERE source_id = :source_id"
-    row = db.run_query(q, {"source_id": source_id}).first()
-
-    name = row.primary_table
-
-    if use_maps_schema is None:
-        # Check if the map polygons exist in the maps schema
-        use_maps_schema = False
-        if table_exists(db, "polygons", schema="maps"):
-            use_maps_schema = (
-                db.run_query(
-                    "SELECT EXISTS (SELECT map_id FROM maps.polygons WHERE source_id = :source_id)",
-                    dict(source_id=source_id),
-                ).scalar()
-                is True
-            )
-
-    table = Identifier("sources", name)
-    where = "not coalesce(omit, false)"
-    geom_column = Identifier("geometry")
-
-    if use_maps_schema:
-        table = Identifier("maps", "polygons")
-        where = "source_id = :source_id"
-        geom_column = Identifier("geom")
-    elif not table_exists(db, name, schema="sources"):
-        raise ValueError(f"No table found for {name}")
-    else:
-        # This is a hack to make sure the geometry is a multipolygon
-        # We need to make this more standardized and robust.
-        db.run_sql(
-            "ALTER TABLE {primary_table} RENAME COLUMN geom TO geometry",
-            {"primary_table": table},
+    if state.n_composed:
+        print(
+            f"[dim]{source.slug} has a boundary composed from {state.n_composed}"
+            " operations; `macrostrat bounds build` maintains it[/]"
         )
-
-        print(f"Validating geometry in sources.{row.primary_table}")
-        q = "UPDATE {primary_table} SET geometry = ST_Multi(ST_Buffer(geometry, 0))"
-        db.run_sql(q, {"primary_table": table})
-
-    print(f"Creating unioned geometry for {source.slug}...")
-    db.run_sql(
-        """
-       WITH res AS (
-           SELECT
-               source_id,
-               ST_Transform(
-                   ST_Union(
-                       ST_MakeValid(
-                           ST_Transform({geom_column}, :srid)
-                       )
-                   ),
-                   4326
-               ) AS geometry
-           FROM {primary_table}
-           WHERE {where_clause}
-           GROUP BY source_id
-       )
-       UPDATE maps.sources
-       SET rgeom = res.geometry
-       FROM res
-       WHERE sources.source_id = :source_id;
-        """,
-        dict(
-            source_id=source_id,
-            geom_column=geom_column,
-            where_clause=SQL(where),
-            primary_table=table,
-            srid=srid,
-        ),
-    )
-
-    print(f"Creating reference geometry using {approach} approach...")
-    # Running in a transaction is needed for locally scoped variables to work
-    with db.transaction():
+    elif state.has_bounds and not state.n_ops:
+        print(
+            f"[dim]{source.slug} keeps a boundary that pre-dates boundary operations;"
+            " `macrostrat bounds build --init` recomputes it[/]"
+        )
+    elif (features := _features(db, source)) is None:
+        print(f"[yellow]{source.slug} has no polygons in `maps` or in staging[/]")
+    else:
         db.run_sql(
-            sql_file("rgeom/" + approach),
-            dict(
-                source_id=source_id,
-                srid=srid,
-                buffer_distance=buffer,
-                fill_holes=fill_holes,
-                fix_antimeridian=fix_antimeridian,
-            ),
+            sql_file("seed-bounds"),
+            dict(source_id=source.id, features=features),
             raise_errors=True,
         )
+        print(f"[green]{source.slug}[/] boundary set from its polygons")
+        written = True
 
-    end = time.time()
-    dt = end - start
+    db.run_query(_SET_WEB_GEOM, params)
+    db.session.commit()
+    return written
 
-    print(f"Done in {dt:.2f} s")
 
+def _features(db, source: MapInfo):
+    """The map's polygons: in `maps` once inserted, else its staging table."""
+    inserted = db.run_query(
+        "SELECT EXISTS (SELECT 1 FROM maps.polygons WHERE source_id = :source_id)",
+        dict(source_id=source.id),
+    ).scalar()
+    if inserted:
+        return SQL("SELECT geom FROM maps.polygons WHERE source_id = :source_id")
 
-def create_webgeom(source: MapInfo, legacy: bool = False):
-    """Create a simplified geometry for use on the web"""
-    db = get_database()
-    sql = "UPDATE maps.sources SET web_geom = ST_Envelope(rgeom) WHERE source_id = :source_id;"
-    if legacy:
-        # legacy mode for complex maps
-        sql = sql_file("set-webgeom")
-
-    db.run_sql(sql, {"source_id": source.id})
+    primary_table = db.run_query(
+        "SELECT primary_table FROM maps.sources WHERE source_id = :source_id",
+        dict(source_id=source.id),
+    ).scalar()
+    if primary_table is None or not table_exists(db, primary_table, schema="sources"):
+        return None
+    return SQL("SELECT geom FROM {} WHERE NOT coalesce(omit, false)").format(
+        Identifier("sources", primary_table)
+    )

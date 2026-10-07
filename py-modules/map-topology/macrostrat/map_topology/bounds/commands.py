@@ -1,8 +1,9 @@
 """`macrostrat bounds` -- compose map boundaries from ordered operations.
 
-Geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are authored in
-QGIS, which edits `map_bounds.boundary_op` directly as a PostGIS layer. This CLI
-covers the parameter-only operations, ordering, inspection and building.
+Geometry-bearing operations (`add`, `subtract`, `init`, `adopt`) are drawn in the
+web boundary editor (`/dev/map/bounds/<slug>`) or in QGIS, which edits
+`map_bounds.boundary_op` directly as a PostGIS layer. This CLI covers the
+parameter-only operations, ordering, inspection and building.
 """
 
 import inspect
@@ -14,9 +15,15 @@ from rich.table import Table
 from typer import Argument, Option, Typer
 
 from macrostrat.core.database import get_database
+from macrostrat.map_integration.utils.map_info import (
+    MapExclude,
+    MapSelector,
+    MapState,
+    resolve_maps,
+)
 
-from ..manager import filter_maps
 from . import build as build_mod
+from . import edit
 from .operations import CLI_OPERATIONS, OPENING_OPERATIONS, BoundaryOp
 
 cli = Typer(no_args_is_help=True, short_help="Compose and edit map boundaries")
@@ -24,7 +31,7 @@ cli = Typer(no_args_is_help=True, short_help="Compose and edit map boundaries")
 add_cli = Typer(
     no_args_is_help=True,
     help="Add a boundary operation. One command per operation type; geometry-"
-    "bearing operations are authored in QGIS instead.",
+    "bearing operations are drawn in the web boundary editor or QGIS instead.",
 )
 cli.add_typer(add_cli, name="add")
 
@@ -41,22 +48,38 @@ def _sources_with_bounds(db):
     ).all()
 
 
-def _resolve(maps: list[str]) -> list:
+def _resolve(
+    maps: list[str], exclude: list[str] | None = None, state: str | None = None
+) -> list:
+    """Resolve selectors as `macrostrat maps` does, keeping maps that have bounds."""
     db = get_database()
-    all_maps = _sources_with_bounds(db)
-    if maps:
-        all_maps = list(filter_maps(all_maps, maps))
-    if not all_maps:
-        print("[red]No matching maps[/]")
+    selected = resolve_maps(db, maps, exclude=exclude, state=state)
+    with_bounds = {m.map_id: m for m in _sources_with_bounds(db)}
+    missing = [m.slug for m in selected if m.id not in with_bounds]
+    if missing:
+        print(
+            f"[yellow]Skipping {len(missing)} maps with no bounds:[/] {', '.join(missing)}"
+        )
+    result = [with_bounds[m.id] for m in selected if m.id in with_bounds]
+    if not result:
+        print("[red]No matching maps have bounds[/]")
         raise typer.Exit(1)
-    return all_maps
+    return result
+
+
+def _resolve_one(map: str):
+    result = _resolve([map])
+    if len(result) > 1:
+        print(f"[red]{map!r} matches {len(result)} maps; this command takes one[/]")
+        raise typer.Exit(1)
+    return result[0]
 
 
 @cli.command("show")
-def show(maps: Annotated[list[str], Argument(help="Map slugs or source ids")]):
+def show(maps: MapSelector, exclude: MapExclude = None, state: MapState = None):
     """Show a map's boundary operations and composed state."""
     db = get_database()
-    for m in _resolve(maps):
+    for m in _resolve(maps, exclude, state):
         ops = build_mod.load_ops(db, m.map_id)
         row = db.run_query(
             "SELECT area_km, boundary_error, geometry IS NULL AS empty"
@@ -91,9 +114,29 @@ def show(maps: Annotated[list[str], Argument(help="Map slugs or source ids")]):
 @cli.command("build")
 def build_cmd(
     maps: Annotated[
-        Optional[list[str]], Argument(help="Map slugs or source ids")
+        Optional[list[str]],
+        Argument(help="Map slugs, source ids, or slug globs (e.g. 'ngs-*')"),
     ] = None,
-    all_maps: Annotated[bool, Option("--all", help="Build every map")] = False,
+    exclude: MapExclude = None,
+    state: MapState = None,
+    all_maps: Annotated[
+        bool,
+        Option(
+            "--all",
+            help="Build every map whose operations changed since its last build",
+        ),
+    ] = False,
+    rebuild: Annotated[
+        bool, Option("--rebuild", help="With --all, build unchanged maps too")
+    ] = False,
+    strict: Annotated[
+        bool,
+        Option(
+            "--strict",
+            help=f"Write any change, not only those over {build_mod.TOLERANCE_KM:g} km²"
+            f" or {build_mod.TOLERANCE_REL:g} of the map's area",
+        ),
+    ] = False,
     init: Annotated[
         bool, Option("--init", help="Recompute the opening union from map features")
     ] = False,
@@ -101,16 +144,34 @@ def build_cmd(
         bool, Option("--dry-run", help="Report the result without writing")
     ] = False,
 ):
-    """Replay a map's operations onto its boundary."""
+    """Replay a map's operations onto its boundary.
+
+    Named maps are always rebuilt. A rebuilt boundary within tolerance of the
+    stored one is left in place, so it is not re-noded.
+    """
     if not maps and not all_maps:
         print("[red]Pass one or more maps, or --all[/]")
         raise typer.Exit(1)
+    if all_maps and (maps or exclude or state):
+        print("[red]--all takes no map selectors, --exclude or --state[/]")
+        raise typer.Exit(1)
     db = get_database()
-    targets = _sources_with_bounds(db) if all_maps else _resolve(maps)
+    if not all_maps:
+        targets = _resolve(maps, exclude, state)
+    elif rebuild:
+        targets = _sources_with_bounds(db)
+    else:
+        stale = build_mod.needs_build(db)
+        everything = _sources_with_bounds(db)
+        targets = [m for m in everything if m.map_id in stale]
+        print(
+            f"[dim]{len(everything) - len(targets)} maps up to date;"
+            " --rebuild to build them anyway[/]"
+        )
 
     failures = 0
     for m in targets:
-        res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run)
+        res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run, strict=strict)
         label = f"[bold]{res.slug or m.map_id}[/]"
         if res.error:
             failures += 1
@@ -122,6 +183,14 @@ def build_cmd(
             print(f"  [red]FAILED[/] {label}{where}: {res.error}")
         elif res.skipped:
             print(f"  [dim]skipped[/] {label} -- {res.skipped}")
+        elif res.unchanged:
+            if res.diff_km:
+                print(
+                    f"  [dim]unchanged[/] {label} -- moved {res.diff_km:,.4g} km²,"
+                    " within tolerance; --strict to write"
+                )
+            else:
+                print(f"  [dim]unchanged[/] {label}")
         else:
             verb = "would be" if dry_run else "built"
             area = f"{res.area_km:,.1f} km²" if res.area_km is not None else "?"
@@ -147,7 +216,7 @@ def open_cmd(
         print(f"[red]{operation} cannot open a boundary[/]")
         raise typer.Exit(1)
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     build_mod.set_opening(db, m.map_id, operation)
     db.session.commit()
     print(f"{m.slug} now opens with [bold]{operation}[/]")
@@ -159,19 +228,16 @@ def remove(
     map: Annotated[str, Argument(help="Map slug or source id")],
     op_id: Annotated[int, Argument(help="Operation id, from `bounds show`")],
 ):
-    """Remove a boundary operation."""
+    """Remove a boundary operation, closing the gap in positions."""
     db = get_database()
-    m = _resolve([map])[0]
-    deleted = db.run_query(
-        "DELETE FROM map_bounds.boundary_op"
-        " WHERE id = :id AND source_id = :source_id RETURNING position, operation",
-        dict(id=op_id, source_id=m.map_id),
-    ).first()
-    if deleted is None:
-        print(f"[red]No operation {op_id} on {m.slug}[/]")
+    m = _resolve_one(map)
+    try:
+        removed = edit.remove(db, m.map_id, op_id)
+    except edit.EditError as err:
+        print(f"[red]{err}[/]")
         raise typer.Exit(1)
     db.session.commit()
-    print(f"Removed {deleted.operation} at position {deleted.position}")
+    print(f"Removed {removed.operation} from position {removed.position}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -182,32 +248,15 @@ def move(
     position: Annotated[int, Argument(help="New position (1 or greater)")],
 ):
     """Reorder a boundary operation."""
-    if position < 1:
-        print("[red]Position 0 is reserved for the opening operation[/]")
-        raise typer.Exit(1)
     db = get_database()
-    m = _resolve([map])[0]
-    ops = [o for o in build_mod.load_ops(db, m.map_id) if o.position > 0]
-    target = next((o for o in ops if o.id == op_id), None)
-    if target is None:
-        print(f"[red]No movable operation {op_id} on {m.slug}[/]")
+    m = _resolve_one(map)
+    try:
+        landed = edit.move(db, m.map_id, op_id, position)
+    except edit.EditError as err:
+        print(f"[red]{err}[/]")
         raise typer.Exit(1)
-
-    ops.remove(target)
-    ops.insert(min(position, len(ops) + 1) - 1, target)
-
-    # Renumber the whole list rather than swapping pairs: the unique constraint
-    # is only satisfied again once every row has moved, so defer it for the
-    # transaction and write a clean 1..N sequence.
-    db.run_query("SET CONSTRAINTS map_bounds.boundary_op_unique_position DEFERRED")
-    for index, o in enumerate(ops, start=1):
-        if o.position != index:
-            db.run_query(
-                "UPDATE map_bounds.boundary_op SET position = :position WHERE id = :id",
-                dict(id=o.id, position=index),
-            )
     db.session.commit()
-    print(f"Moved operation {op_id} to position {ops.index(target) + 1}")
+    print(f"Moved operation {op_id} to position {landed}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -215,7 +264,7 @@ def move(
 def reset(map: Annotated[str, Argument(help="Map slug or source id")]):
     """Drop every boundary operation for a map."""
     db = get_database()
-    m = _resolve([map])[0]
+    m = _resolve_one(map)
     n = db.run_query(
         "SELECT count(*) FROM map_bounds.boundary_op WHERE source_id = :source_id",
         dict(source_id=m.map_id),
@@ -234,36 +283,33 @@ def reset(map: Annotated[str, Argument(help="Map slug or source id")]):
     print(f"Removed {n} operations")
 
 
-def _append(map: str, operation: str, model: BoundaryOp) -> None:
+def _append(
+    maps: list[str],
+    exclude: list[str] | None,
+    state: str | None,
+    operation: str,
+    model: BoundaryOp,
+) -> None:
     db = get_database()
-    m = _resolve([map])[0]
-    opening = build_mod.ensure_opening(db, m.map_id)
-    if opening is None:
+    targets = _resolve(maps, exclude, state)
+    no_geometry = []
+    for m in targets:
+        try:
+            edit.append(db, m.map_id, model)
+        except edit.EditError:
+            no_geometry.append(m.slug)
+            continue
+        print(f"Added [bold]{operation}[/] on {m.slug}")
+    # One commit, so a selection is never left half-edited.
+    if no_geometry:
+        db.session.rollback()
         print(
-            f"[red]{m.slug} has no boundary geometry to build on.[/] "
-            "Run `macrostrat bounds build --init` first."
+            f"[red]{len(no_geometry)} maps have no boundary geometry to build on:[/] "
+            f"{', '.join(no_geometry)}. Run `macrostrat bounds build --init` on them,"
+            " or --exclude them. Nothing was added."
         )
         raise typer.Exit(1)
-    position = db.run_query(
-        "SELECT coalesce(max(position), 0) + 1 FROM map_bounds.boundary_op"
-        " WHERE source_id = :source_id",
-        dict(source_id=m.map_id),
-    ).scalar()
-    db.run_query(
-        """
-        INSERT INTO map_bounds.boundary_op
-          (source_id, position, operation, parameters)
-        VALUES (:source_id, :position, :operation, :parameters::jsonb)
-        """,
-        dict(
-            source_id=m.map_id,
-            position=position,
-            operation=operation,
-            parameters=model.model_dump_json(),
-        ),
-    )
     db.session.commit()
-    print(f"Added [bold]{operation}[/] at position {position} on {m.slug}")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
 
 
@@ -282,9 +328,7 @@ def _register_one(op_id: str, model_cls: type[BoundaryOp]) -> None:
     fields = model_cls.model_fields
     params = [
         inspect.Parameter(
-            "map",
-            inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=Annotated[str, Argument(help="Map slug or source id")],
+            "maps", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=MapSelector
         )
     ]
     for name, info in fields.items():
@@ -315,14 +359,26 @@ def _register_one(op_id: str, model_cls: type[BoundaryOp]) -> None:
             )
 
     def command(**kwargs):
-        map_ = kwargs.pop("map")
+        maps = kwargs.pop("maps")
+        exclude = kwargs.pop("exclude")
+        state = kwargs.pop("state")
         supplied = {k: v for k, v in kwargs.items() if v is not None}
         try:
             model = model_cls(**supplied)
         except Exception as err:  # noqa: BLE001 -- surfaced as a CLI message
             print(f"[red]{err}[/]")
             raise typer.Exit(1)
-        _append(map_, op_id, model)
+        _append(maps, exclude, state, op_id, model)
+
+    for name, annotation in (("exclude", MapExclude), ("state", MapState)):
+        params.append(
+            inspect.Parameter(
+                name,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                default=None,
+                annotation=annotation,
+            )
+        )
 
     command.__signature__ = inspect.Signature(params)
     command.__name__ = op_id

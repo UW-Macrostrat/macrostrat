@@ -13,6 +13,7 @@ import api.routes.security
 from api.compilations import router as compilations_router
 from api.database import AppDatabase, get_db_url
 from api.map import router as map_router
+from api.map_bounds import router as map_bounds_router
 from api.match import router as match_router
 from api.routes.cache import router as cache_router
 from api.routes.column_geometry import router as column_geometry_router
@@ -65,6 +66,7 @@ app.include_router(columns_router)
 app.include_router(column_geometry_router)
 app.include_router(sources_router)
 app.include_router(compilations_router)
+app.include_router(map_bounds_router)
 app.include_router(map_router, prefix="/map")
 app.include_router(cache_router, prefix="/cache")
 

@@ -88,6 +88,8 @@ def copy_to_maps(
             lines_table_maps=Identifier("maps", "lines_" + scale),
             scale=Literal(scale),
         ),
+        # A rejected polygon insert must abort, not report success with lines alone
+        raise_errors=True,
     )
 
 

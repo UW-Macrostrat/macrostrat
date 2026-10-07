@@ -62,7 +62,7 @@ from macrostrat.map_integration import config
 from macrostrat.map_integration.commands.ingest import ingest_map
 from macrostrat.map_integration.commands.prepare_fields import prepare_fields
 from macrostrat.map_integration.errors import IngestError
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.map_info import MapInfo, get_map_info
 
 from .config import get_minio_client
@@ -538,8 +538,7 @@ def ingest_slug(
         ingest_process = update_ingest_process(
             ingest_process.source_id, state=IngestState.prepared
         )
-        create_rgeom(map_info)
-        create_webgeom(map_info)
+        create_bounds(get_database(), map_info)
         ingest_process = update_ingest_process(
             ingest_process.source_id, state=IngestState.ingested
         )

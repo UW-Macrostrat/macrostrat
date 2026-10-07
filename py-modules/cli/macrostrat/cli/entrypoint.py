@@ -368,7 +368,7 @@ def environments():
 
 main.add_typer(cfg_app)
 
-from macrostrat.map_topology import cli as topo_cli
+from macrostrat.map_topology.commands import cli as topo_cli
 
 main.add_typer(
     topo_cli,
@@ -377,7 +377,7 @@ main.add_typer(
     short_help="Manage the Macrostrat maps topology",
 )
 
-from macrostrat.map_topology.bounds import cli as bounds_cli
+from macrostrat.map_topology.bounds.commands import cli as bounds_cli
 
 main.add_typer(
     bounds_cli,
@@ -431,7 +431,7 @@ def _run(
     bindir = Path(settings.srcroot) / "bin"
 
     if command is None:
-        root = pipelines.workbook_root()
+        root = pipelines.find_workbook()
         if root is not None:
             pipelines.list_pipelines(root)
         print("[bold]Scripts in bin/[/bold]")
@@ -446,17 +446,22 @@ def _run(
 
     cmd = bindir / command
     if not cmd.is_file():
-        root = pipelines.workbook_root()
+        root = pipelines.find_workbook()
         where = (
             f"the pipelines in {root.name}"
             if root
-            else "any workbook (no .dvc above here)"
+            else "any workbook (no .dvc above here, no sources.data_integration)"
         )
         raise MacrostratError(
             f"[item]{command}[/item] is not a pipeline, a path, or a script in bin/",
             details=f"Looked in {where} and {bindir}. `macrostrat run` alone lists both.",
         )
     run(str(cmd), *ctx.args)
+
+
+from .data import app as data_app
+
+main.add_typer(data_app, name="data")
 
 
 # Add subsystems if they are available.

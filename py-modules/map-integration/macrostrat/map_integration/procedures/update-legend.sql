@@ -26,16 +26,17 @@ INSERT INTO
     b_interval,
     t_interval
   )
+-- Keyed as `map_legend` joins below, so each polygon matches one entry.
 SELECT
   DISTINCT ON (
-    q.name,
-    q.strat_name,
-    q.age,
-    q.lith,
-    q.descrip,
-    q.comments,
-    q.b_interval,
-    q.t_interval
+    trim(COALESCE(q.name, '')),
+    trim(COALESCE(q.strat_name, '')),
+    trim(COALESCE(q.age, '')),
+    trim(COALESCE(q.lith, '')),
+    trim(COALESCE(q.descrip, '')),
+    trim(COALESCE(q.comments, '')),
+    COALESCE(q.b_interval, -999),
+    COALESCE(q.t_interval, -999)
   ) q.source_id,
   q.name,
   q.strat_name,
@@ -68,6 +69,14 @@ WHERE
   be rebuilt whether or not anything had changed. Ordering on the key columns
   costs a sort `DISTINCT ON` was already paying for. */
 ORDER BY
+  trim(COALESCE(q.name, '')),
+  trim(COALESCE(q.strat_name, '')),
+  trim(COALESCE(q.age, '')),
+  trim(COALESCE(q.lith, '')),
+  trim(COALESCE(q.descrip, '')),
+  trim(COALESCE(q.comments, '')),
+  COALESCE(q.b_interval, -999),
+  COALESCE(q.t_interval, -999),
   q.name,
   q.strat_name,
   q.age,

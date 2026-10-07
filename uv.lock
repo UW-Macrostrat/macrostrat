@@ -158,6 +158,7 @@ dependencies = [
     { name = "httpx" },
     { name = "macrostrat-column-utils" },
     { name = "macrostrat-database" },
+    { name = "macrostrat-map-topology" },
     { name = "macrostrat-match-utils" },
     { name = "minio" },
     { name = "morecantile" },
@@ -185,6 +186,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27.0,<0.29" },
     { name = "macrostrat-column-utils", editable = "py-modules/column-utils" },
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
@@ -1093,7 +1095,7 @@ dependencies = [
     { name = "macrostrat-dinosaur" },
     { name = "macrostrat-integrations" },
     { name = "macrostrat-map-integration" },
-    { name = "macrostrat-map-topology" },
+    { name = "macrostrat-map-topology", extra = ["topology"] },
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-radosgw-admin" },
     { name = "macrostrat-runtime-checks" },
@@ -1148,7 +1150,7 @@ requires-dist = [
     { name = "macrostrat-integrations", editable = "py-modules/integrations" },
     { name = "macrostrat-map-integration", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "py-modules/map-integration" },
-    { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
+    { name = "macrostrat-map-topology", extras = ["topology"], editable = "py-modules/map-topology" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "macrostrat-radosgw-admin", editable = "submodules/storage-admin" },
     { name = "macrostrat-runtime-checks", editable = "py-modules/runtime-checks" },
@@ -1410,19 +1412,26 @@ name = "macrostrat-map-topology"
 version = "0.1.0"
 source = { editable = "py-modules/map-topology" }
 dependencies = [
-    { name = "macrostrat-core" },
     { name = "macrostrat-database" },
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+topology = [
+    { name = "macrostrat-core" },
     { name = "mapboard-topology-manager" },
     { name = "pytest" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "macrostrat-core", editable = "py-modules/core" },
+    { name = "macrostrat-core", marker = "extra == 'topology'", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
-    { name = "mapboard-topology-manager", editable = "submodules/topology-manager" },
-    { name = "pytest", specifier = ">=8.3.4,<10" },
+    { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "submodules/topology-manager" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
 ]
+provides-extras = ["topology"]
 
 [[package]]
 name = "macrostrat-map-utils"
@@ -1571,7 +1580,7 @@ dependencies = [
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
     { name = "macrostrat-dinosaur" },
-    { name = "macrostrat-map-topology" },
+    { name = "macrostrat-map-topology", extra = ["topology"] },
     { name = "macrostrat-utils" },
     { name = "pytest" },
     { name = "results" },
@@ -1589,7 +1598,7 @@ requires-dist = [
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.6.0,<5" },
     { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
-    { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
+    { name = "macrostrat-map-topology", extras = ["topology"], editable = "py-modules/map-topology" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
     { name = "pytest", specifier = ">=8.3.4,<9" },
     { name = "results", specifier = ">=1.4.0,<1.5.0" },

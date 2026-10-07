@@ -19,7 +19,7 @@ from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
 from macrostrat.map_integration.commands.prepare_fields.utils import PointsTableUpdater
 
 # from macrostrat.map_integration.pipeline import ingest_map
-from macrostrat.map_integration.process.geometry import create_rgeom, create_webgeom
+from macrostrat.map_integration.process.geometry import create_bounds
 from macrostrat.map_integration.utils.ingestion_utils import (
     find_gis_files,
     normalize_slug,
@@ -440,8 +440,7 @@ def staging(
 
     map_info = get_map_info(db, slug)
     _prepare_fields(map_info)
-    create_rgeom(map_info)
-    create_webgeom(map_info)
+    create_bounds(db, map_info)
 
     console.print(
         f"[green] \n Finished staging setup for {slug}. "
@@ -934,8 +933,7 @@ def staging_bulk(
 
         map_info = get_map_info(db, slug)
         _prepare_fields(map_info)
-        create_rgeom(map_info)
-        create_webgeom(map_info)
+        create_bounds(db, map_info)
 
         print(
             f"\nFinished staging setup for {slug}. View map here: https://dev.macrostrat.org/maps/ingestion/{source_id}/ \n"
