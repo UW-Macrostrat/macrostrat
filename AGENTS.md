@@ -25,8 +25,9 @@ wrapping it in an external transaction does not roll it back.
   `0000-globals.sql` creates **extensions** and runs as the connector
   (superuser); application chunks run as the `macrostrat` role and cannot create
   extensions.
-- `schema/_definitions/`, `schema/_dev_definitions/` — subsystems discovered by
-  frontmatter.
+- `schema/_definitions/`, `schema/_staging_definitions/`,
+  `schema/_dev_definitions/` — subsystems discovered by frontmatter, applied
+  everywhere, up to staging, and up to development respectively.
 - `schema/_migrations/` — condition-based migrations. Each is a directory with an
   `__init__.py` defining a `Migration` subclass plus its SQL; discovery is by
   import, and application is decided by `preconditions` / `postconditions`
