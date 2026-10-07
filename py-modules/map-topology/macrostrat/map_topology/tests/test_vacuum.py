@@ -13,6 +13,11 @@ def test_vacuum_full_reports_returned_space(empty_db):
             " SELECT g AS id, repeat('x', 500) AS pad FROM generate_series(1, 20000) g"
         )
         conn.exec_driver_sql("DELETE FROM vacuum_test WHERE id > 100")
+    # The shared fixture's scoped session may be idle in a transaction left by
+    # an earlier test (`run_query` never commits). Its snapshot would keep the
+    # deleted rows "recently dead", VACUUM FULL would carry them into the
+    # rewritten table, and the size would not move. Release it first.
+    empty_db.session.remove()
     try:
         [res] = vacuum_tables(
             engine, resolve_tables(engine, ["vacuum_test"]), full=True
