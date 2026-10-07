@@ -12,6 +12,8 @@ from mapboard.topology_manager.commands.update_faces import (
 from rich import print
 from rich.progress import Progress
 
+from macrostrat.database import run_sql
+
 __dir__ = Path(__file__).parent
 
 proc = lambda name: __dir__ / "procedures" / f"{name}.sql"
@@ -426,12 +428,16 @@ def update_maps(
     restart = get_maps_to_restart(db, all_maps, bulk=bulk)
     if restart:
         with summary.timed(f"Pre-remove {len(restart)} maps from solved faces"):
-            res = db.run_sql(
-                proc("pre-remove-stale-faces"),
-                dict(map_ids=[m.map_id for m in restart]),
-                raise_errors=True,
-            )[-1].one()
+            # One connection throughout: its temp tables are per session, and the
+            # session's pool may hand each statement a different one.
             db.session.commit()
+            with db.engine.connect() as conn:
+                res = run_sql(
+                    conn,
+                    proc("pre-remove-stale-faces"),
+                    dict(map_ids=[m.map_id for m in restart]),
+                    raise_errors=True,
+                )[-1].one()
             print(
                 f"  {res.released:,} faces released from {res.map_faces_touched:,}"
                 f" map faces; {res.primitives_removed:,} primitives removed"
