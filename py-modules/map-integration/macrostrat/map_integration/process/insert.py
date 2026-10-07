@@ -2,11 +2,11 @@ from psycopg2.sql import Identifier, Literal
 from rich import print
 
 from macrostrat.core.exc import MacrostratError
-from macrostrat.map_utils.slugs import table_prefix
+from macrostrat.map_utils.slugs import STAGING_KINDS, table_prefix
 from macrostrat.utils import get_logger
 
 from ..database import get_database, sql_file
-from ..utils import MapInfo, feature_counts
+from ..utils import MapInfo, feature_counts, table_exists
 
 log = get_logger(__name__)
 
@@ -37,9 +37,10 @@ def copy_to_maps(
     A **compilation whose members share one staging table** passes the shared
     prefix instead -- NGS's 114 members all stage into `sources.ngs_*`, and
     `maps.sources.primary_table` cannot name it for them because that column is
-    `UNIQUE`. Nothing else has to change: `copy-to-maps-schema.sql` already
-    filters on `source_id`, so a shared table is just a wider table.
+    `UNIQUE`. Nothing else has to change: the copy filters on `source_id`, so a
+    shared table is just a wider table.
 
+    Polygons are required; a map without a lines or points table simply has none.
     Refuses a source whose `lith`, `t_interval` or `b_interval` is null on every
     polygon -- see `ATTEMPTED_COLUMNS`. `allow_unattributed` is the way past it,
     for a map that genuinely has none of the attribute in question.
@@ -73,25 +74,33 @@ def copy_to_maps(
             "No scale provided and no scale found in the sources table. Aborting."
         )
 
+    kinds = [
+        kind
+        for kind in STAGING_KINDS
+        if table_exists(db, f"{prefix}_{kind}", schema="sources")
+    ]
+    if "polygons" not in kinds:
+        raise MacrostratError(
+            f"Refusing to insert: sources.{prefix}_polygons does not exist"
+        )
+    # Checked before existing data is cleared, so a refusal leaves the map as it was
+    _check_attempted_columns(db, prefix, source_id, allow_unattributed)
+
     if has_any_features:
         _delete_map_data(db, source_id)
 
-    _check_attempted_columns(db, prefix, source_id, allow_unattributed)
-
-    db.run_sql(
-        sql_file("copy-to-maps-schema"),
-        dict(
-            source_id=Literal(source_id),
-            polygons_table=Identifier("sources", prefix + "_polygons"),
-            lines_table=Identifier("sources", prefix + "_lines"),
-            points_table=Identifier("sources", prefix + "_points"),
-            polygons_table_maps=Identifier("maps", "polygons_" + scale),
-            lines_table_maps=Identifier("maps", "lines_" + scale),
-            scale=Literal(scale),
-        ),
-        # A rejected polygon insert must abort, not report success with lines alone
-        raise_errors=True,
+    params = dict(
+        source_id=Literal(source_id),
+        polygons_table=Identifier("sources", prefix + "_polygons"),
+        lines_table=Identifier("sources", prefix + "_lines"),
+        points_table=Identifier("sources", prefix + "_points"),
+        polygons_table_maps=Identifier("maps", "polygons_" + scale),
+        lines_table_maps=Identifier("maps", "lines_" + scale),
+        scale=Literal(scale),
     )
+    # Polygons first: a rejected polygon insert must abort before lines go in
+    for kind in kinds:
+        db.run_sql(sql_file(f"copy-{kind}-to-maps"), params, raise_errors=True)
 
 
 def remove(db, source: MapInfo):
@@ -134,8 +143,7 @@ def _check_attempted_columns(db, prefix: str, source_id: int, allow: bool):
     the thing the ingest is responsible for, and reported per column so the
     message says which step to go and run.
 
-    A source with no polygons at all is not this check's business -- a
-    lines-and-points map is legitimate, and `feature_counts` has already spoken.
+    Also refuses a source with no polygons to insert.
     """
     counts = db.run_query(
         """
@@ -153,7 +161,10 @@ def _check_attempted_columns(db, prefix: str, source_id: int, allow: bool):
     ).one()
 
     if counts.n_rows == 0:
-        return
+        raise MacrostratError(
+            f"Refusing to insert: sources.{prefix}_polygons has no polygons"
+            f" for source {source_id}"
+        )
 
     empty = [c for c in ATTEMPTED_COLUMNS if getattr(counts, c) == 0]
     if not empty:

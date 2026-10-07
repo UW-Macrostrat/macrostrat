@@ -26,7 +26,13 @@ from macrostrat.map_integration.utils.ingestion_utils import (
     process_sources_metadata,
     resolve_slug_from_path,
 )
-from macrostrat.map_integration.utils.map_info import get_map_info
+from macrostrat.map_integration.utils.map_info import (
+    MapExclude,
+    MapSelector,
+    MapState,
+    get_map_info,
+    resolve_maps,
+)
 from macrostrat.map_integration.utils.s3_file_management import *
 from macrostrat.map_utils import StorageConfig, delete_map
 from macrostrat.map_utils.slugs import check_slug, staging_table
@@ -69,7 +75,14 @@ def set_active_map(map: MapInfo = None):
 cli.add_command(ingest_map, name="ingest")
 cli.add_command(export_command, name="export")
 cli.add_command(patch_command, name="patch")
-cli.add_command(prepare_fields, name="prepare-fields")
+cli.add_command(
+    prepare_fields,
+    name="prepare-fields",
+    deprecated=True,
+    help="Prepare empty fields for manual cleaning. Superseded by"
+    " `maps sources normalize`, which also reports, repairs and re-runs safely;"
+    " kept for --all and --recover.",
+)
 
 
 @cli.command(name="create-tables")
@@ -137,6 +150,53 @@ def _staging_storage_config() -> "StorageConfig | None":
         bucket=bucket,
         secure=True,
     )
+
+
+@sources.command(name="normalize")
+def normalize_sources(
+    maps: MapSelector,
+    exclude: MapExclude = None,
+    state: MapState = None,
+    dry_run: bool = Option(False, "--dry-run", help="Report changes without writing"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
+):
+    """Make maps' staging tables ready to insert.
+
+    Brings each table to the standard columns (what `prepare-fields` did): the
+    geometry column named `geom`, `_pkid`, `source_id`, and legacy intervals and
+    `omit`, filled only where empty. Then changes single-part geometry columns
+    to multi, repairs invalid geometries, and fills an empty orig_id from a column
+    that obviously identifies features: integer-valued, never null, and unique or
+    nearly so.
+    """
+    from .commands.normalize_sources import normalize
+
+    db = get_database()
+    selected = resolve_maps(db, maps, exclude=exclude, state=state)
+    if not dry_run:
+        require_write_access(
+            WriteScope.Data,
+            assume_yes=yes,
+            action=f"normalizing staging tables of {len(selected)} map(s)",
+        )
+    for m in selected:
+        console.print(f"[bold]{m.slug}[/] [dim]#{m.id}[/]")
+        reports = normalize(db, m, apply=not dry_run)
+        if not reports:
+            console.print("  [yellow]no staging tables[/]")
+        for report in reports:
+            if not report.changes and not report.notes:
+                console.print(f"  [dim]{report.table}: nothing to do[/]")
+            for change in report.changes:
+                console.print(f"  {report.table}: [green]{change}[/]")
+            for note in report.notes:
+                console.print(f"  {report.table}: [yellow]{note}[/]")
+        if not dry_run:
+            db.session.commit()
+    if dry_run:
+        console.print("[dim]Dry run; nothing was written[/]")
 
 
 @sources.command(name="delete")

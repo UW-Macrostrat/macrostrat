@@ -9,7 +9,7 @@ from typing import Any
 
 from macrostrat.database import Database
 
-from .build import OpRow, ensure_opening, load_ops
+from .build import OpRow, ensure_opening, load_ops, set_opening
 from .operations import OPENING_OPERATIONS, BoundaryOp, load
 
 
@@ -78,6 +78,32 @@ def append(
             note=note,
         ),
     ).scalar()
+
+
+def open_cap(
+    db: Database, source_id: int, latitude: float, note: str | None = None
+) -> int:
+    """Open the boundary with a polar cap: everything poleward of `latitude`.
+
+    A negative latitude caps the south pole. Built as a lon/lat envelope, so it
+    has no seam at the antimeridian, with edges densified to 1° so it stays a
+    parallel when read as geography. Operations after the opening are kept.
+    """
+    if not -90 < latitude < 90 or latitude == 0:
+        raise EditError("A cap's edge is a latitude between -90 and 90, other than 0")
+    ymin, ymax = (-90, latitude) if latitude < 0 else (latitude, 90)
+    op_id = set_opening(db, source_id, "init")
+    db.run_query(
+        """
+        UPDATE map_bounds.boundary_op
+        SET geometry = ST_Multi(ST_Segmentize(
+              ST_MakeEnvelope(-180, :ymin, 180, :ymax, 4326), 1)),
+            note = :note
+        WHERE id = :id
+        """,
+        dict(id=op_id, ymin=ymin, ymax=ymax, note=note),
+    )
+    return op_id
 
 
 def remove(db: Database, source_id: int, op_id: int) -> OpRow:
