@@ -6,7 +6,7 @@ from sqlalchemy.exc import NoSuchTableError
 from typer import Option
 
 from macrostrat.core.exc import MacrostratError
-from macrostrat.map_utils.slugs import selector, staging_table
+from macrostrat.map_utils.slugs import staging_table
 
 from ...database import get_database
 from ...utils import MapInfo, create_sources_record, get_map_info
@@ -90,8 +90,8 @@ def prepare_fields_for_all_sources(recover=False):
         / "procedures"
         / "all-candidate-source-slugs.sql"
     )
-    # Candidates read off table names carry the underscore prefix, not the slug.
-    for slug in sorted({selector(row.slug) for row in db.run_query(sql)}):
+    # A candidate read off a table name is a prefix; `get_map_info` also tries it hyphenated.
+    for slug in sorted({row.slug for row in db.run_query(sql)}):
         try:
             info = get_map_info(db, slug)
         except MacrostratError:

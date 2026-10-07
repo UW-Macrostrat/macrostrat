@@ -14,6 +14,7 @@ from rich.console import Console
 from rich.prompt import Prompt
 from typer import Argument, Option
 
+from macrostrat.core.exc import MacrostratError
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
     PointsTableUpdater,
@@ -24,9 +25,10 @@ from macrostrat.map_integration.utils import IngestionCLI
 from macrostrat.map_integration.utils.map_info import (
     MapExclude,
     MapSelector,
+    get_map_info,
     resolve_maps,
 )
-from macrostrat.map_utils.slugs import selector, staging_table, table_prefix
+from macrostrat.map_utils.slugs import slug_forms, staging_table, table_prefix
 
 console = Console()
 
@@ -165,7 +167,7 @@ def resolve_target(
         return get_current_target()
 
     context = load_map_context()
-    slug = selector((slug or context.get("slug") or "").strip())
+    slug = (slug or context.get("slug") or "").strip()
     if slug == "":
         raise ValueError("No slug given and none set. Pass --slug or run 'set-map'.")
 
@@ -217,7 +219,12 @@ def strip_strat_name_suffixes(value: str) -> str:
 
 def set_current_map(slug: str):
     """Set the current map slug and default base table."""
-    slug = selector(validate_identifier(slug, "slug"))
+    slug = validate_identifier(slug, "slug")
+    try:
+        # Recorded as `maps.sources` has it, for the lookups that match it exactly
+        slug = get_map_info(get_database(), slug).slug
+    except MacrostratError:
+        pass
     context = load_map_context()
     context["schema"] = "sources"
     context["slug"] = slug
@@ -5057,7 +5064,7 @@ def apply_japan_line_point_types_from_temp(
         ).scalars()
     )
     if only is not None:
-        slugs = [s for s in slugs if s == selector(only)]
+        slugs = [s for s in slugs if s in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Japan slug matches '{only}'")
 
@@ -5216,7 +5223,7 @@ def apply_az_line_point_types_from_temp(
         ).scalars()
     )
     if only is not None:
-        slugs = [s for s in slugs if s == selector(only)]
+        slugs = [s for s in slugs if s in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Arizona slug matches '{only}'")
 
@@ -5325,11 +5332,13 @@ def normalize_az(
         ).scalars()
     )
     if only is not None:
-        slugs = [slug for slug in slugs if slug == selector(only)]
+        slugs = [slug for slug in slugs if slug in slug_forms(only)]
         if not slugs:
             raise ValueError(f"No Arizona slug matches '{only}'")
     elif start_after is not None:
-        start_after = selector(start_after)
+        start_after = next(
+            (s for s in slug_forms(start_after) if s in slugs), start_after
+        )
         if start_after not in slugs:
             raise ValueError(f"No Arizona slug matches '{start_after}'")
         slugs = slugs[slugs.index(start_after) + 1 :]

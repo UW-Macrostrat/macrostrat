@@ -81,8 +81,13 @@ def test_refuses_collisions(legacy_db):
         raise_errors=True,
     )
     migration = _migration()
-    with raises(MacrostratError):
+    with raises(MacrostratError) as err:
         migration.apply(db)
+    ids = db.run_query(
+        "SELECT source_id FROM maps.sources WHERE slug IN ('dup_a', 'dup-a') ORDER BY 1"
+    ).scalars()
+    # Each colliding map is named by source id, so it can be targeted
+    assert all(f"({i})" in err.value.details for i in ids)
     # Refused before anything was written
     assert (
         _scalar(db, "SELECT count(*) FROM maps.sources WHERE slug = 'legacy_map'") == 1
@@ -128,3 +133,25 @@ def test_rewrites_slugs_and_tables(legacy_db):
             "INSERT INTO maps.sources (slug, scale) VALUES ('legacy_again', 'large')",
             raise_errors=True,
         )
+
+
+def test_underscore_slugs_resolve_before_migrating(legacy_db):
+    from macrostrat.map_integration.utils.map_info import get_map_info, resolve_maps
+
+    db = legacy_db
+    db.run_sql(
+        "INSERT INTO maps.sources (slug, scale) VALUES ('legacy-map', 'large')",
+        raise_errors=True,
+    )
+    # The name as typed wins; its hyphenated form is a separate map
+    assert get_map_info(db, "legacy_map").slug == "legacy_map"
+    assert get_map_info(db, "legacy-map").slug == "legacy-map"
+    assert get_map_info(db, "odd-_name x").slug == "odd-_name x"
+    assert {m.slug for m in resolve_maps(db, ["legacy_*"])} == {
+        "legacy_map",
+        "legacy-map",
+    }
+    exact = _scalar(db, "SELECT map_bounds.source_id('legacy_map')")
+    assert exact == _scalar(
+        db, "SELECT source_id FROM maps.sources WHERE slug = 'legacy_map'"
+    )

@@ -5,12 +5,13 @@ from typing import Any
 
 from click.utils import get_app_dir
 from rich.console import Console
+from rich.padding import Padding
 from typer import Context, Option
 
 from macrostrat.app_frame import Application, ControlCommand, DockerComposeManager
 from macrostrat.utils import get_logger
 
-from .console import console_theme
+from .console import console_theme, err_console
 from .exc import ConfigError, MacrostratError, UnknownEnvironment
 from .utils import (
     ENV_EXPIRES_VAR,
@@ -62,6 +63,14 @@ class StateManager:
 
 
 class MacrostratControlCommand(ControlCommand):
+    def __call__(self, *args, **kwargs):
+        """Report a `MacrostratError` as its message and details, not a traceback."""
+        try:
+            return super().__call__(*args, **kwargs)
+        except MacrostratError as error:
+            err_console.print(Padding(error.render(), (1, 2)))
+            exit(1)
+
     def callback(
         self,
         ctx: Context,

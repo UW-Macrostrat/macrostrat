@@ -3,7 +3,7 @@ from pytest import mark, raises
 from macrostrat.map_utils.slugs import (
     InvalidSlug,
     check_slug,
-    selector,
+    slug_forms,
     slugify,
     staging_table,
     table_prefix,
@@ -42,8 +42,10 @@ def test_tables_take_underscores():
         staging_table("a", "linework")
 
 
-def test_selector_reads_old_names():
-    assert selector("japan_*") == "japan-*"
-    assert (
-        selector("arizona_adgm_1657818658314_498") == "arizona-adgm-1657818658314-498"
+def test_selectors_try_the_name_as_typed_first():
+    assert slug_forms("japan_*") == ("japan_*", "japan-*")
+    assert slug_forms("arizona_mine mountain") == (
+        "arizona_mine mountain",
+        "arizona-mine mountain",
     )
+    assert slug_forms("ngs-*") == ("ngs-*",)

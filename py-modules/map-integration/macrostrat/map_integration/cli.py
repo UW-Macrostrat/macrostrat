@@ -13,6 +13,7 @@ from typer import Argument, Option
 
 from macrostrat.core import app
 from macrostrat.core.environment import WriteScope
+from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database import Database
 from macrostrat.map_integration.commands.prepare_fields import _prepare_fields
@@ -142,8 +143,7 @@ def _staging_storage_config() -> "StorageConfig | None":
 def delete_sources(
     slug: list[str] = Argument(
         ...,
-        help="BULK delete = filename.txt [every line lists the slug_name to delete. no whitespaces.]\n "
-        + "SINGLE delete = 'slug_name' [list the slug_name in quotes]",
+        help="Slugs or source ids; or a file listing one per line; or - for stdin",
     ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
@@ -160,9 +160,23 @@ def delete_sources(
         with open(slug[0]) as file:
             slug = [line.strip() for line in file if line.strip()]
 
+    # Resolved before anything is deleted, so one bad name stops the whole batch
+    maps = []
+    missing = []
+    for identifier in slug:
+        try:
+            maps.append(get_map_info(db, identifier))
+        except MacrostratError:
+            missing.append(identifier)
+    if missing:
+        raise MacrostratError(
+            f"No map found for {len(missing)} of {len(slug)} names",
+            details="\n".join(missing),
+        )
+
     if dry_run:
         print("Deleting maps:")
-        print("  " + "\n  ".join(slug))
+        print("  " + "\n  ".join(f"{m.slug} ({m.id})" for m in maps))
 
         print("\nDry run; not actually deleting anything")
         return
@@ -175,26 +189,20 @@ def delete_sources(
         WriteScope.Data,
         assume_yes=yes,
         action=(
-            f"deletion of {len(slug)} map source(s)"
+            f"deletion of {len(maps)} map source(s)"
             + (" and their published data" if all_data else "")
         ),
     )
 
     storage = _staging_storage_config()
-    for s in slug:
-        print(f"Deleting map {s}")
-        # The published-data (`--all-data`) removal needs the source_id while the
-        # source row still exists, so handle it here before delegating the
-        # staging delete to the shared, GIS-free helper in macrostrat.map_utils.
+    for m in maps:
+        print(f"Deleting map {m.slug} ({m.id})")
+        # Published data goes first, while the source row it references remains;
+        # the staging delete is the shared, GIS-free helper in macrostrat.map_utils.
         if all_data:
-            source_id = db.run_query(
-                "SELECT source_id FROM maps.sources WHERE slug = :slug",
-                dict(slug=s),
-            ).scalar()
-            if source_id is not None:
-                _delete_map_data(db, source_id)
+            _delete_map_data(db, m.id)
 
-        delete_map(db, s, storage=storage)
+        delete_map(db, m.slug, storage=storage)
 
 
 @cli.command(name="change-slug")

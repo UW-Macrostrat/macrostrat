@@ -25,7 +25,7 @@ from sqlalchemy import text
 
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
-from macrostrat.map_utils.slugs import selector
+from macrostrat.map_utils.slugs import slug_forms
 
 from .format import Column, Package, insert_rows, quote, read_package, table_columns
 
@@ -339,7 +339,9 @@ def plan_patch(
     sources = pkg.all_rows("maps_sources")
     if only:
         sources = [
-            s for s in sources if any(fnmatch(s["slug"], selector(p)) for p in only)
+            s
+            for s in sources
+            if any(fnmatch(s["slug"], v) for p in only for v in slug_forms(p))
         ]
         if not sources:
             raise MacrostratError(f"No maps in {path.name} match {', '.join(only)}")

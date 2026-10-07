@@ -6,7 +6,7 @@ import geopandas as G
 import pandas as pd
 
 from macrostrat.core.database import get_database
-from macrostrat.map_utils.slugs import selector, slugify
+from macrostrat.map_utils.slugs import slugify
 from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
@@ -114,7 +114,7 @@ def get_name_from_slug(slug: str, prefix: str | None = None) -> str:
     Generates a human-readable name from a slug, handling prefix-first
     or prefix-last ordering.
     """
-    slug = selector(slug)
+    slug = slug.replace("_", "-")
     region = ""
     place = ""
 

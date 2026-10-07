@@ -11,7 +11,7 @@ from psycopg.sql import Identifier
 
 from macrostrat.database import Database
 
-from .slugs import selector, staging_table
+from .slugs import staging_table
 
 
 @dataclass
@@ -87,7 +87,6 @@ def delete_map(
     Returns a summary dict. Pass ``storage`` to also clean the staging bucket;
     omit it for a DB-only delete.
     """
-    slug = selector(slug)
     tables = db.run_query(
         "SELECT primary_table, primary_line_table FROM maps.sources WHERE slug = :slug",
         dict(slug=slug),

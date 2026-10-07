@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from macrostrat.map_utils.slugs import selector, slugify
+from macrostrat.map_utils.slugs import slugify
 
 DOWNLOAD_DIR = Path("/Users/afromandi/Macrostrat/Maps/Japan/quad_series")
 METADATA_CSV = Path(
@@ -77,7 +77,7 @@ def load_existing_slugs(metadata_csv: Path) -> set[str]:
         for row in reader:
             slug = (row.get("slug") or "").strip()
             if slug:
-                existing_slugs.add(selector(slug))
+                existing_slugs.add(slugify(slug))
 
     return existing_slugs
 

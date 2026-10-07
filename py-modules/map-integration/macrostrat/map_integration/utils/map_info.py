@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 from macrostrat.core import app
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database
-from macrostrat.map_utils.slugs import check_slug, selector, staging_table
+from macrostrat.map_utils.slugs import check_slug, slug_forms, staging_table
 
 from ..database import get_database
 from ._database import table_exists
@@ -33,7 +33,7 @@ def complete_map_slugs(incomplete: str):
     return (
         db.run_query(
             "SELECT slug FROM maps.sources WHERE slug ILIKE :incomplete",
-            {"incomplete": f"{selector(incomplete)}%"},
+            {"incomplete": f"{incomplete}%"},
         )
         .scalars()
         .all()
@@ -100,8 +100,8 @@ def resolve_maps(
         if any(ch in value for ch in "*?"):
             rows = db.run_query(
                 "SELECT source_id, slug, name, url FROM maps.sources"
-                " WHERE slug LIKE :pattern ORDER BY source_id",
-                dict(pattern=_selector_to_like(selector(value))),
+                " WHERE slug LIKE ANY(:patterns) ORDER BY source_id",
+                dict(patterns=[_selector_to_like(v) for v in slug_forms(value)]),
             ).all()
             if not rows:
                 raise MacrostratError(f"No maps match {value!r}")
@@ -117,7 +117,9 @@ def resolve_maps(
 
     if exclude:
         result = [
-            m for m in result if not any(fnmatch(m.slug, selector(p)) for p in exclude)
+            m
+            for m in result
+            if not any(fnmatch(m.slug, v) for p in exclude for v in slug_forms(p))
         ]
         if not result:
             raise MacrostratError("--exclude left no maps in the selection")
@@ -167,16 +169,16 @@ MapState = Annotated[
 def get_map_info(db: Database, identifier: str | int) -> MapInfo:
     """Get map info for a map ID or slug."""
     query = "SELECT source_id, slug, name, url FROM maps.sources"
-    params = {}
     try:
-        map_id = int(identifier)
-        query += " WHERE source_id = %(source_id)s"
-        params["source_id"] = map_id
+        lookups = [(" WHERE source_id = :value", int(identifier))]
     except ValueError:
-        query += " WHERE slug = %(slug)s"
-        params["slug"] = selector(identifier)
+        lookups = [(" WHERE slug = :value", v) for v in slug_forms(identifier)]
 
-    res = db.run_query(query, params).one_or_none()
+    res = None
+    for where, value in lookups:
+        res = db.run_query(query + where, dict(value=value)).one_or_none()
+        if res is not None:
+            break
     if res is None:
         # `.one()` here raised a bare `NoResultFound` that named neither the
         # identifier nor the fact that a glob had been handed to a command

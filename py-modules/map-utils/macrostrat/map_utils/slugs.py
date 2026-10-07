@@ -38,13 +38,15 @@ def is_slug(slug: str) -> bool:
     return _SLUG.match(slug) is not None
 
 
-def selector(value: str) -> str:
-    """A slug or glob as typed, with underscores read as hyphens.
+def slug_forms(value: str) -> tuple[str, ...]:
+    """A slug or glob as typed, then with underscores read as hyphens.
 
-    Slugs used underscores until 2026; this keeps old names and globs
-    (`japan_*`) resolving.
+    Slugs used underscores until 2026. Matching tries the value as typed first,
+    so a map not yet renamed can still be named exactly; after the rename only
+    the hyphenated form matches, and old names and globs (`japan_*`) still work.
     """
-    return value.replace("_", "-")
+    kebab = value.replace("_", "-")
+    return (value,) if kebab == value else (value, kebab)
 
 
 def table_prefix(slug: str) -> str:
