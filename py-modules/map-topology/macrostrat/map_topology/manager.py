@@ -675,22 +675,17 @@ def vacuum_topology(db):
     `VACUUM FULL` locks each table while it runs, so readers wait; seconds for
     a topology the size of Macrostrat's once compacted.
     """
+    from .vacuum import format_size, vacuum_tables
+
     db.session.commit()
-    size = "SELECT pg_total_relation_size(CAST(:table AS regclass))"
-    # VACUUM cannot run inside a transaction block.
-    with db.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        for name in VACUUM_TABLES:
-            table = f"map_bounds_topology.{name}"
-            before = db.run_query(size, dict(table=table)).scalar()
-            db.session.commit()
-            t0 = time.time()
-            conn.exec_driver_sql(f"VACUUM (FULL, ANALYZE) {table}")
-            after = db.run_query(size, dict(table=table)).scalar()
-            db.session.commit()
-            print(
-                f"  {table}: {before / 2**20:,.0f} MB -> {after / 2**20:,.0f} MB"
-                f" in {time.time() - t0:.1f} s"
-            )
+    tables = [f"map_bounds_topology.{name}" for name in VACUUM_TABLES]
+    for res in vacuum_tables(db.engine, tables, full=True):
+        if res.error is not None:
+            raise RuntimeError(f"{res.table}: {res.error}")
+        print(
+            f"  {res.table}: {format_size(res.before)} -> {format_size(res.after)}"
+            f" in {res.seconds:.1f} s"
+        )
 
 
 def cut_pieces(db, _map, *, subdivide_vertices: int = 256) -> int:

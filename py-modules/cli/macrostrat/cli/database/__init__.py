@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from os import environ
 from pathlib import Path
 from sys import exit, stderr, stdin, stdout
@@ -11,6 +12,7 @@ from click import ClickException
 from pydantic import BaseModel
 from rich import print
 from sqlalchemy import make_url, text
+from sqlalchemy.exc import DBAPIError
 from typer import Argument, Option
 
 from macrostrat.core import app
@@ -418,6 +420,82 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
         result = conn.execute(text(sql), kwargs)
         for row in result:
             print(f"{row.table_schema}.{row.table_name}")
+
+
+@db_app.command(name="vacuum", rich_help_panel="Helpers")
+@writes(WriteScope.Data, action="vacuum")
+def vacuum(
+    tables: list[str] = Argument(None, help="Tables to vacuum (default: all)"),
+    schema: str = Option(None, help="Only tables in this schema"),
+    full: bool = Option(
+        False,
+        "--full",
+        help="Rewrite tables compactly (VACUUM FULL), returning space to the OS. "
+        "Locks each table and needs free disk space for its new copy.",
+    ),
+    database: str = Option(None, help="Database to connect to"),
+    yes: bool = Option(False, "--yes", "-y"),
+):
+    """VACUUM and ANALYZE tables, reporting the space returned.
+
+    Plain VACUUM makes dead rows reusable without locking, but seldom shrinks a
+    table. To reclaim space from a bloated table, name it with --full.
+    """
+    from macrostrat.map_topology.vacuum import (
+        database_size,
+        format_size,
+        list_tables,
+        resolve_tables,
+        vacuum_tables,
+    )
+
+    if full and not tables and schema is None:
+        raise ClickException(
+            "--full rewrites every table it touches; name the tables or a --schema"
+        )
+
+    engine = engine_for_db_name(database)
+    if tables:
+        try:
+            names = resolve_tables(engine, tables)
+        except DBAPIError as err:
+            raise ClickException(str(err.orig).strip())
+    else:
+        names = list_tables(engine, schema)
+
+    mode = "VACUUM (ANALYZE)"
+    if full:
+        mode = "VACUUM (FULL, ANALYZE)"
+    print(
+        f"[dim]{mode} on {len(names)} tables in [bold cyan]{engine.url.database}[/]",
+        file=stderr,
+    )
+
+    db_before = database_size(engine)
+    t0 = time.time()
+    before = after = errors = 0
+    for res in vacuum_tables(engine, names, full=full):
+        if res.error is not None:
+            errors += 1
+            print(f"  [red]{res.table}[/]: {res.error.strip()}", file=stderr)
+            continue
+        before += res.before
+        after += res.after
+        # A whole-database sweep would otherwise print hundreds of unchanged tables.
+        if tables or res.saved > 0:
+            print(
+                f"  {res.table}: {format_size(res.before)} → {format_size(res.after)}"
+                f" [dim]in {res.seconds:.1f} s[/]"
+            )
+    db_after = database_size(engine)
+
+    print(
+        f"\n[bold]Saved {format_size(before - after)}[/] "
+        f"({format_size(before)} → {format_size(after)}) in {time.time() - t0:.0f} s"
+    )
+    print(f"[dim]Database size: {format_size(db_before)} → {format_size(db_after)}[/]")
+    if errors:
+        print(f"[red]{errors} tables could not be vacuumed[/]", file=stderr)
 
 
 class TableInspector:
