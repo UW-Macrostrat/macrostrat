@@ -11,6 +11,7 @@ import defs from "./defs";
 
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
+  MAP_REFS = "map-refs",
 }
 
 (function () {
@@ -610,18 +611,9 @@ enum APICapability {
     if (key === "refs" || key === "ref_id") {
       larkin.queryPg(
         "burwell",
-        `SELECT refs.id                                AS ref_id,
-                pub_year,
-                author,
-                ref,
-                doi,
-                url,
-                COUNT(DISTINCT units_sections.unit_id)::integer AS t_units
+        `SELECT id AS ref_id, pub_year, author, ref, doi, url
          FROM macrostrat.refs
-                LEFT JOIN macrostrat.col_refs ON col_refs.ref_id = refs.id
-                LEFT JOIN macrostrat.units_sections ON units_sections.col_id = col_refs.col_id
-         WHERE refs.id = ANY (:ref_id)
-         GROUP BY refs.id, pub_year, author, ref, doi, url`,
+         WHERE id = ANY (:ref_id)`,
         { ref_id: ref_ids },
         function (error, data) {
           var refs = {};
@@ -730,6 +722,18 @@ enum APICapability {
       larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
     } catch (e) {
       console.log("Composite projects not supported");
+    }
+
+    // MAP REFERENCES
+    // `refs` on map polygons, combined across levels by the database
+    try {
+      await larkin.queryPgAsync(
+        "burwell",
+        `SELECT * FROM map_bounds.polygon_refs_for(0)`,
+      );
+      larkin.capabilities.add(APICapability.MAP_REFS);
+    } catch (e) {
+      console.log("Map references not supported");
     }
 
     if (larkin.capabilities.size > 0) {
