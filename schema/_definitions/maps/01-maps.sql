@@ -405,8 +405,12 @@ CREATE INDEX legend_strat_names_strat_name_id_idx
 CREATE INDEX legend_strat_names_manual_idx
     ON maps.legend_strat_names USING btree (legend_id) WHERE is_manual;
 
-/** How a map or a legend entry relates to a reference: the verbs of
-  `maps.map_refs` and `maps.legend_refs`, read from the map's side.
+/** How a map, legend entry, polygon or line relates to a reference: the verbs of
+  the four `*_refs` tables, read from the feature's side.
+
+  A reference is written at the highest level it holds throughout -- the map,
+  else the legend entry, else the feature -- and a feature's references are the
+  union of all levels, so each table stays sparse.
 
   Rows rather than an enum, so a new verb is an insert. Provenance is stored, not
   read off `map_bounds.compilation_member`: membership says how maps are stacked,
@@ -422,35 +426,63 @@ CREATE TABLE maps.ref_type (
     position smallint NOT NULL
 );
 
+/* In lineage order, oldest first: what a map was drawn from, the map itself,
+  then what gathered it. Labels and order are updated in place by `schema sync`. */
 INSERT INTO maps.ref_type (id, label, position) VALUES
-    ('original', 'Original', 1),
-    ('compiled-in', 'Compiled in', 2),
-    ('updated-by', 'Updated by', 3),
-    ('described-in', 'Described in', 4)
-ON CONFLICT DO NOTHING;
+    ('data-from', 'Data from', 1),
+    ('described-in', 'Described in', 2),
+    ('original', 'Published as', 3),
+    ('updated-by', 'Updated by', 4),
+    ('compiled-in', 'Compiled in', 5)
+ON CONFLICT (id) DO UPDATE
+  SET label = EXCLUDED.label, position = EXCLUDED.position;
 
 /** A map's references. Any source, compilations included. */
 CREATE TABLE maps.map_refs (
     source_id integer NOT NULL
         REFERENCES maps.sources (source_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    relation text NOT NULL REFERENCES maps.ref_type (id),
-    PRIMARY KEY (source_id, ref_id, relation)
+    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (source_id, ref_id, ref_type)
 );
 
 CREATE INDEX map_refs_ref_id_idx ON maps.map_refs USING btree (ref_id);
 
-/** A legend entry's references, added to its map's. Sparse: only where they
-  vary within a map, as SGMC's primary references vary by unit. */
+/** A legend entry's references, added to its map's. Only where they vary
+  between units, as NGS Hawaiʻi's description sources do. */
 CREATE TABLE maps.legend_refs (
     legend_id integer NOT NULL
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    relation text NOT NULL REFERENCES maps.ref_type (id),
-    PRIMARY KEY (legend_id, ref_id, relation)
+    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (legend_id, ref_id, ref_type)
 );
 
 CREATE INDEX legend_refs_ref_id_idx ON maps.legend_refs USING btree (ref_id);
+
+/** A polygon's references, added to its map's and its legend entry's. Only
+  where they vary within a unit, as NGS Alaska's data sources do. */
+CREATE TABLE maps.polygon_refs (
+    map_id integer NOT NULL
+        REFERENCES maps.polygons (map_id) ON DELETE CASCADE,
+    ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
+    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (map_id, ref_id, ref_type)
+);
+
+CREATE INDEX polygon_refs_ref_id_idx ON maps.polygon_refs USING btree (ref_id);
+
+/** A line's references, added to its map's. EGDI's faults come from HIKE, not
+  from the surveys that drew its polygons. */
+CREATE TABLE maps.line_refs (
+    line_id integer NOT NULL
+        REFERENCES maps.lines (line_id) ON DELETE CASCADE,
+    ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
+    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    PRIMARY KEY (line_id, ref_id, ref_type)
+);
+
+CREATE INDEX line_refs_ref_id_idx ON maps.line_refs USING btree (ref_id);
 
 /** The rows `maps.map_strat_names` held before it became a view.
 
