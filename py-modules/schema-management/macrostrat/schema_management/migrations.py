@@ -10,6 +10,7 @@ from typing import Optional, Union
 import docker
 from pydantic import BaseModel
 from rich import print
+from rich.markup import escape
 
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
@@ -179,6 +180,31 @@ class Migration:
         else:
             return ApplicationStatus.CANT_APPLY
 
+    def explain(self, database: Database) -> list[str]:
+        """Why this migration cannot apply, one line per reason.
+
+        Postconditions are reported only when some already hold, which marks a
+        partial application. A migration whose `should_apply` decides on other
+        grounds can override this to say what they are."""
+        lines = [
+            f"precondition not met: {describe_condition(cond)}"
+            for cond in self.preconditions
+            if not cond(database)
+        ]
+        explained = len(lines) > 0
+        unmet = [cond for cond in self.postconditions if not cond(database)]
+        n_held = len(self.postconditions) - len(unmet)
+        if n_held and unmet:
+            lines.append(
+                f"partially applied: {n_held} of {len(self.postconditions)} postconditions met"
+            )
+            lines.extend(
+                f"postcondition not met: {describe_condition(cond)}" for cond in unmet
+            )
+        if not explained:
+            lines.append(f"decided by {_source_location(type(self).should_apply)}")
+        return lines
+
     def apply(self, database: Database) -> ApplicationStatus:
         """Apply the migrations defined by this class. By default, run every sql file
         in the same directory as the class definition."""
@@ -199,6 +225,22 @@ class Migration:
                 )
             else:
                 raise ValueError(f"Fixture {fixture} should be a callable or a Path")
+
+
+def _source_location(fn) -> str:
+    try:
+        path = Path(inspect.getsourcefile(fn))
+        line = inspect.getsourcelines(fn)[1]
+    except (OSError, TypeError):
+        return fn.__qualname__
+    if path.is_relative_to(settings.srcroot):
+        path = path.relative_to(settings.srcroot)
+    return f"{fn.__qualname__} ({path}:{line})"
+
+
+def _print_explanation(db: Database, migration: Migration, style: str):
+    for line in migration.explain(db):
+        print(f"    [{style}]{escape(line)}[/]")
 
 
 class MigrationState(Enum):
@@ -524,6 +566,8 @@ def _run_migrations(
             n_hidden += 1
             continue
         _print_status(_migration.name, _status, name_max_width=name_max_width)
+        if _status == MigrationState.CANNOT_APPLY:
+            _print_explanation(db, _migration, "red")
         undefined = _undefined_dependencies(_migration, defined)
         if undefined:
             print(
@@ -573,6 +617,7 @@ def _run_migrations(
             apply_status = _migration.should_apply(db)
             if apply_status == ApplicationStatus.CANT_APPLY:
                 print(f"\n[dim]Skipping [cyan]{_name}[/]: preconditions not met[/]")
+                _print_explanation(db, _migration, "dim")
                 continue
             if apply_status == ApplicationStatus.APPLIED and not reapply:
                 completed_migrations.append(_name)
