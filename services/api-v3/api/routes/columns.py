@@ -63,10 +63,16 @@ def _format_task_error(error) -> str:
 # bucket; nothing here touches any other bucket.
 BUCKET = "temp-storage"
 
-# Prefix under `temp-storage` holding the downloadable example spreadsheet(s) the
-# /columns/ingestion page offers. Downloads are restricted to this prefix so the
+# Prefixes under `temp-storage` holding the downloadable example spreadsheet(s)
+# the /columns/ingestion page offers. Each upload lands under its own
+# `column-ingest/<uuid>/` folder, so a prefix here pins one curated upload as an
+# example. Listing and downloads are restricted to these prefixes, so the
 # endpoint can never serve another user's in-flight upload elsewhere in the bucket.
-EXAMPLE_PREFIX = "column-ingest/ff5d060b-36f4-4bf7-888b-e2c075822d9d/"
+EXAMPLE_PREFIXES = (
+    "column-ingest/ff5d060b-36f4-4bf7-888b-e2c075822d9d/",
+    # Cordie et al. 2019 (Poleta Fm.) — curated example.
+    "column-ingest/3cd66291-e261-446f-88b5-bf4f27c1a017/",
+)
 
 # Cap on a dry-run upload carried inline in the task message.
 MAX_INLINE_BYTES = 10 * 1024 * 1024
@@ -216,13 +222,14 @@ async def list_examples(
 
     client = _storage_client()
     examples = []
-    for obj in client.list_objects(BUCKET, prefix=EXAMPLE_PREFIX, recursive=True):
-        filename = obj.object_name.rsplit("/", 1)[-1]
-        if not filename:
-            continue
-        examples.append(
-            {"key": obj.object_name, "filename": filename, "size": obj.size}
-        )
+    for prefix in EXAMPLE_PREFIXES:
+        for obj in client.list_objects(BUCKET, prefix=prefix, recursive=True):
+            filename = obj.object_name.rsplit("/", 1)[-1]
+            if not filename:
+                continue
+            examples.append(
+                {"key": obj.object_name, "filename": filename, "size": obj.size}
+            )
     return {"examples": examples}
 
 
@@ -239,7 +246,7 @@ async def download_example(
     """
     if user_token is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    if not key.startswith(EXAMPLE_PREFIX):
+    if not key.startswith(EXAMPLE_PREFIXES):
         raise HTTPException(
             status_code=400, detail="Only example files may be downloaded"
         )
