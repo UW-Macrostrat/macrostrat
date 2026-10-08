@@ -6,7 +6,7 @@ authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.9,<4.0"
 readme = "README.md"
 dependencies = [
-    "starlette (>=0.37.0,<0.47.0)",
+    "starlette (>=0.37.0,<0.51.0)",
     "fastapi (>=0.111.0,<0.123.0)",
     "morecantile (>=5.0.0,<8.0.0)",
     "buildpg (>=0.4,<0.5)",
