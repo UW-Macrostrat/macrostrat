@@ -10,6 +10,7 @@ WITH cached_tile AS (
 )
 SELECT
   t.tile,
+  t.sources,
   t.args_hash,
   p.id profile,
   p.content_type

@@ -21,7 +21,6 @@ from macrostrat.tileserver.map_tiles import (
     cache_profile,
     faces_sql,
     is_public,
-    sources_header,
 )
 
 
@@ -79,12 +78,9 @@ class TestPolicy:
 class TestSourcesHeader:
     """What a tile says it draws, for the usage-stats pipeline to credit."""
 
-    def test_ids_ascending_and_deduplicated(self):
-        assert sources_header([3401, 133, 3401, 7]) == "7,133,3401"
-
-    def test_nothing_drawn_means_no_header(self):
-        assert sources_header([]) is None
-        assert sources_header(None) is None
+    def test_faces_query_returns_the_sources_with_the_tile(self):
+        sql = faces_sql(Detail.slim)
+        assert "AS tile" in sql and "AS sources" in sql
 
     def test_header_is_exposed_to_pages(self, app):
         from starlette.middleware.cors import CORSMiddleware

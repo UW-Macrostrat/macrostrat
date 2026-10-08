@@ -38,13 +38,13 @@ Every tile names the maps it draws in the `X-Macrostrat-Sources` response
 header: the resolved maps whose faces meet the tile, as `source_id`s. The
 access log keeps the header, and the usage-stats pipeline credits each map
 with the request, which is what "how many people viewed this map" is counted
-from. It is computed on every request rather than stored with the cached tile:
-one indexed lookup of the faces, so a cache hit carries it too.
+from. The faces query returns them with the tile, and the cache stores them
+beside it, so a hit carries the same header at no further cost.
 """
 
 from enum import Enum
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 from urllib.parse import quote
 
 from buildpg import render
@@ -53,9 +53,11 @@ from fastapi.security import HTTPAuthorizationCredentials
 from morecantile import Tile
 
 from macrostrat.tileserver_utils import (
+    SOURCES_HEADER,
     CachedTileArgs,
     CacheMode,
     MimeTypes,
+    RenderedTile,
     TileParams,
     VectorTileResponse,
     handle_cached_tile_request,
@@ -83,9 +85,6 @@ LEGACY_CARTO = "sys:carto-legacy"
 #: Served without a token.
 PUBLIC_SLUGS = frozenset({"carto", LEGACY_CARTO})
 
-#: Names the maps a tile draws, as ascending `source_id`s, comma-separated.
-SOURCES_HEADER = "X-Macrostrat-Sources"
-
 #: The tile-cache profile a slug's tiles are stored under; absent means no cache.
 #: The legacy alias renders the `carto-slim` function with no parameters, which
 #: is exactly a `/carto-slim/{z}/{x}/{y}` request, so it shares those rows.
@@ -109,22 +108,6 @@ SELECT
   zr.max_zoom
 FROM (SELECT map_bounds.resolve_source(:slug) AS source_id) r
 CROSS JOIN LATERAL map_bounds.zoom_range(r.source_id) zr
-"""
-
-# The maps a tile of a solved compilation draws: those with content whose faces
-# meet the tile envelope -- the same test `faces.sql` opens with, so the header
-# and the tile agree. Distinct ids first, then `has_content`, which walks the
-# mosaic chain and is not worth running once per sliver face.
-_SOURCES = """
-SELECT array_agg(m.map_id ORDER BY m.map_id)
-FROM (
-  SELECT DISTINCT mf.map_id
-  FROM map_bounds_topology.map_face mf
-  WHERE mf.map_layer = :layer_id
-    AND ST_Intersects(
-      mf.geometry, tile_layers.geographic_envelope(:x, :y, :z, 0.01))
-) m
-WHERE map_bounds.has_content(m.map_id)
 """
 
 # What a TileJSON document says about a source: its extent and zoom range.
@@ -220,13 +203,6 @@ def is_public(slug: str) -> bool:
     return slug in PUBLIC_SLUGS
 
 
-def sources_header(source_ids: Optional[Iterable[int]]) -> Optional[str]:
-    """The `X-Macrostrat-Sources` value for a tile, or None when it draws nothing."""
-    if not source_ids:
-        return None
-    return ",".join(str(i) for i in sorted(set(source_ids)))
-
-
 def cache_profile(slug: str, detail: Detail = Detail.slim) -> Optional[str]:
     """The profile a slug's tiles are cached under; `full` ones apart, since
     the same tile carries different properties."""
@@ -288,8 +264,6 @@ async def render_map_tile(
 
     # The legacy build is not resolved through the compilation system, so it
     # names no sources.
-    sources = None
-
     if slug == LEGACY_CARTO:
         layer = catalog.get("carto-slim")
 
@@ -301,7 +275,6 @@ async def render_map_tile(
         if not _in_range(source, tile.z):
             return VectorTileResponse()
         if source["layer_id"] is not None:
-            sources = await _sources(pool, source["layer_id"], tile)
 
             async def get_tile(request: Request, args: CachedTileArgs):
                 q, p = render(
@@ -312,18 +285,19 @@ async def render_map_tile(
                     layer_id=source["layer_id"],
                 )
                 async with pool.acquire() as conn:
-                    return await conn.fetchval(q, *p)
+                    row = await conn.fetchrow(q, *p)
+                return RenderedTile(row["tile"], row["sources"])
 
         else:
             # Drawn from its own polygons (or, for a mosaic member, the mosaic's
             # within its bounds): the one map the tile shows is the source itself.
-            sources = [source["source_id"]]
             layer = catalog.get("map")
 
             async def get_tile(request: Request, args: CachedTileArgs):
-                return await layer.get_tile(
+                content = await layer.get_tile(
                     pool, args.tile, source_id=source["source_id"]
                 )
+                return RenderedTile(content, [source["source_id"]])
 
     mode, profile_id = await _cache_for(pool, slug, cache, detail)
     args = CachedTileArgs(
@@ -333,13 +307,9 @@ async def render_map_tile(
         params={},
         mode=mode,
     )
-    response = await handle_cached_tile_request(
+    return await handle_cached_tile_request(
         request, pool, background_tasks, get_tile, args
     )
-    header = sources_header(sources)
-    if header is not None:
-        response.headers[SOURCES_HEADER] = header
-    return response
 
 
 async def _resolve(pool, slug: str, z: int) -> dict:
@@ -351,12 +321,6 @@ async def _resolve(pool, slug: str, z: int) -> dict:
     if row["is_served"] is False:
         raise HTTPException(404, f"'{slug}' is not served by name")
     return dict(row)
-
-
-async def _sources(pool, layer_id: int, tile: Tile) -> list[int]:
-    q, p = render(_SOURCES, layer_id=layer_id, z=tile.z, x=tile.x, y=tile.y)
-    async with pool.acquire() as conn:
-        return await conn.fetchval(q, *p) or []
 
 
 def _in_range(source: dict, z: int) -> bool:

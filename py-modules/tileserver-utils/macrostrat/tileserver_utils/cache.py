@@ -3,7 +3,7 @@ from ctypes import c_int32
 from enum import Enum
 from hashlib import md5
 from json import dumps
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable, NamedTuple, Optional, Union
 
 from buildpg import asyncpg, render
 from fastapi import BackgroundTasks, HTTPException, Request
@@ -39,11 +39,22 @@ class CachedTileArgs(BaseModel):
     mode: CacheMode = CacheMode.prefer
 
 
+class RenderedTile(NamedTuple):
+    """A tile's bytes and, when the renderer knows them, the maps it draws
+    (`source_id`s). Both are cached, so a hit answers with the same header."""
+
+    content: bytes
+    sources: Optional[list[int]] = None
+
+
+TileGetter = Callable[[Request, CachedTileArgs], Awaitable[Union[bytes, RenderedTile]]]
+
+
 async def handle_cached_tile_request(
     request: Request,
     pool: asyncpg.BuildPgPool,
     background_tasks: BackgroundTasks,
-    get_tile: Callable[[Request, CachedTileArgs], Awaitable[bytes]],
+    get_tile: TileGetter,
     args: CachedTileArgs,
 ) -> TileResponse:
     """Return vector tile."""
@@ -51,11 +62,15 @@ async def handle_cached_tile_request(
 
     # If cache is not bypassed and the tile is in the cache, return it
     if args.mode != CacheMode.bypass:
-        content = await get_cached_tile(pool, args)
+        cached = await get_cached_tile(pool, args)
         timer.step("check_cache")
-        if content is not None:
+        if cached is not None:
             return TileResponse(
-                content, timer, cache_status=CacheStatus.hit, media_type=args.media_type
+                cached.content,
+                timer,
+                cache_status=CacheStatus.hit,
+                sources=cached.sources,
+                media_type=args.media_type,
             )
 
     # If the cache is forced and the tile is not in the cache, return a 404
@@ -69,21 +84,27 @@ async def handle_cached_tile_request(
             },
         )
 
-    content = await get_tile(request, args)
+    rendered = await get_tile(request, args)
+    if not isinstance(rendered, RenderedTile):
+        rendered = RenderedTile(rendered)
     timer.step("get_tile")
 
     if args.mode != CacheMode.bypass:
-        background_tasks.add_task(set_cached_tile, pool, args, content)
+        background_tasks.add_task(set_cached_tile, pool, args, rendered)
 
     return TileResponse(
-        content, timer, cache_status=CacheStatus.miss, media_type=args.media_type
+        rendered.content,
+        timer,
+        cache_status=CacheStatus.miss,
+        sources=rendered.sources,
+        media_type=args.media_type,
     )
 
 
 async def get_cached_tile(
     pool: asyncpg.BuildPgPool,
     args: CachedTileArgs,
-) -> Optional[bytes]:
+) -> Optional[RenderedTile]:
     """Get tile data from cache."""
     # Get the tile from the tile_cache.tile table
     tile = args.tile
@@ -102,14 +123,19 @@ async def get_cached_tile(
         )
         log.debug("Got cached tile: %s", tile)
 
-        return await conn.fetchval(q, *p)
+        row = await conn.fetchrow(q, *p)
+        if row is None:
+            return None
+        return RenderedTile(row["tile"], row["sources"])
 
 
 async def set_cached_tile(
     pool: asyncpg.BuildPgPool,
     args: CachedTileArgs,
-    content: bytes,
+    rendered: Union[bytes, RenderedTile],
 ):
+    if not isinstance(rendered, RenderedTile):
+        rendered = RenderedTile(rendered)
 
     tile = args.tile
 
@@ -122,7 +148,8 @@ async def set_cached_tile(
             y=tile.y,
             z=tile.z,
             params=create_params_hash(args.params),
-            tile=content,
+            tile=rendered.content,
+            sources=rendered.sources,
             profile=layer_id,
         )
         await conn.execute(q, *p)

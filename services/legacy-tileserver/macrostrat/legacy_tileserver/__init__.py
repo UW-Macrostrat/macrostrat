@@ -22,7 +22,7 @@ from macrostrat.tileserver_utils import (
 )
 from macrostrat.utils import get_logger, setup_stderr_logs
 
-from .image_tiles import MapnikMapPool, get_image_tile, tile_sources
+from .image_tiles import MapnikMapPool, get_image_tile
 from .image_tiles.config import BANDS_QUERY, ScaleBands
 
 log = get_logger(__name__)
@@ -91,14 +91,9 @@ async def tile(
         mode=cache,
     )
 
-    response = await handle_cached_tile_request(
+    return await handle_cached_tile_request(
         request, request.app.state.pool, background_tasks, get_image_tile, args
     )
-    # Names the maps drawn, for the usage-stats pipeline; same as the vector route.
-    sources = await tile_sources(request, tile)
-    if sources is not None:
-        response.headers["X-Macrostrat-Sources"] = sources
-    return response
 
 
 @app.get("/{layer}/{z}/{x}/{y}.mvt")

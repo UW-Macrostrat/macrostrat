@@ -5,7 +5,7 @@ from fastapi import Request
 from mapnik import Box2d, Image, render
 from morecantile import tms
 
-from macrostrat.tileserver_utils import CachedTileArgs
+from macrostrat.tileserver_utils import CachedTileArgs, RenderedTile
 from macrostrat.utils import get_logger
 
 from .pool import MapnikMapPool
@@ -17,6 +17,7 @@ db_url = environ.get("DATABASE_URL")
 
 # The maps a raster tile draws, as the vector route names them in
 # `X-Macrostrat-Sources`: resolved maps whose faces meet the tile envelope.
+# Asked once per render; the cache keeps the answer beside the tile.
 SOURCES_QUERY = """
 SELECT array_agg(m.map_id ORDER BY m.map_id)
 FROM (
@@ -29,20 +30,16 @@ WHERE map_bounds.has_content(m.map_id)
 """
 
 
-async def tile_sources(request: Request, tile) -> Optional[str]:
-    """The `X-Macrostrat-Sources` header value for a tile, or None."""
-    bands = request.app.state.bands
-    layer_id = bands.layer_for_zoom(tile.z)
+async def tile_sources(request: Request, tile) -> Optional[list]:
+    """The maps a tile draws, or None for a band carto has no member for."""
+    layer_id = request.app.state.bands.layer_for_zoom(tile.z)
     if layer_id is None:
         return None
     async with request.app.state.pool.acquire() as conn:
-        ids = await conn.fetchval(SOURCES_QUERY, layer_id, tile.x, tile.y, tile.z)
-    if not ids:
-        return None
-    return ",".join(str(i) for i in ids)
+        return await conn.fetchval(SOURCES_QUERY, layer_id, tile.x, tile.y, tile.z)
 
 
-async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
+async def get_image_tile(request: Request, args: CachedTileArgs) -> RenderedTile:
     pool: MapnikMapPool = request.app.state.map_pool
     tile = args.tile
     scale = request.app.state.bands.scale_for_zoom(tile.z)
@@ -51,7 +48,8 @@ async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
     # https://github.com/mapnik/mapnik/wiki/PostGIS
 
     async with pool.map_context(scale) as _map:
-        return render_tile(_map, tile)
+        content = render_tile(_map, tile)
+    return RenderedTile(content, await tile_sources(request, tile))
 
 
 def render_tile(_map, tile) -> bytes:
