@@ -119,6 +119,11 @@ def has_columns(schema: str, table: str, *fields: str, allow_view=False) -> DbEv
     return _has_fields
 
 
+def has_schema(schema: str) -> DbEvaluator:
+    """Return a function that evaluates to true when the given schema exists"""
+    return lambda db: db.inspector.has_schema(schema)
+
+
 def _not(f: DbEvaluator) -> DbEvaluator:
     """Return a function that evaluates to true when the given function evaluates to false"""
     return lambda db: not f(db)
