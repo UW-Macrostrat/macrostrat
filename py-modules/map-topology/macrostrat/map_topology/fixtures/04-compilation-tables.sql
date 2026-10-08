@@ -946,6 +946,63 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE ROWS 50;
 
+/** A polygon's public references, in the order a client lists them: its map's,
+  its legend entry's and its own (`maps.map_refs` and the rest). A mosaic's
+  polygon takes the map references of the member whose footprint holds it, whose
+  `compiled-in` names the mosaic; the mosaic's own are the fallback. The one
+  place the levels are combined, so every API answers alike. */
+CREATE OR REPLACE FUNCTION map_bounds.polygon_refs_for(_map_id integer)
+  RETURNS TABLE (
+    ref_type text,
+    label text,
+    ref_id integer,
+    citation text,
+    doi text,
+    url text
+  ) AS $$
+WITH member AS (
+  SELECT cm.member_id
+  FROM maps.polygons p
+  JOIN map_bounds.compilation_member cm ON cm.compilation_id = p.source_id
+  JOIN map_bounds.map_area a ON a.id = cm.member_id
+  WHERE p.map_id = _map_id
+    AND map_bounds.is_mosaic(p.source_id)
+    AND ST_Contains(a.geometry, ST_PointOnSurface(p.geom))
+),
+links AS (
+  SELECT r.ref_id, r.ref_type
+  FROM maps.polygons p
+  JOIN maps.map_refs r ON r.source_id = p.source_id
+  WHERE p.map_id = _map_id
+    AND NOT EXISTS (SELECT 1 FROM member)
+  UNION
+  SELECT r.ref_id, r.ref_type
+  FROM member m
+  JOIN maps.map_refs r ON r.source_id = m.member_id
+  UNION
+  SELECT r.ref_id, r.ref_type
+  FROM maps.map_legend ml
+  JOIN maps.legend_refs r ON r.legend_id = ml.legend_id
+  WHERE ml.map_id = _map_id
+  UNION
+  SELECT r.ref_id, r.ref_type
+  FROM maps.polygon_refs r
+  WHERE r.map_id = _map_id
+)
+SELECT
+  t.id,
+  t.label,
+  f.id,
+  concat_ws(', ', nullif(f.author, ''), f.pub_year::text, nullif(f.ref, '')),
+  f.doi,
+  f.url
+FROM links l
+JOIN maps.ref_type t ON t.id = l.ref_type
+JOIN macrostrat.refs f ON f.id = l.ref_id
+WHERE t.is_public
+ORDER BY t.position, f.pub_year, f.id;
+$$ LANGUAGE SQL STABLE;
+
 /* ---------------------------------------------------------------------------
    CARTO -- the served map, as one multiscale compilation.
 

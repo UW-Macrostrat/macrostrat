@@ -554,6 +554,22 @@ CREATE VIEW macrostrat_api.sources AS
     s.lines_oriented
    FROM maps.sources s;
 
+/** A map's own public references, labelled and in display order; the citation
+  is composed as `map_bounds.polygon_refs_for` composes it. */
+CREATE VIEW macrostrat_api.map_refs AS
+ SELECT r.source_id,
+    t.id AS ref_type,
+    t.label,
+    t.position,
+    f.id AS ref_id,
+    concat_ws(', ', nullif(f.author, ''), f.pub_year::text, nullif(f.ref, '')) AS citation,
+    f.doi,
+    f.url
+   FROM maps.map_refs r
+     JOIN maps.ref_type t ON t.id = r.ref_type
+     JOIN macrostrat.refs f ON f.id = r.ref_id
+  WHERE t.is_public;
+
 CREATE VIEW macrostrat_api.sources_ingestion AS
  SELECT s.source_id,
     s.slug,
@@ -1003,6 +1019,8 @@ GRANT SELECT ON TABLE macrostrat_api.sgp_samples TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.sgp_unit_matches TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.sources TO web_anon;
+
+GRANT SELECT ON TABLE macrostrat_api.map_refs TO web_anon;
 
 GRANT SELECT ON TABLE macrostrat_api.sources_ingestion TO web_anon;
 

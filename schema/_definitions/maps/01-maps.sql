@@ -426,13 +426,16 @@ CREATE TABLE maps.ref_type (
     position smallint NOT NULL
 );
 
+/* In lineage order, oldest first: what a map was drawn from, the map itself,
+  then what gathered it. Labels and order are updated in place by `schema sync`. */
 INSERT INTO maps.ref_type (id, label, position) VALUES
-    ('original', 'Original', 1),
-    ('compiled-in', 'Compiled in', 2),
-    ('updated-by', 'Updated by', 3),
-    ('described-in', 'Described in', 4),
-    ('data-from', 'Data from', 5)
-ON CONFLICT DO NOTHING;
+    ('data-from', 'Data from', 1),
+    ('described-in', 'Described in', 2),
+    ('original', 'Published as', 3),
+    ('updated-by', 'Updated by', 4),
+    ('compiled-in', 'Compiled in', 5)
+ON CONFLICT (id) DO UPDATE
+  SET label = EXCLUDED.label, position = EXCLUDED.position;
 
 /** A map's references. Any source, compilations included. */
 CREATE TABLE maps.map_refs (
