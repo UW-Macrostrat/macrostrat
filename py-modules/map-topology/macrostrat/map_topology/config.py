@@ -117,8 +117,7 @@ TopologySchema = SchemaDefinition(
         # above to exist. Host fixture 01 only fully applies on its second pass.
         seed_layer_bounds,
     ],
-    depends_on=["core"],
-    environments=frozenset({"local", "development"}),
+    depends_on=["core", "maps"],
     owner=APP_OWNER,
 )
 
