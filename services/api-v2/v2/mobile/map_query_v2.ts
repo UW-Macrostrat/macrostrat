@@ -5,6 +5,10 @@ const _ = require("underscore");
 
 const LINE_TOLERANCE = 20;
 
+// The materialized `carto.*` build, addressed like a source; never a
+// `maps.sources` row, so it has no zoom range of its own.
+const LEGACY_CARTO = "sys:carto-legacy";
+
 /* A polygon's references at every level, in the order a client lists them,
    where the database combines them (`map_bounds.polygon_refs_for`); absent, `refs`
    is left out of the response. */
@@ -279,18 +283,19 @@ function buildSQL(scale, where) {
 
 /* --- The compilation path ---------------------------------------------------
 
-   With `?compilation=<slug or id>` the candidate polygons come from
-   `map_bounds.units_at`, the one entry point the tiles and API v3 resolve
-   through: it applies the multiscale hop (`carto` at z=5 is `carto-small`),
-   resolves a compilation with faces through them, a plain map or mosaic member
-   through `polygons_of`, and `sys:carto-legacy` from the materialized `carto.*`
-   build. Everything after the FROM clause is decoration, joined by key.
+   With `?source=<slug or id>` -- a map or a compilation -- the polygon comes
+   from `map_bounds.polygon_at`, which resolves a point the way the tiles draw
+   it: it applies the multiscale hop (`carto` at z=5 is `carto-small`), reads a
+   compilation with faces through them, a plain map or mosaic member through
+   `polygons_of`, and `sys:carto-legacy` from the materialized `carto.*` build.
+   One polygon answers at a point. Everything after the FROM clause is
+   decoration, joined by key.
 
    The legend comes from `maps.legend` through `map_legend` -- what the tiles
    carry (`legend_id`, `color`) -- rather than the legacy `lookup_<scale>`
    tables, so a unit's color here is the color it is drawn with.
 
-   Without `compilation`, nothing below runs and the legacy query is used
+   Without `source`, nothing below runs and the legacy query is used
    unchanged, so a database without the compilation schema, or a regression in
    it, leaves the default behaviour untouched. `carto` becomes the default once
    the new design is the only one served. */
@@ -346,7 +351,7 @@ function compilationSelect() {
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
-    FROM map_bounds.units_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
+    FROM map_bounds.polygon_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
     JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
     JOIN maps.sources ON m.source_id = sources.source_id
     LEFT JOIN maps.map_legend ON map_legend.map_id = m.map_id
@@ -458,10 +463,40 @@ module.exports = (req, res, next) => {
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
 
-  // A compilation slug or source id selects the compilation path; absent, the
-  // legacy carto query runs unchanged. See `compilationSelect`.
-  const compilation = req.query.compilation ? String(req.query.compilation) : null;
+  // A map or compilation slug, or a source id, selects the compilation path;
+  // absent, the legacy carto query runs unchanged. See `compilationSelect`.
+  // `compilation` is the earlier name, accepted until clients have moved.
+  const sourceParam = req.query.source ?? req.query.compilation;
+  const source = sourceParam ? String(sourceParam) : null;
 
+  if (source == null || source === LEGACY_CARTO) {
+    return answer(req, res, next, source);
+  }
+
+  // Below the zooms a source is drawn at, its tiles hold nothing, and neither
+  // does this. Above them a client overzooms the last tiles.
+  larkin.queryPg(
+    "burwell",
+    "SELECT min_zoom FROM map_bounds.zoom_range(map_bounds.resolve_source($1))",
+    [source],
+    (error, result) => {
+      if (error) return larkin.error(req, res, next, error);
+      const minZoom = result.rows[0]?.min_zoom;
+      if (minZoom != null && req.query.z < minZoom) {
+        return larkin.error(
+          req,
+          res,
+          next,
+          `'${source}' is drawn from zoom ${minZoom}; zoom ${req.query.z} is below it`,
+          400,
+        );
+      }
+      answer(req, res, next, source);
+    },
+  );
+};
+
+function answer(req, res, next, source) {
   async.parallel(
     {
       elevation: (cb) => {
@@ -479,10 +514,10 @@ module.exports = (req, res, next) => {
         larkin.trace("running lines");
         let lineSQL = buildLineSQL(scaleLookup[req.query.z]);
         let lineParams = [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`];
-        if (compilation != null) {
+        if (source != null) {
           lineSQL = buildCompilationLineSQL();
           lineParams = [
-            compilation,
+            source,
             req.query.lng,
             req.query.lat,
             req.query.z,
@@ -599,7 +634,7 @@ module.exports = (req, res, next) => {
         where = ` WHERE ${where.join(" AND ")}`;
 
         let unitSQL = buildSQL(scaleLookup[req.query.z], where);
-        if (compilation != null) {
+        if (source != null) {
           // The point is always given here, so a map_id / legend_id filter
           // narrows the answer at that point rather than replacing it.
           let filter = "";
@@ -614,7 +649,7 @@ module.exports = (req, res, next) => {
           }
           unitSQL = buildCompilationSQL(filter);
           params = [
-            compilation,
+            source,
             req.query.lng,
             req.query.lat,
             req.query.z,
@@ -708,4 +743,4 @@ module.exports = (req, res, next) => {
       );
     },
   );
-};
+}
