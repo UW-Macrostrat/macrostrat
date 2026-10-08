@@ -45,23 +45,21 @@ async def tile_sources(request: Request, tile) -> Optional[str]:
 async def get_image_tile(request: Request, args: CachedTileArgs) -> bytes:
     pool: MapnikMapPool = request.app.state.map_pool
     tile = args.tile
-
-    quad = tms.get("WebMercatorQuad")
-    bbox = quad.xy_bounds(tile)
-
     scale = request.app.state.bands.scale_for_zoom(tile.z)
-    box = Box2d(bbox.left, bbox.top, bbox.right, bbox.bottom)
 
     # TODO: tune PostGIS data sources
     # https://github.com/mapnik/mapnik/wiki/PostGIS
 
     async with pool.map_context(scale) as _map:
-        _map.zoom_to_box(box)
+        return render_tile(_map, tile)
 
-        # Render map to image
-        im = Image(512, 512)
-        render(_map, im, 2)
 
-        # Return image as binary
-        res = im.tostring("png")
-        return res
+def render_tile(_map, tile) -> bytes:
+    """Draw one Web Mercator tile of a Mapnik map as a 512 px PNG."""
+    quad = tms.get("WebMercatorQuad")
+    bbox = quad.xy_bounds(tile)
+    _map.zoom_to_box(Box2d(bbox.left, bbox.top, bbox.right, bbox.bottom))
+
+    im = Image(512, 512)
+    render(_map, im, 2)
+    return im.tostring("png")

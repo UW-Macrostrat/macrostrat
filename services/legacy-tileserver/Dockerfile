@@ -40,10 +40,9 @@ ADD . /services/main
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --inexact --locked --no-editable --active
 
-# Check that the Mapnik bindings and the CartoCSS compiler are reachable
-RUN python -c "import mapnik; print('mapnik version:', mapnik.mapnik_version())" && \
-    python -c "import uvicorn; print('uvicorn version:', uvicorn.__version__)" && \
-    carto --version
+# Render a tile through the real pipeline: Mapnik bindings, CartoCSS compiler,
+# stylesheet and PNG encoding (tests/test_render.py).
+RUN python -m pytest -q -p no:cacheprovider
 
 EXPOSE 8000
 
