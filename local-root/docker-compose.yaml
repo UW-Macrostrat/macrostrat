@@ -164,9 +164,9 @@ services:
       # Verifies the short-lived tile tokens the website mints. Derived from
       # SECRET_KEY by `macrostrat up` when unset (see compose_env.py).
       - TILESERVER_SECRET_KEY=${TILESERVER_SECRET_KEY}
-      # Legacy `/carto-slim` and `/carto` tiles go to `/map/carto` (on locally;
-      # each deployed environment switches when ready).
-      - REDIRECT_LEGACY_CARTO=${REDIRECT_LEGACY_CARTO:-true}
+      # Legacy `/carto-slim` and `/carto` tiles are served from `/map/carto`
+      # (on locally; each deployed environment switches when ready).
+      - LEGACY_CARTO_FROM_COMPILATION=${LEGACY_CARTO_FROM_COMPILATION:-true}
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.

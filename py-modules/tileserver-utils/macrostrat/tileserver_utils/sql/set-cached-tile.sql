@@ -1,14 +1,16 @@
-INSERT INTO tile_cache.tile (x, y, z, args_hash, profile, tile)
+INSERT INTO tile_cache.tile (x, y, z, args_hash, profile, tile, sources)
 VALUES (
   :x,
   :y,
   :z,
   :params,
   :profile,
-  :tile
+  :tile,
+  :sources
 )
 ON CONFLICT (x, y, z, args_hash, profile)
 DO UPDATE
-SET 
+SET
   tile = EXCLUDED.tile,
+  sources = EXCLUDED.sources,
   created = now();

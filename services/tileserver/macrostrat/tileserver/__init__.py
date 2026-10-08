@@ -2,7 +2,7 @@ import re
 from os import environ
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode
 
 from buildpg import asyncpg, render
 from fastapi import FastAPI
@@ -10,7 +10,7 @@ from pydantic_settings import SettingsConfigDict
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse
+from starlette.responses import JSONResponse
 from starlette_cramjam.middleware import CompressionMiddleware
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
@@ -49,6 +49,9 @@ app = FastAPI(
             allow_origins=["*"],
             allow_methods=["*"],
             allow_headers=["*"],
+            # Readable from a page: which maps a tile draws, and whether the
+            # database cache answered.
+            expose_headers=["X-Macrostrat-Sources", "X-Tile-Cache"],
         )
     ],
 )
@@ -57,10 +60,10 @@ app = FastAPI(
 class TileServerSettings(PostgresSettings):
     # XDD embedding service URL
     xdd_embedding_service_url: Optional[str] = None
-    #: Send `/carto-slim` and `/carto` tiles to `/map/carto`, the compilation
+    #: Serve `/carto-slim` and `/carto` tiles from `/map/carto`, the compilation
     #: build, instead of the legacy `carto` tables. Off until an environment is
     #: ready to change what its public clients receive.
-    redirect_legacy_carto: bool = False
+    legacy_carto_from_compilation: bool = False
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="allow",
@@ -129,26 +132,39 @@ async def shutdown_event():
 app.add_middleware(CompressionMiddleware, minimum_size=1)
 
 # `/carto-slim/{z}/{x}/{y}` and `/carto/{z}/{x}/{y}` are the legacy build's
-# tiles. With `redirect_legacy_carto`, both go to `/map/carto`: `carto-slim`'s
-# properties are `/map/carto`'s, and `/carto`'s are its `detail=full` ones. Any
-# query string is kept. Temporary redirects, so a client never caches the move.
+# tiles. With `legacy_carto_from_compilation`, both are answered by `/map/carto`
+# under their own addresses: `carto-slim`'s properties are `/map/carto`'s, and
+# `/carto`'s are its `detail=full` ones. Any query string is kept. Rewritten in
+# process rather than redirected, so clients, Varnish and the access log see one
+# request under the address they have always used.
 _LEGACY_CARTO_TILE = re.compile(r"^/(carto|carto-slim)/(\d+)/(\d+)/(\d+)$")
 
 
-@app.middleware("http")
-async def redirect_legacy_carto(request: Request, call_next):
-    match = None
-    if db_settings.redirect_legacy_carto:
-        match = _LEGACY_CARTO_TILE.match(request.url.path)
+def rewrite_legacy_carto(path: str, query: str) -> Optional[tuple[str, str]]:
+    """The `/map/carto` address a legacy carto tile request is served from."""
+    match = _LEGACY_CARTO_TILE.match(path)
     if match is None:
-        return await call_next(request)
-
+        return None
     layer, z, x, y = match.groups()
-    params = list(request.query_params.multi_items())
+    params = parse_qsl(query, keep_blank_values=True)
     if layer == "carto":
         params.append(("detail", "full"))
-    url = request.url.replace(path=f"/map/carto/{z}/{x}/{y}", query=urlencode(params))
-    return RedirectResponse(str(url), status_code=307)
+    return f"/map/carto/{z}/{x}/{y}", urlencode(params)
+
+
+@app.middleware("http")
+async def legacy_carto_from_compilation(request: Request, call_next):
+    if db_settings.legacy_carto_from_compilation:
+        rewritten = rewrite_legacy_carto(
+            request.scope["path"], request.scope["query_string"].decode()
+        )
+        if rewritten is not None:
+            path, query = rewritten
+            # The scope is what the router reads, and the request shares it.
+            request.scope["path"] = path
+            request.scope["raw_path"] = path.encode()
+            request.scope["query_string"] = query.encode()
+    return await call_next(request)
 
 
 # Map ingestion

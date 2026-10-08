@@ -33,6 +33,13 @@ shares `carto-slim`'s rows) participates in the database-side tile cache, as
 And only those two are public: any other slug requires a delegated token
 carrying `tiles:map`, the mechanism the guarded raster layers use, so the
 per-request cost of an arbitrary compilation is spent for known callers.
+
+Every tile names the maps it draws in the `X-Macrostrat-Sources` response
+header: the resolved maps whose faces meet the tile, as `source_id`s. The
+access log keeps the header, and the usage-stats pipeline credits each map
+with the request, which is what "how many people viewed this map" is counted
+from. The faces query returns them with the tile, and the cache stores them
+beside it, so a hit carries the same header at no further cost.
 """
 
 from enum import Enum
@@ -46,9 +53,11 @@ from fastapi.security import HTTPAuthorizationCredentials
 from morecantile import Tile
 
 from macrostrat.tileserver_utils import (
+    SOURCES_HEADER,
     CachedTileArgs,
     CacheMode,
     MimeTypes,
+    RenderedTile,
     TileParams,
     VectorTileResponse,
     handle_cached_tile_request,
@@ -253,6 +262,8 @@ async def render_map_tile(
     pool = request.app.state.pool
     catalog = request.app.state.function_catalog
 
+    # The legacy build is not resolved through the compilation system, so it
+    # names no sources.
     if slug == LEGACY_CARTO:
         layer = catalog.get("carto-slim")
 
@@ -274,15 +285,19 @@ async def render_map_tile(
                     layer_id=source["layer_id"],
                 )
                 async with pool.acquire() as conn:
-                    return await conn.fetchval(q, *p)
+                    row = await conn.fetchrow(q, *p)
+                return RenderedTile(row["tile"], row["sources"])
 
         else:
+            # Drawn from its own polygons (or, for a mosaic member, the mosaic's
+            # within its bounds): the one map the tile shows is the source itself.
             layer = catalog.get("map")
 
             async def get_tile(request: Request, args: CachedTileArgs):
-                return await layer.get_tile(
+                content = await layer.get_tile(
                     pool, args.tile, source_id=source["source_id"]
                 )
+                return RenderedTile(content, [source["source_id"]])
 
     mode, profile_id = await _cache_for(pool, slug, cache, detail)
     args = CachedTileArgs(

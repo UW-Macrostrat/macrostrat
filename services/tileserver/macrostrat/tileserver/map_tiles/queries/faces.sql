@@ -151,5 +151,9 @@ line_features AS (
   SELECT ST_AsMVT(line_features, 'lines') AS lines
   FROM line_features
 )
-SELECT units || lines
+-- The tile, and the maps it was drawn from (`X-Macrostrat-Sources`), which
+-- the cache stores beside it.
+SELECT
+  units || lines AS tile,
+  (SELECT array_agg(source_id ORDER BY source_id) FROM map_bounds) AS sources
 FROM units_tile, lines_tile;

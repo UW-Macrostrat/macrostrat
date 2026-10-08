@@ -2,8 +2,19 @@ import decimal
 import json
 import typing
 from enum import Enum
+from typing import Iterable, Optional
 
 from starlette.responses import JSONResponse, Response
+
+#: Names the maps a tile draws, as ascending `source_id`s, comma-separated.
+SOURCES_HEADER = "X-Macrostrat-Sources"
+
+
+def sources_header(source_ids: Optional[Iterable[int]]) -> Optional[str]:
+    """The `X-Macrostrat-Sources` value for a tile, or None when it names none."""
+    if not source_ids:
+        return None
+    return ",".join(str(i) for i in sorted(set(source_ids)))
 
 
 class MimeTypes(str, Enum):
@@ -18,13 +29,22 @@ class MimeTypes(str, Enum):
     mvt = "application/x-protobuf"
 
 
-def TileResponse(content, timer, cache_status: "CacheStatus" = None, **kwargs):
+def TileResponse(
+    content,
+    timer,
+    cache_status: "CacheStatus" = None,
+    sources: Optional[Iterable[int]] = None,
+    **kwargs,
+):
     kwargs["headers"] = {
         "Server-Timing": timer.server_timings(),
         **kwargs.pop("headers", {}),
     }
     if cache_status is not None:
         kwargs["headers"]["X-Tile-Cache"] = cache_status
+    header = sources_header(sources)
+    if header is not None:
+        kwargs["headers"][SOURCES_HEADER] = header
     kwargs.setdefault("media_type", MimeTypes.pbf.value)
     return Response(content, **kwargs)
 

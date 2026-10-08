@@ -16,6 +16,7 @@ from macrostrat.tileserver.map_tiles import (
     LEGACY_CARTO,
     PUBLIC_SLUGS,
     SCOPE,
+    SOURCES_HEADER,
     Detail,
     cache_profile,
     faces_sql,
@@ -74,6 +75,20 @@ class TestPolicy:
         assert re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$", SCOPE)
 
 
+class TestSourcesHeader:
+    """What a tile says it draws, for the usage-stats pipeline to credit."""
+
+    def test_faces_query_returns_the_sources_with_the_tile(self):
+        sql = faces_sql(Detail.slim)
+        assert "AS tile" in sql and "AS sources" in sql
+
+    def test_header_is_exposed_to_pages(self, app):
+        from starlette.middleware.cors import CORSMiddleware
+
+        cors = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
+        assert SOURCES_HEADER in cors.kwargs["expose_headers"]
+
+
 class TestRouting:
     def test_slug_route_and_alias_are_mounted(self, app):
         paths = routes(app)
@@ -96,36 +111,84 @@ class TestRouting:
         assert client.get("/map/carto/1/0/notatile").status_code == 404
 
 
-class TestLegacyCartoRedirect:
-    """`/carto-slim` and `/carto` tiles go to `/map/carto` once an environment
-    switches `redirect_legacy_carto` on; before that they are the legacy build."""
+class TestLegacyCartoRewrite:
+    """`/carto-slim` and `/carto` tiles are served from `/map/carto`, under their
+    own addresses, once an environment switches `legacy_carto_from_compilation`
+    on; before that they are the legacy build."""
 
     @fixture
-    def redirecting(self, app):
+    def rewriting(self, app):
         from macrostrat.tileserver import db_settings
 
-        db_settings.redirect_legacy_carto = True
+        db_settings.legacy_carto_from_compilation = True
         yield
-        db_settings.redirect_legacy_carto = False
+        db_settings.legacy_carto_from_compilation = False
 
-    def test_slim_goes_to_the_compilation_build(self, client, redirecting):
+    @fixture
+    def served(self, monkeypatch):
+        """Stand in for the slug route's renderer, which needs a database,
+        and report what it was asked for."""
+        from starlette.responses import JSONResponse
+
+        from macrostrat.tileserver import map_tiles
+
+        calls = []
+
+        async def render(request, background_tasks, slug, tile, cache, *args, **kw):
+            detail = kw.get("detail", args[1] if len(args) > 1 else None)
+            calls.append(slug)
+            return JSONResponse(
+                {
+                    "slug": slug,
+                    "tile": [tile.z, tile.x, tile.y],
+                    "cache": cache.value,
+                    "detail": getattr(detail, "value", str(detail)),
+                }
+            )
+
+        monkeypatch.setattr(map_tiles, "render_map_tile", render)
+        return calls
+
+    def test_slim_is_served_from_the_compilation_build(self, client, rewriting, served):
+        res = client.get("/carto-slim/3/1/2")
+        assert res.status_code == 200
+        assert res.json() == {
+            "slug": "carto",
+            "tile": [3, 1, 2],
+            "cache": "prefer",
+            "detail": "slim",
+        }
+
+    def test_full_keeps_its_properties_and_query(self, client, rewriting, served):
+        res = client.get("/carto/3/1/2?cache=bypass")
+        assert res.json()["detail"] == "full"
+        assert res.json()["cache"] == "bypass"
+
+    def test_served_under_its_own_address(self, client, rewriting, served):
+        # No redirect: the client sees one response at the address it asked for.
         res = client.get("/carto-slim/3/1/2", follow_redirects=False)
-        assert res.status_code == 307
-        assert res.headers["location"].endswith("/map/carto/3/1/2")
+        assert res.status_code == 200
+        assert str(res.url).endswith("/carto-slim/3/1/2")
 
-    def test_full_keeps_its_properties_and_query(self, client, redirecting):
-        res = client.get("/carto/3/1/2?cache=bypass", follow_redirects=False)
-        assert res.status_code == 307
-        assert res.headers["location"].endswith(
-            "/map/carto/3/1/2?cache=bypass&detail=full"
-        )
-
-    def test_only_tiles_are_redirected(self, client, redirecting):
+    def test_only_tiles_are_rewritten(self, client, rewriting, served):
         # The layer's other routes (its TileJSON) are not tiles.
-        res = client.get("/carto-slim/tilejson.json", follow_redirects=False)
-        assert res.status_code != 307
+        client.get("/carto-slim/tilejson.json")
+        assert served == []
 
-    def test_off_by_default(self, client):
+    def test_off_by_default(self, app):
         from macrostrat.tileserver import db_settings
 
-        assert db_settings.redirect_legacy_carto is False
+        assert db_settings.legacy_carto_from_compilation is False
+
+
+class TestRewriteAddress:
+    def test_slim_and_full(self):
+        from macrostrat.tileserver import rewrite_legacy_carto
+
+        assert rewrite_legacy_carto("/carto-slim/3/1/2", "") == ("/map/carto/3/1/2", "")
+        assert rewrite_legacy_carto("/carto/3/1/2", "cache=bypass") == (
+            "/map/carto/3/1/2",
+            "cache=bypass&detail=full",
+        )
+        assert rewrite_legacy_carto("/carto-slim/tilejson.json", "") is None
+        assert rewrite_legacy_carto("/map/carto/3/1/2", "") is None
