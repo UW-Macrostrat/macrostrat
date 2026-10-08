@@ -8,9 +8,12 @@ objects its change touches (`Migration.sync_chunks`).
 from dataclasses import dataclass, field
 from typing import Optional
 
+from rich import print
+from rich.markup import escape
+
 from macrostrat.database import Database
 
-from .rebuild import RebuildReport
+from .rebuild import RebuildReport, StatementFailure
 from .views import ViewRebuildReport
 
 
@@ -20,7 +23,17 @@ class SyncReport:
     views: Optional[ViewRebuildReport] = None
     data: Optional[RebuildReport] = None
     permissions: Optional[RebuildReport] = None
-    failures: list[str] = field(default_factory=list)
+    failures: list[StatementFailure] = field(default_factory=list)
+
+
+def print_failures(failures: list[StatementFailure], indent: str = "  "):
+    """Each failure's error, then the statement that raised it."""
+    for failure in failures:
+        statement = " ".join(failure.statement.split())
+        if len(statement) > 200:
+            statement = statement[:199] + "…"
+        print(f"[red]{indent}- {escape(failure.message)}[/]")
+        print(f"[dim]{indent}  {escape(statement)}[/]")
 
 
 def sync_schema_chunks(
@@ -46,15 +59,15 @@ def sync_schema_chunks(
     report = SyncReport()
     if procedures:
         report.procedures = rebuild_procedures(db, chunks)
-        report.failures += report.procedures.failed
+        report.failures += report.procedures.failures
     if views:
         report.views = rebuild_views(db, chunks)
     if data:
         report.data = rebuild_seed_data(db, chunks)
-        report.failures += report.data.failed
+        report.failures += report.data.failures
     if permissions:
         report.permissions = rebuild_grants(db, chunks)
-        report.failures += report.permissions.failed
+        report.failures += report.permissions.failures
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
     return report

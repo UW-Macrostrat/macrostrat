@@ -430,7 +430,7 @@ def sync(
     [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
     """
     from .composer import selected_chunks
-    from .sync import sync_schema_chunks
+    from .sync import print_failures, sync_schema_chunks
 
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
@@ -457,8 +457,7 @@ def sync(
 
     if len(res.failures) > 0:
         print("\n[red bold]Failures:")
-        for failure in res.failures:
-            print(f"[red]  - {failure}")
+        print_failures(res.failures)
 
 
 def _describe_provider(provider) -> str:

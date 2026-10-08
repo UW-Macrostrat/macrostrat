@@ -239,7 +239,14 @@ def _source_location(fn) -> str:
 
 
 def _print_explanation(db: Database, migration: Migration, style: str):
-    for line in migration.explain(db):
+    lines, error = _guarded(db, lambda: migration.explain(db))
+    if error is not None:
+        lines = _error_lines(db, migration, error)
+    _print_lines(lines, style)
+
+
+def _print_lines(lines: list[str], style: str):
+    for line in lines:
         print(f"    [{style}]{escape(line)}[/]")
 
 
@@ -254,6 +261,8 @@ class MigrationState(Enum):
     # The migration always applies, regardless of the state of the database
     ALWAYS_APPLY = "always_apply"
     NOT_ENV_READY = "not_env_ready"
+    # Evaluating the migration's conditions raised an error
+    EVALUATION_ERROR = "evaluation_error"
 
 
 def run_migrations(
@@ -435,7 +444,7 @@ def _sync_after(db: Database, migration: Migration):
     if not migration.sync_chunks:
         return
     from .composer import selected_chunks
-    from .sync import sync_schema_chunks
+    from .sync import print_failures, sync_schema_chunks
 
     chunks = [
         c for c in selected_chunks(settings.env) if c.name in migration.sync_chunks
@@ -450,8 +459,7 @@ def _sync_after(db: Database, migration: Migration):
         return
     print(f"[dim]Syncing {', '.join(c.name for c in chunks)}[/]")
     report = sync_schema_chunks(db, chunks)
-    for failure in report.failures:
-        print(f"[red]  - {failure}")
+    print_failures(report.failures)
 
 
 def _undefined_dependencies(migration: Migration, defined: set[str]) -> list[str]:
@@ -471,8 +479,52 @@ def _dependencies_met(
     return all(d in completed for d in migration.depends_on if d in present)
 
 
+def _with_dependencies(instances: list[Migration], name: str) -> list[Migration]:
+    """The named migration and everything it depends on, in dependency order."""
+    by_name = {m.name: m for m in instances}
+    if name not in by_name:
+        raise ValueError(f"No migration named {name}")
+    needed = set()
+    pending = [name]
+    while pending:
+        _name = pending.pop()
+        if _name in needed or _name not in by_name:
+            continue
+        needed.add(_name)
+        pending.extend(by_name[_name].depends_on)
+    return [m for m in instances if m.name in needed]
+
+
+def _guarded(db: Database, fn):
+    """Run `fn`, returning its result and any error, so one migration's broken
+    condition does not stop the others being listed or applied."""
+    try:
+        return fn(), None
+    except Exception as err:
+        # Otherwise every later query fails with "transaction is aborted"
+        db.session.rollback()
+        return None, err
+
+
+def _error_lines(db: Database, migration: Migration, err: Exception) -> list[str]:
+    """The error a migration's conditions raised, and which condition raised it."""
+    message = str(getattr(err, "orig", None) or err).strip()
+    lines = [message.splitlines()[0] if message else type(err).__name__]
+    # Retried one at a time: closures from one factory share a code object, so
+    # the traceback cannot say which of them raised.
+    for kind, conditions in (
+        ("postcondition", migration.postconditions),
+        ("precondition", migration.preconditions),
+    ):
+        for cond in conditions:
+            if _guarded(db, lambda: cond(db))[1] is not None:
+                return lines + [f"while checking {kind} {describe_condition(cond)}"]
+    return lines + [f"raised in {_source_location(type(migration).should_apply)}"]
+
+
 def _evaluate(db: Database, instances: list[Migration]):
-    """Yield each migration with its `ApplicationStatus`, in dependency order.
+    """Yield each migration with its `ApplicationStatus` and any error raised
+    evaluating it, in dependency order.
 
     A migration whose dependencies have not applied is not evaluated, and yields
     None: its conditions may read what a dependency creates.
@@ -480,12 +532,12 @@ def _evaluate(db: Database, instances: list[Migration]):
     present = {m.name for m in instances}
     completed = set()
     for migration in instances:
-        status = None
+        status, error = None, None
         if _dependencies_met(migration, completed, present):
-            status = migration.should_apply(db)
+            status, error = _guarded(db, lambda: migration.should_apply(db))
             if status == ApplicationStatus.APPLIED:
                 completed.add(migration.name)
-        yield migration, status
+        yield migration, status, error
 
 
 def _run_migrations(
@@ -511,6 +563,8 @@ def _run_migrations(
         raise ValueError("--force can only be applied with --name")
 
     instances = _get_all_migrations(legacy=legacy)
+    if name is not None:
+        instances = _with_dependencies(instances, name)
 
     output_mode = OutputMode.SUMMARY if verbose else OutputMode.NONE
 
@@ -525,17 +579,20 @@ def _run_migrations(
 
     migrations_to_run = []
     listed = []
+    errors = {}
     present = {m.name for m in instances}
     defined = present | {cls.name for cls in _migration_classes()}
 
-    # Every migration is evaluated, filtered or not, so that one named with
-    # --name sees whether its dependencies have applied.
-    for _migration, apply_status in _evaluate(db, instances):
+    # Dependencies of a migration named with --name are evaluated, though not
+    # listed, so that it sees whether they have applied.
+    for _migration, apply_status, error in _evaluate(db, instances):
         _name = _migration.name
         _subsystem = getattr(_migration, "subsystem", None)
 
         if apply_status == ApplicationStatus.APPLIED:
             completed_migrations.append(_name)
+        if error is not None:
+            errors[_name] = error
 
         # If --name is specified, only run the migration with the matching name
         if name is not None and name != _name:
@@ -551,6 +608,7 @@ def _run_migrations(
             apply_status,
             data_changes=data_changes,
             env=_get_active_env(),
+            error=error,
         )
 
         listed.append((_migration, _status))
@@ -568,6 +626,8 @@ def _run_migrations(
         _print_status(_migration.name, _status, name_max_width=name_max_width)
         if _status == MigrationState.CANNOT_APPLY:
             _print_explanation(db, _migration, "red")
+        if _status == MigrationState.EVALUATION_ERROR:
+            _print_lines(_error_lines(db, _migration, errors[_migration.name]), "red")
         undefined = _undefined_dependencies(_migration, defined)
         if undefined:
             print(
@@ -614,7 +674,11 @@ def _run_migrations(
             # Evaluated here rather than trusted from the listing: a dependency
             # applied earlier in this run can be what makes the conditions hold,
             # or evaluable at all.
-            apply_status = _migration.should_apply(db)
+            apply_status, error = _guarded(db, lambda: _migration.should_apply(db))
+            if error is not None:
+                print(f"\n[dim]Skipping [cyan]{_name}[/]: could not be evaluated[/]")
+                _print_lines(_error_lines(db, _migration, error), "dim")
+                continue
             if apply_status == ApplicationStatus.CANT_APPLY:
                 print(f"\n[dim]Skipping [cyan]{_name}[/]: preconditions not met[/]")
                 _print_explanation(db, _migration, "dim")
@@ -661,7 +725,7 @@ def applyable_migrations(
     """Check if there are any migrations that can be applied"""
     _res = set()
     migrations = _get_all_migrations(legacy=legacy, readiness_level=readiness_level)
-    for _migration, apply_status in _evaluate(db, migrations):
+    for _migration, apply_status, _ in _evaluate(db, migrations):
         if _migration.destructive and not allow_destructive:
             continue
         if apply_status == ApplicationStatus.CAN_APPLY:
@@ -694,9 +758,11 @@ def _get_status(
     apply_status: Optional[ApplicationStatus],
     data_changes: bool = False,
     env: Optional[str] = None,
+    error: Optional[Exception] = None,
 ) -> MigrationState:
     """Get the status of a migration. `apply_status` is None for one that was not
-    evaluated because a dependency has not applied."""
+    evaluated because a dependency has not applied, or whose evaluation raised
+    `error`."""
     name = _migration.name
     env = env or _get_active_env()
 
@@ -705,6 +771,9 @@ def _get_status(
 
     if not _env_allows_migration(getattr(_migration, "readiness_state", "alpha"), env):
         return MigrationState.NOT_ENV_READY
+
+    if error is not None:
+        return MigrationState.EVALUATION_ERROR
 
     # By default, don't run migrations that depend on other non-applied migrations
     if apply_status is None:
@@ -730,6 +799,8 @@ def _print_status(name, status: MigrationState, *, name_max_width=40):
         print("[orange]has unmet dependencies[/orange]")
     elif status == MigrationState.CANNOT_APPLY:
         print("[red]cannot be applied[/red]")
+    elif status == MigrationState.EVALUATION_ERROR:
+        print("[red]could not be evaluated[/red]")
     elif status == MigrationState.SHOULD_APPLY:
         print("[orange]should be applied[/orange]")
     elif status == MigrationState.ALWAYS_APPLY:
