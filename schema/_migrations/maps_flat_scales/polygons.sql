@@ -85,7 +85,7 @@ ALTER TABLE maps.polygons ADD CONSTRAINT maps_polygons_pkey PRIMARY KEY (map_id)
 /* One sequence. `public.map_ids` is the live one -- the partitions drew from it
    -- and `maps.map_ids`, the parent's default, drifted behind it. The live one
    moves into the schema under the name the table already used. */
-DROP SEQUENCE maps.map_ids;
+DROP SEQUENCE IF EXISTS maps.map_ids;
 ALTER SEQUENCE public.map_ids SET SCHEMA maps;
 ALTER SEQUENCE maps.map_ids OWNED BY maps.polygons.map_id;
 ALTER TABLE maps.polygons ALTER COLUMN map_id SET DEFAULT nextval('maps.map_ids');

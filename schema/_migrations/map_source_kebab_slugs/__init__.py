@@ -35,7 +35,7 @@ class MapSourceKebabSlugsMigration(Migration):
     and enforce the form with a check constraint.
     """
     depends_on = ["map-source-slug"]
-    readiness_state = "alpha"
+    readiness_state = "ga"
     destructive = True
 
     preconditions = [has_columns("maps", "sources", "slug")]
