@@ -738,7 +738,7 @@ enum APICapability {
     try {
       await larkin.queryPgAsync(
         "burwell",
-        `SELECT * FROM maps.polygon_refs_for(0)`,
+        `SELECT * FROM map_bounds.polygon_refs_for(0)`,
       );
       larkin.capabilities.add(APICapability.MAP_REFS);
     } catch (e) {

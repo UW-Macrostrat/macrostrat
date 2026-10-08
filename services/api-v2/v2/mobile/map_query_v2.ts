@@ -6,7 +6,7 @@ const _ = require("underscore");
 const LINE_TOLERANCE = 20;
 
 /* A polygon's references at every level, in the order a client lists them,
-   where the database combines them (`maps.polygon_refs_for`); absent, `refs`
+   where the database combines them (`map_bounds.polygon_refs_for`); absent, `refs`
    is left out of the response. */
 function refsSelect() {
   if (!larkin.hasCapability("map-refs")) return "";
@@ -16,7 +16,7 @@ function refsSelect() {
           'ref_type', r.ref_type, 'label', r.label, 'ref_id', r.ref_id,
           'citation', r.citation, 'doi', r.doi, 'url', r.url
         ) ORDER BY r.ordinality)
-        FROM maps.polygon_refs_for(m.map_id) WITH ORDINALITY r
+        FROM map_bounds.polygon_refs_for(m.map_id) WITH ORDINALITY r
       ), '[]') AS refs`;
 }
 
