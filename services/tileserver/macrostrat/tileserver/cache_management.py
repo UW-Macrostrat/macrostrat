@@ -31,8 +31,11 @@ log = get_logger(__name__)
 # expensive to serve.
 router = APIRouter()
 
-# Profiles to expire on cache invalidation (rotated paleo layer excluded)
-_CARTO_PROFILES = ["carto", "carto-slim", "carto-image"]
+# L2 profiles to expire on cache invalidation (rotated paleo layer excluded):
+# the legacy build's, and `/map/carto`'s two.
+_CARTO_PROFILES = ["carto", "carto-slim", "carto-image", "map-carto", "map-carto-full"]
+# The same tiles' addresses in L1, where the ban is over the URL.
+_CARTO_URL_PREFIXES = ["carto", "carto-slim", "map/carto", "dev/carto"]
 
 _VARNISH_URL = environ.get("VARNISH_URL", None)
 
@@ -110,8 +113,7 @@ async def invalidate_cache(body: InvalidationRequest, request: Request):
                 conn, bbox, body.min_zoom, body.max_zoom
             )
 
-    profile_prefix = "|".join(_CARTO_PROFILES)
-    flushed_l1 = await _flush_l1_cache(profile_prefix)
+    flushed_l1 = await _flush_l1_cache("|".join(_CARTO_URL_PREFIXES))
 
     return {"deleted_l2": deleted_l2, "flushed_l1": flushed_l1}
 
