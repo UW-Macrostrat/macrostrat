@@ -10,7 +10,7 @@ through them. The flags are derived in SQL so this module stays a description of
 the payload.
 """
 
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -265,12 +265,12 @@ class NeighborMap(BaseModel):
 
     #: The neighbour's own bounds.
     area_km: Optional[float] = None
-    #: Area the two bounds share. Null when the overlap was not computed —
-    #: see `NeighborResult.overlap_available`.
-    overlap_km: Optional[float] = None
-    #: How much of *this* map the neighbour covers, 0–1. The complementary
-    #: question — how much of the neighbour this map covers — is a different one,
-    #: and not the one asked on a map's own page.
+    #: `overlaps` when the footprints intersect; `nearby` when they do not but
+    #: this map lies within a short reach of the subject. Overlapping rows come
+    #: first.
+    relation: Literal["overlaps", "nearby"] = "overlaps"
+    #: Roughly how much of *this* map the neighbour covers, 0–1, estimated from
+    #: the two bounding boxes. Null for a nearby map.
     overlap_fraction: Optional[float] = None
 
     #: Bands coarser this map is than the subject: 0 for a peer at the same
@@ -281,22 +281,33 @@ class NeighborMap(BaseModel):
     is_compilation: bool = False
     is_materialized: bool = False
     is_mosaic_member: bool = False
+    #: Whether `carto` draws this map, through any of its layers.
+    in_carto: bool = False
     #: Compilations this map belongs to, so a page can say "part of SGMC" rather
-    #: than leaving the reader to guess why it is in the list.
+    #: than leaving the reader to guess why it is in the list. Excludes carto's
+    #: own layers, which `in_carto` stands for.
     in_compilations: list[str] = []
 
 
+class MapMembership(BaseModel):
+    """Where the subject map sits among the compilations."""
+
+    in_carto: bool = False
+    #: Carto's base layers (`small`, `medium`, `large`) the map is placed in.
+    carto_layers: list[str] = []
+    #: Every other compilation above the map, nearest products like `sgmc` or
+    #: `ngs-bedrock` included; carto's own layers are not.
+    compilations: list[SourceRef] = []
+
+
 class NeighborResult(BaseModel):
-    """Other maps of this area, and whether their overlap could be measured."""
+    """Other maps of this area, and where this map sits among the compilations."""
 
     source_id: int
     slug: str
-    #: False when the map's own bounds are too large to intersect in reasonable
-    #: time, in which case every `overlap_km` is null and the list is ordered by
-    #: scale distance and footprint alone.
-    overlap_available: bool = True
     #: Whether maps coarser than this one were included. They are excluded by
     #: default: every map is covered by the same handful of global sheets, so
     #: listing them puts the same answers on every page.
     include_coarser: bool = False
+    membership: MapMembership = MapMembership()
     neighbors: list[NeighborMap] = []

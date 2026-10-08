@@ -29,6 +29,7 @@ from .models import (
     CompilationSummary,
     EditRequest,
     EditResult,
+    MapMembership,
     NeighborMap,
     NeighborResult,
 )
@@ -161,15 +162,21 @@ async def get_neighbors(
     limit: Annotated[
         int, Query(ge=1, le=200, description="Most relevant neighbours to return")
     ] = 25,
+    nearby_limit: Annotated[
+        int,
+        Query(ge=0, le=100, description="Nearby, non-overlapping maps to return"),
+    ] = 10,
     include_coarser: Annotated[
         bool,
         Query(description="Also return maps at coarser scales than this one"),
     ] = False,
 ) -> NeighborResult:
-    """Maps whose footprint overlaps this one's, at this scale or finer.
+    """Maps whose footprint overlaps or lies near this one's, at this scale or
+    finer, and where this map itself sits among the compilations.
 
     An area question rather than a point one: the subject is the map's own
-    boundary, so this is polygon overlap against every other `map_area`.
+    boundary, tested for intersection against every other `map_area`. Coverage
+    is estimated from bounding boxes: close enough to rank a list of suggestions.
 
     Ordered by *scale distance* first and coverage second — same-scale peers,
     then maps one band finer, and so on. Coarser maps are excluded unless asked
@@ -197,12 +204,8 @@ async def get_neighbors(
                 "ident": ident,
                 "source_id": source_id,
                 "limit": limit,
+                "nearby_limit": nearby_limit,
                 "include_coarser": include_coarser,
-                # Above this the overlap is skipped: cost scales with the
-                # target's vertex count times the candidate count, and the one
-                # map beyond it (`global2`, 1.4M points) measures at ~57 s for an
-                # answer that amounts to "all of them".
-                "max_points": 200_000,
             },
         )
         rows = res.mappings().all()
@@ -211,15 +214,17 @@ async def get_neighbors(
     if identity is None:
         raise HTTPException(404, f"No map matching '{ident}'")
 
-    overlap_available = True
-    if len(rows) > 0:
-        overlap_available = bool(rows[0]["overlap_available"])
+    async with database.async_connection() as conn:
+        res = await conn.execute(
+            _query("membership"), {"source_id": identity["source_id"]}
+        )
+        membership = res.mappings().first()
 
     return NeighborResult(
         source_id=identity["source_id"],
         slug=identity["slug"],
-        overlap_available=overlap_available,
         include_coarser=include_coarser,
+        membership=MapMembership(**membership),
         neighbors=[NeighborMap(**row) for row in rows],
     )
 

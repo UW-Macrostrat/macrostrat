@@ -1,8 +1,11 @@
-/* Other maps covering the same ground as this one, at this scale or finer.
+/* Other maps covering or near the same ground as this one, at this scale or
+   finer.
 
    "This area" is the map's own footprint, so the question is polygon overlap
    rather than a point query -- `map_area.geometry` on both sides, which is the
-   composed boundary and therefore the honest answer.
+   composed boundary and therefore the honest answer. Maps that do not overlap
+   but sit within a short reach of the footprint come back as `nearby`, after
+   the overlapping ones.
 
    **Coarser maps are excluded by default.** Every map is covered by the handful
    of global and continental sheets, so listing them makes the same few answers
@@ -10,59 +13,63 @@
    wants is peers -- maps at the same scale -- and then the finer maps that cover
    part of this one. `:include_coarser` puts them back.
 
-   Rows come back ordered by *scale distance* first and coverage second, so the
-   same-scale peers lead, then maps one band finer, and so on. Ordering purely by
-   coverage would put a global sheet covering 100% above a partner sheet covering
-   20%, which is the noise this is meant to remove.
+   Rows come back ordered by relation (overlapping, then nearby), then by *scale
+   distance*, then by coverage or by gap. Ordering purely by coverage would put
+   a global sheet covering 100% above a partner sheet covering 20%, which is the
+   noise this is meant to remove.
 
-   Two costs are bounded deliberately:
+   **Coverage is an estimate from bounding boxes**: the share of this map's box
+   that the neighbour's box covers. This is a list of maps worth a look, not a
+   measurement; the exact polygon overlap cost seconds per map, and could not
+   be computed at all for a global footprint.
 
-   - **The candidate set is capped.** `ST_Intersects` is cheap (a GiST scan), but
-     the overlap area is not, so only the top `:limit` candidates by a *cheap*
-     ranking -- finest scale first, then smallest footprint -- get that far. A
-     map page wants the most relevant neighbours, not all 474 things that touch a
-     global map.
-
-   - **The overlap area is skipped for an enormous target.** Cost is roughly the
-     target's vertex count times the number of candidates: `bc_2017` (9,331
-     points, 43 candidates) measures at 1.0 s, `global2` (1,381,399 points, 474)
-     at 57 s. Above `:max_points` the overlap comes back null and
-     `overlap_available` says so, rather than making the page wait a minute for
-     the answer "all of them". Simplifying the target instead was tried and is
-     not viable: `ST_SimplifyPreserveTopology` yields geometries `ST_Intersection`
-     then rejects as invalid.
-
-   Served layers are excluded -- they are structural, cover the world, and would
-   head every list. Regional compilations are *not*: `sgmc` covering your area is
-   exactly the kind of thing this should say, and `is_compilation` lets a client
-   group them apart from ordinary maps.
+   The carto stacks' own nodes are excluded: the multiscale compilations
+   (`carto`, `carto-v1`), their composite layers and base layers. They cover
+   everything by construction, so they would head every list; a map's place in
+   carto is reported as `in_carto` instead. Empty compilations go too. Regional
+   compilations are *not* excluded: `sgmc` covering your area is exactly the
+   kind of thing this should say.
 */
-WITH target AS (
+WITH RECURSIVE stack AS (
+  SELECT c.source_id, 0 AS depth
+  FROM map_bounds.compilation c
+  WHERE c.assembly_mode = 'multiscale'
+  UNION
+  SELECT cm.member_id, stack.depth + 1
+  FROM map_bounds.compilation_member cm
+  JOIN stack ON cm.compilation_id = stack.source_id
+  WHERE stack.depth < 2 AND map_bounds.is_compilation(cm.member_id)
+),
+structural AS (
+  SELECT source_id FROM stack
+  UNION
+  SELECT c.source_id FROM map_bounds.compilation c
+  WHERE NOT map_bounds.is_compilation(c.source_id)
+),
+target AS (
   SELECT
     ma.source_id,
     ma.geometry,
-    ma.area_km,
-    ST_NPoints(ma.geometry) AS n_points,
-    /* Finest first, so "at this scale or finer" is `rank <= target rank`.
-       Null sorts coarsest; every null-scale row with a boundary is a served
-       layer, which is excluded anyway. */
+    /* Bounding boxes computed once: deriving them per candidate re-reads the
+       whole footprint each time, which costs seconds for a map like `sgmc`. */
+    ma.geometry::box2d AS box,
+    (ST_XMax(ma.geometry) - ST_XMin(ma.geometry))
+      * (ST_YMax(ma.geometry) - ST_YMin(ma.geometry)) AS box_area,
+    ST_Envelope(ma.geometry) AS envelope,
+    /* How far beyond the footprint counts as nearby: half its larger side,
+       capped so a continental map does not sweep in a hemisphere. */
+    ST_Expand(ma.geometry::box2d, least(
+      greatest(ST_XMax(ma.geometry) - ST_XMin(ma.geometry),
+               ST_YMax(ma.geometry) - ST_YMin(ma.geometry)) / 2,
+      2.0
+    )) AS search_box,
+    /* Finest first, so "at this scale or finer" is `rank <= target rank`. */
     CASE s.scale
       WHEN 'large' THEN 0 WHEN 'medium' THEN 1
       WHEN 'small' THEN 2 WHEN 'tiny' THEN 3 ELSE 4 END AS scale_rank
   FROM map_bounds.map_area ma
   JOIN maps.sources s ON s.source_id = ma.source_id
   WHERE s.slug = :ident OR s.source_id = :source_id
-),
-scaled AS (
-  SELECT
-    ma.source_id,
-    ma.geometry,
-    ma.area_km,
-    CASE cs.scale
-      WHEN 'large' THEN 0 WHEN 'medium' THEN 1
-      WHEN 'small' THEN 2 WHEN 'tiny' THEN 3 ELSE 4 END AS scale_rank
-  FROM map_bounds.map_area ma
-  JOIN maps.sources cs ON cs.source_id = ma.source_id
 ),
 /* This map's own membership chain, in both directions. */
 related AS (
@@ -84,37 +91,68 @@ related AS (
   SELECT source_id FROM down
 ),
 candidates AS (
-  SELECT ma.source_id, ma.geometry
-  FROM scaled ma
+  SELECT
+    ma.source_id,
+    ma.geometry,
+    ma.area_km,
+    sc.scale_distance,
+    /* Peers, then finer bands, then (only when asked for) coarser ones. */
+    CASE
+      WHEN sc.scale_distance >= 0 THEN sc.scale_distance
+      ELSE 100 - sc.scale_distance
+    END AS band,
+    ST_Intersects(ma.geometry, t.geometry) AS intersects,
+    ma.geometry <#> t.envelope AS gap,
+    /* How much of this map's box the neighbour's box covers. */
+    (
+      greatest(least(ST_XMax(b.box), ST_XMax(t.box))
+        - greatest(ST_XMin(b.box), ST_XMin(t.box)), 0)
+      * greatest(least(ST_YMax(b.box), ST_YMax(t.box))
+        - greatest(ST_YMin(b.box), ST_YMin(t.box)), 0)
+      / nullif(t.box_area, 0)
+    ) AS coverage
+  FROM map_bounds.map_area ma
+  JOIN maps.sources cs ON cs.source_id = ma.source_id
   CROSS JOIN target t
+  CROSS JOIN LATERAL (SELECT ma.geometry::box2d AS box) b
+  CROSS JOIN LATERAL (
+    SELECT t.scale_rank - CASE cs.scale
+      WHEN 'large' THEN 0 WHEN 'medium' THEN 1
+      WHEN 'small' THEN 2 WHEN 'tiny' THEN 3 ELSE 4 END AS scale_distance
+  ) sc
   WHERE ma.source_id NOT IN (SELECT source_id FROM related)
+    AND ma.source_id NOT IN (SELECT source_id FROM structural)
     /* A global source -- bounds spanning the world -- would overlap everything
        meaninglessly. */
     AND ma.area_km IS NOT NULL
     AND NOT map_bounds.is_global(ma.source_id)
-    AND ST_Intersects(ma.geometry, t.geometry)
-    AND (:include_coarser OR ma.scale_rank <= t.scale_rank)
-  ORDER BY
-    /* The cheap proxy for the final ordering, applied before any overlap is
-       computed so the expensive work is bounded: peers, then finer, then (only
-       when asked for) coarser, and within a band the more focused footprint. */
-    CASE
-      WHEN t.scale_rank - ma.scale_rank >= 0 THEN t.scale_rank - ma.scale_rank
-      ELSE 100 - (t.scale_rank - ma.scale_rank)
-    END,
-    ma.area_km
-  LIMIT :limit
+    AND ma.geometry && t.search_box
+    AND (:include_coarser OR sc.scale_distance >= 0)
 ),
-overlap AS (
-  SELECT
-    c.source_id,
-    CASE WHEN t.n_points <= :max_points THEN
-      ST_Area(
-        ST_Intersection(ST_ClipByBox2D(c.geometry, t.geometry::box2d), t.geometry)
-        ::geography
-      ) / 1e6
-    END AS overlap_km
-  FROM candidates c, target t
+picked AS (
+  (SELECT c.source_id, c.band, c.gap, c.coverage, true AS intersects
+   FROM candidates c WHERE c.intersects
+   ORDER BY c.band, c.coverage DESC NULLS LAST, c.area_km
+   LIMIT :limit)
+  UNION ALL
+  (SELECT c.source_id, c.band, c.gap, NULL, false
+   FROM candidates c WHERE NOT c.intersects
+   ORDER BY c.band, c.gap
+   LIMIT :nearby_limit)
+),
+/* Every compilation above each picked map, to say whether it is in carto and
+   which other compilations it belongs to. */
+ancestry AS (
+  WITH RECURSIVE up AS (
+    SELECT p.source_id AS map_id, cm.compilation_id
+    FROM picked p
+    JOIN map_bounds.compilation_member cm ON cm.member_id = p.source_id
+    UNION
+    SELECT up.map_id, cm.compilation_id
+    FROM up
+    JOIN map_bounds.compilation_member cm ON cm.member_id = up.compilation_id
+  )
+  SELECT * FROM up
 )
 SELECT
   s.source_id,
@@ -126,39 +164,38 @@ SELECT
   s.ref_year,
   s.superseded_by,
   ma.area_km::float AS area_km,
-  o.overlap_km::float AS overlap_km,
-  /* How much of *this* map the neighbour covers. The complementary fraction --
-     how much of the neighbour this map covers -- is a different question, and
-     the one a reader asks on this page is the first. */
-  CASE WHEN t.area_km > 0 THEN (o.overlap_km / t.area_km)::float END
-    AS overlap_fraction,
+  CASE WHEN o.intersects THEN 'overlaps' ELSE 'nearby' END AS relation,
+  /* Roughly how much of *this* map the neighbour covers, 0-1. */
+  least(o.coverage, 1)::float AS overlap_fraction,
   (SELECT count(*) > 0 FROM map_bounds.compilation_member cm
     WHERE cm.compilation_id = s.source_id) AS is_compilation,
   map_bounds.is_materialized(s.source_id) AS is_materialized,
   map_bounds.is_mosaic_member(s.source_id) AS is_mosaic_member,
-  /* The compilations this map belongs to, so the page can say "part of SGMC"
-     rather than leaving the reader to guess why it is here. */
+  EXISTS (
+    SELECT 1 FROM ancestry a
+    JOIN maps.sources c ON c.source_id = a.compilation_id
+    WHERE a.map_id = s.source_id AND c.slug = 'carto'
+  ) AS in_carto,
+  /* The other compilations this map belongs to, so the page can say "part of
+     SGMC" rather than leaving the reader to guess why it is here. */
   coalesce((
-    SELECT array_agg(p.slug ORDER BY p.slug)
-    FROM map_bounds.compilation_member cm
-    JOIN maps.sources p ON p.source_id = cm.compilation_id
-    WHERE cm.member_id = s.source_id
+    SELECT array_agg(DISTINCT c.slug ORDER BY c.slug)
+    FROM ancestry a
+    JOIN maps.sources c ON c.source_id = a.compilation_id
+    WHERE a.map_id = s.source_id
+      AND a.compilation_id NOT IN (SELECT source_id FROM structural)
   ), '{}'::text[]) AS in_compilations,
-  t.n_points <= :max_points AS overlap_available,
-  /* 0 for a peer at the same scale, 1 for one band finer, and so on. The client
-     groups on this rather than re-deriving the ordering. */
-  t.scale_rank - sc.scale_rank AS scale_distance
-FROM overlap o
+  /* 0 for a peer at the same scale, 1 for one band finer, and so on. */
+  t.scale_rank - CASE s.scale
+    WHEN 'large' THEN 0 WHEN 'medium' THEN 1
+    WHEN 'small' THEN 2 WHEN 'tiny' THEN 3 ELSE 4 END AS scale_distance
+FROM picked o
 JOIN maps.sources s ON s.source_id = o.source_id
 JOIN map_bounds.map_area ma ON ma.source_id = o.source_id
-JOIN scaled sc ON sc.source_id = o.source_id
 CROSS JOIN target t
-/* Peers first, then each finer band, then the coarser ones if they were asked
-   for -- they are context, not the answer. Coverage decides within a band. */
 ORDER BY
-  CASE
-    WHEN t.scale_rank - sc.scale_rank >= 0 THEN t.scale_rank - sc.scale_rank
-    ELSE 100 - (t.scale_rank - sc.scale_rank)
-  END,
-  o.overlap_km DESC NULLS LAST,
+  o.intersects DESC,
+  o.band,
+  o.coverage DESC NULLS LAST,
+  o.gap,
   ma.area_km;

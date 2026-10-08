@@ -231,17 +231,22 @@ class TestNeighbors:
         result = api_client.get(
             f"/compilations/{TEST_SOURCE_TABLE.slug}/neighbors?limit=10"
         ).json()
-        assert len(result["neighbors"]) <= 10
+        overlapping = [n for n in result["neighbors"] if n["relation"] == "overlaps"]
+        assert len(overlapping) <= 10
+
+        # Overlapping maps first, then nearby ones.
+        relations = [n["relation"] for n in result["neighbors"]]
+        assert relations == sorted(relations, key=lambda r: r != "overlaps")
 
         # Peers first, then each finer band — a client groups on consecutive
         # runs, so the ordering has to be monotonic in scale distance.
-        distances = [n["scale_distance"] for n in result["neighbors"]]
+        distances = [n["scale_distance"] for n in overlapping]
         assert distances == sorted(distances)
 
         for group in {d for d in distances}:
             fractions = [
                 n["overlap_fraction"]
-                for n in result["neighbors"]
+                for n in overlapping
                 if n["scale_distance"] == group and n["overlap_fraction"] is not None
             ]
             # Within a band, most of this map covered first.
@@ -265,7 +270,11 @@ class TestNeighbors:
         assert kept <= {n["source_id"] for n in widened["neighbors"]}
         # Coarser maps sort after the peers and the finer bands: they are
         # context, not the answer.
-        distances = [n["scale_distance"] for n in widened["neighbors"]]
+        distances = [
+            n["scale_distance"]
+            for n in widened["neighbors"]
+            if n["relation"] == "overlaps"
+        ]
         positive = [d for d in distances if d >= 0]
         assert distances[: len(positive)] == positive
 
@@ -281,12 +290,26 @@ class TestNeighbors:
         ).json()
         assert parents.isdisjoint({n["source_id"] for n in result["neighbors"]})
 
-    def test_overlap_is_null_exactly_when_unavailable(self, api_client: TestClient):
-        """The flag and the values must agree — a null overlap with the flag set
-        would read as "no overlap" rather than "not measured"."""
-        for slug in [TEST_SOURCE_TABLE.slug]:
-            result = api_client.get(f"/compilations/{slug}/neighbors").json()
-            if result["overlap_available"]:
-                assert all(n["overlap_km"] is not None for n in result["neighbors"])
+    def test_only_overlapping_maps_have_coverage(self, api_client: TestClient):
+        """A nearby map does not overlap, so it has no coverage to report."""
+        result = api_client.get(
+            f"/compilations/{TEST_SOURCE_TABLE.slug}/neighbors"
+        ).json()
+        for n in result["neighbors"]:
+            if n["relation"] == "nearby":
+                assert n["overlap_fraction"] is None
             else:
-                assert all(n["overlap_km"] is None for n in result["neighbors"])
+                assert 0 <= n["overlap_fraction"] <= 1
+
+    def test_multiscale_compilations_are_not_neighbours(self, api_client: TestClient):
+        """Carto's own nodes cover everything by construction; membership in
+        carto is reported as `in_carto` instead."""
+        graph = api_client.get("/compilations").json()
+        multiscale = {
+            c["source_id"] for c in graph if c.get("assembly_mode") == "multiscale"
+        }
+        result = api_client.get(
+            f"/compilations/{TEST_SOURCE_TABLE.slug}/neighbors?include_coarser=true"
+        ).json()
+        assert "in_carto" in result["membership"]
+        assert multiscale.isdisjoint({n["source_id"] for n in result["neighbors"]})
