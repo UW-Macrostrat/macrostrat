@@ -201,10 +201,10 @@ def test_links_combine_levels(db):
         dict(id=first),
     ).all()
     assert [(r.ref_type, r.label) for r in rows] == [
-        ("original", "Original"),
         ("data-from", "Data from"),
+        ("original", "Published as"),
     ]
-    assert rows[1].citation == (
+    assert rows[0].citation == (
         "Richter, D.H., 1976, Geologic map of the Nabesna quadrangle"
     )
     assert [
