@@ -16,6 +16,7 @@ from . import (  # noqa: F401
     compilation_multiscale,
     layer_bounds,
     layers_by_compilation,
+    map_area_from_rgeom,
     map_priority_columns,
     map_topo_adopt,
     map_topo_pieces,
@@ -27,6 +28,7 @@ from . import (  # noqa: F401
 __all__ = [
     "carto_v1_compilation",
     "layers_by_compilation",
+    "map_area_from_rgeom",
     "source_id_rename",
     "relation_trigger_repair",
     "topology_registration",

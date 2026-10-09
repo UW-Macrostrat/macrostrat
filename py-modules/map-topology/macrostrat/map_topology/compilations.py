@@ -831,6 +831,9 @@ WHERE EXISTS (SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = ml.i
 #: Per (layer, ranked map): the resolved faces the map holds there, as of the
 #: last `topo update`. Every layer a map in scope is ranked in is returned, so
 #: its standing outside the scope is known; `in_scope` marks the rows asked about.
+#: `share` is the faces' fraction of the map's bounds, filled only on request:
+#: it reads every face geometry. Planar areas, whose ratio over one map's extent
+#: is near enough the geodesic one to find slivers.
 _FACE_CONTRIBUTION = """
 WITH keyed AS MATERIALIZED (
   SELECT DISTINCT mp.map_id
@@ -840,7 +843,7 @@ WITH keyed AS MATERIALIZED (
      OR mp.map_id = ANY(CAST(:maps AS integer[]))
 ),
 faces AS (
-  SELECT mf.map_layer, mf.map_id, count(*) AS n_faces
+  SELECT mf.map_layer, mf.map_id, count(*) AS n_faces, {face_area} AS face_area
   FROM map_bounds_topology.map_face mf
   JOIN keyed k ON k.map_id = mf.map_id
   GROUP BY mf.map_layer, mf.map_id
@@ -851,6 +854,8 @@ SELECT
   mp.map_id,
   s.slug,
   coalesce(f.n_faces, 0) AS n_faces,
+  f.face_area / nullif({map_area}, 0) AS share,
+  a.area_km,
   (
     CAST(:everything AS boolean)
     OR mp.map_layer = ANY(CAST(:layers AS integer[]))
@@ -862,15 +867,25 @@ JOIN map_bounds.map_layer ml ON ml.id = mp.map_layer
 LEFT JOIN maps.sources ls ON ls.source_id = ml.source_id
 JOIN maps.sources s ON s.source_id = mp.map_id
 LEFT JOIN faces f ON f.map_layer = mp.map_layer AND f.map_id = mp.map_id
+LEFT JOIN map_bounds.map_area a ON a.source_id = mp.map_id
 WHERE map_bounds.has_content(mp.map_id)
 ORDER BY layer, s.slug
 """
 
 
-def face_contribution(db, layers: list[int], maps: list[int], everything: bool):
+def face_contribution(
+    db, layers: list[int], maps: list[int], everything: bool, *, share: bool = False
+):
     """Resolved faces each ranked map holds, per layer it is ranked in."""
+    if share:
+        query = _FACE_CONTRIBUTION.format(
+            face_area="sum(ST_Area(mf.geometry))", map_area="ST_Area(a.geometry)"
+        )
+    else:
+        no_area = "NULL::double precision"
+        query = _FACE_CONTRIBUTION.format(face_area=no_area, map_area=no_area)
     return db.run_query(
-        _FACE_CONTRIBUTION, dict(layers=layers, maps=maps, everything=everything)
+        query, dict(layers=layers, maps=maps, everything=everything)
     ).all()
 
 
@@ -882,12 +897,23 @@ def unused(
             help="Compilations or maps: slugs, source ids, or slug globs; all layers if omitted"
         ),
     ] = None,
+    slivers: Annotated[
+        Optional[float],
+        Option(
+            "--slivers",
+            min=0,
+            max=1,
+            help="Instead list maps whose faces show less than this share of"
+            " their bounds (e.g. 0.05). Reads every face geometry in scope.",
+        ),
+    ] = None,
 ):
     """List members that hold no face in a compilation they are ranked in.
 
     Reads the resolved faces, so run `topo update` first. A compilation selects
     the maps ranked in its layer; a map selects every layer it is ranked in. A
-    map that holds no face in any layer can leave the noding.
+    map that holds no face in any layer can leave the noding. `--slivers` lists
+    maps that hold faces, but only slivers of their bounds.
     """
     db = get_database()
     layer_keys: dict[int, list[int]] = {}
@@ -909,7 +935,11 @@ def unused(
         layers=[layer for ls in layer_keys.values() for layer in ls],
         maps=map_keys,
         everything=not targets,
+        share=slivers is not None,
     )
+    if slivers is not None:
+        _print_slivers(rows, slivers)
+        return
 
     held_in: dict[int, list[str]] = {}
     for r in rows:
@@ -948,6 +978,32 @@ def unused(
             f"[yellow]{len(removable)}[/] maps hold no face in any layer and"
             f" can leave the noding: {', '.join(removable)}"
         )
+
+
+def _print_slivers(rows, below: float):
+    slivers = [r for r in rows if r.in_scope and r.n_faces > 0 and r.share is not None]
+    slivers = sorted((r for r in slivers if r.share < below), key=lambda r: r.share)
+    if not slivers:
+        print(f"[green]No map in scope shows less than {below:.1%} of its bounds.[/]")
+        return
+    table = Table(title=f"Showing less than {below:.1%} of their bounds")
+    table.add_column("Layer")
+    table.add_column("Map")
+    table.add_column("Faces", justify="right")
+    table.add_column("Shown km²", justify="right")
+    table.add_column("Share", justify="right")
+    for r in slivers:
+        shown = "?"
+        if r.area_km is not None:
+            shown = f"{r.share * r.area_km:,.1f}"
+        table.add_row(
+            r.layer,
+            f"{r.slug} [dim]#{r.map_id}[/]",
+            str(r.n_faces),
+            shown,
+            f"{r.share:.2%}",
+        )
+    print(table)
 
 
 @cli.command("prune")
