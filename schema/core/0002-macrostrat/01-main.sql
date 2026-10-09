@@ -1745,7 +1745,7 @@ ALTER SEQUENCE macrostrat.strat_names_id_seq OWNED BY macrostrat.strat_names.id;
 ALTER TABLE macrostrat.strat_names
   ADD CONSTRAINT strat_names_strat_names_meta_fk
   FOREIGN KEY (concept_id) REFERENCES macrostrat.strat_names_meta(concept_id)
-  ON DELETE CASCADE NOT VALID;
+  ON DELETE CASCADE;
 
 
 CREATE SEQUENCE macrostrat.strat_names_new_id_seq
