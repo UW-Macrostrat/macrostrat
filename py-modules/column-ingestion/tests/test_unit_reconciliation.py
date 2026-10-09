@@ -128,6 +128,7 @@ class FakeUnit:
         self.b_pos = 10.0
         self.t_pos = 0.0
         self.orig_id = None
+        self.outcrop = "surface"
 
 
 def test_units_without_intervals_get_the_unmodeled_sentinel():

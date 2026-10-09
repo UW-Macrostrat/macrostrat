@@ -14,6 +14,7 @@ import polars as pl
 from macrostrat.utils import get_logger
 
 from .. import notices
+from ..metadata import parse_axis_type, parse_fill_values
 from ..refs import parse_ref_ids
 from ..units.parse import (
     ROW_COLUMN,
@@ -39,6 +40,8 @@ class Column:
     col_type: str = "column"
     #: Which way positions run: `height`, `depth` or `age` (the workbook's `axis_type`).
     axis_type: str | None = None
+    #: Whether blank descriptive cells are filled along the axis (`fill_values`).
+    fill_values: bool = False
     #: A point location, used when no polygon is supplied. `column_utils.resolve_geometry`
     #: treats a polygon as authoritative when both are present.
     lat: float | None = None
@@ -146,7 +149,12 @@ def columns_from_df(df, meta) -> list[Column]:
                 col_type=_coalesce(row.get("col_type"), getattr(meta, "col_type", None))
                 or "column",
                 axis_type=_coalesce(
-                    row.get("axis_type"), getattr(meta, "axis_type", None)
+                    parse_axis_type(row.get("axis_type")),
+                    getattr(meta, "axis_type", None),
+                ),
+                fill_values=_coalesce(
+                    parse_fill_values(row.get("fill_values")),
+                    getattr(meta, "fill_values", False),
                 ),
                 lat=_as_float(row.get("lat"), "lat"),
                 lng=_as_float(row.get("lng"), "lng"),
@@ -164,43 +172,66 @@ def get_sections(db, data_file, **kwargs) -> dict[str, list[Section]]:
     return get_sections_from_df(db, df, **kwargs)
 
 
+#: Header synonyms on the units sheet, as the format specification's *Field aliases* lists them.
+UNIT_FIELD_ALIASES = {
+    "pos": "position",
+    "height": "position",
+    "depth": "position",
+    "b_position": "b_pos",
+    "bottom_position": "b_pos",
+    "base_position": "b_pos",
+    "position_bottom": "b_pos",
+    "bottom": "b_pos",
+    "base": "b_pos",
+    "bottom_height": "b_pos",
+    "base_height": "b_pos",
+    "bottom_depth": "b_pos",
+    "base_depth": "b_pos",
+    "t_position": "t_pos",
+    "top_position": "t_pos",
+    "position_top": "t_pos",
+    "top": "t_pos",
+    "top_height": "t_pos",
+    "top_depth": "t_pos",
+    "column": "col_id",
+    "column_id": "col_id",
+    "unit_name": "name",
+    # The workbook calls it `unit_description`; `unit_notes` composes it with
+    # `comments` rather than storing either verbatim.
+    "unit_description": "description",
+}
+
+#: Position headers named for an axis, and the axis they imply.
+_AXIS_NAMED = {"height": PositionAxisType.HEIGHT, "depth": PositionAxisType.DEPTH}
+
+
 def get_sections_from_df(
     db,
     df,
     *,
     position: PositionAxisType = PositionAxisType.HEIGHT,
     fill_values=False,
+    column_settings: dict[str, tuple[PositionAxisType, bool]] | None = None,
     vocab=None,
 ) -> dict[str, list[Section]]:
     """Group the units sheet into columns and sections, and parse each section's units.
+
+    `column_settings` gives a column's own axis and filling, keyed by workbook column
+    id; `position` and `fill_values` apply to any column it does not name.
 
     A `section_id` the author bothered to write is the section's identifier, exactly as a
     source dataset's would be: it becomes `Section.orig_id`, and renumbering the sheet
     changes which sections exist. A column with no labels is one section.
     """
-    # Rename some columns
-    df, warnings = rename_aliases(
-        df,
-        {
-            "pos": "position",
-            "position": "b_pos",
-            "bottom_position": "b_pos",
-            "height": "b_pos",
-            "column": "col_id",
-            "column_id": "col_id",
-            "unit_name": "name",
-            # The workbook calls it `unit_description`; `unit_notes` composes it with
-            # `comments` rather than storing either verbatim.
-            "unit_description": "description",
-        },
-    )
+    default_position, default_fill = position, fill_values
+    axis_named = [name for name in _AXIS_NAMED if name in df.columns]
+    df, warnings = rename_aliases(df, UNIT_FIELD_ALIASES)
 
     for warning in warnings:
         notices.warning("ambiguous-columns", warning, sheet="units")
 
-    # Ensure that either b_pos or t_pos is present
-    if "b_pos" not in df.columns and "t_pos" not in df.columns:
-        raise ValueError("Either b_pos or t_pos must be present in the data frame.")
+    if not {"position", "b_pos", "t_pos"} & set(df.columns):
+        raise ValueError("The units sheet needs a `position`, `b_pos` or `t_pos`.")
 
     # Remember each row's place in the sheet (header is row 1) before sorting
     if ROW_COLUMN not in df.columns:
@@ -214,14 +245,19 @@ def get_sections_from_df(
     # Create the columns that don't exist
     for col in ["b_pos", "t_pos"]:
         if col not in df.columns:
-            newcol = pl.lit(None).alias(col)
+            newcol = pl.lit(None, pl.Float64).alias(col)
         else:
             newcol = pl.col(col).cast(pl.Float64, strict=False)
         df = df.with_columns(newcol)
 
+    settings = column_settings or {}
     res = {}
     for (col_id,), column_rows in df.group_by(["col_id"], maintain_order=True):
         with notices.notice_context(sheet="units", col_id=str(col_id)):
+            position, fill_values = settings.get(
+                str(col_id), (default_position, default_fill)
+            )
+            _check_column_axis(position, fill_values, axis_named)
             if (
                 "section_id" not in column_rows.columns
                 or column_rows["section_id"].is_null().all()
@@ -251,3 +287,21 @@ def get_sections_from_df(
                 sections.append(Section(orig_id=section_id, units=units))
             res[str(col_id)] = sections
     return res
+
+
+def _check_column_axis(position, fill_values, axis_named: list[str]) -> None:
+    """Warn where a column's headers or settings contradict its axis."""
+    for name in axis_named:
+        if position == PositionAxisType.ORDINAL or _AXIS_NAMED[name] == position:
+            continue
+        notices.warning(
+            "axis-name-mismatch",
+            f"A `{name}` column on a {position.value} axis: check `axis_type`",
+            column=name,
+        )
+    if fill_values and position == PositionAxisType.ORDINAL:
+        notices.warning(
+            "no-filling-on-age-axis",
+            "fill_values is ignored on an age axis",
+            column="fill_values",
+        )

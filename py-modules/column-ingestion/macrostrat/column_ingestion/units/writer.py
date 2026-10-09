@@ -165,7 +165,7 @@ def _desired_unit_row(unit: Unit) -> dict:
         "orig_id": unit.orig_id,
         "max_thick": thickness,
         "min_thick": thickness,
-        "outcrop": "surface",
+        "outcrop": unit.outcrop,
         "color": "",
     }
     # INSERT-only. Ingesting the physical column is deliberately decoupled from age

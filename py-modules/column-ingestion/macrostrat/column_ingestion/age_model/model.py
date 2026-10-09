@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as N
-from rich import print
 
 from macrostrat.utils import get_logger
 
+from .. import notices
 from ..boundary_status import BoundaryStatus
 from ..intervals import (
     Interval,
@@ -120,11 +120,16 @@ class AgeModelSurface:
         if len(ages) == 0:
             return None
         model_ages = [a.model_age() for a in ages]
-        # Check that all ages are the same
-        if len(set(model_ages)) > 1:
-            print(f"[yellow bold]Warning: model ages are not all the same: {ages}")
         # Rank the ages by which is the most specific
         ages.sort(key=lambda x: x.interval.age_span)
+        if len(set(model_ages)) > 1:
+            given = ", ".join(f"{a.interval.name} ({a.proportion:g})" for a in ages)
+            notices.warning(
+                "surface-age-conflict",
+                f"The units meeting at position {self.position:g} disagree on its age "
+                f"({given}); using the narrower interval, {ages[0].interval.name}",
+                column="b_int",
+            )
         return ages[0]
 
     @property

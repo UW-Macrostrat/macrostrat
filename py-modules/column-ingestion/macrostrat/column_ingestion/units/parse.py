@@ -54,6 +54,9 @@ class Unit:
 
     #: The spreadsheet row this unit came from, for notices. `None` off-workbook.
     row: int | None = None
+    #: `macrostrat.units.outcrop`: `covered` for a unit present but unexposed, otherwise
+    #: `subsurface` on a depth axis and `surface` elsewhere.
+    outcrop: str = "surface"
 
     # Relative age positioning
     b_age: RelativeAge | None = None
@@ -88,9 +91,46 @@ class PositionAxisType(str, Enum):
     DEPTH = "depth"
     ORDINAL = "ordinal"
 
+    @classmethod
+    def from_axis_type(cls, axis_type: str | None) -> "PositionAxisType":
+        """The workbook's `axis_type`: `age` positions are an ordination of surfaces."""
+        if axis_type == "age":
+            return cls.ORDINAL
+        if axis_type == "depth":
+            return cls.DEPTH
+        return cls.HEIGHT
+
 
 #: The original spreadsheet row of each unit row, carried through sorting and grouping.
 ROW_COLUMN = "_row"
+
+#: Descriptive fields that `fill_values` carries along the axis (`name` is `unit_name`).
+FILLED_FIELDS = (
+    "lithology",
+    "minor_lith",
+    "environment",
+    "grainsize",
+    "color",
+    "strat_name",
+    "name",
+    "facies",
+)
+
+#: In a filled field, the unit has no value, and a filled run ends.
+NO_VALUE = "none"
+
+#: The default proportion of a blank `b_prop` / `t_prop`: an interval's oldest or youngest end.
+DEFAULT_PROPORTION = {"b": 0, "t": 1}
+
+
+def axis_bounds(position: PositionAxisType) -> tuple[str, str]:
+    """`(leading, trailing)`: the bound each row's unit begins and ends at along the axis.
+
+    A row is a surface and the unit after it, so on a depth axis it is the unit's top.
+    """
+    if position == PositionAxisType.DEPTH:
+        return "t", "b"
+    return "b", "t"
 
 
 def prepare_section_units(
@@ -98,7 +138,7 @@ def prepare_section_units(
     df,
     *,
     position: PositionAxisType = PositionAxisType.HEIGHT,
-    fill_values: bool = True,
+    fill_values: bool = False,
     vocab=None,
 ) -> list[Unit]:
     """The rows of one section as `Unit`s.
@@ -110,84 +150,180 @@ def prepare_section_units(
         from ..vocabulary import Vocabulary
 
         vocab = Vocabulary(db)
-    # Sort by b_pos (descending if height)
-    # TODO: figure out how to switch conventions for depth
-    df = df.sort("b_pos", descending=True)
 
-    # Fill in t_pos with the next b_pos value, unless it already exists
-    # Do the same for intervals and proportions
-    for suffix in ["pos", "prop", "int"]:
-        b_col = "b_" + suffix
-        t_col = "t_" + suffix
-        # If the t_pos column does not exist, create it (empty for now)
+    lead, trail = axis_bounds(position)
+    df = _with_position(df, lead + "_pos")
+    for col in ("b_pos", "t_pos", "b_int", "t_int", "b_prop", "t_prop"):
+        if col not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(col))
+    # Ascending positions run along the axis on every axis type
+    df = df.sort(pl.coalesce(lead + "_pos", trail + "_pos"), nulls_last=True)
 
-        for col in [b_col, t_col]:
-            if col in df.columns:
-                continue
-            df = df.with_columns(pl.lit(None, float).alias(col))
+    rows = df.to_dicts()
+    _infer_bounds(rows, position)
+    units, bounding = [], []
+    for row in rows:
+        if row["b_pos"] is None or row["t_pos"] is None:
+            bounding.append(row)
+        else:
+            units.append(row)
+    _carry_ages(units, bounding, lead, trail)
+    for row in bounding:
+        _report_unplaced(row)
 
-        # Create a column with default values for the top position of each unit
-        _t_col = df[b_col].shift(1)
+    _clean_filled_fields(
+        units, fill=fill_values and position != PositionAxisType.ORDINAL
+    )
 
-        if position == PositionAxisType.ORDINAL and t_col == "t_pos":
-            # If ordinal, set the top position to the bottom position + 1 where it is unset
-            _t_col = pl.when(_t_col.is_null()).then(df[b_col] + 1).otherwise(_t_col)
+    res = []
+    for row in units:
+        with notices.notice_context(row=row.get(ROW_COLUMN), unit=row.get("name")):
+            res.append(_unit_from_row(db, row, vocab, position))
+    return res
 
-        df = df.with_columns(
-            pl.when(pl.col(t_col).is_null())
-            .then(_t_col)
-            .otherwise(pl.col(t_col))
-            .alias(t_col)
+
+def _with_position(df, lead_pos: str):
+    """Fold `position` into the bound it names on this axis."""
+    if "position" not in df.columns:
+        return df
+    pos = pl.col("position").cast(pl.Float64, strict=False)
+    if lead_pos not in df.columns:
+        return df.with_columns(pos.alias(lead_pos)).drop("position")
+    explicit = pl.col(lead_pos).cast(pl.Float64, strict=False)
+    clashes = df.filter(explicit.is_not_null() & pos.is_not_null() & (explicit != pos))
+    for row in clashes.iter_rows(named=True):
+        notices.warning(
+            "position-conflict",
+            f"`position` {row['position']} and `{lead_pos}` {row[lead_pos]} disagree; "
+            f"using `{lead_pos}`",
+            row=row.get(ROW_COLUMN),
+            column=lead_pos,
         )
+    return df.with_columns(pl.coalesce(explicit, pos).alias(lead_pos)).drop("position")
 
-    # Rows without both positions cannot be placed; say which, then drop them
-    unplaced = df.filter(df["t_pos"].is_null() | df["b_pos"].is_null())
-    for row in unplaced.iter_rows(named=True):
+
+def _infer_bounds(rows: list[dict], position: PositionAxisType) -> None:
+    """Fill each row's missing bound from the next or previous surface along the axis."""
+    lead, trail = (b + "_pos" for b in axis_bounds(position))
+    if position == PositionAxisType.ORDINAL:
+        # Slots: a unit at n rests on surface n and is capped by n + 1
+        for row in rows:
+            if row[trail] is None and row[lead] is not None:
+                row[trail] = row[lead] + 1
+            elif row[lead] is None and row[trail] is not None:
+                row[lead] = row[trail] - 1
+        return
+    starts = sorted({r[lead] for r in rows if r[lead] is not None})
+    ends = sorted({r[trail] for r in rows if r[trail] is not None})
+    following = dict(zip(starts, starts[1:]))
+    preceding = dict(zip(ends[1:], ends))
+    for row in rows:
+        start, end = row[lead], row[trail]
+        if end is None and start is not None:
+            row[trail] = following.get(start)
+        elif start is None and end is not None:
+            row[lead] = preceding.get(end)
+
+
+def _age(row: dict, bound: str) -> tuple | None:
+    """`(interval, proportion)` for one bound, with a blank proportion made explicit."""
+    interval = row.get(bound + "_int")
+    if _blank(interval):
+        return None
+    proportion = row.get(bound + "_prop")
+    if _blank(proportion):
+        proportion = DEFAULT_PROPORTION[bound]
+    return interval, proportion
+
+
+def _set_age(row: dict, bound: str, age: tuple) -> None:
+    row[bound + "_int"], row[bound + "_prop"] = age
+
+
+def _carry_ages(units: list[dict], bounding: list[dict], lead: str, trail: str) -> None:
+    """Give each unit the age of a surface it shares, where it has none of its own.
+
+    A unit's trailing surface is the next unit's leading one, so its age comes from
+    there. A bounding row is only a surface, so either of its ages dates it.
+    """
+    starts: dict = {}
+    for row in units:
+        age = _age(row, lead)
+        if age is not None:
+            starts.setdefault(row[lead + "_pos"], age)
+    marks: dict = {}
+    for row in bounding:
+        surface = _coalesce(row[lead + "_pos"], row[trail + "_pos"])
+        age = _age(row, lead) or _age(row, trail)
+        if surface is not None and age is not None:
+            marks.setdefault(surface, age)
+    for row in units:
+        if _age(row, trail) is None:
+            age = starts.get(row[trail + "_pos"]) or marks.get(row[trail + "_pos"])
+            if age is not None:
+                _set_age(row, trail, age)
+        if _age(row, lead) is None and row[lead + "_pos"] in marks:
+            _set_age(row, lead, marks[row[lead + "_pos"]])
+
+
+def _coalesce(*values):
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _report_unplaced(row: dict) -> None:
+    """A bounding row is expected; a row with nothing to place it by is not."""
+    name = row.get("name") or ""
+    if row["b_pos"] is None and row["t_pos"] is None:
         notices.warning(
             "unit-missing-position",
-            f"Unit {row.get('name') or ''!r} has no bottom or top position and was "
-            "left out",
+            f"Unit {name!r} has no position and was left out",
             row=row.get(ROW_COLUMN),
             unit=row.get("name"),
             column="b_pos",
         )
-    df = df.filter((df["t_pos"].is_not_null()) & (df["b_pos"].is_not_null()))
-
-    fill_specs = [
-        "lithology",
-        "minor_lith",
-        "color",
-        "grainsize",
-        "strat_name",
-        "facies",
-        "name",
-    ]
-    for spec in fill_specs:
-        if not fill_values:
-            continue
-        if spec not in df.columns:
-            continue
-        new_col = df[spec].fill_null(strategy="forward").alias(spec)
-        # Cast the new column to a string
-        new_col = new_col.cast(pl.Utf8)
-        df = df.with_columns(new_col)
-        # Fill 'none' values in the new column with nulls
-        df = df.with_columns(
-            pl.when(pl.col(spec) == "none")
-            .then(pl.lit(None))
-            .otherwise(pl.col(spec))
-            .alias(spec)
+        return
+    described = [f for f in (*FILLED_FIELDS, "description") if not _blank(row.get(f))]
+    if described:
+        notices.warning(
+            "closing-row-values-ignored",
+            "This row only closes the unit next to it; its values are ignored: "
+            + ", ".join(f"`{f}`" for f in described),
+            row=row.get(ROW_COLUMN),
+            unit=row.get("name"),
+            column=described[0],
         )
 
-    res = []
-    for row in df.iter_rows(named=True):
-        with notices.notice_context(row=row.get(ROW_COLUMN), unit=row.get("name")):
-            res.append(_unit_from_row(db, row, vocab))
 
-    return res
+def _blank(value) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
 
 
-def _unit_from_row(db, row: dict, vocab) -> Unit:
+def _is_no_value(value) -> bool:
+    return isinstance(value, str) and value.strip().lower() == NO_VALUE
+
+
+def _clean_filled_fields(rows: list[dict], *, fill: bool) -> None:
+    """Blank cells take the previous row's value along the axis; `none` ends a run."""
+    last: dict = {}
+    for row in rows:
+        for field_name in FILLED_FIELDS:
+            if field_name not in row:
+                continue
+            value = row[field_name]
+            if _is_no_value(value):
+                value = None
+                last[field_name] = None
+            elif _blank(value):
+                value = last.get(field_name) if fill else None
+            else:
+                last[field_name] = value
+            row[field_name] = value
+
+
+def _unit_from_row(db, row: dict, vocab, position=PositionAxisType.HEIGHT) -> Unit:
     lith = row.get("lithology")
     liths = vocab.liths(lith, LithAbundance.DOMINANT)
     # Process minor lithologies if they are present
@@ -205,6 +341,7 @@ def _unit_from_row(db, row: dict, vocab) -> Unit:
         lithology=liths,
         color=row.get("color"),
         row=row.get(ROW_COLUMN),
+        outcrop=_outcrop(row.get("covered"), position),
     )
 
     # Only relative age positioning is supported for now
@@ -222,6 +359,28 @@ def _unit_from_row(db, row: dict, vocab) -> Unit:
             interval=t_int, proportion=_proportion(row.get("t_prop"), 1, "t_prop")
         )
     return unit
+
+
+def _outcrop(covered, position: PositionAxisType) -> str:
+    if _truthy(covered):
+        if position == PositionAxisType.DEPTH:
+            notices.warning(
+                "covered-on-depth-axis",
+                "A covered unit on a depth axis: cores have no outcrop to be covered",
+                column="covered",
+            )
+        return "covered"
+    if position == PositionAxisType.DEPTH:
+        return "subsurface"
+    return "surface"
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in ("y", "yes", "true", "t", "1", "x")
 
 
 def _proportion(value, default: float, column: str) -> float:

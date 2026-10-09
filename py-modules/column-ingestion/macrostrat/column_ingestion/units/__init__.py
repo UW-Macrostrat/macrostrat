@@ -1,8 +1,8 @@
 """Units: reading them out of a workbook, and writing them into the database.
 
 - `parse` — the rows of one section to `Unit` objects, including position-axis handling,
-  value fill-down, and lithology/interval resolution. Grouping the sheet into columns
-  and sections is `columns.parse`.
+  value filling along the axis, and lithology/interval resolution. Grouping the sheet
+  into columns and sections is `columns.parse`.
 - `writer` — `Unit` objects into `macrostrat.units` and its dependent tables,
   reconciling against what is already there rather than replacing it.
 """
