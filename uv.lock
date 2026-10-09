@@ -161,6 +161,7 @@ dependencies = [
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "morecantile" },
     { name = "numpy" },
@@ -190,6 +191,7 @@ requires-dist = [
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
+    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
     { name = "numpy", specifier = ">=2.4.4,<3" },
@@ -1424,6 +1426,7 @@ version = "0.1.0"
 source = { editable = "py-modules/map-topology" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-task-runner" },
     { name = "pydantic" },
 ]
 
@@ -1440,6 +1443,7 @@ requires-dist = [
     { name = "macrostrat-core", marker = "extra == 'topology'", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "py-modules/map-utils" },
+    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
@@ -1452,6 +1456,7 @@ version = "0.0.1"
 source = { editable = "py-modules/map-utils" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "psycopg", extra = ["binary"] },
 ]
@@ -1459,6 +1464,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2,<8" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.0,<4" },
 ]
@@ -1633,6 +1639,7 @@ dependencies = [
     { name = "macrostrat-raster-index", extra = ["footprints", "s3"] },
     { name = "macrostrat-raster-layers" },
     { name = "macrostrat-schema-management" },
+    { name = "macrostrat-task-runner" },
     { name = "macrostrat-tileserver-utils" },
     { name = "macrostrat-worker", extra = ["maps"] },
     { name = "psycopg", extra = ["binary"] },
@@ -1660,6 +1667,7 @@ requires-dist = [
     { name = "macrostrat-raster-index", extras = ["s3", "footprints"], specifier = ">=0.3.1,<1" },
     { name = "macrostrat-raster-layers", specifier = ">=0.3.2,<1" },
     { name = "macrostrat-schema-management", editable = "py-modules/schema-management" },
+    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "macrostrat-tileserver-utils", editable = "py-modules/tileserver-utils" },
     { name = "macrostrat-worker", extras = ["maps"], editable = "services/worker" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.3" },
@@ -1674,6 +1682,26 @@ dev = [
     { name = "ruff", specifier = ">=0.9.0,<1" },
 ]
 gis = [{ name = "macrostrat-cli", extras = ["gis"], editable = "py-modules/cli" }]
+
+[[package]]
+name = "macrostrat-task-runner"
+version = "0.1.0"
+source = { editable = "py-modules/task-runner" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "pydantic" },
+    { name = "redis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-database", specifier = ">=4.2.0" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "redis", specifier = ">=4.5" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "macrostrat-tileserver-utils"
@@ -1777,10 +1805,13 @@ maps = [
 requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.3,<6" },
     { name = "macrostrat-column-ingestion", marker = "extra == 'columns'", editable = "py-modules/column-ingestion" },
+    { name = "macrostrat-map-integration", marker = "extra == 'tasks'", editable = "py-modules/map-integration" },
+    { name = "macrostrat-map-topology", extras = ["topology"], marker = "extra == 'tasks'", editable = "py-modules/map-topology" },
     { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
+    { name = "macrostrat-task-runner", marker = "extra == 'tasks'", editable = "py-modules/task-runner" },
     { name = "sqlalchemy", specifier = "<2.1" },
 ]
-provides-extras = ["maps", "columns"]
+provides-extras = ["maps", "columns", "tasks"]
 
 [[package]]
 name = "mapboard-topology-manager"
@@ -2073,7 +2104,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "ptyprocess" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [

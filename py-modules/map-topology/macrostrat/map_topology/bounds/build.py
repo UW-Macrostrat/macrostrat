@@ -459,6 +459,65 @@ def build(
     return result
 
 
+def sources_with_bounds(db: Database):
+    """Every source with a `map_area` row -- maps and compilations alike."""
+    return db.run_query(
+        """
+        SELECT a.source_id AS map_id, s.slug, s.scale, a.area_km
+        FROM map_bounds.map_area a
+        JOIN maps.sources s ON s.source_id = a.source_id
+        ORDER BY a.area_km DESC NULLS LAST
+        """
+    ).all()
+
+
+def stale_sources(db: Database, *, rebuild: bool = False):
+    """The sources `build --all` builds: those whose operations changed since
+    their last build, or every one with `rebuild`."""
+    everything = sources_with_bounds(db)
+    if rebuild:
+        return everything
+    stale = needs_build(db)
+    return [m for m in everything if m.map_id in stale]
+
+
+def build_all(
+    db: Database,
+    *,
+    rebuild: bool = False,
+    init: bool = False,
+    dry_run: bool = False,
+    strict: bool = False,
+):
+    """Build each stale source in turn, yielding its result."""
+    for m in stale_sources(db, rebuild=rebuild):
+        yield build(db, m.map_id, init=init, dry_run=dry_run, strict=strict)
+
+
+def describe(res: BuildResult, *, dry_run: bool = False) -> str:
+    """One line of rich markup saying what `build` did for a map."""
+    label = f"[bold]{res.slug or res.source_id}[/]"
+    if res.error:
+        where = (
+            f" at position {res.failed_op.position} ({res.failed_op.operation})"
+            if res.failed_op
+            else ""
+        )
+        return f"  [red]FAILED[/] {label}{where}: {res.error}"
+    if res.skipped:
+        return f"  [dim]skipped[/] {label} -- {res.skipped}"
+    if res.unchanged:
+        if res.diff_km:
+            return (
+                f"  [dim]unchanged[/] {label} -- moved {res.diff_km:,.4g} km²,"
+                " within tolerance; --strict to write"
+            )
+        return f"  [dim]unchanged[/] {label}"
+    verb = "would be" if dry_run else "built"
+    area = f"{res.area_km:,.1f} km²" if res.area_km is not None else "?"
+    return f"  [green]{verb}[/] {label} -- {area} from {len(res.ops)} ops"
+
+
 def _locate_failure(db: Database, ops: list[OpRow], _params) -> OpRow | None:
     """Find the first operation that fails, by replaying prefixes.
 
