@@ -68,7 +68,7 @@ class LayersByCompilationMigration(Migration):
     owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "One layer per solved compilation; multiscale draws its members'"
-    readiness_state = "beta"
+    readiness_state = "ga"
     depends_on = ["compilation-multiscale"]
     load_sql_files = False
     destructive = False

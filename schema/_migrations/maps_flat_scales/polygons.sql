@@ -91,6 +91,14 @@ ALTER TABLE maps.polygons ADD CONSTRAINT maps_polygons_pkey PRIMARY KEY (map_id)
    moves into the schema under the name the table already used. */
 DROP SEQUENCE IF EXISTS maps.map_ids;
 ALTER SEQUENCE public.map_ids SET SCHEMA maps;
+-- `OWNED BY` needs one owner for both, which the old sequence need not share
+DO $$
+BEGIN
+  EXECUTE 'ALTER SEQUENCE maps.map_ids OWNER TO ' || quote_ident((
+    SELECT tableowner FROM pg_tables WHERE schemaname = 'maps' AND tablename = 'polygons'
+  ));
+END
+$$;
 ALTER SEQUENCE maps.map_ids OWNED BY maps.polygons.map_id;
 ALTER TABLE maps.polygons ALTER COLUMN map_id SET DEFAULT nextval('maps.map_ids');
 SELECT setval('maps.map_ids', greatest(last_value, (SELECT max(map_id) FROM maps.polygons)))

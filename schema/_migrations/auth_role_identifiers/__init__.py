@@ -29,5 +29,4 @@ class AuthRoleIdentifiersMigration(Migration):
         has_columns("macrostrat_auth", "user", "role"),
     ]
 
-    # Rehearsed in development; not yet against a production-shaped clone.
-    readiness_state = "beta"
+    readiness_state = "ga"

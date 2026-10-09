@@ -108,6 +108,7 @@ def _saved_locations_owned(db: Database) -> bool:
 class WebWriteLockdownMigration(Migration):
     name = "web-write-lockdown"
     subsystem = "macrostrat_auth"
+    readiness_state = "ga"
     description = """
     Revoke every INSERT/UPDATE/DELETE that web_anon or web_user held (people
     directory, knowledge-graph feedback, ingestion queue), restrict the
@@ -119,8 +120,6 @@ class WebWriteLockdownMigration(Migration):
     # development layer (nothing to revoke there) as in one with it.
     preconditions = []
     postconditions = [_nothing_writable_by_lower_tiers, _saved_locations_owned]
-
-    readiness_state = "beta"
 
     def apply(self, db: Database):
         for relation, privileges in _WRITE_GRANTS:
