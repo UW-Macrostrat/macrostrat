@@ -24,6 +24,11 @@ async function runServer() {
   app.use(bodyParser.json({ type: "application/vnd.api+json" }));
 
   const v2 = await buildAPI();
+  const { healthRoute, versionRoute } = await import("./v2/status");
+
+  // Before the v2 router, whose catch-all would answer these paths
+  app.get(["/version", "/v2/version"], versionRoute);
+  app.get(["/health", "/v2/health"], healthRoute);
 
   // Load and prefix all routes with /api and appropriate version
   app.use("/v2", v2);

@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [Unreleased]
+
+- `/version` reports the running build; `/health` answers 503 when the database does not
+
 ## [2.4.0-beta.1] - 2026-10-09
 
 - `/mobile/map_query_v2` returns `refs` on each `mapData` item: the polygon's references from its map (a mosaic's member for SGMC), legend entry and own links, as `{ref_type, label, ref_id, citation, doi, url}`. Left out where the database lacks `map_bounds.polygon_refs_for`; `ref` is unchanged
