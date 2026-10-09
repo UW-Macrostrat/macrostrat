@@ -173,6 +173,7 @@ def parse_sheets(db, sheets: dict[str, pl.DataFrame]) -> ParsedDataset:
                 or "Column 1",
                 col_type=meta.col_type,
                 axis_type=meta.axis_type,
+                fill_values=meta.fill_values,
                 rgeom=meta.rgeom,
             )
         ]
@@ -181,18 +182,18 @@ def parse_sheets(db, sheets: dict[str, pl.DataFrame]) -> ParsedDataset:
         notices.error("missing-sheet", "No `units` sheet", sheet="units")
         return ParsedDataset(meta, meta.project, columns, references)
 
-    # Interpret positions as ordinal if the axis type is age
-    position = PositionAxisType.HEIGHT
-    if meta.axis_type == "age":
-        position = PositionAxisType.ORDINAL
-    elif meta.axis_type == "depth":
-        position = PositionAxisType.DEPTH
-
     sections = get_sections_from_df(
         db,
         sheets["units"],
-        position=position,
+        position=PositionAxisType.from_axis_type(meta.axis_type),
         fill_values=meta.fill_values,
+        column_settings={
+            col.local_id: (
+                PositionAxisType.from_axis_type(col.axis_type),
+                col.fill_values,
+            )
+            for col in columns
+        },
         vocab=vocab,
     )
 

@@ -88,6 +88,40 @@ def _text(value) -> str | None:
     return text or None
 
 
+AXIS_TYPES = ("height", "depth", "age")
+
+
+def parse_axis_type(value, **where) -> str | None:
+    """`axis_type` as given, warning about a value the format does not define."""
+    axis_type = _text(value)
+    if axis_type is not None and axis_type not in AXIS_TYPES:
+        notices.warning(
+            "unknown-axis-type",
+            f"axis_type should be `height`, `depth` or `age`, got {axis_type!r}; "
+            "reading it as `height`",
+            column="axis_type",
+            **where,
+        )
+    return axis_type
+
+
+def parse_fill_values(value, **where) -> bool | None:
+    """`fill_values` as a flag; `None` where it is not given."""
+    text = _text(value)
+    if text is None:
+        return None
+    if text.lower() in ("y", "yes", "true"):
+        return True
+    if text.lower() not in ("n", "no", "false"):
+        notices.warning(
+            "unknown-fill-values",
+            f"fill_values should be `y` or `n`, got {text!r}; filling is off",
+            column="fill_values",
+            **where,
+        )
+    return False
+
+
 def metadata_from_dict(metadata: dict) -> Metadata:
     """Metadata from plain key/value pairs — the sheet's, or a JSON submission's."""
     project_name = _text(metadata.get("project_name"))
@@ -123,15 +157,16 @@ def metadata_from_dict(metadata: dict) -> Metadata:
         )
 
     default_axis_type = "age" if col_type == "column" else "height"
-    axis_type = _text(metadata.get("axis_type")) or default_axis_type
-
-    fill_values = _text(metadata.get("fill_values")) or "n"
+    axis_type = parse_axis_type(metadata.get("axis_type"), sheet="metadata")
+    axis_type = axis_type or default_axis_type
 
     return Metadata(
         project=project,
         compiler=_text(metadata.get("compiler_name")),
         col_type=col_type,
         axis_type=axis_type,
-        fill_values=fill_values.lower() in ["y", "yes", "true"],
+        fill_values=bool(
+            parse_fill_values(metadata.get("fill_values"), sheet="metadata")
+        ),
         rgeom=_text(metadata.get("rgeom")),
     )
