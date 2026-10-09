@@ -403,9 +403,14 @@ def session_claims(user: schemas.User, role: str | None = None) -> dict:
     return claims
 
 
+def redirect_uri() -> str:
+    """The OAuth callback URL. `REDIRECT_URI_ENV` is its old name."""
+    return os.environ.get("REDIRECT_URI") or os.environ["REDIRECT_URI_ENV"]
+
+
 def parse_redirect_uri():
-    """Parse REDIRECT_URI_ENV once and reuse consistently."""
-    uri = os.environ["REDIRECT_URI_ENV"]
+    """Parse the redirect URI once and reuse consistently."""
+    uri = redirect_uri()
     parsed = urllib.parse.urlparse(uri)
     hostname = parsed.hostname or ""
     scheme = parsed.scheme or "http"
@@ -623,7 +628,7 @@ async def redirect_authorization(return_url: str = None):
         "scope": "openid profile email",
         "client_id": os.environ["OAUTH_CLIENT_ID"],
         "response_type": "code",
-        "redirect_uri": os.environ["REDIRECT_URI_ENV"],
+        "redirect_uri": redirect_uri(),
     }
 
     if return_url is not None:
@@ -640,7 +645,7 @@ async def redirect_callback(
 ):
     """Exchange the code for a token and redirect to the state URL"""
 
-    uri = os.environ["REDIRECT_URI_ENV"]
+    uri = redirect_uri()
     data = {
         "grant_type": "authorization_code",
         "client_id": os.environ["OAUTH_CLIENT_ID"],

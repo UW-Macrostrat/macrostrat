@@ -16,7 +16,7 @@ from jose import jwt
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("JWT_ENCRYPTION_ALGORITHM", "HS256")
-os.environ.setdefault("REDIRECT_URI_ENV", "http://localhost:8000/security/callback")
+os.environ.setdefault("REDIRECT_URI", "http://localhost:8000/security/callback")
 
 from api.database import get_database  # noqa: E402
 from api.routes import security  # noqa: E402
@@ -122,11 +122,17 @@ def test_audit_actor_matches_the_trigger_fallback():
     ],
 )
 def test_auth_cookie_params(monkeypatch, redirect_uri, domain, samesite, secure):
-    monkeypatch.setenv("REDIRECT_URI_ENV", redirect_uri)
+    monkeypatch.setenv("REDIRECT_URI", redirect_uri)
     params = security.auth_cookie_params()
     assert params.domain == domain
     assert params.samesite == samesite
     assert params.secure is secure
+
+
+def test_redirect_uri_falls_back_to_old_name(monkeypatch):
+    monkeypatch.delenv("REDIRECT_URI", raising=False)
+    monkeypatch.setenv("REDIRECT_URI_ENV", "https://old.example/security/callback")
+    assert security.redirect_uri() == "https://old.example/security/callback"
 
 
 def test_resolve_assumed_role_rejects_unknown_roles():
@@ -258,9 +264,7 @@ def test_admin_can_degrade_and_restore(client):
 def test_role_switch_issues_cookie_with_login_scoping(client, monkeypatch):
     """The re-issued cookie must land where the login callback put the original,
     or the browser ends up holding two and sends whichever it likes."""
-    monkeypatch.setenv(
-        "REDIRECT_URI_ENV", "https://api.macrostrat.local/security/callback"
-    )
+    monkeypatch.setenv("REDIRECT_URI", "https://api.macrostrat.local/security/callback")
     user = fake_user("admin")
     client.users[user.sub] = user
     cookies = cookie_for(security.session_claims(user))

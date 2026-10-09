@@ -74,7 +74,7 @@ services:
       - DB_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - REDIRECT_URI_ENV=https://macrostrat.local/api/v3/security/callback
+      - REDIRECT_URI=https://macrostrat.local/api/v3/security/callback
       - SECRET_KEY=${SECRET_KEY}
       - JWT_ENCRYPTION_ALGORITHM=HS256
       - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL:-https://orcid.org/oauth/token}

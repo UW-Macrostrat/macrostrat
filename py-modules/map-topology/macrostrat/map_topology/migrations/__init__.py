@@ -21,6 +21,7 @@ from . import (  # noqa: F401
     map_topo_pieces,
     relation_trigger_repair,
     source_id_rename,
+    topology_registration,
 )
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "layers_by_compilation",
     "source_id_rename",
     "relation_trigger_repair",
+    "topology_registration",
     "map_topo_pieces",
     "map_topo_adopt",
     "layer_bounds",
