@@ -63,6 +63,84 @@ def run_update(db, params: UpdateParams, ctx: RunContext) -> dict:
     return summary.as_dict()
 
 
+class StatusParams(BaseModel):
+    pass
+
+
+def run_status(db, params: StatusParams, ctx: RunContext) -> dict:
+    from rich import print
+
+    from .manager import (
+        MacrostratTopologyManager,
+        _print_map_info,
+        get_maps_with_changed_geometries,
+    )
+    from .topology import create_topo_context
+
+    mgr = MacrostratTopologyManager(create_topo_context(db))
+    changed = get_maps_with_changed_geometries(mgr)
+    if not changed:
+        print("No maps with geometry changes")
+    else:
+        print(f"Found {len(changed)} maps with geometry changes")
+        for row in changed:
+            _print_map_info(row)
+    return {"changed": len(changed)}
+
+
+class LintParams(BaseModel):
+    pass
+
+
+class UnusedParams(BaseModel):
+    targets: list[str] = Field(
+        default_factory=list,
+        title="Compilations or maps",
+        description="Slugs, source ids or globs; every layer if empty.",
+    )
+    slivers: float | None = Field(
+        None,
+        ge=0,
+        le=1,
+        title="Slivers",
+        description="Instead list maps whose faces show less than this share of "
+        "their bounds (0.05). Reads every face geometry in scope.",
+    )
+
+
+def _as_command(db, command, **kwargs):
+    """Run a `compilations` command function with the run's connection.
+
+    The commands resolve the database through `get_database()`; the run's
+    connection is placed in that context so they, and a cancel, use it. A
+    non-zero `typer.Exit` is the command's failure.
+    """
+    import typer
+
+    from macrostrat.core.database import db_ctx
+
+    token = db_ctx.set(db)
+    try:
+        command(**kwargs)
+    except typer.Exit as exit:
+        if exit.exit_code:
+            raise RuntimeError(f"exited with status {exit.exit_code}")
+    finally:
+        db_ctx.reset(token)
+
+
+def run_lint(db, params: LintParams, ctx: RunContext) -> None:
+    from .compilations import lint
+
+    _as_command(db, lint)
+
+
+def run_unused(db, params: UnusedParams, ctx: RunContext) -> None:
+    from .compilations import unused
+
+    _as_command(db, unused, targets=params.targets or None, slivers=params.slivers)
+
+
 TASKS = [
     TaskSpec(
         name="topology.update",
@@ -73,5 +151,29 @@ TASKS = [
         "whose owner changed, and rebuild member faces.",
         params=UpdateParams,
         run="macrostrat.map_topology.tasks:run_update",
+    ),
+    TaskSpec(
+        name="topology.status",
+        title="Topology status",
+        description="List the maps whose geometry has changed since they were "
+        "noded. Read-only.",
+        params=StatusParams,
+        run="macrostrat.map_topology.tasks:run_status",
+    ),
+    TaskSpec(
+        name="compilations.lint",
+        title="Lint compilations",
+        description="Report membership that has gone stale: superseded members, "
+        "members holding no territory, double placements. Read-only.",
+        params=LintParams,
+        run="macrostrat.map_topology.tasks:run_lint",
+    ),
+    TaskSpec(
+        name="compilations.unused",
+        title="Unused compilation members",
+        description="List members that hold no face in a compilation they are "
+        "ranked in; run after a topology update. Read-only.",
+        params=UnusedParams,
+        run="macrostrat.map_topology.tasks:run_unused",
     ),
 ]
