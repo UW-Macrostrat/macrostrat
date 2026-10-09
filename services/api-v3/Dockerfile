@@ -25,6 +25,14 @@ ADD . /services/main
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked
 
+# Build information, set by CI. Last, so a new commit leaves the layers above cached.
+ARG MACROSTRAT_VERSION MACROSTRAT_RELEASE MACROSTRAT_COMMIT MACROSTRAT_BUILD_DATE MACROSTRAT_REPOSITORY
+ENV MACROSTRAT_VERSION=$MACROSTRAT_VERSION \
+    MACROSTRAT_RELEASE=$MACROSTRAT_RELEASE \
+    MACROSTRAT_COMMIT=$MACROSTRAT_COMMIT \
+    MACROSTRAT_BUILD_DATE=$MACROSTRAT_BUILD_DATE \
+    MACROSTRAT_REPOSITORY=$MACROSTRAT_REPOSITORY
+
 EXPOSE 80
 
 CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "80"]

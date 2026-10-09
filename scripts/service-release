@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Report a service's release state for its build workflow.
+
+Usage: scripts/service-release <service-dir> <tag-prefix>
+
+Reads the version from the service's pyproject.toml, writes it in semver form,
+and says whether its tag is new (a merge to main then releases it). A stable
+version not yet tagged must have a `## [X.Y.Z]` heading in CHANGELOG.md.
+Writes `version`, `tag` and `new` to $GITHUB_OUTPUT when it is set.
+"""
+
+import os
+import re
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+VERSION = re.compile(r"^(\d+\.\d+\.\d+)(?:-?(a|alpha|b|beta|rc)\.?(\d+))?$")
+PRERELEASE = {"a": "alpha", "alpha": "alpha", "b": "beta", "beta": "beta", "rc": "rc"}
+
+
+def semver(version: str) -> str:
+    # uv normalizes `-beta.1` to `b1`, which no image policy pattern matches
+    match = VERSION.match(version)
+    if match is None:
+        sys.exit(f"Unsupported version {version!r}; write X.Y.Z or X.Y.Z-beta.N")
+    base, kind, number = match.groups()
+    if kind is None:
+        return base
+    return f"{base}-{PRERELEASE[kind]}.{number}"
+
+
+def tag_exists(tag: str) -> bool:
+    # Ask the remote, so a shallow checkout without tags answers correctly
+    result = subprocess.run(
+        ["git", "ls-remote", "--exit-code", "--tags", "origin", f"refs/tags/{tag}"],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def has_changelog_heading(changelog: Path, version: str) -> bool:
+    if not changelog.exists():
+        return False
+    heading = re.compile(rf"^## \[?{re.escape(version)}\]?(\s|$)", re.MULTILINE)
+    return heading.search(changelog.read_text()) is not None
+
+
+def main(service_dir: str, tag_prefix: str):
+    root = Path(service_dir)
+    pyproject = tomllib.loads((root / "pyproject.toml").read_text())
+    version = semver(pyproject["project"]["version"])
+    tag = tag_prefix + version
+    new = not tag_exists(tag)
+
+    print(f"{root.name} {version}: tag {tag} {'is new' if new else 'exists'}")
+
+    stable = "-" not in version
+    changelog = root / "CHANGELOG.md"
+    if new and stable and not has_changelog_heading(changelog, version):
+        sys.exit(f"Releasing {version} needs a '## [{version}]' heading in {changelog}")
+
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a") as f:
+            f.write(f"version={version}\ntag={tag}\nnew={str(new).lower()}\n")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
+    main(*sys.argv[1:])

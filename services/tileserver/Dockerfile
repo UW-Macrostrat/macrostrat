@@ -66,6 +66,14 @@ ADD . /services/main
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-editable
 
+# Build information, set by CI. Last, so a new commit leaves the layers above cached.
+ARG MACROSTRAT_VERSION MACROSTRAT_RELEASE MACROSTRAT_COMMIT MACROSTRAT_BUILD_DATE MACROSTRAT_REPOSITORY
+ENV MACROSTRAT_VERSION=$MACROSTRAT_VERSION \
+    MACROSTRAT_RELEASE=$MACROSTRAT_RELEASE \
+    MACROSTRAT_COMMIT=$MACROSTRAT_COMMIT \
+    MACROSTRAT_BUILD_DATE=$MACROSTRAT_BUILD_DATE \
+    MACROSTRAT_REPOSITORY=$MACROSTRAT_REPOSITORY
+
 EXPOSE 8000
 
 # Trust X-Forwarded-Proto from the proxy in front (Varnish, then the ingress), so
