@@ -146,7 +146,7 @@ wheels = [
 
 [[package]]
 name = "api"
-version = "3.0.0b1"
+version = "3.0.0b2"
 source = { editable = "services/api-v3" }
 dependencies = [
     { name = "aiohttp" },
