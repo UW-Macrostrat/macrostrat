@@ -108,10 +108,7 @@ CREATE OR REPLACE VIEW public.lookup_large AS
 SELECT map_id, unit_ids, strat_name_ids, lith_ids, best_age_top, best_age_bottom, color,
   lith_types, lith_classes, concept_ids, strat_name_children, legend_id, scale, source_id
 FROM maps.lookup WHERE scale = 'large' WITH CHECK OPTION;
-ALTER VIEW public.lookup_tiny ALTER COLUMN scale SET DEFAULT 'tiny';
-ALTER VIEW public.lookup_small ALTER COLUMN scale SET DEFAULT 'small';
-ALTER VIEW public.lookup_medium ALTER COLUMN scale SET DEFAULT 'medium';
-ALTER VIEW public.lookup_large ALTER COLUMN scale SET DEFAULT 'large';
+
 COMMENT ON VIEW public.lookup_tiny IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';
 COMMENT ON VIEW public.lookup_small IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';
 COMMENT ON VIEW public.lookup_medium IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';

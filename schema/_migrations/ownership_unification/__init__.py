@@ -157,7 +157,7 @@ ATTEMPTS = 3
 RETRY_PAUSE = 10
 
 # Restores xdd_writer's write access after its tables are re-owned to macrostrat.
-# Mirrors the declarative grants in schema/development/0005-macrostrat_kg.sql, so a
+# Mirrors the declarative grants in schema/_dev_definitions/knowledge-graph/_index.sql, so a
 # reconciled DB matches a fresh build. Guarded on the schema existing (dev/local only).
 _XDD_GRANTS = """
 GRANT USAGE, CREATE ON SCHEMA macrostrat_kg TO xdd_writer;

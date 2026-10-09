@@ -1,4 +1,4 @@
-/** Undo materialization: drop the polygons a compilation derived from its members.
+/** Undo materialization: drop the polygons and lines a compilation derived from its members.
 
   Members keep their own polygons throughout, so this restores the virtual state
   exactly -- resolution goes back to descending through the compilation.
@@ -18,7 +18,11 @@ WHERE ml.map_id = p.map_id
 
 DELETE FROM maps.polygons WHERE source_id = :compilation_id;
 
-UPDATE maps.sources SET is_finalized = false WHERE source_id = :compilation_id;
+-- Lines cannot prove they are a cache; the polygon check above vouches for them.
+DELETE FROM maps.lines WHERE source_id = :compilation_id;
+
+UPDATE maps.sources SET is_finalized = false, lines_oriented = NULL
+WHERE source_id = :compilation_id;
 
 /* Back to virtual: no polygons, so no cache to stamp. */
 UPDATE map_bounds.compilation SET member_hash = NULL

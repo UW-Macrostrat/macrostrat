@@ -1,3 +1,0 @@
--- @subsystem: macrostrat-api
--- @depends-on: development, ecosystem
--- @environments: development, local

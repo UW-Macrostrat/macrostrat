@@ -103,6 +103,6 @@ linked AS (
   RETURNING 1
 )
 SELECT
-  (SELECT max(map_id) FROM batch) AS last_map_id,
+  (SELECT max(map_id) FROM batch) AS last_id,
   (SELECT count(*) FROM batch) AS read,
   (SELECT count(*) FROM written) AS written

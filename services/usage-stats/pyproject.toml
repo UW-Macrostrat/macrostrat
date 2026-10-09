@@ -1,6 +1,6 @@
 [project]
 name = "usage-stats-service"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 description = "Deployed worker that harvests Macrostrat usage statistics from access logs"
 requires-python = ">=3.11,<4"
 readme = "README.md"

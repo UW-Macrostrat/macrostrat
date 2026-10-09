@@ -32,5 +32,5 @@ hasn't processed it — a full backfill moves 15-20 GB, so re-reading per pipeli
 is not affordable. Idempotent and resumable: each object is recorded per pipeline
 in `usage_stats.processed_logs`, written last within the object's transaction.
 
-The schema SQL lives here too, beside the pipelines that write those tables; it
-is registered with the schema builder by the CLI package.
+The schema SQL and its migrations live in the CLI package (`macrostrat.usage_stats`),
+which registers them with the schema builder.

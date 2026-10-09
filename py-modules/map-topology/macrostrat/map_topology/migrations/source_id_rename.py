@@ -3,7 +3,7 @@
 from psycopg.sql import Identifier
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, _any, _not, has_columns
+from macrostrat.schema_management import Migration, _any, _not, has_columns, has_schema
 
 # `map_priority` is no longer listed: it was renamed here once, and then, by the
 # `map-priority-columns` migration, its map column was deliberately named `map_id`
@@ -34,7 +34,8 @@ class SourceIDRenameMigration(Migration):
                 *[has_columns("map_bounds", t, old) for t, old in RENAMED],
                 _not(has_columns("map_bounds", "map_area", "source_id")),
             ]
-        )
+        ),
+        has_schema("map_bounds"),
     ]
 
     postconditions = [

@@ -12,6 +12,19 @@
    to its members. */
 UPDATE maps.sources SET is_finalized = true WHERE source_id = :compilation_id;
 
+/* Tiles read line orientation off the content holder, which is now this. Only
+   a claim every member with lines makes is carried over. */
+UPDATE maps.sources s SET lines_oriented = o.oriented
+FROM (
+  SELECT bool_and(ms.lines_oriented) AS oriented
+  FROM map_bounds.compilation_member cm
+  CROSS JOIN LATERAL map_bounds.content_of(cm.member_id) c
+  JOIN maps.sources ms ON ms.source_id = c.source_id
+  WHERE cm.compilation_id = :compilation_id
+    AND EXISTS (SELECT 1 FROM maps.lines l WHERE l.source_id = c.source_id)
+) o
+WHERE s.source_id = :compilation_id;
+
 INSERT INTO map_bounds.compilation (source_id, member_hash)
 VALUES (:compilation_id, map_bounds.compilation_member_hash(:compilation_id))
 ON CONFLICT (source_id) DO UPDATE

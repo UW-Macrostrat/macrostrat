@@ -1,3 +1,7 @@
+-- @subsystem: user-features
+-- @depends-on: macrostrat-api
+-- Saved user locations, their tags, and the API views over them. Development only.
+
 
 
 SET statement_timeout = 0;
@@ -88,6 +92,22 @@ ALTER TABLE ONLY user_features.location_tags_intersect
 
 ALTER TABLE ONLY user_features.location_tags
     ADD CONSTRAINT location_tags_pkey PRIMARY KEY (id);
+
+-- The tag list users pick from; API users can only read it
+INSERT INTO user_features.location_tags (id, name, description, color) VALUES
+  (1, 'Basalt Outcrop', 'Exposure of dark, fine‑grained basaltic lava', '#4B4E6D'),
+  (2, 'Fossil Locality', 'Site where macro‑ or microfossils have been collected', '#C19A6B'),
+  (3, 'Fault Trace', 'Mapped surface expression of a fault plane', '#FF6F61'),
+  (4, 'Glacial Erratic', 'Large exotic boulder deposited by glacial ice', '#3DA5D9'),
+  (5, 'Mineral Prospect', 'Area under evaluation for economic mineralization', '#FFD166'),
+  (6, 'Stratotype Section', 'Formally designated reference stratigraphic section', '#6D8B74'),
+  (7, 'Core Sample Site', 'Location where drill‑core was extracted', '#8E7DBE'),
+  (8, 'Hydrothermal Vent', 'Vent or fissure of hydrothermal fluids (active/pale)', '#E9724C'),
+  (9, 'Paleosol Horizon', 'Profile of an ancient soil preserved in the rock record', '#A67C52'),
+  (10, 'Dike Intrusion', 'Tabular igneous body cutting host strata', '#FFB3BA')
+ON CONFLICT DO NOTHING;
+
+SELECT setval('user_features.location_tags_id_seq', (SELECT max(id) FROM user_features.location_tags));
 
 ALTER TABLE ONLY user_features.user_locations
     ADD CONSTRAINT user_locations_pkey PRIMARY KEY (id);

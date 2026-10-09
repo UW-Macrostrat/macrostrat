@@ -1,12 +1,10 @@
 -- @subsystem: ecosystem
 -- @depends-on: core
 /**
- * The people directory behind the website's /community page: who has worked
+ * The people directory planned for the website's /community page: who has worked
  * on Macrostrat, in which roles, with which contributions.
  *
- * Applied in local, development and staging (see `_STAGING_ENVS` in
- * schema_management/chunks.py) rather than development only, because the
- * public website reads it. The directory is public to read through the
+ * Development only. The directory is public to read through the
  * macrostrat_api views; changing it is an administrator's job, and a signed-in
  * user (web_user) is never granted a write.
  */
@@ -173,3 +171,37 @@ GRANT SELECT ON TABLE macrostrat_api.people_roles TO web_anon;
 GRANT INSERT,DELETE,UPDATE ON TABLE macrostrat_api.people_roles TO web_admin;
 
 GRANT SELECT ON TABLE macrostrat_api.people_with_roles TO web_anon;
+
+CREATE FUNCTION macrostrat_api.insert_people() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  INSERT INTO people (name, email)
+  VALUES (NEW.name, NEW.email);
+  RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION macrostrat_api.people_view_insert_trigger() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  inserted_row ecosystem.people%ROWTYPE;
+BEGIN
+  INSERT INTO ecosystem.people (name, email, title, img_id)
+  VALUES (NEW.name, NEW.email, NEW.title, NEW.img_id)
+  RETURNING * INTO inserted_row;
+  -- Optionally copy inserted_row columns back to NEW:
+  NEW.id := inserted_row.id;
+  -- Add other columns as needed
+  RETURN NEW;
+END;
+$$;
+
+CREATE VIEW macrostrat_api.roles AS
+ SELECT roles.role_id,
+    roles.name,
+    roles.description
+   FROM ecosystem.roles;
+
+GRANT SELECT ON TABLE macrostrat_api.roles TO web_anon;

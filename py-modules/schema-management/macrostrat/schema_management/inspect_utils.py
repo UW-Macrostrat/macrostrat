@@ -1,3 +1,6 @@
+import ast
+import inspect
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -119,6 +122,11 @@ def has_columns(schema: str, table: str, *fields: str, allow_view=False) -> DbEv
     return _has_fields
 
 
+def has_schema(schema: str) -> DbEvaluator:
+    """Return a function that evaluates to true when the given schema exists"""
+    return lambda db: db.inspector.has_schema(schema)
+
+
 def _not(f: DbEvaluator) -> DbEvaluator:
     """Return a function that evaluates to true when the given function evaluates to false"""
     return lambda db: not f(db)
@@ -126,8 +134,101 @@ def _not(f: DbEvaluator) -> DbEvaluator:
 
 def _any(f: Iterable[DbEvaluator]) -> DbEvaluator:
     """Return a function that evaluates to true when any of the given functions evaluate to true"""
+    # Callers pass generators, which a second evaluation would find exhausted
+    f = list(f)
 
     def _any_f(db: Database) -> bool:
         return any(cond(db) for cond in f)
 
     return _any_f
+
+
+def describe_condition(cond: DbEvaluator) -> str:
+    """Render a condition on one line, to explain why a migration cannot apply.
+
+    A closure built by a factory such as `exists` reads as the factory call that
+    built it, a lambda as its source, and a named function as its name and the
+    first line of its docstring.
+    """
+    scopes = getattr(cond, "__qualname__", "").split(".<locals>.")
+    # A method's scope is dotted; its lambdas read better as source
+    if len(scopes) > 1 and "." not in scopes[-2] and cond.__closure__:
+        return _factory_call(cond, scopes[-2])
+    name = getattr(cond, "__name__", None)
+    if name == "<lambda>":
+        return _lambda_body(cond) or name
+    if name is None:
+        return _shorten(repr(cond))
+    doc = inspect.getdoc(cond)
+    if doc:
+        return f"{name}: {_shorten(doc.split(chr(10) * 2)[0])}"
+    return name
+
+
+def _factory_call(cond: DbEvaluator, factory_name: str) -> str:
+    values = {}
+    for var, cell in zip(cond.__code__.co_freevars, cond.__closure__):
+        try:
+            values[var] = cell.cell_contents
+        except ValueError:
+            continue
+    try:
+        params = inspect.signature(cond.__globals__[factory_name]).parameters
+    except (KeyError, TypeError, ValueError):
+        params = None
+    if params is None:
+        args = [f"{k}={_describe_value(v)}" for k, v in values.items()]
+        return f"{factory_name}({', '.join(args)})"
+
+    args = []
+    for param in params.values():
+        if param.name not in values:
+            continue
+        value = values[param.name]
+        if param.kind == param.VAR_POSITIONAL:
+            args.extend(_describe_value(v) for v in value)
+        elif param.default is param.empty:
+            args.append(_describe_value(value))
+        elif value != param.default:
+            args.append(f"{param.name}={_describe_value(value)}")
+    return f"{factory_name}({', '.join(args)})"
+
+
+def _describe_value(value) -> str:
+    if callable(value):
+        return describe_condition(value)
+    if isinstance(value, (list, tuple)) and any(callable(v) for v in value):
+        return "[" + ", ".join(_describe_value(v) for v in value) + "]"
+    if isinstance(value, str):
+        value = " ".join(value.split())
+    return _shorten(repr(value))
+
+
+def _lambda_body(fn) -> str | None:
+    try:
+        source, tree = _parsed_source(inspect.getsourcefile(fn))
+    except (OSError, TypeError, SyntaxError):
+        return None
+    line = fn.__code__.co_firstlineno
+    lambdas = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Lambda) and node.lineno == line
+    ]
+    if not lambdas:
+        return None
+    first = min(lambdas, key=lambda node: node.col_offset)
+    return _shorten(ast.get_source_segment(source, first.body))
+
+
+@lru_cache(64)
+def _parsed_source(path: str) -> tuple[str, ast.Module]:
+    source = Path(path).read_text()
+    return source, ast.parse(source)
+
+
+def _shorten(text: str, width: int = 140) -> str:
+    text = " ".join(text.split())
+    if len(text) <= width:
+        return text
+    return text[: width - 1] + "…"

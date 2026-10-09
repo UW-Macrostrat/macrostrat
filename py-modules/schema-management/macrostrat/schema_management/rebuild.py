@@ -86,12 +86,28 @@ def role_switcher(db: Database):
 
 
 @dataclass
+class StatementFailure:
+    statement: str
+    error: Exception
+
+    @property
+    def message(self) -> str:
+        """The driver's error, without the SQLAlchemy wrapper or the LINE pointer."""
+        text = str(getattr(self.error, "orig", None) or self.error).strip()
+        return text.splitlines()[0] if text else type(self.error).__name__
+
+
+@dataclass
 class RebuildReport:
     total: int = 0
-    failed: list[str] = field(default_factory=list)
+    failures: list[StatementFailure] = field(default_factory=list)
     # Statements whose failure was expected and is not worth reporting as one —
     # e.g. creating a role that is already there.
     skipped: list[str] = field(default_factory=list)
+
+    @property
+    def failed(self) -> list[str]:
+        return [f.statement for f in self.failures]
 
     @property
     def applied(self) -> int:
@@ -131,7 +147,7 @@ def apply_statements(
                     report.skipped.append(statement)
                     continue
                 log.warning("statement failed (%s): %s", err, str(sql)[:100])
-                report.failed.append(statement)
+                report.failures.append(StatementFailure(statement, err))
     return report
 
 

@@ -711,10 +711,6 @@ CREATE INDEX map_liths_lith_id_idx ON maps.map_liths USING btree (lith_id);
 
 CREATE INDEX map_liths_map_id_idx ON maps.map_liths USING btree (map_id);
 
-CREATE INDEX map_strat_names_map_id_idx ON maps.map_strat_names USING btree (map_id);
-
-CREATE INDEX map_strat_names_strat_name_id_idx ON maps.map_strat_names USING btree (strat_name_id);
-
 CREATE INDEX map_units_map_id_idx ON maps.map_units USING btree (map_id);
 
 CREATE INDEX map_units_unit_id_idx ON maps.map_units USING btree (unit_id);

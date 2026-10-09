@@ -469,36 +469,94 @@ def mode(
     print(f"[green]{slug}[/] is {assembly_mode}")
 
 
-#: Member polygons per `materialize` batch: ~7 s each against British Columbia's
+#: Member features per `materialize` batch: ~7 s each against British Columbia's
 #: faces on dev, so a stopped run loses little and progress is steady.
 MATERIALIZE_BATCH = 2000
 
-#: Degrees a polygon's box is padded by when its map's faces are windowed to it,
-#: so no clip edge falls on the polygon itself.
+#: Degrees a feature's box is padded by when its map's faces are windowed to it,
+#: so no clip edge falls on the feature itself.
 MATERIALIZE_PAD = 0.01
+
+#: What `materialize` copies: the batch procedure and the feature table.
+_MATERIALIZED_FEATURES = (
+    ("polygons", "materialize-batch", "maps.polygons"),
+    ("lines", "materialize-lines-batch", "maps.lines"),
+)
+
+_MEMBER_FEATURE_COUNT = """
+SELECT count(*)
+FROM map_bounds.compilation_member cm
+CROSS JOIN LATERAL map_bounds.content_of(cm.member_id) c
+JOIN maps.sources cs ON cs.source_id = c.source_id
+JOIN {table} f ON f.source_id = c.source_id AND f.scale::text = cs.scale
+WHERE cm.compilation_id = :id
+  AND (c.footprint IS NULL OR ST_Contains(c.footprint, ST_PointOnSurface(f.geom)))
+"""
+
+_WRITTEN_FEATURES = """
+SELECT count(*) AS written, max(CAST(orig_id AS integer)) AS resume_after
+FROM {table} WHERE source_id = :id
+"""
+
+
+def _materialize_features(db, kind: str, procedure: str, params: dict, progress):
+    """Run one feature pass of `materialize` in committed batches.
+
+    Resumes after the last member feature written, since `orig_id` is its id.
+    """
+    after = progress.resume_after or 0
+    read = 0
+    written = progress.written
+    started = time.time()
+    batch_sql = proc(procedure).read_text()
+    while True:
+        try:
+            batch = db.run_query(batch_sql, dict(params, after=after)).first()
+        except DBAPIError as err:
+            # The batch rolled back; everything before it is committed.
+            db.session.rollback()
+            reason = str(err.orig).splitlines()[0]
+            print(
+                f"[red]A batch of {kind} failed[/] after source feature {after}"
+                f" ({read} read, {written} written so far): {reason}"
+                "\n[dim]Nothing from this batch was kept. Running the command again"
+                " resumes here; a smaller [cyan]--batch-size[/] narrows down which"
+                " feature is failing.[/]"
+            )
+            raise typer.Exit(1)
+        db.session.commit()
+        if not batch.read:
+            return written
+        after = batch.last_id
+        read += batch.read
+        written += batch.written
+        print(
+            f"  {kind}: {read} read, {written} written"
+            f" [dim]({time.time() - started:.0f} s)[/]"
+        )
 
 
 @cli.command("materialize")
 def materialize(
     compilation: Annotated[str, Argument(help="Slug or source id")],
     apply: Annotated[
-        bool, Option("--apply/--dry-run", help="Write the polygons")
+        bool, Option("--apply/--dry-run", help="Write the polygons and lines")
     ] = False,
     batch_size: Annotated[
-        int, Option("--batch-size", help="Member polygons per committed batch")
+        int, Option("--batch-size", help="Member features per committed batch")
     ] = MATERIALIZE_BATCH,
 ):
-    """Give a compilation polygons of its own, clipped from its members'.
+    """Give a compilation polygons and lines of its own, clipped from its members'.
 
     Turns a virtual compilation into one that holds the assembled surface
     directly, so resolution stops at it instead of descending. Each member
-    polygon is clipped to the faces its map owns in the compilation's solved
-    layer -- the priority, already resolved -- so the compilation must have been
-    solved (`topo update`) with no faces left stale.
+    polygon and line is clipped to the faces its map owns in the compilation's
+    solved layer -- the priority, already resolved -- so the compilation must
+    have been solved (`topo update`) with no faces left stale.
 
     Written in committed batches, and invisible until the last one: the
-    compilation is only marked materialized once every polygon is in. A stopped
-    run is resumed by running it again. Members keep their own polygons, so this
+    compilation is only marked materialized once every feature is in. A stopped
+    run is resumed by running it again. Members keep their own features, so this
     is reversible with `dematerialize`.
     """
     db = get_database()
@@ -533,83 +591,46 @@ def materialize(
         )
         raise typer.Exit(1)
 
-    counts = db.run_query(
-        """
-        SELECT
-          (SELECT count(*)
-           FROM map_bounds.compilation_member cm
-           CROSS JOIN LATERAL map_bounds.content_of(cm.member_id) c
-           JOIN maps.sources cs ON cs.source_id = c.source_id
-           JOIN maps.polygons p
-             ON p.source_id = c.source_id AND p.scale::text = cs.scale
-           WHERE cm.compilation_id = :id
-             AND (c.footprint IS NULL
-                  OR ST_Contains(c.footprint, ST_PointOnSurface(p.geom)))
-          ) AS polygons,
-          (SELECT count(*) FROM maps.polygons WHERE source_id = :id) AS written,
-          (SELECT max(CAST(orig_id AS integer))
-           FROM maps.polygons WHERE source_id = :id) AS resume_after
-        """,
-        dict(id=source_id),
-    ).first()
-    if not counts.polygons:
+    members = {}
+    progress = {}
+    for kind, _, table in _MATERIALIZED_FEATURES:
+        members[kind] = db.run_query(
+            _MEMBER_FEATURE_COUNT.format(table=table), dict(id=source_id)
+        ).scalar()
+        progress[kind] = db.run_query(
+            _WRITTEN_FEATURES.format(table=table), dict(id=source_id)
+        ).first()
+    if not members["polygons"]:
         print(f"[red]{slug}[/] has no member polygons to assemble")
         raise typer.Exit(1)
 
-    resuming = ""
-    if counts.written:
-        resuming = f", resuming after {counts.written} already written"
     print(
-        f"[bold]{slug}[/] [dim]#{source_id}[/]: {counts.polygons} member polygons,"
-        f" clipped to layer {layer}'s faces in batches of {batch_size}{resuming}"
+        f"[bold]{slug}[/] [dim]#{source_id}[/]: {members['polygons']} member"
+        f" polygons and {members['lines']} lines, clipped to layer {layer}'s faces"
+        f" in batches of {batch_size}"
     )
+    for kind, _, _ in _MATERIALIZED_FEATURES:
+        if progress[kind].written:
+            print(f"  resuming after {progress[kind].written} {kind} already written")
     if not apply:
         print("[dim]Dry run. Pass --apply to write.[/]")
         return
 
-    after = counts.resume_after or 0
-    read = 0
-    written = counts.written
-    started = time.time()
-    # The polygons are written at the compilation's own scale, which must be one.
+    # Features are written at the compilation's own scale, which must be one.
     if scale not in ("tiny", "small", "medium", "large"):
-        print(f"[red]{slug}[/] has no usable scale ({scale!r}) to write polygons at")
+        print(f"[red]{slug}[/] has no usable scale ({scale!r}) to write features at")
         raise typer.Exit(1)
-    batch_sql = proc("materialize-batch").read_text()
-    while True:
-        try:
-            batch = db.run_query(
-                batch_sql,
-                dict(
-                    compilation_id=source_id,
-                    scale=scale,
-                    layer=layer,
-                    after=after,
-                    limit=batch_size,
-                    pad=MATERIALIZE_PAD,
-                ),
-            ).first()
-        except DBAPIError as err:
-            # The batch rolled back; everything before it is committed.
-            db.session.rollback()
-            reason = str(err.orig).splitlines()[0]
-            print(
-                f"[red]A batch failed[/] after source polygon {after}"
-                f" ({read} read, {written} written so far): {reason}"
-                "\n[dim]Nothing from this batch was kept. Running the command again"
-                " resumes here; a smaller [cyan]--batch-size[/] narrows down which"
-                " polygon is failing.[/]"
-            )
-            raise typer.Exit(1)
-        db.session.commit()
-        if not batch.read:
-            break
-        after = batch.last_map_id
-        read += batch.read
-        written += batch.written
-        print(
-            f"  {read} read, {written} written [dim]({time.time() - started:.0f} s)[/]"
-        )
+    params = dict(
+        compilation_id=source_id,
+        scale=scale,
+        layer=layer,
+        limit=batch_size,
+        pad=MATERIALIZE_PAD,
+    )
+    written = {
+        kind: _materialize_features(db, kind, procedure, params, progress[kind])
+        for kind, procedure, _ in _MATERIALIZED_FEATURES
+    }
 
     db.run_sql(
         proc("materialize-compilation"),
@@ -617,7 +638,8 @@ def materialize(
     )
     db.session.commit()
     print(
-        f"[green]{written}[/] polygons written; {slug} is materialized."
+        f"[green]{written['polygons']}[/] polygons and [green]{written['lines']}[/]"
+        f" lines written; {slug} is materialized."
         "\nRun [cyan]macrostrat topo update[/] so faces resolve to it rather"
         " than its members."
     )
@@ -627,16 +649,24 @@ def materialize(
 def dematerialize(
     compilation: Annotated[str, Argument(help="Slug or source id")],
 ):
-    """Drop a compilation's derived polygons, returning it to virtual."""
+    """Drop a compilation's derived polygons and lines, returning it to virtual."""
     db = get_database()
     source_id, slug = _resolve(compilation)
     _refuse_if_ingested(db, source_id, slug, "dematerialize")
     n = db.run_query(
-        "SELECT count(*) FROM maps.polygons WHERE source_id = :id", dict(id=source_id)
-    ).scalar()
+        """
+        SELECT
+          (SELECT count(*) FROM maps.polygons WHERE source_id = :id) AS polygons,
+          (SELECT count(*) FROM maps.lines WHERE source_id = :id) AS lines
+        """,
+        dict(id=source_id),
+    ).first()
     db.run_sql(proc("dematerialize-compilation"), dict(compilation_id=source_id))
     db.session.commit()
-    print(f"[green]{slug}[/]: {n} derived polygons removed; now virtual.")
+    print(
+        f"[green]{slug}[/]: {n.polygons} derived polygons and {n.lines} lines"
+        " removed; now virtual."
+    )
 
 
 @cli.command("lint")

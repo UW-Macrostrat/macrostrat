@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS tileserver_stats;
+
 /** Keep legacy tileserver_stats.requests and tileserver_stats.processing_status tables
   for now, so the old direct-push pipeline can still write to them. */
 -- auto-generated definition

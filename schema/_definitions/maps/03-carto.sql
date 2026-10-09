@@ -339,10 +339,3 @@ ALTER INDEX carto.carto_polygons_geom_gist ATTACH PARTITION carto.small_geom_idx
 
 ALTER INDEX carto.carto_polygons_geom_gist ATTACH PARTITION carto.tiny_geom_idx;
 
-ALTER TABLE carto.lines
-    ADD CONSTRAINT lines_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);
-
-ALTER TABLE carto.polygons
-    ADD CONSTRAINT polygons_source_id_fkey FOREIGN KEY (source_id) REFERENCES maps.sources(source_id);
-
-

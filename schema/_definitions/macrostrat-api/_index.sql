@@ -1,0 +1,3 @@
+-- @subsystem: macrostrat-api
+-- @depends-on: macrostrat, maps, map-topology
+-- @environments: all
