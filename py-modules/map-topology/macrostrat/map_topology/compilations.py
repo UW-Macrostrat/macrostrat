@@ -814,6 +814,142 @@ def lint():
         print("[green]No problems found.[/]")
 
 
+#: The layers a compilation's faces live in: its own, or for a multiscale
+#: compilation its members'. A materialized or mosaic compilation has none.
+_KEYED_LAYERS = """
+SELECT c.id AS source_id, ml.id AS map_layer
+FROM unnest(CAST(:ids AS integer[])) c(id)
+JOIN map_bounds.map_layer ml
+  ON ml.source_id = c.id
+  OR (
+    map_bounds.is_multiscale(c.id)
+    AND ml.source_id IN (SELECT m.source_id FROM map_bounds.members_of(c.id) m)
+  )
+WHERE EXISTS (SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = ml.id)
+"""
+
+#: Per (layer, ranked map): the resolved faces the map holds there, as of the
+#: last `topo update`. Every layer a map in scope is ranked in is returned, so
+#: its standing outside the scope is known; `in_scope` marks the rows asked about.
+_FACE_CONTRIBUTION = """
+WITH keyed AS MATERIALIZED (
+  SELECT DISTINCT mp.map_id
+  FROM map_bounds.map_priority mp
+  WHERE CAST(:everything AS boolean)
+     OR mp.map_layer = ANY(CAST(:layers AS integer[]))
+     OR mp.map_id = ANY(CAST(:maps AS integer[]))
+),
+faces AS (
+  SELECT mf.map_layer, mf.map_id, count(*) AS n_faces
+  FROM map_bounds_topology.map_face mf
+  JOIN keyed k ON k.map_id = mf.map_id
+  GROUP BY mf.map_layer, mf.map_id
+)
+SELECT
+  mp.map_layer,
+  coalesce(ml.slug, ls.slug) AS layer,
+  mp.map_id,
+  s.slug,
+  coalesce(f.n_faces, 0) AS n_faces,
+  (
+    CAST(:everything AS boolean)
+    OR mp.map_layer = ANY(CAST(:layers AS integer[]))
+    OR mp.map_id = ANY(CAST(:maps AS integer[]))
+  ) AS in_scope
+FROM map_bounds.map_priority mp
+JOIN keyed k ON k.map_id = mp.map_id
+JOIN map_bounds.map_layer ml ON ml.id = mp.map_layer
+LEFT JOIN maps.sources ls ON ls.source_id = ml.source_id
+JOIN maps.sources s ON s.source_id = mp.map_id
+LEFT JOIN faces f ON f.map_layer = mp.map_layer AND f.map_id = mp.map_id
+WHERE map_bounds.has_content(mp.map_id)
+ORDER BY layer, s.slug
+"""
+
+
+def face_contribution(db, layers: list[int], maps: list[int], everything: bool):
+    """Resolved faces each ranked map holds, per layer it is ranked in."""
+    return db.run_query(
+        _FACE_CONTRIBUTION, dict(layers=layers, maps=maps, everything=everything)
+    ).all()
+
+
+@cli.command("unused")
+def unused(
+    targets: Annotated[
+        Optional[list[str]],
+        Argument(
+            help="Compilations or maps: slugs, source ids, or slug globs; all layers if omitted"
+        ),
+    ] = None,
+):
+    """List members that hold no face in a compilation they are ranked in.
+
+    Reads the resolved faces, so run `topo update` first. A compilation selects
+    the maps ranked in its layer; a map selects every layer it is ranked in. A
+    map that holds no face in any layer can leave the noding.
+    """
+    db = get_database()
+    layer_keys: dict[int, list[int]] = {}
+    map_keys: list[int] = []
+    if targets:
+        sources = db.run_query(
+            "SELECT source_id AS map_id, slug FROM maps.sources"
+        ).all()
+        selected = list(filter_maps(sources, targets))
+        if not selected:
+            print(f"[red]No map matching[/] {' '.join(targets)}")
+            raise typer.Exit(1)
+        for r in db.run_query(_KEYED_LAYERS, dict(ids=[s.map_id for s in selected])):
+            layer_keys.setdefault(r.source_id, []).append(r.map_layer)
+        map_keys = [s.map_id for s in selected if s.map_id not in layer_keys]
+
+    rows = face_contribution(
+        db,
+        layers=[layer for ls in layer_keys.values() for layer in ls],
+        maps=map_keys,
+        everything=not targets,
+    )
+
+    held_in: dict[int, list[str]] = {}
+    for r in rows:
+        if r.n_faces > 0:
+            held_in.setdefault(r.map_id, []).append(r.layer)
+    scoped = [r for r in rows if r.in_scope]
+
+    unranked = set(map_keys) - {r.map_id for r in scoped}
+    for r in db.run_query(
+        "SELECT slug FROM maps.sources WHERE source_id = ANY(CAST(:ids AS integer[]))"
+        " ORDER BY slug",
+        dict(ids=list(unranked)),
+    ):
+        print(f"[dim]{r.slug} is ranked in no layer[/]")
+
+    idle = [r for r in scoped if r.n_faces == 0]
+    if not idle:
+        print(f"[green]All {len(scoped)} ranked maps in scope hold a face.[/]")
+        return
+
+    table = Table(title="Ranked, but holding no face")
+    table.add_column("Layer")
+    table.add_column("Map")
+    table.add_column("Holds faces in")
+    for r in idle:
+        if r.map_id in held_in:
+            elsewhere = ", ".join(held_in[r.map_id])
+        else:
+            elsewhere = "[red]nowhere[/]"
+        table.add_row(r.layer, f"{r.slug} [dim]#{r.map_id}[/]", elsewhere)
+    print(table)
+
+    removable = sorted({r.slug for r in idle if r.map_id not in held_in})
+    if removable:
+        print(
+            f"[yellow]{len(removable)}[/] maps hold no face in any layer and"
+            f" can leave the noding: {', '.join(removable)}"
+        )
+
+
 @cli.command("prune")
 def prune(
     apply: Annotated[

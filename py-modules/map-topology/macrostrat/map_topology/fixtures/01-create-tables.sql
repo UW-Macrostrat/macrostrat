@@ -104,6 +104,8 @@ ALTER TABLE map_bounds_topology.map_face
   ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
 ALTER TABLE map_bounds_topology.face_identity
   ADD COLUMN map_id integer REFERENCES maps.sources(source_id);
+-- Here, not in the library's fixtures, which run before this column exists.
+CREATE INDEX map_face_map_id_idx ON map_bounds_topology.map_face (map_id);
 
 CREATE INDEX IF NOT EXISTS map_bounds_map_topo_geometry_idx ON map_bounds.map_topo USING gist (geometry);
 -- Every per-map procedure filters on this; without it they seq-scan the table.
