@@ -68,7 +68,7 @@ class LayersByCompilationMigration(Migration):
     owner = None  # its own `apply`, written for the connector's privileges
     subsystem = "maps"
     description = "One layer per solved compilation; multiscale draws its members'"
-    readiness_state = "beta"
+    readiness_state = "ga"
     depends_on = ["compilation-multiscale"]
     load_sql_files = False
     destructive = False
@@ -101,6 +101,8 @@ class LayersByCompilationMigration(Migration):
             DROP FUNCTION IF EXISTS map_bounds.solved_partitions();
             ALTER TABLE map_bounds.map_layer
               DROP CONSTRAINT IF EXISTS map_layer_source_id_key;
+            -- A diff can leave the key as a bare unique index of the same name
+            DROP INDEX IF EXISTS map_bounds.map_layer_source_id_key;
             ALTER TABLE map_bounds.map_layer
               ADD CONSTRAINT map_layer_source_id_key
               UNIQUE NULLS NOT DISTINCT (source_id);

@@ -46,7 +46,7 @@ class AuthAuthorizedRoleMigration(Migration):
         _role_row_exists("authorized"),
     ]
 
-    readiness_state = "beta"
+    readiness_state = "ga"
 
     def apply(self, db: Database):
         # The role is cluster-wide, so it may already exist from another

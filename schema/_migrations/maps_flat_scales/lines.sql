@@ -16,9 +16,13 @@ DO $$
 DECLARE
   _name text;
 BEGIN
-  SELECT conname INTO _name FROM pg_constraint
-  WHERE conrelid = 'maps.lines'::regclass AND contype = 'p';
-  EXECUTE 'ALTER TABLE maps.lines DROP CONSTRAINT ' || quote_ident(_name);
+  -- A loop, as a partition detached from a keyless parent has no primary key
+  FOR _name IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'maps.lines'::regclass AND contype IN ('p', 'u', 'x')
+  LOOP
+    EXECUTE 'ALTER TABLE maps.lines DROP CONSTRAINT ' || quote_ident(_name);
+  END LOOP;
   FOR _name IN
     SELECT indexname FROM pg_indexes
     WHERE schemaname = 'maps' AND tablename = 'lines'
@@ -55,6 +59,14 @@ ALTER TABLE maps.lines ADD CONSTRAINT lines_pkey PRIMARY KEY (line_id);
 /* `public.line_ids` was already the one sequence every partition and the parent
    drew from. It moves into the schema beside `maps.map_ids` and gains an owner. */
 ALTER SEQUENCE public.line_ids SET SCHEMA maps;
+-- `OWNED BY` needs one owner for both, which the old sequence need not share
+DO $$
+BEGIN
+  EXECUTE 'ALTER SEQUENCE maps.line_ids OWNER TO ' || quote_ident((
+    SELECT tableowner FROM pg_tables WHERE schemaname = 'maps' AND tablename = 'lines'
+  ));
+END
+$$;
 ALTER SEQUENCE maps.line_ids OWNED BY maps.lines.line_id;
 ALTER TABLE maps.lines ALTER COLUMN line_id SET DEFAULT nextval('maps.line_ids');
 

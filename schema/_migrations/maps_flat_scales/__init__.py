@@ -201,6 +201,7 @@ class MapsPolygonsFlat(_FlattenScales):
     from `map_legend`, `map_units` and `map_liths` that partitioning forbade.
     """
     table = "polygons"
+    readiness_state = "ga"
 
     def __init__(self):
         super().__init__()
@@ -214,6 +215,7 @@ class MapsLinesFlat(_FlattenScales):
     description = "The same for `maps.lines`; `line_ids` moves into the `maps` schema."
     depends_on = ["maps-polygons-flat"]
     table = "lines"
+    readiness_state = "ga"
 
     def __init__(self):
         super().__init__()
@@ -234,6 +236,7 @@ class MapsLookupUnified(_OneTransaction):
     exclusive = [f"public.lookup_{s}" for s in _SCALES]
     # Referenced by the new table's foreign keys.
     shared = ["maps.polygons", "maps.legend", "maps.sources"]
+    readiness_state = "ga"
 
     preconditions = [
         lambda db: (
