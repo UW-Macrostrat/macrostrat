@@ -1,9 +1,9 @@
-from macrostrat.schema_management import Migration, view_exists
+from macrostrat.schema_management import Migration, has_schema, view_exists
 
 
 class UsageStatsConsolidationMigration(Migration):
     name = "usage-stats-consolidation"
-    subsystem = "core"
+    subsystem = "usage-stats"
     readiness_state = "beta"
     description = """
     Move the tileserver request indexes into the consolidated `usage_stats`
@@ -15,6 +15,8 @@ class UsageStatsConsolidationMigration(Migration):
     # location rows) has no surviving source logs and cannot be re-derived,
     # so this moves the tables rather than rebuilding them.
     destructive = True
+
+    preconditions = [has_schema("tileserver_stats")]
 
     # Applied once the old names resolve to *views* over the new tables.
     #

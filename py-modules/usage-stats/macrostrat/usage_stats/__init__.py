@@ -474,38 +474,28 @@ def reset_command(
             print(f"{p.name}: cleared {summary}; {n_log} processed-log rows")
 
 
-def _schema_dir() -> Path:
-    """Where the schema SQL lives — in the capture package, beside the pipelines
-    that write those tables."""
-    import macrostrat.usage_stats_capture as capture_pkg
-
-    return Path(capture_pkg.__file__).parent / "schema"
-
-
 def build_schema_config():
-    """Schema chunks for the usage_stats schema.
-
-    The SQL lives with the pipelines that write those tables, in
-    `usage_stats_capture`; this only registers it with the schema builder.
-    """
+    """Schema chunks for the usage_stats schema, whose migrations are in
+    `migrations/` beside it."""
     from macrostrat.schema_management.composer import SchemaDefinition
 
     main_def = SchemaDefinition(
         name="usage-stats",
         depends_on=["public"],
-        provides=[
-            _schema_dir() / "usage-stats.sql",
-        ],
-        environments=frozenset({"local", "development", "production"}),
+        provides=[here / "schema" / "usage-stats.sql"],
         owner="macrostrat",
     )
 
     legacy = SchemaDefinition(
         name="tileserver-stats-legacy",
         depends_on=["usage-stats"],
-        provides=[_schema_dir() / "tileserver-stats.legacy.sql"],
-        environments=frozenset({"development", "production"}),
+        provides=[here / "schema" / "tileserver-stats.legacy.sql"],
+        environments=frozenset({"development", "staging", "production"}),
         owner="macrostrat",
     )
 
     return [main_def, legacy]
+
+
+# Registers the migrations; last, as `schema_management` imports this module
+from . import migrations  # noqa: E402,F401
