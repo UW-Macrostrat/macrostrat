@@ -1,6 +1,6 @@
 # Macrostrat API v2 Changelog
 
-## [Unreleased]
+## [2.4.0-beta.1] - 2026-10-09
 
 - `/mobile/map_query_v2` returns `refs` on each `mapData` item: the polygon's references from its map (a mosaic's member for SGMC), legend entry and own links, as `{ref_type, label, ref_id, citation, doi, url}`. Left out where the database lacks `map_bounds.polygon_refs_for`; `ref` is unchanged
 - `/mobile/map_query_v2` takes `source` (a map or compilation slug or source id, e.g. `carto`; `sys:carto-legacy` for the materialized build; `compilation` is accepted as an earlier name): the polygon and lines then come from the compilation system through `map_bounds.polygon_at` / `lines_at`, with the legend from `maps.legend`, and a zoom below the source's drawn range is refused. Absent, the legacy query runs unchanged
