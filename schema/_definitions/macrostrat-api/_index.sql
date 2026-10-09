@@ -1,3 +1,3 @@
 -- @subsystem: macrostrat-api
--- @depends-on: development
+-- @depends-on: macrostrat, maps, map-topology
 -- @environments: all
