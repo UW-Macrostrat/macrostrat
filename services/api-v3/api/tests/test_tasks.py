@@ -38,6 +38,16 @@ class TestCatalog:
         params = spec.parse({"maps": ["ngs-*"], "piece_timeout": 30})
         assert params.maps == ["ngs-*"] and params.build_bounds
 
+    def test_process_pipeline_needs_a_map(self):
+        spec = load_registry()["maps.process-pipeline"]
+        assert spec.parse({"maps": ["ngs-*"]}).delete_existing is False
+        try:
+            spec.parse({"maps": []})
+        except Exception as err:
+            assert "maps" in str(err)
+        else:
+            raise AssertionError("an empty selection must be refused")
+
     def test_parameters_are_validated(self):
         spec = load_registry()["topology.update"]
         try:

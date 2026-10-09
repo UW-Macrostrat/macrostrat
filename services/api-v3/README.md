@@ -93,7 +93,7 @@ select * from audit.changes where schema_name = 'macrostrat_auth' order by id de
 
 ## Management tasks
 
-`/tasks` runs registered management tasks — `topology.update` first — on the
+`/tasks` runs registered management tasks — `topology.update`, `maps.process-pipeline` — on the
 admin worker, out of a terminal: `GET /tasks` is the catalog with each task's
 parameter schema, `POST /tasks/runs {task, params}` records a run in
 `tasks.run` and enqueues it, `GET /tasks/runs/{id}/output` streams its

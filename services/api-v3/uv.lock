@@ -909,6 +909,7 @@ version = "0.0.1"
 source = { editable = "../../py-modules/map-utils" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "psycopg", extra = ["binary"] },
 ]
@@ -916,6 +917,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
+    { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2,<8" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.0,<4" },
 ]
