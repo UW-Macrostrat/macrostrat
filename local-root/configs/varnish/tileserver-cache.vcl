@@ -61,7 +61,11 @@ sub vcl_recv {
 
     # Set the backend hints to route to the correct upstream
     # For now the index.html route is served from the legacy tileserver
-    if (req.url ~ "^/rasters/") {
+    if (req.url ~ "^/legacy/(version|health)$") {
+        # The legacy tileserver's status routes, which this host otherwise hides
+        set req.url = regsub(req.url, "^/legacy", "");
+        set req.backend_hint = backend-legacy;
+    } else if (req.url ~ "^/rasters/") {
         # Raster mosaics are served as .png by the core tileserver, so they have
         # to be claimed before the extension-based rule below sends every .png
         # to the legacy one.

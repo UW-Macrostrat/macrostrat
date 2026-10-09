@@ -1,0 +1,126 @@
+name: Build service image
+
+# Builds one service's image. On a push to main, a version in the service's
+# pyproject.toml that has no `<service>-vX.Y.Z` tag yet is released: the image
+# is also tagged `X.Y.Z` and the git tag is created on this commit. The tag is
+# pushed here because a tag pushed with GITHUB_TOKEN starts no other workflow.
+
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: Directory under services/, also the git tag prefix
+        type: string
+        required: true
+      image:
+        description: Image name under hub.opensciencegrid.org/macrostrat
+        type: string
+        required: true
+      context:
+        type: string
+        required: true
+      file:
+        type: string
+        default: ""
+      build-contexts:
+        type: string
+        default: ""
+      platforms:
+        type: string
+        default: ""
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    # Serialized, so a second merge sees the tag the first one created
+    concurrency:
+      group: build-${{ inputs.service }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: "recursive"
+
+      - name: Read release state
+        id: version
+        run: python3 scripts/service-release services/${{ inputs.service }} ${{ inputs.service }}-v
+
+      - name: Decide whether this build releases
+        id: release
+        run: |
+          RELEASE=false
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" && "${{ steps.version.outputs.new }}" == "true" ]]; then
+            RELEASE=true
+          fi
+          echo "release=${RELEASE}" >> $GITHUB_OUTPUT
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: hub.opensciencegrid.org/macrostrat/${{ inputs.image }}
+          tags: |
+            type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=sha-{{sha}}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.release.outputs.release == 'true' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to OSG DockerHub
+        uses: docker/login-action@v3
+        with:
+          registry: hub.opensciencegrid.org
+          username: ${{ vars.HARBOR_CLI_NAME }}
+          password: ${{ secrets.HARBOR_CLI_SECRET }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        id: build-and-push
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.file }}
+          build-contexts: ${{ inputs.build-contexts }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            MACROSTRAT_VERSION=${{ steps.version.outputs.version }}
+            MACROSTRAT_RELEASE=${{ steps.release.outputs.release }}
+            MACROSTRAT_COMMIT=${{ github.event.pull_request.head.sha || github.sha }}
+            MACROSTRAT_BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            MACROSTRAT_REPOSITORY=${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Tag the release
+        if: steps.release.outputs.release == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Version $VERSION of service ${{ inputs.service }}"
+          git push origin "$TAG"
+
+      - name: Add link to workflow summary
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          {
+            echo "## Image built"
+            echo ""
+            echo "Pushed to [OSG Harbor](https://hub.opensciencegrid.org/harbor/projects/887/repositories/${{ inputs.image }}/artifacts-tab/artifacts/${{ steps.build-and-push.outputs.digest }})."
+            if [[ "${{ steps.release.outputs.release }}" == "true" ]]; then
+              echo ""
+              echo "Released **${{ steps.version.outputs.tag }}**."
+            fi
+            echo ""
+            echo "### Tags"
+            for tag in $TAGS; do
+              echo "- \`$tag\`"
+            done
+          } >> $GITHUB_STEP_SUMMARY

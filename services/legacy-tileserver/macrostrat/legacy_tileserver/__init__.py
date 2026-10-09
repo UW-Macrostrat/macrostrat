@@ -19,6 +19,7 @@ from macrostrat.tileserver_utils import (
     MimeTypes,
     TileParams,
     handle_cached_tile_request,
+    status_router,
 )
 from macrostrat.utils import get_logger, setup_stderr_logs
 
@@ -143,6 +144,9 @@ def vector_tile_handler(compilation: MapCompilation):
             return await conn.fetchval(q, *p)
 
     return get_vector_tile
+
+
+app.include_router(status_router("legacy-tileserver"))
 
 
 @app.get("/", include_in_schema=False)

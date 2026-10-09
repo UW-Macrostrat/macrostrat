@@ -15,7 +15,7 @@ from starlette_cramjam.middleware import CompressionMiddleware
 from titiler.core.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from titiler.core.factory import TilerFactory
 
-from macrostrat.tileserver_utils import DecimalJSONResponse
+from macrostrat.tileserver_utils import DecimalJSONResponse, status_router
 from macrostrat.utils import get_logger, setup_stderr_logs
 
 from .map_ingestion import register_map_ingestion_routes
@@ -265,6 +265,8 @@ app.include_router(topo_router, tags=["Topology"], prefix="/dev/topology")
 from .cache_management import router as cache_router
 
 app.include_router(cache_router, tags=["Cache"], prefix="/cache")
+
+app.include_router(status_router("tileserver"))
 
 from .rasters import register_raster_routes
 

@@ -60,5 +60,13 @@ ENV PATH="/app/services/usage-stats/.venv/bin:${PATH}"
 
 WORKDIR /app/services/usage-stats
 
+# Build information, set by CI. Last, so a new commit leaves the layers above cached.
+ARG MACROSTRAT_VERSION MACROSTRAT_RELEASE MACROSTRAT_COMMIT MACROSTRAT_BUILD_DATE MACROSTRAT_REPOSITORY
+ENV MACROSTRAT_VERSION=$MACROSTRAT_VERSION \
+    MACROSTRAT_RELEASE=$MACROSTRAT_RELEASE \
+    MACROSTRAT_COMMIT=$MACROSTRAT_COMMIT \
+    MACROSTRAT_BUILD_DATE=$MACROSTRAT_BUILD_DATE \
+    MACROSTRAT_REPOSITORY=$MACROSTRAT_REPOSITORY
+
 # No console script: the worker has no CLI framework, just this module.
 ENTRYPOINT ["python", "-m", "usage_stats_service"]

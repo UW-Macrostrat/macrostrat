@@ -20,5 +20,13 @@ COPY . /app/worker
 
 RUN pip install --no-cache-dir ./map-utils ./core ./column-utils ./column-ingestion ./worker[maps,columns]
 
+# Build information, set by CI. Last, so a new commit leaves the layers above cached.
+ARG MACROSTRAT_VERSION MACROSTRAT_RELEASE MACROSTRAT_COMMIT MACROSTRAT_BUILD_DATE MACROSTRAT_REPOSITORY
+ENV MACROSTRAT_VERSION=$MACROSTRAT_VERSION \
+    MACROSTRAT_RELEASE=$MACROSTRAT_RELEASE \
+    MACROSTRAT_COMMIT=$MACROSTRAT_COMMIT \
+    MACROSTRAT_BUILD_DATE=$MACROSTRAT_BUILD_DATE \
+    MACROSTRAT_REPOSITORY=$MACROSTRAT_REPOSITORY
+
 # Consume the maps + columns queues (one worker for both, locally).
 CMD ["celery", "-A", "macrostrat.worker.app", "worker", "-Q", "maps,columns", "--loglevel=info", "--concurrency=2"]

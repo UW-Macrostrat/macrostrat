@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -146,7 +146,7 @@ wheels = [
 
 [[package]]
 name = "api"
-version = "2.3.5b1"
+version = "3.0.0b1"
 source = { editable = "services/api-v3" }
 dependencies = [
     { name = "aiohttp" },
@@ -1761,7 +1761,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-worker"
-version = "0.0.1"
+version = "1.0.0b1"
 source = { editable = "services/worker" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
