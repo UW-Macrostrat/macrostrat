@@ -41,9 +41,13 @@ DO $$
 DECLARE
   _name text;
 BEGIN
-  SELECT conname INTO _name FROM pg_constraint
-  WHERE conrelid = 'maps.polygons'::regclass AND contype = 'p';
-  EXECUTE 'ALTER TABLE maps.polygons DROP CONSTRAINT ' || quote_ident(_name);
+  -- A loop, as a partition detached from a keyless parent has no primary key
+  FOR _name IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'maps.polygons'::regclass AND contype IN ('p', 'u', 'x')
+  LOOP
+    EXECUTE 'ALTER TABLE maps.polygons DROP CONSTRAINT ' || quote_ident(_name);
+  END LOOP;
   FOR _name IN
     SELECT indexname FROM pg_indexes
     WHERE schemaname = 'maps' AND tablename = 'polygons'
