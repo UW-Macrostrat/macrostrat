@@ -18,13 +18,9 @@ from typing import Optional
 
 from psycopg.sql import Identifier
 
-from macrostrat.core import SchemaDefinition
+from macrostrat.core import APP_OWNER, SchemaDefinition  # noqa: F401
 from macrostrat.core.database import pin_role
 from macrostrat.database import Database
-
-# Application chunks are applied as this role (create-as-owner), so their objects
-# are born owned by it and the SQL carries no ``ALTER … OWNER TO`` boilerplate.
-APP_OWNER = "macrostrat"
 
 
 def set_applying_role(db: Database, owner: Optional[str]) -> None:

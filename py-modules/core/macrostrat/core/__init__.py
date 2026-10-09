@@ -18,6 +18,7 @@ on their own.
 """
 
 from .main import Macrostrat  # noqa: F401
+from .schema_definition import APP_OWNER  # noqa: F401
 
 # Deliberately *not* published into this module's globals once built: the CLI
 # test suite calls importlib.reload() on this module and expects the next `app`
@@ -26,7 +27,7 @@ from .main import Macrostrat  # noqa: F401
 # clearing it) and hand back a stale app bound to the previous config.
 _app = None
 
-__all__ = ["Macrostrat", "app", "get_database", "SchemaDefinition"]
+__all__ = ["APP_OWNER", "Macrostrat", "app", "get_database", "SchemaDefinition"]
 
 
 def _get_app() -> Macrostrat:

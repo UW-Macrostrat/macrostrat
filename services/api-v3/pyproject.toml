@@ -28,6 +28,7 @@ dependencies = [
     "macrostrat.map-topology",
     "macrostrat.column-utils",
     "macrostrat.map_utils",
+    "macrostrat.task-runner",
     "morecantile>=7.0.2",
     "pydantic-settings>2",
     "celery[redis]>=5.3,<6"
@@ -53,3 +54,4 @@ build-backend = "hatchling.build"
 "macrostrat.map-topology" = { editable = true, path = "../../py-modules/map-topology" }
 "macrostrat.column-utils" = { editable = true, path = "../../py-modules/column-utils" }
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
+"macrostrat.task-runner" = { path = "../../py-modules/task-runner", editable = true }

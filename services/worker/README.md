@@ -20,6 +20,8 @@ in through **extras** so each worker image installs only what its tasks need.
 - `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` — Redis (default
   `redis://localhost:6379/0`).
 - `DB_URL` — Postgres connection string (used by the map tasks).
+- `REDIS_URL` — where management tasks stream their output and listen for a
+  cancel; defaults to the broker.
 - `S3_HOST` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_BUCKET` / `S3_SECURE` —
   optional MinIO/S3 staging store for the map tasks.
 
@@ -32,3 +34,14 @@ uv run celery -A macrostrat.worker.app worker -Q maps --loglevel=info
 # Enqueue by name from anywhere (no need to import this package):
 celery_app.send_task("macrostrat.maps.delete", args=["some-slug"])
 ```
+
+## Management tasks
+
+`macrostrat.tasks.run <run_id>` (the `tasks` extra, `admin` queue) executes a
+registered management task — `topology.update` first — for the row of that id
+in `tasks.run`, streaming its terminal output to Redis and ending it like
+Ctrl-C when cancelled. See `py-modules/task-runner` for the framework and the
+API's `/tasks` routes for how a run is started. The `admin` worker runs one task
+at a time in a fresh process (`--concurrency=1 --max-tasks-per-child=1`) with a
+terminal environment (`FORCE_COLOR`, `COLUMNS`, …) so Rich renders colour and
+progress bars into the stream.

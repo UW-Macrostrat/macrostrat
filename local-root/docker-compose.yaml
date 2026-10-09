@@ -106,6 +106,7 @@ services:
       context: ../services/worker
       additional_contexts:
         py-modules: ../py-modules
+        submodules: ../submodules
     restart: unless-stopped
     command: celery -A macrostrat.worker.app worker -Q maps,columns --loglevel=info --concurrency=2
     environment:
@@ -126,6 +127,20 @@ services:
     depends_on:
       - redis
       - database
+  # Management tasks (`macrostrat.tasks.*`, api_v3 `/tasks`): the same image,
+  # one task at a time in a fresh process. The terminal variables make Rich
+  # render colour and progress bars into the run's output stream.
+  celery_admin_worker:
+    extends:
+      service: celery_worker
+    command: celery -A macrostrat.worker.app worker -Q admin --loglevel=info --concurrency=1 --max-tasks-per-child=1
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - FORCE_COLOR=1
+      - COLORTERM=truecolor
+      - TERM=xterm-256color
+      - COLUMNS=120
+      - LINES=40
   postgrest:
     image: postgrest/postgrest:v12.2.3
     environment:

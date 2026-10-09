@@ -16,9 +16,16 @@ COPY --from=py-modules column-ingestion /app/column-ingestion
 # must be copied and installed from source here. Its own deps (macrostrat.app-frame, macrostrat.database,
 # ...) are published and resolve from the index.
 COPY --from=py-modules core /app/core
+# Management tasks: the runner, the topology library and the topology-manager
+# submodule it builds on (a git submodule, not a published package, so it is
+# installed from source like the monorepo packages).
+COPY --from=py-modules task-runner /app/task-runner
+COPY --from=py-modules map-topology /app/map-topology
+COPY --from=submodules topology-manager /app/topology-manager
 COPY . /app/worker
 
-RUN pip install --no-cache-dir ./map-utils ./core ./column-utils ./column-ingestion ./worker[maps,columns]
+RUN pip install --no-cache-dir ./map-utils ./core ./column-utils ./column-ingestion \
+    ./task-runner ./topology-manager ./map-topology[topology] ./worker[maps,columns,tasks]
 
 # Build information, set by CI. Last, so a new commit leaves the layers above cached.
 ARG MACROSTRAT_VERSION MACROSTRAT_RELEASE MACROSTRAT_COMMIT MACROSTRAT_BUILD_DATE MACROSTRAT_REPOSITORY

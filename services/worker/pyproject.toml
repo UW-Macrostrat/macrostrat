@@ -25,10 +25,16 @@ maps = [
 columns = [
     "macrostrat.column-ingestion",
 ]
+tasks = [
+    "macrostrat.task-runner",
+    "macrostrat.map-topology[topology]",
+]
 
 [tool.uv.sources]
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
 "macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
+"macrostrat.task-runner" = { path = "../../py-modules/task-runner", editable = true }
+"macrostrat.map-topology" = { path = "../../py-modules/map-topology", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]

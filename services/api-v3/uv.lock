@@ -149,6 +149,7 @@ dependencies = [
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "morecantile" },
     { name = "numpy" },
@@ -188,6 +189,7 @@ requires-dist = [
     { name = "macrostrat-map-topology", editable = "../../py-modules/map-topology" },
     { name = "macrostrat-map-utils", editable = "../../py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "../../py-modules/match-utils" },
+    { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
     { name = "numpy", specifier = ">=2.4.4,<3" },
@@ -885,6 +887,7 @@ version = "0.1.0"
 source = { editable = "../../py-modules/map-topology" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-task-runner" },
     { name = "pydantic" },
 ]
 
@@ -893,6 +896,7 @@ requires-dist = [
     { name = "macrostrat-core", marker = "extra == 'topology'", editable = "../../py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "../../py-modules/map-utils" },
+    { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "../../submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
@@ -934,6 +938,26 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pydantic", specifier = ">=2.12.4" },
 ]
+
+[[package]]
+name = "macrostrat-task-runner"
+version = "0.1.0"
+source = { editable = "../../py-modules/task-runner" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "pydantic" },
+    { name = "redis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-database", specifier = ">=4.2.0" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "redis", specifier = ">=4.5" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "macrostrat-utils"
