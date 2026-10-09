@@ -1,6 +1,8 @@
+# Tileserver changelog
 
 ## [Unreleased]
 
+- `/version` reports the running build; `/health` answers 503 when the database does not
 - `/map/{slug}/{z}/{x}/{y}`: tiles for any source by slug or id, `carto` included,
   resolved through `map_bounds.serving_source`; `/dev/carto` is a deprecated alias of
   `/map/carto`; `sys:carto-legacy` addresses the materialized build the same way

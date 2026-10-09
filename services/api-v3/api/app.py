@@ -21,6 +21,7 @@ from api.routes.columns import router as columns_router
 from api.routes.ingest import router as ingest_router
 from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
+from api.routes.status import router as status_router
 
 
 @asynccontextmanager
@@ -59,6 +60,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(status_router)
 app.include_router(api.routes.security.router)
 app.include_router(object_router)
 app.include_router(ingest_router)
