@@ -404,7 +404,8 @@ CREATE TYPE macrostrat.units_outcrop AS ENUM (
     '',
     'surface',
     'subsurface',
-    'both'
+    'both',
+    'covered'
 );
 
 CREATE FUNCTION macrostrat.check_column_project_non_composite() RETURNS trigger
