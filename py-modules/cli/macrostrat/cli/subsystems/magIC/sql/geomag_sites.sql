@@ -1,5 +1,5 @@
 -- @subsystem: geomag-sites
--- @depends-on: core, development
+-- @depends-on: core, integrations
 
 SET search_path = integrations, public;
 
