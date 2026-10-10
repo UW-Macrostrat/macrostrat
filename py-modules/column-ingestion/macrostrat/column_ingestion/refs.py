@@ -88,8 +88,37 @@ def get_reference_data(data_file) -> list[Reference]:
     return references_from_df(pl.read_excel(data_file, sheet_name="refs"))
 
 
-def references_from_df(df) -> list[Reference]:
-    """The `refs` sheet as `Reference`s. Incomplete rows are warned about, not fatal."""
+def parse_compilation(value, codes: list[str] | None, **where) -> str:
+    """`compilation` as the enum member it names, ignoring case; blank if it names none.
+
+    Without `codes` (no database to read them from) the value is taken as given.
+    """
+    text = _text(value)
+    if text is None:
+        return ""
+    if codes is None:
+        return text
+    members = {code.lower(): code for code in codes}
+    if text.lower() in members:
+        return members[text.lower()]
+    known = ", ".join(f"`{code}`" for code in codes if code)
+    notices.warning(
+        "unknown-compilation",
+        f"`compilation` should be blank or one of {known}, got {text!r}; "
+        "it was left blank",
+        column="compilation",
+        **where,
+    )
+    return ""
+
+
+def references_from_df(
+    df, compilation_codes: list[str] | None = None
+) -> list[Reference]:
+    """The `refs` sheet as `Reference`s. Incomplete rows are warned about, not fatal.
+
+    `compilation_codes` are the values `compilation` may take (`Vocabulary`).
+    """
     references, seen = [], set()
     for number, row in enumerate(df.iter_rows(named=True), start=2):
         local_id = _text(row.get("ref_id"))
@@ -139,7 +168,9 @@ def references_from_df(df) -> list[Reference]:
                 doi=_text(row.get("doi")),
                 url=_text(row.get("url")),
                 # NOT NULL, and an enum whose empty member means "not a compilation".
-                compilation_code=_text(row.get("compilation")) or "",
+                compilation_code=parse_compilation(
+                    row.get("compilation"), compilation_codes, sheet="refs", row=number
+                ),
             )
         )
 

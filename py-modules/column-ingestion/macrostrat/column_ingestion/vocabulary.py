@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from .database import get_compilation_codes
 from .environs import EnvironsProcessor
 from .lithologies import LithsProcessor
 
 
 class Vocabulary:
-    """Lithology and environment processors.
+    """Lithology and environment processors, and the reference compilations.
 
     Each processor fetches its lookup table on construction, so building them per
     section — as the parser used to — cost a round trip per section. One instance is
@@ -17,5 +18,7 @@ class Vocabulary:
     def __init__(self, db):
         self.liths = LithsProcessor(db)
         self.environs = EnvironsProcessor(db)
+        #: What a reference's `compilation` may be.
+        self.compilation_codes = get_compilation_codes(db)
         #: The run's `facies` sheet, by `facies_id` (see `facies.facies_from_df`).
         self.facies: dict = {}

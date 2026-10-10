@@ -56,6 +56,7 @@ from .columns import (
 )
 from .database import ProjectIdentifier, get_or_create_project
 from .facies import facies_from_df
+from .headers import clean_headers
 from .lookups import group_unit_ids, refresh_unit_lookups
 from .metadata import (
     Metadata,
@@ -152,6 +153,10 @@ def _cell(value):
 
 def parse_sheets(db, sheets: dict[str, pl.DataFrame]) -> ParsedDataset:
     """Parse and resolve a dataset's tables. Reports problems as notices."""
+    sheets = {
+        name: df if name == "metadata" else clean_headers(df, name)
+        for name, df in sheets.items()
+    }
     if "metadata" in sheets:
         meta = metadata_from_df(sheets["metadata"])
     else:
@@ -168,7 +173,7 @@ def parse_sheets(db, sheets: dict[str, pl.DataFrame]) -> ParsedDataset:
 
     references: list[Reference] = []
     if "refs" in sheets:
-        references = references_from_df(sheets["refs"])
+        references = references_from_df(sheets["refs"], vocab.compilation_codes)
 
     if "columns" in sheets:
         columns = columns_from_df(sheets["columns"], meta)
