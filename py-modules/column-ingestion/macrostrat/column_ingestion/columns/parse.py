@@ -23,6 +23,7 @@ from ..units.parse import (
     prepare_section_units,
     rename_aliases,
 )
+from ..wkt import parse_geometry
 from .sections import Section, single_section
 
 log = get_logger(__name__)
@@ -163,8 +164,11 @@ def columns_from_df(df, meta) -> list[Column]:
                 lat=_as_float(row.get("lat"), "lat"),
                 lng=_as_float(row.get("lng"), "lng"),
                 ref_ids=parse_ref_ids(row.get("ref_ids")),
-                geom=_text(row.get("geom")),
-                rgeom=_text(_coalesce(row.get("rgeom"), getattr(meta, "rgeom", None))),
+                geom=parse_geometry(row.get("geom"), "geom"),
+                rgeom=_coalesce(
+                    parse_geometry(row.get("rgeom"), "rgeom"),
+                    getattr(meta, "rgeom", None),
+                ),
             )
             columns.append(col)
     return columns

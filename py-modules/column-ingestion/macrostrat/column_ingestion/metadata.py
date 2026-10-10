@@ -14,6 +14,8 @@ import polars as pl
 from pydantic import BaseModel
 
 from . import notices
+from .headers import clean_header
+from .wkt import parse_geometry
 
 
 class ProjectIdentifier(BaseModel):
@@ -74,9 +76,9 @@ def metadata_from_df(df: pl.DataFrame) -> Metadata:
     if ix is not None:
         df = df.slice(0, ix)
     metadata = {
-        str(key).strip(): value
+        clean_header(key): value
         for key, value in zip(df["key"], df["value"])
-        if key is not None and str(key).strip()
+        if key is not None and clean_header(key)
     }
     return metadata_from_dict(metadata)
 
@@ -188,5 +190,5 @@ def metadata_from_dict(metadata: dict) -> Metadata:
         fill_values=bool(
             parse_fill_values(metadata.get("fill_values"), sheet="metadata")
         ),
-        rgeom=_text(metadata.get("rgeom")),
+        rgeom=parse_geometry(metadata.get("rgeom"), "rgeom", sheet="metadata"),
     )
