@@ -36,7 +36,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, Sequence
 
-from sqlalchemy import Table
+from sqlalchemy import Table, bindparam
 
 KeySpec = Sequence[str] | Callable[[dict], tuple]
 
@@ -152,20 +152,42 @@ def apply_reconciliation(
 
     Returns ids aligned with `desired`, which is what callers need in order to attach them
     to objects or to write dependent rows.
+
+    Updates and inserts are each sent as one batched statement, not one per row: on a
+    remote database every statement is a network round trip.
     """
-    if owned_columns:
-        for row_id, values in plan.updates:
-            db.session.execute(
-                table.update().where(table.c.id == row_id).values(**values)
+    if owned_columns and plan.updates:
+        # Prefixed names: a bind parameter may not share a name with a SET column
+        stmt = (
+            table.update()
+            .where(table.c.id == bindparam("_row_id"))
+            .values(
+                {
+                    c: bindparam(f"_new_{c}", type_=table.c[c].type)
+                    for c in owned_columns
+                }
             )
+        )
+        db.session.execute(
+            stmt,
+            [
+                {"_row_id": row_id, **{f"_new_{c}": v for c, v in values.items()}}
+                for row_id, values in plan.updates
+            ],
+        )
 
     ids: list[int] = list(plan.matched)
+    # A batched insert takes its columns from its first row, so rows that set different
+    # columns are inserted in separate batches.
+    batches: dict[frozenset, list[int]] = defaultdict(list)
     for position, row_id in enumerate(ids):
-        if row_id is not None:
-            continue
-        ids[position] = db.session.execute(
-            table.insert().values(**desired[position]).returning(table.c.id)
-        ).scalar()
+        if row_id is None:
+            batches[frozenset(desired[position])].append(position)
+    for positions in batches.values():
+        stmt = table.insert().returning(table.c.id, sort_by_parameter_order=True)
+        result = db.session.execute(stmt, [desired[p] for p in positions])
+        for position, new_id in zip(positions, result.scalars(), strict=True):
+            ids[position] = new_id
 
     if plan.deletes:
         db.session.execute(table.delete().where(table.c.id.in_(plan.deletes)))
