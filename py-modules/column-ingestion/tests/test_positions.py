@@ -1,7 +1,7 @@
 """Positions, filling and covered units, as the format's full specification defines them.
 
 Each test names the rule it pins down; the specification is
-`submodules/column-ingestion/Full specification.md`.
+`submodules/column-ingestion/Docs/Full specification.md`.
 """
 
 import re
@@ -26,6 +26,7 @@ SPEC = (
     Path(__file__).parents[3]
     / "submodules"
     / "column-ingestion"
+    / "Docs"
     / "Full specification.md"
 )
 
