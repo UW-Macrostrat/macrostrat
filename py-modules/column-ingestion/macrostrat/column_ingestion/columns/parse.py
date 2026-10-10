@@ -235,7 +235,12 @@ def get_sections_from_df(
         notices.warning("ambiguous-columns", warning, sheet="units")
 
     if not {"position", "b_pos", "t_pos"} & set(df.columns):
-        raise ValueError("The units sheet needs a `position`, `b_pos` or `t_pos`.")
+        notices.error_or_raise(
+            ValueError("The units sheet needs a `position`, `b_pos` or `t_pos`."),
+            "no-position-column",
+            sheet="units",
+        )
+        return {}
 
     # Remember each row's place in the sheet (header is row 1) before sorting
     if ROW_COLUMN not in df.columns:

@@ -49,7 +49,13 @@ def _check_location(col: Column, label: str) -> None:
             column="lat",
         )
         return
-    if col.col_type == "section" and not has_point:
+    is_line = (
+        str(col.geom or "")
+        .strip()
+        .upper()
+        .startswith(("LINESTRING", "MULTILINESTRING"))
+    )
+    if col.col_type == "section" and not has_point and not is_line:
         # A measured section is a place, not a region; a polygon alone is a hint
         notices.warning(
             "no-specific-location",

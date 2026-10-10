@@ -425,3 +425,20 @@ def test_unknown_col_type_warns():
     with notices.collect_notices() as collected:
         assert parse_col_type("borehole") is None
     assert [n.code for n in collected] == ["unknown-column-type"]
+
+
+def test_a_traverse_line_is_a_specific_location():
+    from macrostrat.column_ingestion.columns.parse import Column
+    from macrostrat.column_ingestion.validation import validate_column
+
+    codes = {}
+    for geom in (
+        "LINESTRING(16 -24, 16.1 -24.1)",
+        "POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))",
+    ):
+        col = Column(local_id="A", name="A", col_type="section", geom=geom)
+        with notices.collect_notices() as collected:
+            validate_column(col)
+        codes[geom.split("(")[0]] = {n.code for n in collected}
+    assert "no-specific-location" not in codes["LINESTRING"]
+    assert "no-specific-location" in codes["POLYGON"]

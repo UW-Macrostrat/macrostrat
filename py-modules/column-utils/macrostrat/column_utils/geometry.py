@@ -2,8 +2,8 @@
 
 `macrostrat.cols` carries five geometry-related columns, three of which are NOT NULL:
 `lat`, `lng` and `col_area` (a geodesic area in km²), plus a nullable `coordinate` point,
-`poly_geom` polygon and `wkt` text. A workbook supplies either a lat/lng pair or a polygon
-in WKT, so the rest has to be derived.
+`poly_geom` geometry and `wkt` text. A workbook supplies a lat/lng pair, or WKT for an
+area (a polygon) or a measured traverse (a line), so the rest has to be derived.
 
 All of that derivation happens **in PostGIS via `geoalchemy2`** rather than by hand:
 geometry values are `WKTElement`s, which render as `ST_GeomFromEWKT(...)` and so carry
@@ -29,6 +29,10 @@ SRID = 4326
 POINT_AREA_KM2 = 0.0
 
 _POLYGON_TYPES = {"POLYGON", "MULTIPOLYGON"}
+_LINE_TYPES = {"LINESTRING", "MULTILINESTRING"}
+
+#: How far from its traverse line a supplied point may be and still be kept.
+LINE_POINT_TOLERANCE_M = 1000
 
 
 class GeometryError(ValueError):
@@ -45,6 +49,8 @@ class ColumnGeometry:
     coordinate: WKTElement
     poly_geom: WKTElement | None = None
     wkt: str | None = None
+    #: Whether `wkt` is an area, written to `col_areas`; a traverse line is not.
+    is_area: bool = False
 
     def column_values(self) -> dict:
         """The geometry-derived fields, ready to hand to a reconciler."""
@@ -71,7 +77,10 @@ def resolve_geometry(
     label: str = "column",
     keep_point: bool = False,
 ) -> ColumnGeometry:
-    """Build a `ColumnGeometry` from a lat/lng pair, a polygon WKT, or both.
+    """Build a `ColumnGeometry` from a lat/lng pair, a polygon or line WKT, or both.
+
+    A line is a measured traverse: the column sits at a point on it, with no area, and
+    a supplied point within `LINE_POINT_TOLERANCE_M` of it is kept.
 
     When a polygon is given it is authoritative: `lat`/`lng` are derived from it with
     `ST_PointOnSurface` (which, unlike a centroid, is guaranteed to fall inside the
@@ -134,6 +143,15 @@ def _from_polygon(
                     if lat is not None and lng is not None
                     else gfunc.ST_IsValid(element).label("contains_point")
                 ),
+                (
+                    gfunc.ST_DWithin(
+                        cast(element, Geography),
+                        cast(_point(lng, lat), Geography),
+                        LINE_POINT_TOLERANCE_M,
+                    ).label("near_point")
+                    if lat is not None and lng is not None
+                    else gfunc.ST_IsValid(element).label("near_point")
+                ),
             )
         )
         .mappings()
@@ -142,12 +160,15 @@ def _from_polygon(
 
     if not derived["valid"]:
         raise GeometryError(f"{label}: invalid geometry — {derived['reason']}")
-    if derived["geometry_type"] not in _POLYGON_TYPES:
+    is_area = derived["geometry_type"] in _POLYGON_TYPES
+    if not is_area and derived["geometry_type"] not in _LINE_TYPES:
         raise GeometryError(
-            f"{label}: geometry must be a POLYGON or MULTIPOLYGON, "
-            f"got {derived['geometry_type']}"
+            f"{label}: geometry must be a POLYGON, MULTIPOLYGON, LINESTRING or "
+            f"MULTILINESTRING, got {derived['geometry_type']}"
         )
     has_point = lat is not None and lng is not None
+    if not is_area:
+        return _from_line(element, wkt, derived, lat=lat, lng=lng, label=label)
     if keep_point and has_point:
         if not derived["contains_point"]:
             raise GeometryError(
@@ -160,6 +181,7 @@ def _from_polygon(
             coordinate=_point(lng, lat),
             poly_geom=element,
             wkt=wkt,
+            is_area=True,
         )
     if has_point and not derived["contains_point"]:
         # Not fatal: the polygon wins, but a disagreement usually means one of the two
@@ -181,6 +203,37 @@ def _from_polygon(
         coordinate=_point(derived["lng"], derived["lat"]),
         poly_geom=element,
         wkt=wkt,
+        is_area=True,
+    )
+
+
+def _from_line(
+    element: WKTElement, wkt: str, derived, *, lat, lng, label: str
+) -> ColumnGeometry:
+    if lat is not None and lng is not None:
+        if derived["near_point"]:
+            lat, lng = float(lat), float(lng)
+        else:
+            log.warning(
+                "%s: supplied lat/lng (%s, %s) is over %s m from its line; "
+                "using a point on the line (%s, %s) instead",
+                label,
+                lat,
+                lng,
+                LINE_POINT_TOLERANCE_M,
+                derived["lat"],
+                derived["lng"],
+            )
+            lat, lng = derived["lat"], derived["lng"]
+    else:
+        lat, lng = derived["lat"], derived["lng"]
+    return ColumnGeometry(
+        lat=lat,
+        lng=lng,
+        area_km2=POINT_AREA_KM2,
+        coordinate=_point(lng, lat),
+        poly_geom=element,
+        wkt=wkt,
     )
 
 
@@ -190,7 +243,7 @@ def write_column_footprint(
     """Write a column's geometry to its `cols` row, and its polygon to `col_areas`.
 
     `col_areas` is where the v2 API reads a column's polygon; its rows are replaced, so a
-    column without a polygon is left with none. `cols.coordinate` and `cols.wkt` are the
+    column without a polygon (a point, or a traverse line) is left with none. `cols.coordinate` and `cols.wkt` are the
     point, set from `lat`/`lng` by the table's trigger. False when there is no such column.
     """
     params = {
@@ -219,7 +272,7 @@ def write_column_footprint(
     conn.execute(
         text("DELETE FROM macrostrat.col_areas WHERE col_id = :col_id"), params
     )
-    if geometry.wkt is not None:
+    if geometry.is_area:
         conn.execute(
             text(
                 """

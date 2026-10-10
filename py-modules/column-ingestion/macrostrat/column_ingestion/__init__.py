@@ -46,6 +46,79 @@ def ingest_command(
         console.print("[dim]Dry run — nothing was persisted.[/]")
 
 
+@app.command(name="create-examples")
+def create_examples_command(
+    files: Optional[list[Path]] = Argument(
+        None,
+        help="Workbooks to ingest: paths, or names in the examples folder. "
+        "Default: every workbook in the examples folder.",
+    ),
+    project: str = Option(
+        "Ingestion Examples", "--project", help="Project to ingest the examples into."
+    ),
+    status: str = Option(
+        "active", "--status", help="Status for every column (`status_code`)."
+    ),
+    dry_run: bool = Option(
+        False, "--dry-run", help="Validate each workbook and roll back."
+    ),
+    verbose: bool = Option(False, "--verbose", "-v", help="Show every notice."),
+):
+    """Ingest the format's example workbooks into one project, one group per file.
+
+    A workbook that ingests replaces its previous version; one with errors is left
+    as it was.
+    """
+    from macrostrat.core.config import settings
+
+    from .examples import examples_dir, find_examples, ingest_examples, resolve_example
+
+    directory = examples_dir(settings.srcroot)
+    if files:
+        paths = [resolve_example(f, directory) for f in files]
+    else:
+        paths = find_examples(directory)
+    if not paths:
+        console.print(f"[red]No workbooks found in {directory}[/]")
+        raise SystemExit(1)
+
+    db = get_database()
+    results = ingest_examples(
+        db, paths, project=project, status_code=status, dry_run=dry_run
+    )
+
+    styles = {"written": "green", "checked": "green", "failed": "red bold"}
+    for result in results:
+        counts = {"error": 0, "warning": 0}
+        for notice in result.notices:
+            counts[notice["level"]] = counts.get(notice["level"], 0) + 1
+        detail = f"{counts['error']} error(s), {counts['warning']} warning(s)"
+        if result.summary is not None:
+            detail = (
+                f"{result.summary['n_columns']} column(s), "
+                f"{result.summary['n_units']} unit(s); {detail}"
+            )
+        console.print(
+            f"[{styles[result.status]}]{result.status:8}[/] {result.path.name}: {detail}"
+        )
+        if result.exception is not None:
+            console.print(f"         [red]{result.exception}[/]")
+        if verbose or result.status == "failed":
+            print_notices(
+                [n for n in result.notices if verbose or n["level"] == "error"]
+            )
+
+    failed = [r for r in results if r.status == "failed"]
+    if dry_run:
+        console.print("[dim]Dry run — nothing was persisted.[/]")
+    if failed:
+        console.print(
+            f"[red bold]{len(failed)} of {len(results)} example(s) failed;[/] "
+            "their previous versions were kept."
+        )
+        raise SystemExit(1)
+
+
 NOTICE_STYLES = {"error": "red bold", "warning": "yellow", "info": "dim"}
 
 

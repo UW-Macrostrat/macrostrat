@@ -55,6 +55,8 @@ from .columns import (
     reconcile_sections,
 )
 from .database import ProjectIdentifier, get_or_create_project
+from .facies import facies_from_df
+from .lookups import group_unit_ids, refresh_unit_lookups
 from .metadata import (
     Metadata,
     metadata_from_df,
@@ -161,6 +163,8 @@ def parse_sheets(db, sheets: dict[str, pl.DataFrame]) -> ParsedDataset:
         meta = metadata_from_dict({})
 
     vocab = Vocabulary(db)
+    if "facies" in sheets:
+        vocab.facies = facies_from_df(sheets["facies"], vocab)
 
     references: list[Reference] = []
     if "refs" in sheets:
@@ -238,12 +242,13 @@ class Placement:
     `project` replaces the file's project. The group is `col_group_id` (which must
     belong to the project), else `col_group` (a name, created in the project if it
     is new), else — when `project` is given — the file's project demoted to a group
-    name, else the project's `Default` group.
+    name, else the project's `Default` group. `status_code` replaces every column's.
     """
 
     project: ProjectIdentifier | None = None
     col_group_id: int | None = None
     col_group: str | None = None
+    status_code: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict | None) -> "Placement | None":
@@ -291,6 +296,9 @@ def ingest_sheets(
 ) -> dict:
     with notices.collect_notices() as collected:
         dataset = parse_sheets(db, sheets)
+        if placement is not None and placement.status_code is not None:
+            for col in dataset.columns:
+                col.status_code = placement.status_code
         validate_dataset(dataset.columns)
 
         project, group = resolve_placement(db, dataset.project, placement)
@@ -437,6 +445,8 @@ def _write(db, columns, project, group, references, dry_run):
     # workbook-local ids once the reference rows exist.
     ref_map = reconcile_references(db, references)
 
+    # Units the group held before, so a re-ingest can drop the lookups of removed ones
+    previous_units = group_unit_ids(db, col_group_id)
     reconcile_columns(db, columns, project_id=_project.id, col_group_id=col_group_id)
     if ref_map:
         resolve_column_references(db, columns, ref_map)
@@ -459,6 +469,10 @@ def _write(db, columns, project, group, references, dry_run):
                     f"Column {col.name!r}: no age model could be built, so its units "
                     "carry no modeled ages",
                 )
+
+    # The website reads units through the lookup tables, which nothing else refreshes
+    current_units = {u.id for col in columns for u in col.units}
+    refresh_unit_lookups(db, current_units, removed=previous_units - current_units)
 
     col_group_name = db.run_query(
         "SELECT col_group FROM macrostrat.col_groups WHERE id = :id",

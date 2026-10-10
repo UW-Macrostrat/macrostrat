@@ -17,3 +17,5 @@ class Vocabulary:
     def __init__(self, db):
         self.liths = LithsProcessor(db)
         self.environs = EnvironsProcessor(db)
+        #: The run's `facies` sheet, by `facies_id` (see `facies.facies_from_df`).
+        self.facies: dict = {}

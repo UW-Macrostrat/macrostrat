@@ -4,8 +4,8 @@ Mirrors `lithologies` — a processor holding the lookup table, called with a ce
 and returning a set — but is simpler, because environments carry no attributes. Each
 token is one environment, so there is nothing to disambiguate within an entry.
 
-Syntax, following the workbook contract the legacy importer documented: `;` separates
-entries, and each entry is either an `environs.id` or an environment name.
+Syntax, following the workbook contract the legacy importer documented: `;` (or `,`)
+separates entries, and each entry is either an `environs.id` or an environment name.
 
 **Tokens resolve to `environs` rows and nothing else.** `environ_class` (`marine` /
 `non-marine`) and `environ_type` (`carbonate`, `siliciclastic`, …) are descriptive
@@ -22,6 +22,7 @@ much more likely to be a typo than something to be pattern-matched out of a sent
 and an unrecognised environment is reported rather than dropped.
 """
 
+import re
 from dataclasses import dataclass
 
 from macrostrat.utils import get_logger
@@ -51,10 +52,13 @@ class UnknownEnvironError(ValueError):
 
 
 def split_environments(text: str | None) -> list[str]:
-    """Split an `environment` cell into its entries."""
+    """Split an `environment` cell into its entries, on `;` or `,`.
+
+    No Macrostrat environment name contains a comma, so a comma is always a separator.
+    """
     if text is None:
         return []
-    return [part.strip() for part in str(text).split(";") if part.strip()]
+    return [part.strip() for part in re.split(r"[;,]", str(text)) if part.strip()]
 
 
 class EnvironsProcessor:

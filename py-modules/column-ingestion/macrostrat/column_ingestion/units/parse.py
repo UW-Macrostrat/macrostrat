@@ -9,6 +9,7 @@ from .. import notices
 from ..boundary_status import BoundaryStatus
 from ..boundary_type import BoundaryType
 from ..environs import Environ, EnvironsProcessor
+from ..facies import facies_environment, facies_for_unit, facies_lithology
 from ..intervals import (
     Interval,
     RelativeAge,
@@ -353,6 +354,14 @@ def _unit_from_row(db, row: dict, vocab, position=PositionAxisType.HEIGHT) -> Un
     # Process minor lithologies if they are present
     liths |= vocab.liths(row.get("minor_lith"), LithAbundance.SUBSIDIARY)
     environs = vocab.environs(row.get("environment"))
+
+    # A unit's own descriptions win; its facies fill only what it leaves blank
+    with notices.notice_context(column="facies"):
+        found = facies_for_unit(row.get("facies"), getattr(vocab, "facies", {}))
+    if not liths:
+        liths = facies_lithology(found)
+    if not environs:
+        environs = facies_environment(found)
 
     unit = Unit(
         environment=environs,
