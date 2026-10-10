@@ -33,8 +33,16 @@ def validate_column(col: Column) -> None:
         with notices.notice_context(unit=unit.name):
             _check_unit_ages(unit)
 
-    _check_age_model(col, label, units)
-    _check_age_order(col, units)
+    # Positions are local to their section, so each section is its own age model
+    for section in col.sections:
+        if not section.units:
+            continue
+        section_label = label
+        if len(col.sections) > 1:
+            section_label = f"{label}, section {section.orig_id or '(unidentified)'}"
+        with notices.notice_context(section=section.orig_id):
+            _check_age_model(col, section_label, section.units)
+            _check_age_order(col, section.units)
 
 
 def _check_location(col: Column, label: str) -> None:
