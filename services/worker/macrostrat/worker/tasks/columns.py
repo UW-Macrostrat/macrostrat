@@ -47,14 +47,17 @@ def _storage() -> Minio:
 def ingest_columns_task(ref: dict) -> dict:
     """Ingest a column spreadsheet previously uploaded to object storage.
 
-    ``ref`` = ``{filename, dry_run}`` plus either ``content`` (the file, base64 —
-    sent for dry runs) or ``{bucket, key}`` (an object in storage). Writes the file
-    to a temp file and runs the ingest; on ``dry_run`` the ingest rolls back
-    instead of committing (enforced inside ``ingest_columns_from_file``).
+    ``ref`` = ``{filename, dry_run, placement?}`` plus either ``content`` (the file,
+    base64 — sent for dry runs) or ``{bucket, key}`` (an object in storage).
+    ``placement`` — ``{project_id?, col_group_id?, col_group?}`` — says where the
+    columns go instead of the file's own metadata. Writes the file to a temp file
+    and runs the ingest; on ``dry_run`` the ingest rolls back instead of
+    committing (enforced inside ``ingest_columns_from_file``).
     """
-    from macrostrat.column_ingestion.ingest import ingest_columns_from_file
+    from macrostrat.column_ingestion.ingest import Placement, ingest_columns_from_file
 
     dry_run = ref.get("dry_run", True)
+    placement = Placement.from_dict(ref.get("placement"))
     db = _database()
 
     suffix = Path(ref["filename"]).suffix or ".xlsx"
@@ -64,7 +67,9 @@ def ingest_columns_task(ref: dict) -> dict:
             tmp.flush()
         else:
             _storage().fget_object(BUCKET, ref["key"], tmp.name)
-        result = _run(ingest_columns_from_file, db, tmp.name, dry_run=dry_run)
+        result = _run(
+            ingest_columns_from_file, db, tmp.name, dry_run=dry_run, placement=placement
+        )
 
     return {
         "key": ref.get("key"),
@@ -78,17 +83,21 @@ def ingest_columns_task(ref: dict) -> dict:
 def ingest_column_data_task(payload: dict) -> dict:
     """Ingest a column dataset given as the format's tables in JSON.
 
-    ``payload`` = ``{data: {metadata, columns, units, refs?, facies?}, dry_run}``.
+    ``payload`` = ``{data: {metadata, columns, units, refs?, facies?}, dry_run,
+    placement?}``; ``placement`` as for the upload task.
     """
-    from macrostrat.column_ingestion.ingest import ingest_column_data
+    from macrostrat.column_ingestion.ingest import Placement, ingest_column_data
 
     dry_run = payload.get("dry_run", True)
+    placement = Placement.from_dict(payload.get("placement"))
     db = _database()
-    result = _run(ingest_column_data, db, payload["data"], dry_run=dry_run)
+    result = _run(
+        ingest_column_data, db, payload["data"], dry_run=dry_run, placement=placement
+    )
     return {"dry_run": dry_run, "result": result}
 
 
-def _run(fn, db, source, *, dry_run: bool) -> dict:
+def _run(fn, db, source, *, dry_run: bool, placement=None) -> dict:
     """Run an ingest, turning a validation refusal into a result rather than a failure.
 
     A dataset with error-level notices is refused on a real write. That is an
@@ -98,7 +107,7 @@ def _run(fn, db, source, *, dry_run: bool) -> dict:
     from macrostrat.column_ingestion.notices import IngestValidationError
 
     try:
-        return fn(db, source, dry_run=dry_run)
+        return fn(db, source, dry_run=dry_run, placement=placement)
     except IngestValidationError as err:
         return {
             "dry_run": dry_run,

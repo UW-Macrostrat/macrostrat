@@ -95,15 +95,18 @@ class EnvironsProcessor:
             else:
                 found.add(environ)
         if unknown:
-            notices.error_or_raise(
-                UnknownEnvironError(
-                    "unrecognised environment(s): "
-                    + ", ".join(repr(t) for t in unknown)
-                ),
+            message = "unrecognised environment(s), left out: " + ", ".join(
+                repr(t) for t in unknown
+            )
+            reported = notices.warning(
                 "unknown-environment",
+                message,
                 column="environment",
                 detail={"unknown": unknown},
             )
+            if reported is None:
+                # Used on its own, a parser still fails loudly
+                raise UnknownEnvironError(message)
         return found
 
     def match(self, token: str) -> Environ | None:

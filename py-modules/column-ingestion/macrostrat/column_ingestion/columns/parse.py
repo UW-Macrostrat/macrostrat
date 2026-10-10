@@ -14,7 +14,7 @@ import polars as pl
 from macrostrat.utils import get_logger
 
 from .. import notices
-from ..metadata import parse_axis_type, parse_fill_values
+from ..metadata import parse_axis_type, parse_col_type, parse_fill_values
 from ..refs import parse_ref_ids
 from ..units.parse import (
     ROW_COLUMN,
@@ -134,7 +134,9 @@ def columns_from_df(df, meta) -> list[Column]:
             seen.add(local_id)
             name = _text(row.get("col_name"))
             if name is None:
-                notices.error("column-missing-name", "A column needs a `col_name`")
+                notices.warning(
+                    "column-missing-name", f"No `col_name`; named 'Column {local_id}'"
+                )
                 name = f"Column {local_id}"
 
             col = Column(
@@ -146,7 +148,9 @@ def columns_from_df(df, meta) -> list[Column]:
                     row.get("status_code"), getattr(meta, "status_code", None)
                 )
                 or "in process",
-                col_type=_coalesce(row.get("col_type"), getattr(meta, "col_type", None))
+                col_type=_coalesce(
+                    parse_col_type(row.get("col_type")), getattr(meta, "col_type", None)
+                )
                 or "column",
                 axis_type=_coalesce(
                     parse_axis_type(row.get("axis_type")),

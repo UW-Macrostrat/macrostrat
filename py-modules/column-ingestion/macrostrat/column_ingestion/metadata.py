@@ -90,6 +90,31 @@ def _text(value) -> str | None:
 
 AXIS_TYPES = ("height", "depth", "age")
 
+#: `col_type` as the workbook writes it, to the `macrostrat.cols.col_type` it is stored as.
+#: `section` and `column` are the older names.
+COL_TYPES = {
+    "measured": "section",
+    "composite": "column",
+    "section": "section",
+    "column": "column",
+}
+
+
+def parse_col_type(value, **where) -> str | None:
+    """`col_type` as stored; `None` where it is not given or not recognised."""
+    text = _text(value)
+    if text is None:
+        return None
+    col_type = COL_TYPES.get(text.lower())
+    if col_type is None:
+        notices.warning(
+            "unknown-column-type",
+            f"col_type should be `measured` or `composite`, got {text!r}",
+            column="col_type",
+            **where,
+        )
+    return col_type
+
 
 def parse_axis_type(value, **where) -> str | None:
     """`axis_type` as given, warning about a value the format does not define."""
@@ -137,9 +162,10 @@ def metadata_from_dict(metadata: dict) -> Metadata:
                 project_slug = project_id
                 project_id = None
             else:
-                notices.error(
+                notices.warning(
                     "bad-project-id",
-                    f"project_id must be an integer, got {project_id!r}",
+                    f"project_id must be an integer, got {project_id!r}; using the "
+                    "project slug",
                     sheet="metadata",
                 )
                 project_id = None
@@ -148,13 +174,7 @@ def metadata_from_dict(metadata: dict) -> Metadata:
     if project_id or project_slug or project_name:
         project = ProjectIdentifier(id=project_id, slug=project_slug, name=project_name)
 
-    col_type = _text(metadata.get("col_type")) or "column"
-    if col_type not in ("column", "section"):
-        notices.warning(
-            "unknown-column-type",
-            f"col_type should be `column` or `section`, got {col_type!r}",
-            sheet="metadata",
-        )
+    col_type = parse_col_type(metadata.get("col_type"), sheet="metadata") or "column"
 
     default_axis_type = "age" if col_type == "column" else "height"
     axis_type = parse_axis_type(metadata.get("axis_type"), sheet="metadata")

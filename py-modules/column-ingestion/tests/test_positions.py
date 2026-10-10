@@ -14,7 +14,7 @@ import pytest
 from macrostrat.column_ingestion import notices
 from macrostrat.column_ingestion.columns import get_sections_from_df
 from macrostrat.column_ingestion.columns.parse import UNIT_FIELD_ALIASES
-from macrostrat.column_ingestion.metadata import parse_fill_values
+from macrostrat.column_ingestion.metadata import parse_col_type, parse_fill_values
 from macrostrat.column_ingestion.units import PositionAxisType
 from macrostrat.column_ingestion.units.parse import FILLED_FIELDS
 
@@ -252,6 +252,59 @@ col_id|position|covered
     assert "covered-on-depth-axis" in codes
 
 
+def test_covered_by_name(test_db):
+    """A unit named `covered` is a covered unit; filling carries on past it."""
+    units, _ = parse(
+        test_db,
+        """
+col_id|position|unit_name|lithology|strat_name
+1|0||sandstone|Wood Canyon Formation
+1|4|covered||
+1|6|||
+1|9|||
+""",
+        fill_values=True,
+    )
+    assert [u.outcrop for u in units] == ["surface", "covered", "surface"]
+    assert [u.name for u in units] == ["Wood Canyon Formation"] * 3
+    assert [liths(u) for u in units] == [{"sandstone"}] * 3
+
+
+def test_covered_by_lithology(test_db):
+    """`covered` in place of a lithology leaves the unit's lithology unknown."""
+    units, _ = parse(
+        test_db,
+        """
+col_id|position|lithology
+1|0|sandstone
+1|4|Covered
+1|6|
+1|9|
+""",
+        fill_values=True,
+    )
+    assert [u.outcrop for u in units] == ["surface", "covered", "surface"]
+    assert [liths(u) for u in units] == [{"sandstone"}, set(), {"sandstone"}]
+
+
+def test_gap_row(test_db):
+    """A row named `gap` ends the unit below it, and no unit fills the gap."""
+    units, codes = parse(
+        test_db,
+        """
+col_id|position|unit_name|strat_name
+1|12||
+1|8||
+1|5|gap|
+1|0||Lower Formation
+""",
+        fill_values=True,
+    )
+    assert [(u.b_pos, u.t_pos) for u in units] == [(0, 5), (8, 12)]
+    assert [u.name for u in units] == ["Lower Formation"] * 2
+    assert codes == []
+
+
 def test_explicit_bound_headers(test_db):
     units, _ = parse(
         test_db,
@@ -352,3 +405,23 @@ def test_filled_fields_match_the_specification():
         "name" if f == "unit_name" else f for f in re.findall(r"`(\w+)`", listed)
     }
     assert documented == set(FILLED_FIELDS)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("measured", "section"),
+        ("Composite", "column"),
+        ("section", "section"),
+        ("column", "column"),
+        (None, None),
+    ],
+)
+def test_col_type_names(value, expected):
+    assert parse_col_type(value) == expected
+
+
+def test_unknown_col_type_warns():
+    with notices.collect_notices() as collected:
+        assert parse_col_type("borehole") is None
+    assert [n.code for n in collected] == ["unknown-column-type"]
