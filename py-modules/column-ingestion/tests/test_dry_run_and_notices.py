@@ -10,7 +10,9 @@ from pathlib import Path
 import polars as pl
 from pytest import fixture, raises
 
+from macrostrat.column_ingestion.database import ProjectIdentifier
 from macrostrat.column_ingestion.ingest import (
+    Placement,
     ingest_column_data,
     ingest_columns_from_file,
 )
@@ -126,13 +128,15 @@ class TestNotices:
             by_code.setdefault(notice["code"], []).append(notice)
 
         assert "unknown-environment" in by_code
-        assert by_code["unknown-environment"][0]["level"] == "error"
+        assert by_code["unknown-environment"][0]["level"] == "warning"
         assert by_code["unknown-environment"][0]["row"] == 2
         assert "unknown-lithology" in by_code
         assert by_code["unknown-lithology"][0]["level"] == "warning"
         assert "unknown-interval" in by_code
+        assert by_code["unknown-interval"][0]["level"] == "warning"
         assert by_code["unknown-interval"][0]["column"] == "b_int"
-        assert result["ok"] is False
+        # Unknown vocabulary is dropped with a warning; the column still ingests
+        assert result["ok"] is True
 
     def test_contradictory_ages_are_an_error(
         self, db, test_project, default_age_model_ref, workbook_data
@@ -170,3 +174,52 @@ class TestCommit:
         assert result["summary"]["n_units"] == 6
         assert all(u["unit_id"] > 0 for u in result["data"]["units"])
         assert _count(db, "units") == 6
+
+
+class TestPlacement:
+    """A caller's placement overrides the file's project; see `Placement`."""
+
+    @fixture(scope="class")
+    def examples_project(self, db):
+        db.run_query(
+            "INSERT INTO macrostrat.projects (id, slug, project, descrip, timescale_id)"
+            " VALUES (14, 'examples', 'Examples', 'Example columns', 11)"
+        )
+        db.session.commit()
+        return 14
+
+    def test_the_files_project_becomes_the_group(
+        self, db, workbook_data, test_project, examples_project, default_age_model_ref
+    ):
+        placement = Placement(project=ProjectIdentifier(id=examples_project))
+        result = ingest_column_data(
+            db, workbook_data, dry_run=True, placement=placement
+        )
+        assert result["ok"], result["notices"]
+        summary = result["summary"]
+        assert summary["project"]["id"] == examples_project
+        # Demoted, the workbook's own project name is the group's name.
+        assert summary["col_group"] == workbook_data["metadata"]["project_name"]
+        codes = {n["code"] for n in result["notices"]}
+        assert "project-as-group" in codes
+
+    def test_a_named_group_is_created_in_the_project(
+        self, db, workbook_data, test_project, examples_project, default_age_model_ref
+    ):
+        placement = Placement(
+            project=ProjectIdentifier(id=examples_project),
+            col_group="Field season 2024",
+        )
+        result = ingest_column_data(
+            db, workbook_data, dry_run=True, placement=placement
+        )
+        assert result["ok"], result["notices"]
+        assert result["summary"]["col_group"] == "Field season 2024"
+
+    def test_without_a_placement_the_file_decides(
+        self, db, workbook_data, test_project, default_age_model_ref
+    ):
+        result = ingest_column_data(db, workbook_data, dry_run=True)
+        assert result["ok"], result["notices"]
+        assert result["summary"]["project"]["id"] == test_project
+        assert result["summary"]["col_group"] == "Default"

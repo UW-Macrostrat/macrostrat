@@ -119,6 +119,11 @@ FILLED_FIELDS = (
 #: In a filled field, the unit has no value, and a filled run ends.
 NO_VALUE = "none"
 
+#: Row markers, written as the unit name or lithology: a covered unit, or missing rock.
+COVERED = "covered"
+GAP = "gap"
+MARKER_FIELDS = ("name", "lithology")
+
 #: The default proportion of a blank `b_prop` / `t_prop`: an interval's oldest or youngest end.
 DEFAULT_PROPORTION = {"b": 0, "t": 1}
 
@@ -161,13 +166,18 @@ def prepare_section_units(
 
     rows = df.to_dicts()
     _infer_bounds(rows, position)
-    units, bounding = [], []
+    units, bounding, gaps = [], [], []
     for row in rows:
-        if row["b_pos"] is None or row["t_pos"] is None:
+        marker = _marker(row)
+        if marker == GAP:
+            gaps.append(row)
+        elif row["b_pos"] is None or row["t_pos"] is None:
             bounding.append(row)
         else:
+            if marker == COVERED:
+                row["covered"] = True
             units.append(row)
-    _carry_ages(units, bounding, lead, trail)
+    _carry_ages(units, bounding + gaps, lead, trail)
     for row in bounding:
         _report_unplaced(row)
 
@@ -305,6 +315,17 @@ def _is_no_value(value) -> bool:
     return isinstance(value, str) and value.strip().lower() == NO_VALUE
 
 
+def _is_marker(value) -> bool:
+    return isinstance(value, str) and value.strip().lower() in (COVERED, GAP)
+
+
+def _marker(row: dict) -> str | None:
+    for field_name in MARKER_FIELDS:
+        if _is_marker(row.get(field_name)):
+            return row[field_name].strip().lower()
+    return None
+
+
 def _clean_filled_fields(rows: list[dict], *, fill: bool) -> None:
     """Blank cells take the previous row's value along the axis; `none` ends a run."""
     last: dict = {}
@@ -313,7 +334,10 @@ def _clean_filled_fields(rows: list[dict], *, fill: bool) -> None:
             if field_name not in row:
                 continue
             value = row[field_name]
-            if _is_no_value(value):
+            if field_name in MARKER_FIELDS and _is_marker(value):
+                # A marker describes this row only, so the run continues past it
+                value = None
+            elif _is_no_value(value):
                 value = None
                 last[field_name] = None
             elif _blank(value):
@@ -389,18 +413,20 @@ def _proportion(value, default: float, column: str) -> float:
     try:
         proportion = float(value)
     except (TypeError, ValueError):
-        notices.error(
+        notices.warning(
             "unreadable-proportion",
-            f"`{column}` must be a number, got {value!r}",
+            f"`{column}` must be a number, got {value!r}; using {default}",
             column=column,
         )
         return default
     if not 0 <= proportion <= 1:
-        notices.error(
+        clamped = min(max(proportion, 0), 1)
+        notices.warning(
             "proportion-out-of-range",
-            f"`{column}` must be between 0 and 1, got {proportion:g}",
+            f"`{column}` must be between 0 and 1, got {proportion:g}; using {clamped:g}",
             column=column,
         )
+        return clamped
     return proportion
 
 

@@ -89,21 +89,23 @@ def get_reference_data(data_file) -> list[Reference]:
 
 
 def references_from_df(df) -> list[Reference]:
-    """The `refs` sheet as `Reference`s.
-
-    Validation problems are collected and reported together rather than one per run —
-    as error notices when a run is collecting them, else as one `ReferenceError`.
-    """
-    references, problems, seen = [], [], set()
+    """The `refs` sheet as `Reference`s. Incomplete rows are warned about, not fatal."""
+    references, seen = [], set()
     for number, row in enumerate(df.iter_rows(named=True), start=2):
         local_id = _text(row.get("ref_id"))
-        label = f"refs row {number}"
+
+        def warn(message: str, column: str) -> None:
+            notices.warning(
+                "invalid-reference", message, sheet="refs", row=number, column=column
+            )
 
         if local_id is None:
-            problems.append(f"{label}: missing `ref_id`")
+            warn("No `ref_id`, so nothing can cite it; the row was left out", "ref_id")
             continue
         if local_id in seen:
-            problems.append(f"{label}: duplicate `ref_id` {local_id!r}")
+            warn(
+                f"`ref_id` {local_id!r} is used twice; this row was left out", "ref_id"
+            )
             continue
         seen.add(local_id)
 
@@ -112,24 +114,27 @@ def references_from_df(df) -> list[Reference]:
         year = _text(row.get("date"))
 
         if author is None:
-            problems.append(f"{label}: `authors` (or `author`) must be non-empty")
+            warn(f"Reference {local_id!r} has no `authors`", "authors")
         if title is None:
-            problems.append(f"{label}: `title` must be non-empty")
+            warn(f"Reference {local_id!r} has no `title`", "title")
         try:
             pub_year = int(float(year)) if year is not None else None
         except ValueError:
             pub_year = None
         if pub_year is None:
-            problems.append(f"{label}: `date` must be an integer year, got {year!r}")
-
-        if author is None or title is None or pub_year is None:
+            # `refs.pub_year` is NOT NULL, so this one cannot be stored
+            warn(
+                f"Reference {local_id!r} needs a year in `date`, got {year!r}; "
+                "it was left out",
+                "date",
+            )
             continue
 
         references.append(
             Reference(
                 local_id=local_id,
                 pub_year=pub_year,
-                author=author,
+                author=author or "",
                 ref=compose_citation(title, row.get("publication")),
                 doi=_text(row.get("doi")),
                 url=_text(row.get("url")),
@@ -138,14 +143,6 @@ def references_from_df(df) -> list[Reference]:
             )
         )
 
-    if problems:
-        if notices.current_notices() is None:
-            raise ReferenceError(
-                f"{len(problems)} problem(s) in the refs sheet:\n  "
-                + "\n  ".join(problems)
-            )
-        for problem in problems:
-            notices.error("invalid-reference", problem, sheet="refs")
     return references
 
 
@@ -229,7 +226,10 @@ def reconcile_column_references(
 
 
 def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> None:
-    """Link every column to the references it cites, reporting unknown ids together."""
+    """Link every column to the references it cites; unknown ids are warned about.
+
+    Used on its own, without a notice collector, unknown ids still raise.
+    """
     problems = []
     for col in columns:
         ref_ids, unknown = [], []
@@ -239,11 +239,16 @@ def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> Non
             else:
                 unknown.append(local_id)
         if unknown:
-            problems.append(
+            message = (
                 f"column {col.local_id or col.name!r} cites unknown ref_id(s): "
                 + ", ".join(unknown)
             )
-            continue
+            reported = notices.warning(
+                "unknown-ref-id", message, sheet="columns", column="ref_ids"
+            )
+            if reported is None:
+                problems.append(message)
+                continue
         reconcile_column_references(db, col.id, ref_ids)
 
     if problems:

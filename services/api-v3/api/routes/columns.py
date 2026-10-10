@@ -20,9 +20,28 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from minio.error import S3Error
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from api.celery_app import celery_app
+from api.database import DatabaseDep
 from api.routes.security import TokenData, get_user_token_from_cookie, has_access
+
+
+def _placement(
+    project_id: int | None, col_group_id: int | None, col_group: str | None
+) -> dict | None:
+    """Where the columns should go, when the caller says; else the file decides.
+
+    The pipeline's `Placement`: a project, and a group by id or by name. With a
+    project and no group, the file's own project becomes the group's name.
+    """
+    if project_id is None and col_group_id is None and not col_group:
+        return None
+    return {
+        "project_id": project_id,
+        "col_group_id": col_group_id,
+        "col_group": col_group or None,
+    }
 
 
 def _format_task_error(error) -> str:
@@ -99,6 +118,9 @@ router = APIRouter(
 async def ingest_columns(
     file: UploadFile,
     dry_run: bool = Form(True),
+    project_id: int | None = Form(None),
+    col_group_id: int | None = Form(None),
+    col_group: str | None = Form(None),
     user_token: TokenData | None = Depends(get_user_token_from_cookie),
     user_has_access: bool = Depends(has_access),
 ):
@@ -108,6 +130,11 @@ async def ingest_columns(
     (web_user) ``dry_run`` is forced on regardless of the submitted value, so a
     web_user can only ever validate — never write. This server-side enforcement
     is the real boundary; the web checkbox is only a convenience mirror of it.
+
+    ``project_id``, ``col_group_id`` and ``col_group`` place the columns instead
+    of the file's metadata: a project, and a group by id or by a name that is
+    created if new. A project without a group demotes the file's project to the
+    group, which is how files from many sources nest under one project.
 
     A dry run sends the file to the worker inline; a real ingest stores it in
     object storage and hands the worker a reference. Returns the Celery task id
@@ -123,6 +150,9 @@ async def ingest_columns(
         dry_run = True
 
     ref = {"filename": file.filename, "dry_run": dry_run}
+    placement = _placement(project_id, col_group_id, col_group)
+    if placement is not None:
+        ref["placement"] = placement
     if dry_run:
         # A dry run's file is never kept, so it travels in the task message
         # rather than through object storage.
@@ -156,6 +186,10 @@ class ColumnSubmission(BaseModel):
 
     data: dict = Field(..., description="Sheets by name: metadata, columns, units, …")
     dry_run: bool = True
+    # Placement, as for an upload: these override the metadata's project.
+    project_id: int | None = None
+    col_group_id: int | None = None
+    col_group: str | None = None
 
 
 @router.post("/submit")
@@ -178,11 +212,179 @@ async def submit_columns(
     if "units" not in submission.data:
         raise HTTPException(status_code=422, detail="`data.units` is required")
 
-    task = celery_app.send_task(
-        "macrostrat.columns.ingest-data",
-        args=[{"data": submission.data, "dry_run": dry_run}],
+    payload = {"data": submission.data, "dry_run": dry_run}
+    placement = _placement(
+        submission.project_id, submission.col_group_id, submission.col_group
     )
+    if placement is not None:
+        payload["placement"] = placement
+    task = celery_app.send_task("macrostrat.columns.ingest-data", args=[payload])
     return {"task_id": task.id, "dry_run": dry_run}
+
+
+class ColumnPlacement(BaseModel):
+    """Where an existing column belongs: a project and a group in it."""
+
+    project_id: int | None = None
+    col_group_id: int | None = None
+    #: A group name: an existing group of the project, or one to create.
+    col_group: str | None = None
+
+
+@router.patch("/{col_id}/placement")
+async def update_column_placement(
+    col_id: int,
+    placement: ColumnPlacement,
+    database: DatabaseDep,
+    user_token: TokenData | None = Depends(get_user_token_from_cookie),
+    user_has_access: bool = Depends(has_access),
+):
+    """Move a column to a project and group (administrators only).
+
+    A group given by id must belong to the project; one given by name is got or
+    created in it. Moving to another project needs a group named for that
+    project, since a group belongs to one project. Direct, not through the
+    ingestion task: nothing is re-read or rewritten but the two columns of
+    ``macrostrat.cols``.
+    """
+    if user_token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not user_has_access:
+        raise HTTPException(
+            status_code=403, detail="Only administrators can move columns"
+        )
+
+    async with database.async_connection() as conn:
+        row = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT id, project_id, col_group_id FROM macrostrat.cols WHERE id = :id"
+                    ),
+                    {"id": col_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Column {col_id} not found")
+
+        project_id = placement.project_id or row["project_id"]
+        project_changed = project_id != row["project_id"]
+
+        if placement.col_group_id is not None:
+            group = (
+                (
+                    await conn.execute(
+                        text(
+                            "SELECT id, col_group FROM macrostrat.col_groups"
+                            " WHERE id = :id AND project_id = :project_id"
+                        ),
+                        {"id": placement.col_group_id, "project_id": project_id},
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if group is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Group {placement.col_group_id} is not in project {project_id}",
+                )
+        elif placement.col_group:
+            name = placement.col_group.strip()
+            group = (
+                (
+                    await conn.execute(
+                        text(
+                            "SELECT id, col_group FROM macrostrat.col_groups"
+                            " WHERE project_id = :project_id AND col_group = :name"
+                        ),
+                        {"project_id": project_id, "name": name},
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if group is None:
+                await _set_audit_context(conn, user_token, col_id)
+                group = (
+                    (
+                        await conn.execute(
+                            text(
+                                "INSERT INTO macrostrat.col_groups (project_id, col_group, col_group_long)"
+                                " VALUES (:project_id, :name, :long) RETURNING id, col_group"
+                            ),
+                            {
+                                "project_id": project_id,
+                                "name": name,
+                                "long": f"{name} column group",
+                            },
+                        )
+                    )
+                    .mappings()
+                    .first()
+                )
+        elif project_changed:
+            raise HTTPException(
+                status_code=422,
+                detail="Moving a column to another project needs a group in that project",
+            )
+        else:
+            group = {"id": row["col_group_id"], "col_group": None}
+
+        if project_changed or group["id"] != row["col_group_id"]:
+            await _set_audit_context(conn, user_token, col_id)
+            await conn.execute(
+                text(
+                    "UPDATE macrostrat.cols SET project_id = :project_id,"
+                    " col_group_id = :col_group_id WHERE id = :id"
+                ),
+                {"project_id": project_id, "col_group_id": group["id"], "id": col_id},
+            )
+
+        names = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT p.project, g.col_group FROM macrostrat.projects p"
+                        " LEFT JOIN macrostrat.col_groups g ON g.id = :group_id"
+                        " WHERE p.id = :project_id"
+                    ),
+                    {"group_id": group["id"], "project_id": project_id},
+                )
+            )
+            .mappings()
+            .first()
+        )
+
+    return {
+        "col_id": col_id,
+        "project_id": project_id,
+        "project": names["project"] if names else None,
+        "col_group_id": group["id"],
+        "col_group": names["col_group"] if names else None,
+    }
+
+
+async def _set_audit_context(conn, user_token: TokenData, col_id: int) -> None:
+    """Attribute the writes in the change-tracking trail, when it is installed
+    (see `macrostrat.core.database.set_audit_context`). Transaction-local, which
+    is where these statements run."""
+    installed = (
+        await conn.execute(
+            text(
+                "SELECT to_regprocedure('audit.set_context(text,text,boolean)') IS NOT NULL"
+            )
+        )
+    ).scalar()
+    if not installed:
+        return
+    await conn.execute(
+        text("SELECT audit.set_context(:actor, :batch, true)"),
+        {"actor": f"user:{user_token.sub}", "batch": f"column-placement:{col_id}"},
+    )
 
 
 @router.get("/ingest/{task_id}")

@@ -22,6 +22,14 @@ The result is one JSON-serialisable dict, whatever the path in:
       "notice_counts": {"info": n, "warning": n, "error": n},
       "data": {...} | None,      # columns, units, boundaries — the editor's view
     }
+
+**Placement.** Where the columns land can be decided by the caller rather than the
+file (`Placement`): a project, and a column group by id or by name. A workbook names
+only a *project*, and a project in a file is usually a group's worth of columns — a
+field campaign, one source's compilation. So when the caller gives a project and no
+group, the file's project is demoted to the group's name, which is what lets files
+from many sources nest under one project. With no placement the file's project
+stands and its columns go to its `Default` group, as before.
 """
 
 from __future__ import annotations
@@ -223,29 +231,74 @@ def _text(value) -> str | None:
 # ------------------------------------------------------------------ entry points
 
 
-def ingest_columns_from_file(db, data_file, *, dry_run: bool = False) -> dict:
+@dataclass
+class Placement:
+    """Where a caller wants the columns, overriding what the file says.
+
+    `project` replaces the file's project. The group is `col_group_id` (which must
+    belong to the project), else `col_group` (a name, created in the project if it
+    is new), else — when `project` is given — the file's project demoted to a group
+    name, else the project's `Default` group.
+    """
+
+    project: ProjectIdentifier | None = None
+    col_group_id: int | None = None
+    col_group: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict | None) -> "Placement | None":
+        """From the plain mapping an API or a task message carries."""
+        if not data:
+            return None
+        project = None
+        if data.get("project_id") is not None:
+            project = ProjectIdentifier(id=int(data["project_id"]))
+        return cls(
+            project=project,
+            col_group_id=data.get("col_group_id"),
+            col_group=data.get("col_group") or None,
+        )
+
+
+#: How a column group is chosen: by id, or by a name to get or create.
+GroupChoice = tuple[str, int | str]
+
+
+def ingest_columns_from_file(
+    db, data_file, *, dry_run: bool = False, placement: Placement | None = None
+) -> dict:
     """Ingest a workbook in the column-ingestion format. See the module docstring."""
-    return ingest_sheets(db, read_workbook(data_file), dry_run=dry_run)
+    return ingest_sheets(
+        db, read_workbook(data_file), dry_run=dry_run, placement=placement
+    )
 
 
-def ingest_column_data(db, data: dict, *, dry_run: bool = False) -> dict:
+def ingest_column_data(
+    db, data: dict, *, dry_run: bool = False, placement: Placement | None = None
+) -> dict:
     """Ingest the format's tables given as JSON, as an editor submits them."""
-    return ingest_sheets(db, sheets_from_data(data), dry_run=dry_run)
+    return ingest_sheets(
+        db, sheets_from_data(data), dry_run=dry_run, placement=placement
+    )
 
 
 def ingest_sheets(
-    db, sheets: dict[str, pl.DataFrame], *, dry_run: bool = False
+    db,
+    sheets: dict[str, pl.DataFrame],
+    *,
+    dry_run: bool = False,
+    placement: Placement | None = None,
 ) -> dict:
     with notices.collect_notices() as collected:
         dataset = parse_sheets(db, sheets)
         validate_dataset(dataset.columns)
 
-        project = dataset.project
+        project, group = resolve_placement(db, dataset.project, placement)
         if project is None:
             notices.error(
                 "no-project",
                 "No project: the metadata needs a `project_id`, `project_slug` or "
-                "`project_name`",
+                "`project_name`, or the caller must name one",
                 sheet="metadata",
             )
 
@@ -258,10 +311,55 @@ def ingest_sheets(
             db,
             dataset.columns,
             project=project,
+            group=group,
             references=dataset.references,
             dry_run=dry_run,
             notices_=collected,
         )
+
+
+def resolve_placement(
+    db, file_project: ProjectIdentifier | None, placement: Placement | None
+) -> tuple[ProjectIdentifier | None, GroupChoice]:
+    """The project to write to and the group to put the columns in.
+
+    See `Placement`. The demotion of the file's project is reported as a notice,
+    since it is the one case where the file's own word is reinterpreted.
+    """
+    if placement is None or placement.project is None:
+        if placement is not None and placement.col_group_id is not None:
+            return file_project, ("id", placement.col_group_id)
+        if placement is not None and placement.col_group:
+            return file_project, ("name", placement.col_group)
+        return file_project, ("name", "Default")
+
+    project = placement.project
+    if placement.col_group_id is not None:
+        return project, ("id", placement.col_group_id)
+    if placement.col_group:
+        return project, ("name", placement.col_group)
+    if file_project is None:
+        return project, ("name", "Default")
+
+    name = _project_display_name(db, file_project)
+    notices.info(
+        "project-as-group",
+        f"The file's project {name!r} is used as the column group within the "
+        "chosen project",
+        sheet="metadata",
+    )
+    return project, ("name", name)
+
+
+def _project_display_name(db, project: ProjectIdentifier) -> str:
+    """What to call a file's project when it becomes a group: its name as given,
+    else the name of the project it points to, else the id or slug it gave."""
+    if project.name:
+        return project.name
+    existing = get_or_create_project(db, project, create_if_not_exists=False)
+    if existing is not None and existing.name:
+        return existing.name
+    return project.slug or f"project-{project.id}"
 
 
 def ingest_columns(
@@ -269,6 +367,7 @@ def ingest_columns(
     columns: list[Column],
     *,
     project: ProjectIdentifier,
+    group: GroupChoice = ("name", "Default"),
     references: list | None = None,
     dry_run: bool = False,
     notices_: Notices | None = None,
@@ -296,7 +395,7 @@ def ingest_columns(
             with db.transaction(), on_conflict("restrict"):
                 try:
                     summary, payload = _write(
-                        db, columns, project, references or [], dry_run
+                        db, columns, project, group, references or [], dry_run
                     )
                 except Exception as err:
                     if not dry_run:
@@ -314,8 +413,10 @@ def ingest_columns(
         return _result(dry_run, collected, summary, payload)
 
 
-def _write(db, columns, project, references, dry_run):
-    log.info("Ingesting data into project: %s", project.name)
+def _write(db, columns, project, group, references, dry_run):
+    log.info(
+        "Ingesting data into project: %s", project.name or project.slug or project.id
+    )
     _project = get_or_create_project(db, project)
 
     # Attribute everything below in the change-tracking trail. Transaction-local is
@@ -330,7 +431,7 @@ def _write(db, columns, project, references, dry_run):
         f"ingest:{_project.slug}:{date.today().isoformat()}",
     )
 
-    col_group_id = reconcile_column_group(db, _project.id)
+    col_group_id = _resolve_group(db, _project.id, group)
 
     # References come first: columns cite them, and the citations are resolved from
     # workbook-local ids once the reference rows exist.
@@ -359,9 +460,14 @@ def _write(db, columns, project, references, dry_run):
                     "carry no modeled ages",
                 )
 
+    col_group_name = db.run_query(
+        "SELECT col_group FROM macrostrat.col_groups WHERE id = :id",
+        dict(id=col_group_id),
+    ).scalar()
     summary = {
         "project": {"id": _project.id, "slug": _project.slug, "name": _project.name},
         "col_group_id": col_group_id,
+        "col_group": col_group_name,
         "columns": [{"col_id": col.id, "col_name": col.name} for col in columns],
         "n_columns": len(columns),
         "n_units": sum(len(col.units) for col in columns),
@@ -376,6 +482,21 @@ def _write(db, columns, project, references, dry_run):
 def _describe(err: Exception) -> str:
     text = str(err).strip().splitlines()
     return text[0] if text else type(err).__name__
+
+
+def _resolve_group(db, project_id: int, group: GroupChoice) -> int:
+    """The chosen group's id: by name it is got or created in the project; by id
+    it must already be one of the project's groups."""
+    kind, value = group
+    if kind == "name":
+        return reconcile_column_group(db, project_id, name=str(value))
+    row = db.run_query(
+        "SELECT id FROM macrostrat.col_groups WHERE id = :id AND project_id = :project_id",
+        dict(id=int(value), project_id=project_id),
+    ).first()
+    if row is None:
+        raise ValueError(f"Column group {value} is not in project {project_id}")
+    return int(row[0])
 
 
 def _result(dry_run: bool, collected: Notices, summary, payload) -> dict:
