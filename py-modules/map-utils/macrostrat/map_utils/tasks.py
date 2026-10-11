@@ -2,7 +2,9 @@
 
 The specs live here, GIS-free, so the API can serve the catalog and validate
 parameters; the implementations are in `macrostrat.map_integration.tasks`,
-which only the admin worker installs.
+which only the admin worker installs. `macrostrat.task_runner` is not one of
+this package's declared dependencies: only its `load_registry()` imports this
+module, through the entry point, so every importer already has it.
 """
 
 from pydantic import BaseModel, Field

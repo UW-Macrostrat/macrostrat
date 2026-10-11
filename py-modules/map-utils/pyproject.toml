@@ -11,16 +11,17 @@ requires-python = ">=3.11,<4"
 readme = "README.md"
 dependencies = [
     "macrostrat.database>=4.0.0,<5",
-    "macrostrat.task-runner",
     "psycopg[binary]>=3.0,<4",
     "minio>=7.2,<8",
 ]
 
+# `macrostrat.map_utils.tasks` imports `macrostrat.task_runner`, deliberately
+# undeclared: only `load_registry()`, in that package, loads this entry point,
+# so the tileserver and other consumers of map-utils never carry the runner.
 [project.entry-points."macrostrat.tasks"]
 maps = "macrostrat.map_utils.tasks:TASKS"
 
 [tool.uv.sources]
-"macrostrat.task-runner" = { path = "../task-runner", editable = true }
 
 [tool.hatch.build.targets.sdist]
 include = ["macrostrat"]
