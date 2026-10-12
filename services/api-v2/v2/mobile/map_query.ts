@@ -195,22 +195,13 @@ function summarizeUnits(units, callback) {
   });
 }
 
-function buildSQL(scale, where) {
-  let scaleJoin = scaleIsIn[scale]
-    .map((s) => {
-      return `
-    SELECT * FROM maps.${s}
-    `;
-    })
-    .join(" UNION ALL ");
-  let lookupJoin = scaleIsIn[scale]
-    .map((s) => {
-      return `
-    SELECT * FROM lookup_${s}
-    `;
-    })
-    .join(" UNION ALL ");
+/* The scales a band reads, as a SQL array. Joining the flat tables filtered by
+   it keeps the key lookup that a UNION ALL of the per-scale views loses. */
+function scaleArray(scale) {
+  return `'{${scaleIsIn[scale].join(",")}}'::maps.map_scale[]`;
+}
 
+function buildSQL(scale, where) {
   return `
     SELECT
       m.map_id,
@@ -240,12 +231,9 @@ function buildSQL(scale, where) {
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
       FROM carto_new.${scale} y
-      JOIN (
-        ${scaleJoin}
-      ) m ON y.map_id = m.map_id
-      LEFT JOIN (
-        ${lookupJoin}
-      ) mm ON mm.map_id = m.map_id
+      JOIN maps.polygons m
+        ON y.map_id = m.map_id AND m.scale = ANY(${scaleArray(scale)})
+      LEFT JOIN maps.lookup mm ON mm.map_id = m.map_id
       JOIN maps.sources ON m.source_id = sources.source_id
       LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
       LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
@@ -301,8 +289,8 @@ module.exports = function (req, res, next) {
         SELECT
           m.line_id,
           COALESCE(s.name, '') AS name,
-          COALESCE(s.type, s.new_type, '') AS type,
-          COALESCE(s.direction, s.new_direction, '') AS direction,
+          COALESCE(s.type_legacy, s.type, '') AS type,
+          COALESCE(s.direction_legacy, s.direction, '') AS direction,
           COALESCE(s.descrip, '') AS descrip,
           '${scale}' AS scale,
           (SELECT row_to_json(r) FROM (SELECT
@@ -318,15 +306,7 @@ module.exports = function (req, res, next) {
             WHERE source_id = m.source_id) r)::jsonb AS ref,
           ST_DistanceSpheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
         FROM carto_new.lines_${scale} m
-        JOIN LATERAL (
-            SELECT * FROM lines.tiny
-            UNION ALL
-            SELECT * FROM lines.small
-            UNION ALL
-            SELECT * FROM lines.medium
-            UNION ALL
-            SELECT * FROM lines.large
-        ) s ON s.line_id = m.line_id
+        JOIN maps.lines s ON s.line_id = m.line_id
         LEFT JOIN maps.sources ON m.source_id = sources.source_id
         WHERE sources.status_code = 'active'
         ORDER BY m.geom <-> $1

@@ -200,22 +200,13 @@ function getBestFit(z, data) {
   return bestFit;
 }
 
-function buildSQL(scale, where) {
-  let scaleJoin = scaleIsIn[scale]
-    .map((s) => {
-      return `
-    SELECT * FROM maps.${s}
-    `;
-    })
-    .join(" UNION ALL ");
-  let lookupJoin = scaleIsIn[scale]
-    .map((s) => {
-      return `
-    SELECT * FROM lookup_${s}
-    `;
-    })
-    .join(" UNION ALL ");
+/* The scales a band reads, as a SQL array. Joining the flat tables filtered by
+   it keeps the key lookup that a UNION ALL of the per-scale views loses. */
+function scaleArray(scale) {
+  return `'{${scaleIsIn[scale].join(",")}}'::maps.map_scale[]`;
+}
 
+function buildSQL(scale, where) {
   return `
     SELECT
       m.map_id,
@@ -267,15 +258,12 @@ function buildSQL(scale, where) {
         COALESCE(sources.ref_source, '') ref_source,
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
     FROM carto_new.${scale} y
-    JOIN (
-      ${scaleJoin}
-    ) m ON y.map_id = m.map_id
+    JOIN maps.polygons m
+      ON y.map_id = m.map_id AND m.scale = ANY(${scaleArray(scale)})
     JOIN maps.sources ON m.source_id = sources.source_id
     LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
     LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
-    LEFT JOIN (
-      ${lookupJoin}
-    ) mm ON mm.map_id = m.map_id
+    LEFT JOIN maps.lookup mm ON mm.map_id = m.map_id
     ${where}
     ORDER BY sources.new_priority DESC
   `;
@@ -398,21 +386,13 @@ function buildCompilationLineSQL() {
 
 function buildLineSQL(scale) {
   scale = scale || "tiny";
-  let scaleJoin = scaleIsIn[scale]
-    .map((s) => {
-      return `
-    SELECT * FROM lines.${s}
-    `;
-    })
-    .join(" UNION ALL ");
-
   return `
     SELECT
       y.line_id,
       bar.source_id,
       COALESCE(y.name, '') AS name,
-      COALESCE(y.new_type, '') AS type,
-      COALESCE(y.new_direction, '') AS direction,
+      COALESCE(y.type, '') AS type,
+      COALESCE(y.direction, '') AS direction,
       COALESCE(y.descrip, '') AS descrip,
       '${scale}' AS scale,
       bar.distance
@@ -429,7 +409,8 @@ function buildLineSQL(scale) {
         ) foo
         ORDER BY distance
     ) bar
-    JOIN ( ${scaleJoin} ) y ON y.line_id = bar.line_id
+    JOIN maps.lines y
+      ON y.line_id = bar.line_id AND y.scale = ANY(${scaleArray(scale)})
     WHERE row_number = 1
   `;
 }

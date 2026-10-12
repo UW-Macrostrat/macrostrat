@@ -104,16 +104,9 @@ module.exports = function (req, res, next, cb) {
 
         sql += `
         FROM carto_new.small s1
-        LEFT JOIN (
-          SELECT * FROM maps.tiny
-          UNION ALL
-          SELECT * FROM maps.small
-        ) s2 ON s1.map_id = s2.map_id
-        LEFT JOIN (
-          SELECT * FROM lookup_tiny
-          UNION ALL
-          SELECT * FROM lookup_small
-        ) ls ON ls.map_id = s2.map_id
+        LEFT JOIN maps.polygons s2
+          ON s1.map_id = s2.map_id AND s2.scale = ANY('{tiny,small}'::maps.map_scale[])
+        LEFT JOIN maps.lookup ls ON ls.map_id = s2.map_id
         ${join}
         ${where}
         ${limit}

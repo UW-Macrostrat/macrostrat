@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - `/version` reports the running build; `/health` answers 503 when the database does not
+- Fix ~13 s responses from `/mobile/map_query_v2`, `/mobile/map_query` and `/carto/small` on the flattened map schema: join `maps.polygons`, `maps.lookup` and `maps.lines` by key instead of unions of the per-scale views. Requires the flattened schema
 
 ## [2.4.0-beta.1] - 2026-10-09
 
