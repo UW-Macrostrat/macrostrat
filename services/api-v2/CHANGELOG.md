@@ -1,8 +1,12 @@
 # Macrostrat API v2 Changelog
 
-## [Unreleased]
+## [2.4.0] - 2026-10-12
 
 - `/version` reports the running build; `/health` answers 503 when the database does not
+- Fix ~13 s responses from `/mobile/map_query_v2`, `/mobile/map_query` and `/carto/small` on the flattened map schema: join `maps.polygons`, `maps.lookup` and `maps.lines` by key instead of unions of the per-scale views. Requires the flattened schema
+- Fix `/carto/small` geometry formats without `shape`, which failed on an ambiguous `geom`
+
+Note: This release now depends on a unified `maps.lookup` table, unifying all the scale lookup tables and adding a `source_id` column.
 
 ## [2.4.0-beta.1] - 2026-10-09
 
