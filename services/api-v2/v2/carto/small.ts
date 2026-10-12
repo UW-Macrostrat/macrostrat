@@ -98,7 +98,7 @@ module.exports = function (req, res, next, cb) {
             JOIN shape ON ST_Intersects(s1.geom, shape.buffer)
           `;
           } else {
-            sql += ", ST_AsGeoJSON(geom) geometry";
+            sql += ", ST_AsGeoJSON(s1.geom) geometry";
           }
         }
 
