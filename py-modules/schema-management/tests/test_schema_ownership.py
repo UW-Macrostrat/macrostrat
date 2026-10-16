@@ -190,9 +190,15 @@ def test_ownership_migration_reconciles_legacy_owners(rollback_schema):
     db.run_sql("ALTER TABLE maps.sources OWNER TO macrostrat_admin;")
     db.run_sql('ALTER TABLE maps.map_units OWNER TO "macrostrat-admin";')
     db.run_sql("ALTER TABLE macrostrat_kg.entity OWNER TO xdd_writer;")
+    # The test cluster's superuser is macrostrat_admin, so `postgres` may not exist.
+    db.run_sql(
+        "DO $$ BEGIN CREATE ROLE postgres; EXCEPTION WHEN duplicate_object THEN NULL; END $$;"
+    )
+    db.run_sql("ALTER TABLE maps.lines OWNER TO postgres;")
     assert _owner_of(db, "maps", "sources") == "macrostrat_admin"
     assert _owner_of(db, "maps", "map_units") == "macrostrat-admin"
     assert _owner_of(db, "macrostrat_kg", "entity") == "xdd_writer"
+    assert _owner_of(db, "maps", "lines") == "postgres"
 
     migration = _load_ownership_migration()
     assert migration.should_apply(db) == ApplicationStatus.CAN_APPLY
@@ -204,6 +210,7 @@ def test_ownership_migration_reconciles_legacy_owners(rollback_schema):
     assert _owner_of(db, "maps", "sources") == "macrostrat"
     assert _owner_of(db, "maps", "map_units") == "macrostrat"
     assert _owner_of(db, "macrostrat_kg", "entity") == "macrostrat"
+    assert _owner_of(db, "maps", "lines") == "macrostrat"
 
     can_write = db.run_query(
         "SELECT has_table_privilege('xdd_writer', 'macrostrat_kg.entity', 'INSERT') AS w"
