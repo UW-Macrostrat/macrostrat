@@ -92,10 +92,9 @@ if reinstall_warning is not None:
     app.warnings.append(
         f"{reinstall_warning} Please run [bold cyan]macrostrat install[/]."
     )
-if environ.get("MACROSTRAT_PYROOT") is not None:
-    app.warnings.append(
-        "Using a custom [bold cyan]MACROSTRAT_PYROOT[/]\n  [dim]This is not recommended for normal operation."
-    )
+if pyroot := environ.get("MACROSTRAT_PYROOT"):
+    # A composition root, which may install plugins beside the CLI.
+    app.info_messages.append(f"Python environment from MACROSTRAT_PYROOT: {pyroot}")
 
 # TODO: load all subsystems before rendering help so that warnings can be shown
 
@@ -712,3 +711,33 @@ for entry_point in discovered_plugins:
     plugin = entry_point.load()
     if isinstance(plugin, typer.Typer):
         main.add_typer(plugin, name=entry_point.name, rich_help_panel="Extensions")
+
+# Plugins from other repositories, installed beside the CLI
+from macrostrat.core.console import err_console
+from macrostrat.core.plugins import HostContext, load_plugins
+
+plugin_statuses = load_plugins(HostContext(main_app=main, db_app=db_app))
+for _status in plugin_statuses:
+    if _status.error is None:
+        continue
+    _message = f"Plugin {_status.name} failed to load: {_status.error}"
+    main.info.help += f"- [yellow]{_message}[/]\n"
+    # A missing command would otherwise be the only sign.
+    err_console.print(f"[yellow]{_message}[/] [dim](macrostrat self plugins)[/]")
+
+
+@self_app.command(name="plugins")
+def list_plugins():
+    """List plugins installed in this Python environment"""
+    import sys
+
+    print(f"Python environment: [bold]{sys.prefix}[/]")
+    if not plugin_statuses:
+        print("[dim]No plugins installed[/]")
+    for status in plugin_statuses:
+        state = "[green]loaded[/]"
+        if status.error is not None:
+            state = f"[red]failed[/]: {status.error}"
+        print(
+            f"[bold]{status.name}[/] ({status.distribution}, {status.target}): {state}"
+        )
