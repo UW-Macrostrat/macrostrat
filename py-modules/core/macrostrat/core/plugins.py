@@ -21,26 +21,50 @@ API_VERSION = 1
 ENTRY_POINT_GROUP = "macrostrat.plugins"
 
 
+#: Help panels for system commands, by backend; app_frame names the compose one.
+SYSTEM_PANELS = {
+    "docker-compose": "System (Docker Compose)",
+    "kubernetes": "System (Kubernetes)",
+}
+
+
 @dataclass(frozen=True)
 class EnvironmentView:
     """What a plugin may know about a `macrostrat.toml` environment."""
 
     name: str
     env_class: str
+    backend: str
 
 
 class HostContext:
-    """The CLI as a plugin sees it: where to add commands, and its safety gates."""
+    """The CLI as a plugin sees it: where to add commands, and its safety gates.
+
+    ``active`` is the environment this invocation targets (``--env`` or
+    ``macrostrat env``), or None when there is none.
+    """
 
     api_version = API_VERSION
 
-    def __init__(self, main_app: "Typer", db_app: "Typer"):
+    def __init__(self, main_app: "Typer", db_app: "Typer", active: Optional[str]):
         self.main_app = main_app
         self.db_app = db_app
+        self.active = None if active is None else self.environment(active)
+
+    @property
+    def system_panel(self) -> str:
+        if self.active is None:
+            return "System"
+        return SYSTEM_PANELS.get(self.active.backend, "System")
 
     def environment(self, name: str) -> EnvironmentView:
-        policy = _settings(name).policy
-        return EnvironmentView(name=name, env_class=policy.env_class.value)
+        settings = _settings(name)
+        backend = settings.backend
+        return EnvironmentView(
+            name=name,
+            env_class=settings.policy.env_class.value,
+            backend=getattr(backend, "value", backend),
+        )
 
     def require_read(self, env: str, *, action: str) -> None:
         from .safety import require_read_access

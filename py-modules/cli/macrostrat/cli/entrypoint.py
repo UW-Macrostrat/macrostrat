@@ -716,7 +716,9 @@ for entry_point in discovered_plugins:
 from macrostrat.core.console import err_console
 from macrostrat.core.plugins import HostContext, load_plugins
 
-plugin_statuses = load_plugins(HostContext(main_app=main, db_app=db_app))
+plugin_statuses = load_plugins(
+    HostContext(main_app=main, db_app=db_app, active=getattr(settings, "env", None))
+)
 for _status in plugin_statuses:
     if _status.error is None:
         continue

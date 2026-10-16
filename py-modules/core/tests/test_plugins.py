@@ -24,7 +24,7 @@ def _install(monkeypatch, *eps):
 
 
 def _host():
-    return HostContext(main_app=Typer(), db_app=Typer())
+    return HostContext(main_app=Typer(), db_app=Typer(), active=None)
 
 
 def test_a_plugin_adds_commands(monkeypatch):
@@ -76,3 +76,24 @@ def test_gates_use_the_named_environment_and_never_escalate(monkeypatch):
     assert kw["settings"] is named
     assert kw["escalate_connection"] is False
     assert kw["assume_yes"] is True
+
+
+def test_the_active_environment_and_its_system_panel(monkeypatch):
+    import macrostrat.core.database as database
+    from macrostrat.core.config_model import BackendType
+
+    settings = SimpleNamespace(
+        backend=BackendType.Kubernetes,
+        policy=SimpleNamespace(env_class=SimpleNamespace(value="development")),
+    )
+    monkeypatch.setattr(database, "_settings_for_env", lambda env: settings)
+
+    host = HostContext(main_app=Typer(), db_app=Typer(), active="development")
+
+    assert host.active.name == "development"
+    assert host.active.backend == "kubernetes"
+    assert host.system_panel == "System (Kubernetes)"
+
+
+def test_no_active_environment():
+    assert _host().active is None
