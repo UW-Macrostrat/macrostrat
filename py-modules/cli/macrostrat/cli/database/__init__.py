@@ -253,9 +253,9 @@ def psql(
     conn = settings.database_connection()
     if conn is None:
         raise NoDatabaseConfigured()
-    # Resolves the credential now, for this role only. The URL never becomes a
-    # string: libpq reads the parts from the environment below.
-    url = conn.url(current_database_role())
+    # Resolves the credential now, for this role only, through the read gate.
+    # The URL never becomes a string: libpq reads the parts from the environment.
+    url = settings.database_url(current_database_role())
 
     # On mac and windows the container reaches the host by another name.
     docker_localhost = settings.get("docker_localhost", "localhost")

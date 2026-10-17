@@ -117,10 +117,9 @@ class MacrostratConfig(Dynaconf):
 
     def database_url(self, role=DatabaseRole.Reader, name: str = DEFAULT_DATABASE):
         """A connection URL for *role* of *name*, resolving its credential now."""
-        conn = self.database_connection(name)
-        if conn is None:
-            return None
-        return conn.url(role)
+        from .safety import resolve_database_url
+
+        return resolve_database_url(self, role, name)
 
     def storage_endpoints(self):
         """Every storage endpoint for the active environment, by name."""

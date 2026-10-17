@@ -200,6 +200,40 @@ def require_read_access(*, settings=None, action: Optional[str] = None) -> None:
     )
 
 
+#: Environments whose read gate this process has passed, so a command that
+#: resolves the reader credential twice is asked once.
+_reads_confirmed: set[str] = set()
+
+
+def confirm_read(settings) -> None:
+    """Pass *settings*' read gate, once per process; a no-op where reads are ungated."""
+    policy = getattr(settings, "policy", None)
+    if policy is None or policy.gate_for(WriteScope.Read) == WriteGate.NoGate:
+        return
+    key = policy.name or ""
+    if key in _reads_confirmed:
+        return
+    require_read_access(settings=settings)
+    _reads_confirmed.add(key)
+
+
+def resolve_database_url(settings, role=None, name: Optional[str] = None):
+    """*name*'s URL for *role*, resolving its credential now; None if unconfigured.
+
+    The single place a credential is resolved from configuration, so the read
+    gate cannot be skipped by a command that builds its own connection.
+    """
+    from .connections import DEFAULT_DATABASE, DatabaseRole
+
+    role = DatabaseRole(role or DatabaseRole.Reader)
+    conn = settings.database_connection(name or DEFAULT_DATABASE)
+    if conn is None:
+        return None
+    if role == DatabaseRole.Reader:
+        confirm_read(settings)
+    return conn.url(role)
+
+
 def require_write_access(
     scope,
     *,
