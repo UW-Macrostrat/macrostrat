@@ -2,20 +2,21 @@ import json
 
 from ..model import Check, Compressed, Contains, ContentType, Redirect, Status
 
-# Sift's own routes; the id is irrelevant to the server, which renders a shell.
-SIFT_ROUTES = (
-    "unit/1",
-    "column/1",
-    "group/1",
-    "interval/1",
-    "strat_name_concept/1",
-    "strat_name/1",
-    "lithology/1",
-    "environment/1",
-    "economic/1",
-    "definitions/lithologies",
-    "explore",
-)
+# Sift's routes and the pages they redirect to, mirroring `pages/sift/` in web.
+# Unit 1 is in column 2 and group 1 in project 1, so those two follow the data.
+SIFT_REDIRECTS = {
+    "unit/1": "/columns/2",
+    "column/1": "/columns/1",
+    "group/1": "/projects/1/groups/1",
+    "interval/1": "/lex/intervals/1",
+    "strat_name_concept/1": "/lex/strat-concepts/1",
+    "strat_name/1": "/lex/strat-names/1",
+    "lithology/1": "/lex/lithologies/1",
+    "environment/1": "/lex/environments/1",
+    "economic/1": "/lex/economics/1",
+    "definitions/lithologies": "/lex/lithologies",
+    "explore": "/lex",
+}
 
 # v1 homepage sections and their v2 pages, mirroring `pages/index/+Head.ts` in web.
 LEGACY_ANCHORS = {
@@ -49,7 +50,7 @@ CHECKS = [
         "/publications",
         [Redirect("/community/publications")],
     ),
-    # Legacy `/sift/#/…` links are redirected by an inline script in the page head.
+    # `/sift/#/…` links: an inline head script turns the fragment into a path.
     Check(
         "sift-hash-redirect",
         "web",
@@ -63,9 +64,9 @@ CHECKS = [
             f"sift-{route.split('/')[0]}",
             "web",
             f"/sift/{route}",
-            [Status(200), Contains("<title>Sift")],
+            [Redirect(target)],
         )
-        for route in SIFT_ROUTES
+        for route, target in SIFT_REDIRECTS.items()
     ),
     # `/#people` and the like: the homepage's head script carries each pair, and
     # each target page must load.
