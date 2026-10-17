@@ -217,7 +217,8 @@ WITH mvt_features AS (
     geom
   FROM
     carto.polygons
-  WHERE scale::text = mapsize
+  -- The partition key itself: a cast would probe every scale's partition.
+  WHERE scale = mapsize::maps.map_scale
     AND ST_Intersects(geom, projected_bbox)
 ), expanded AS (
   SELECT

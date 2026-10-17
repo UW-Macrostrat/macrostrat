@@ -31,7 +31,7 @@ dev. It has to: with the legacy roles swept in both spellings, every environment
 objects to converge, and the paths that used to create them connector-owned now apply
 their DDL as ``macrostrat`` — leaving this as the one step that fixes what is already
 there. Requires the executing role to be superuser or a member of the legacy roles and
-``macrostrat`` (true for every deployed connector).
+``macrostrat``; re-owning ``postgres``-owned objects needs a superuser.
 """
 
 from time import sleep
@@ -47,11 +47,13 @@ from macrostrat.schema_management.migrations import ApplicationStatus, Migration
 # for *access*, but not for ownership — an object has exactly one owner — so both
 # spellings are swept. `macrostrat_admin` is also the connector role locally, which
 # is why anything created outside `build_schema`'s `SET ROLE` lands here.
+# `postgres` holds what superuser sessions and the original restore created.
 LEGACY_OWNERS = (
     "macrostrat_admin",
     "macrostrat-admin",
     "xdd_writer",
     "xdd-writer",
+    "postgres",
 )
 
 # Schemas that are NOT create-as-owner and must be left untouched: system catalogs,
@@ -80,6 +82,21 @@ _EXCLUDED = (
 
 _APP_SCHEMA = "n.nspname <> ALL(:excluded) AND n.nspname NOT LIKE 'pg\\_%'"
 
+
+def _not_extension_member(catalog: str, oid: str) -> str:
+    """Extension objects keep their installer as owner; `ALTER EXTENSION` manages them."""
+    return (
+        "NOT EXISTS (SELECT 1 FROM pg_catalog.pg_depend e"
+        f" WHERE e.classid = CAST('pg_catalog.{catalog}' AS regclass)"
+        f" AND e.objid = {oid} AND e.deptype = 'e')"
+    )
+
+
+_REL_FREE = _not_extension_member("pg_class", "c.oid")
+_PROC_FREE = _not_extension_member("pg_proc", "p.oid")
+_TYPE_FREE = _not_extension_member("pg_type", "t.oid")
+_NSP_FREE = _not_extension_member("pg_namespace", "n.oid")
+
 # True while any application-schema object is still owned by a legacy role — the
 # postcondition mirror of what `_REASSIGNMENTS` fixes (relations, routines,
 # standalone types, schemas).
@@ -90,14 +107,17 @@ SELECT
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_SCHEMA}
       AND pg_catalog.pg_get_userbyid(c.relowner) = ANY(:legacy)
+      AND {_REL_FREE}
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_proc p
     JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
     WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(p.proowner) = ANY(:legacy)
+      AND {_PROC_FREE}
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_type t
     JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
     WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(t.typowner) = ANY(:legacy)
+      AND {_TYPE_FREE}
       AND (t.typtype IN ('e','d')
            OR (t.typtype = 'c'
                AND EXISTS (SELECT 1 FROM pg_catalog.pg_class rc
@@ -105,6 +125,7 @@ SELECT
   ) OR EXISTS (
     SELECT 1 FROM pg_catalog.pg_namespace n
     WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(n.nspowner) = ANY(:legacy)
+      AND {_NSP_FREE}
   ) AS needs_reconciliation
 """
 
@@ -123,6 +144,7 @@ SELECT statement FROM (
   JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_SCHEMA}
     AND pg_catalog.pg_get_userbyid(c.relowner) = ANY(:legacy)
+    AND {_REL_FREE}
     AND NOT (c.relkind = 'S' AND EXISTS (
       SELECT 1 FROM pg_catalog.pg_depend d
       WHERE d.objid = c.oid AND d.deptype IN ('a','i') AND d.refobjsubid <> 0))
@@ -132,12 +154,14 @@ SELECT statement FROM (
   FROM pg_catalog.pg_proc p
   JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
   WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(p.proowner) = ANY(:legacy)
+      AND {_PROC_FREE}
   UNION ALL
   SELECT 3, 'ALTER TYPE ' || quote_ident(n.nspname) || '.' || quote_ident(t.typname)
       || ' OWNER TO macrostrat'
   FROM pg_catalog.pg_type t
   JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
   WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(t.typowner) = ANY(:legacy)
+      AND {_TYPE_FREE}
     AND (t.typtype IN ('e','d')
          OR (t.typtype = 'c'
              AND EXISTS (SELECT 1 FROM pg_catalog.pg_class rc
@@ -146,6 +170,7 @@ SELECT statement FROM (
   SELECT 4, 'ALTER SCHEMA ' || quote_ident(n.nspname) || ' OWNER TO macrostrat'
   FROM pg_catalog.pg_namespace n
   WHERE {_APP_SCHEMA} AND pg_catalog.pg_get_userbyid(n.nspowner) = ANY(:legacy)
+      AND {_NSP_FREE}
 ) s
 ORDER BY stage, statement
 """

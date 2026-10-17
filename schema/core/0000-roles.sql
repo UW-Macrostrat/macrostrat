@@ -19,6 +19,10 @@ DO $$ BEGIN
   EXECUTE format('GRANT CREATE ON DATABASE %I TO macrostrat', current_database());
 END $$;
 
+-- Read-only access for the operator's macrostrat-reader login (e.g. `db copy` sources)
+CREATE ROLE macrostrat_reader;
+GRANT macrostrat_reader TO "macrostrat-reader";
+
 -- Role for read-only access from Rockd
 CREATE ROLE rockd_reader;
 GRANT rockd_reader TO "rockd-reader";

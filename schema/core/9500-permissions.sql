@@ -23,6 +23,15 @@ GRANT SELECT ON ALL TABLES IN SCHEMA maps TO xdd_writer;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA maps TO xdd_writer;
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA maps GRANT SELECT ON TABLES TO xdd_writer;
 
+-- Scratch tables, readable so `db copy` can take them between environments
+GRANT USAGE ON SCHEMA temp TO macrostrat_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA temp TO macrostrat_reader;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA temp TO macrostrat_reader;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat, "macrostrat-admin" IN SCHEMA temp
+  GRANT SELECT ON TABLES TO macrostrat_reader;
+ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat, "macrostrat-admin" IN SCHEMA temp
+  GRANT SELECT ON SEQUENCES TO macrostrat_reader;
+
 /** PostgREST helper functions */
 GRANT USAGE ON SCHEMA macrostrat TO web_anon;
 GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO web_anon;
