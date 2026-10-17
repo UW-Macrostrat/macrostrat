@@ -20,7 +20,7 @@ SIFT_ROUTES = (
 # v1 homepage sections and their v2 pages, mirroring `pages/index/+Head.ts` in web.
 LEGACY_ANCHORS = {
     "about": "/about",
-    "apps": "/about/apps",
+    "apps": "/community/apps",
     "api": "/docs/data-services",
     "people": "/about/people",
     "donate": "/about/support",
