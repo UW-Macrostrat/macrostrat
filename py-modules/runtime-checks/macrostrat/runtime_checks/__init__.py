@@ -7,6 +7,7 @@ from .model import (
     ContentType,
     Expectation,
     JSONPath,
+    MaxElapsed,
     NonEmpty,
     Redirect,
     Result,

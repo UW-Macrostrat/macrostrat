@@ -7,6 +7,7 @@ from macrostrat.runtime_checks import (
     Contains,
     ContentType,
     JSONPath,
+    MaxElapsed,
     Redirect,
     Status,
     run_checks,
@@ -50,6 +51,7 @@ def outcome(check):
         Check("redirect", "web", "/old", [Redirect("/new")]),
         Check("followed", "web", "/old", [Status(200), Contains("new")]),
         Check("missing", "web", "/nothing", [Status(404)]),
+        Check("fast", "web", "/", [MaxElapsed(5)]),
     ],
 )
 def test_passing(check):
@@ -66,6 +68,7 @@ def test_passing(check):
         (Check("target", "web", "/old", [Redirect("/other")]), "expected /other"),
         (Check("scheme", "web", "/downgrade", [Redirect("/new")]), "changing scheme"),
         (Check("down", "web", "/down"), "ConnectError: refused"),
+        (Check("slow", "web", "/", [MaxElapsed(0)]), "expected under 0 s"),
     ],
 )
 def test_failing(check, detail):

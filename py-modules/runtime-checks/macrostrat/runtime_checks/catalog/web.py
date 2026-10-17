@@ -24,7 +24,7 @@ LEGACY_ANCHORS = {
     "api": "/docs/data-services",
     "people": "/about/people",
     "donate": "/about/support",
-    "publications": "/publications",
+    "publications": "/community/publications",
 }
 
 CHECKS = [
@@ -34,7 +34,13 @@ CHECKS = [
         Check(f"web-{page}", "web", f"/{page}")
         for page in ("map", "columns", "projects", "lex", "docs")
     ),
-    Check("people-redirect", "web", "/people", [Redirect("/community/contributors")]),
+    Check("people-redirect", "web", "/people", [Redirect("/about/people")]),
+    Check(
+        "publications-redirect",
+        "web",
+        "/publications",
+        [Redirect("/community/publications")],
+    ),
     # Legacy `/sift/#/…` links are redirected by an inline script in the page head.
     Check(
         "sift-hash-redirect",

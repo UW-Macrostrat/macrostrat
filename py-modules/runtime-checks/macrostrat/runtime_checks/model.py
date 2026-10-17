@@ -72,6 +72,19 @@ class NonEmpty(Expectation):
         return "empty body"
 
 
+@dataclass(frozen=True)
+class MaxElapsed(Expectation):
+    """Answered within `seconds`; catches slow renders a warm cache hides."""
+
+    seconds: float
+
+    def __call__(self, response):
+        took = response.elapsed.total_seconds()
+        if took <= self.seconds:
+            return None
+        return f"took {took:.1f} s, expected under {self.seconds:g} s"
+
+
 _MISSING = object()
 
 

@@ -3,6 +3,7 @@
 import asyncio
 import ssl
 import time
+from datetime import timedelta
 from typing import Iterable, Mapping, Optional
 
 import httpx
@@ -84,6 +85,8 @@ async def run_check(client: httpx.AsyncClient, check: Check, url: str) -> Result
     except httpx.HTTPError as err:
         detail = f"{type(err).__name__}: {err}" if str(err) else type(err).__name__
         return _result(check, url, "fail", detail, start)
+    # The runner's own timing, so `MaxElapsed` reads what the report shows.
+    response.elapsed = timedelta(seconds=time.monotonic() - start)
     problems = [p for p in (e(response) for e in check.expect) if p]
     if problems:
         return _result(check, url, check.severity, "; ".join(problems), start)
