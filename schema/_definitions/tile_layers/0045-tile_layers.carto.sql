@@ -257,9 +257,10 @@ BEGIN
       map_id,
       source_id,
       geom
+    -- `carto.polygons` rather than `tile_layers.carto_units`, whose `scale` is text:
+    -- the partition key itself, as a cast would probe every scale's partition.
     FROM
-      tile_layers.carto_units
-    -- The partition key itself: a cast would probe every scale's partition.
+      carto.polygons
     WHERE scale = mapsize::maps.map_scale
       AND ST_Intersects(geom, projected_bbox)
   ), expanded AS (
