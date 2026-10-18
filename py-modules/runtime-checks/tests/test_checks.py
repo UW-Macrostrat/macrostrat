@@ -1,9 +1,12 @@
+import gzip
+
 import httpx
 from pytest import mark
 
 from macrostrat.runtime_checks import (
     CATALOG,
     Check,
+    Compressed,
     Contains,
     ContentType,
     JSONPath,
@@ -21,6 +24,7 @@ ROUTES = {
     "/old": (301, {"location": "/new"}, ""),
     "/downgrade": (301, {"location": "http://example.org/new"}, ""),
     "/new": (200, {}, "new"),
+    "/gzipped": (200, {"content-encoding": "gzip"}, gzip.compress(b"small")),
 }
 
 
@@ -28,6 +32,8 @@ def handler(request: httpx.Request) -> httpx.Response:
     if request.url.path == "/down":
         raise httpx.ConnectError("refused", request=request)
     code, headers, body = ROUTES.get(request.url.path, (404, {}, ""))
+    if isinstance(body, bytes):
+        return httpx.Response(code, headers=headers, content=body)
     return httpx.Response(code, headers=headers, text=body)
 
 
@@ -50,6 +56,7 @@ def outcome(check):
         Check("redirect", "web", "/old", [Redirect("/new")]),
         Check("followed", "web", "/old", [Status(200), Contains("new")]),
         Check("missing", "web", "/nothing", [Status(404)]),
+        Check("gzip", "web", "/gzipped", [Compressed(), Contains("small")]),
     ],
 )
 def test_passing(check):
@@ -66,6 +73,7 @@ def test_passing(check):
         (Check("target", "web", "/old", [Redirect("/other")]), "expected /other"),
         (Check("scheme", "web", "/downgrade", [Redirect("/new")]), "changing scheme"),
         (Check("down", "web", "/down"), "ConnectError: refused"),
+        (Check("plain", "web", "/", [Compressed()]), "uncompressed body"),
     ],
 )
 def test_failing(check, detail):

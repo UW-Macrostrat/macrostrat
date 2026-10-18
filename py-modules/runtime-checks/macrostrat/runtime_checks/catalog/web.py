@@ -1,6 +1,6 @@
 import json
 
-from ..model import Check, Contains, Redirect, Status
+from ..model import Check, Compressed, Contains, ContentType, Redirect, Status
 
 # Sift's own routes; the id is irrelevant to the server, which renders a shell.
 SIFT_ROUTES = (
@@ -30,6 +30,14 @@ LEGACY_ANCHORS = {
 CHECKS = [
     Check("web-home", "web", "/", [Status(200), Contains("<title>Macrostrat")]),
     Check("web-not-found", "web", "/this-is-a-404", [Status(404)]),
+    # Responses from the Node app, which a proxy hop (Via) can leave uncompressed.
+    Check("web-home-compressed", "web", "/", [Status(200), Compressed()]),
+    Check(
+        "web-page-context-compressed",
+        "web",
+        "/index.pageContext.json",
+        [Status(200), ContentType("application/json"), Compressed()],
+    ),
     *(
         Check(f"web-{page}", "web", f"/{page}")
         for page in ("map", "columns", "projects", "lex", "docs")
