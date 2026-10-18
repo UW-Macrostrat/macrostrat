@@ -167,20 +167,27 @@ SET econ = '[]'::bytea
 WHERE econ IS NULL;
 
 /** Measurements short */
+-- One entry per class/type pair, as in v1, not one per measured value
 WITH a AS (
-  SELECT
+  SELECT DISTINCT
     unit_id,
-    json_build_object(
-      'measure_class', measurement_class,
-      'measure_type', measurement_type
-    ) measure_short
+    measurement_class,
+    measurement_type
   FROM measurements
   JOIN measures ON measures.measurement_id = measurements.id
   JOIN measuremeta ON measures.measuremeta_id = measuremeta.id
   JOIN unit_measures ON measuremeta.id = unit_measures.measuremeta_id
 ),
 agg_measures AS (
-  SELECT unit_id, json_agg(measure_short) AS measure_short
+  SELECT
+    unit_id,
+    json_agg(
+      json_build_object(
+        'measure_class', measurement_class,
+        'measure_type', measurement_type
+      )
+      ORDER BY measurement_class, measurement_type
+    ) AS measure_short
   FROM a
   GROUP BY unit_id
 )
