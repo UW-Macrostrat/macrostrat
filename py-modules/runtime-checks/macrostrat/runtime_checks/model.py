@@ -72,6 +72,16 @@ class NonEmpty(Expectation):
         return "empty body"
 
 
+@dataclass(frozen=True)
+class Compressed(Expectation):
+    """A content-encoded body, in whichever coding the server chose (gzip, zstd…)."""
+
+    def __call__(self, response):
+        if response.headers.get("content-encoding", "identity") != "identity":
+            return None
+        return "uncompressed body"
+
+
 _MISSING = object()
 
 
