@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
 - Column ingestion takes a `placement` (project, and group by id or name) that overrides the workbook's project
 - Column geometry may be a `LINESTRING` / `MULTILINESTRING` traverse; a point within 1 km of it is kept
 - Units sheet: `axis_type`, and `fill_values` to carry blank cells from the previous row (`none` ends a run); missing bounds are filled from adjacent surfaces
