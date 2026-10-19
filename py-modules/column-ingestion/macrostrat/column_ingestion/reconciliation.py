@@ -259,3 +259,44 @@ def reconcile(
     )
     ids = apply_reconciliation(db, table, plan, desired, owned_columns=owned_columns)
     return plan, ids
+
+
+def reconcile_groups(
+    db,
+    table: Table,
+    groups: Sequence[tuple[list[dict], list[dict]]],
+    *,
+    key: KeySpec,
+    owned_columns: Sequence[str],
+    scales: Mapping[str, int] | None = None,
+) -> list[tuple[ReconciliationPlan, list[int]]]:
+    """`reconcile` over many `(existing, desired)` groups, writing them all at once.
+
+    Each group is planned on its own, because a group is what a plan's deletes are
+    scoped to — one column's sections, one section's boundaries. The writes are merged,
+    so a chunk of columns costs the same few statements as one column.
+    """
+    plans = [
+        plan_reconciliation(
+            existing, desired, key=key, owned_columns=owned_columns, scales=scales
+        )
+        for existing, desired in groups
+    ]
+    merged = ReconciliationPlan()
+    all_desired: list[dict] = []
+    for plan, (_, desired) in zip(plans, groups):
+        merged.updates += plan.updates
+        merged.inserts += plan.inserts
+        merged.deletes += plan.deletes
+        merged.unchanged += plan.unchanged
+        merged.matched += plan.matched
+        all_desired += desired
+    ids = apply_reconciliation(
+        db, table, merged, all_desired, owned_columns=owned_columns
+    )
+
+    results, start = [], 0
+    for plan, (_, desired) in zip(plans, groups):
+        results.append((plan, ids[start : start + len(desired)]))
+        start += len(desired)
+    return results

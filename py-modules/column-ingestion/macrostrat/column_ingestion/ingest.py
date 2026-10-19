@@ -45,14 +45,14 @@ from macrostrat.database import on_conflict
 from macrostrat.utils import get_logger
 
 from . import notices
-from .age_model import build_age_model
+from .age_model import reconcile_section_boundaries, section_boundaries
 from .columns import (
     Column,
     columns_from_df,
     get_sections_from_df,
     reconcile_column_group,
+    reconcile_column_sections,
     reconcile_columns,
-    reconcile_sections,
 )
 from .database import ProjectIdentifier, get_or_create_project
 from .facies import facies_from_df
@@ -77,6 +77,9 @@ from .validation import validate_dataset
 from .vocabulary import Vocabulary
 
 log = get_logger(__name__)
+
+#: Columns written per round of statements; bounds statement size, not correctness.
+CHUNK_SIZE = 500
 
 
 class _DryRunRollback(Exception):
@@ -456,24 +459,16 @@ def _write(db, columns, project, group, references, dry_run):
     if ref_map:
         resolve_column_references(db, columns, ref_map)
 
+    with_units = []
     for col in columns:
-        if not col.units:
+        if col.units:
+            with_units.append(col)
+        else:
             notices.warning(
                 "no-units", f"Column {col.name!r} has no units", col_id=col.local_id
             )
-            continue
-        log.info("Ingesting column: %s, ID: %s", col.name, col.id)
-        with notices.notice_context(col_id=col.local_id):
-            # Sections first, so every unit is written against a section that exists.
-            reconcile_sections(db, col.id, col.sections)
-            write_units(db, col.sections)
-            plans = build_age_model(db, col.units)
-            if not plans:
-                notices.warning(
-                    "no-age-model-written",
-                    f"Column {col.name!r}: no age model could be built, so its units "
-                    "carry no modeled ages",
-                )
+    for start in range(0, len(with_units), CHUNK_SIZE):
+        _write_chunk(db, with_units[start : start + CHUNK_SIZE])
 
     # The website reads units through the lookup tables, which nothing else refreshes
     current_units = {u.id for col in columns for u in col.units}
@@ -496,6 +491,31 @@ def _write(db, columns, project, group, references, dry_run):
     # Read back while the rows are still there (a rollback would expire them)
     payload = build_payload(db, columns, provisional=dry_run)
     return summary, payload
+
+
+def _write_chunk(db, columns: list[Column]):
+    """Write a chunk of columns' sections, units and age models, a table at a time.
+
+    Every step reads and writes the whole chunk in a few statements, so the cost of a
+    remote database is per chunk rather than per column.
+    """
+    log.info("Ingesting %s columns, from %s", len(columns), columns[0].name)
+    # Sections first, so every unit is written against a section that exists.
+    reconcile_column_sections(db, {col.id: col.sections for col in columns})
+    write_units(db, [section for col in columns for section in col.sections])
+
+    boundaries = {}
+    for col in columns:
+        with notices.notice_context(col_id=col.local_id):
+            built = section_boundaries(db, col.units)
+            if not built:
+                notices.warning(
+                    "no-age-model-written",
+                    f"Column {col.name!r}: no age model could be built, so its units "
+                    "carry no modeled ages",
+                )
+        boundaries.update(built)
+    reconcile_section_boundaries(db, boundaries)
 
 
 def _describe(err: Exception) -> str:

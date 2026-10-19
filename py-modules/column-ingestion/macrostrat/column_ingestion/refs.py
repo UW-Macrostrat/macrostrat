@@ -27,7 +27,7 @@ from .reconciliation import (
     ReconciliationPlan,
     apply_reconciliation,
     plan_reconciliation,
-    reconcile,
+    reconcile_groups,
 )
 
 log = get_logger(__name__)
@@ -231,29 +231,40 @@ def reconcile_column_references(
     db, col_id: int, ref_ids: list[int]
 ) -> ReconciliationPlan:
     """Reconcile one column's `col_refs` links."""
-    existing = [
-        dict(row._mapping)
-        for row in db.run_query(
-            """
-            SELECT id, col_id, ref_id FROM macrostrat.col_refs
-            WHERE col_id = :col_id ORDER BY id
-            """,
-            dict(col_id=col_id),
-        )
-    ]
+    return reconcile_columns_references(db, {col_id: ref_ids})[col_id]
+
+
+def reconcile_columns_references(
+    db, ref_ids_by_column: dict[int, list[int]]
+) -> dict[int, ReconciliationPlan]:
+    """Reconcile the `col_refs` links of many columns at once."""
+    if not ref_ids_by_column:
+        return {}
+    existing: dict[int, list[dict]] = {col_id: [] for col_id in ref_ids_by_column}
+    for row in db.run_query(
+        """
+        SELECT id, col_id, ref_id FROM macrostrat.col_refs
+        WHERE col_id = ANY(:col_ids) ORDER BY id
+        """,
+        dict(col_ids=list(ref_ids_by_column)),
+    ):
+        existing[row.col_id].append(dict(row._mapping))
     # Deduplicate: `UNIQUE (col_id, ref_id)` means a repeated citation is one link.
-    desired = [
-        {"col_id": col_id, "ref_id": ref_id} for ref_id in dict.fromkeys(ref_ids)
+    groups = [
+        (
+            existing[col_id],
+            [{"col_id": col_id, "ref_id": r} for r in dict.fromkeys(ref_ids)],
+        )
+        for col_id, ref_ids in ref_ids_by_column.items()
     ]
-    plan, _ = reconcile(
+    results = reconcile_groups(
         db,
         get_macrostrat_table(db, "col_refs"),
-        existing=existing,
-        desired=desired,
+        groups,
         key=("col_id", "ref_id"),
         owned_columns=(),  # a pure link: presence is the whole content
     )
-    return plan
+    return {col_id: plan for col_id, (plan, _) in zip(ref_ids_by_column, results)}
 
 
 def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> None:
@@ -262,6 +273,7 @@ def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> Non
     Used on its own, without a notice collector, unknown ids still raise.
     """
     problems = []
+    ref_ids_by_column: dict[int, list[int]] = {}
     for col in columns:
         ref_ids, unknown = [], []
         for local_id in col.ref_ids:
@@ -280,7 +292,8 @@ def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> Non
             if reported is None:
                 problems.append(message)
                 continue
-        reconcile_column_references(db, col.id, ref_ids)
+        ref_ids_by_column[col.id] = ref_ids
+    reconcile_columns_references(db, ref_ids_by_column)
 
     if problems:
         raise ReferenceError(

@@ -19,6 +19,7 @@ from .parse import (
 from .sections import (
     Section,
     ordered_sections,
+    reconcile_column_sections,
     reconcile_sections,
     section_bounds,
     section_identity,
@@ -40,6 +41,7 @@ __all__ = [
     "ordered_sections",
     "reconcile_column_group",
     "reconcile_columns",
+    "reconcile_column_sections",
     "reconcile_sections",
     "resolve_geometry",
     "section_bounds",
