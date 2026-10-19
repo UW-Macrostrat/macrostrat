@@ -3,9 +3,10 @@
 
    Mapnik reads a PostGIS layer as a subquery it fills per render with the
    `!bbox!` and `!pixel_width!` tokens, so each function takes the box and the
-   pixel size as arguments, and the map layer of the carto member for the scale
-   being drawn (`map_bounds.face_layer_for('carto', zoom)`), which the legacy
-   tileserver resolves once at startup for each scale band.
+   pixel size as arguments, and a zoom in the scale band being drawn. The map
+   layer of carto's member for that zoom is resolved here, once per call, so a
+   render stays one query per Mapnik layer and a member that gains faces is
+   drawn without restarting the tileserver.
 
    The shape is that of the vector route's `faces.sql` (tileserver
    `map_tiles/queries/`), stage for stage, so raster and vector tiles draw the
@@ -17,9 +18,10 @@
    before changing either: the join through the clipped face is what reaches the
    `(scale, geom)` index of `maps.polygons`. */
 
+DROP FUNCTION IF EXISTS tile_layers.carto_image_units(geometry, integer, double precision);
 CREATE OR REPLACE FUNCTION tile_layers.carto_image_units(
   _bbox geometry,
-  _layer_id integer,
+  _zoom integer,
   _pixel double precision
 ) RETURNS TABLE (map_id integer, color text, geom geometry) AS $$
 WITH map_bounds AS MATERIALIZED (
@@ -27,7 +29,9 @@ WITH map_bounds AS MATERIALIZED (
     mf.map_id AS source_id,
     ST_UnaryUnion(ST_Collect(ST_ClipByBox2D(mf.geometry, _bbox))) AS geometry
   FROM map_bounds_topology.map_face mf
-  WHERE mf.map_layer = _layer_id
+  WHERE mf.map_layer = (
+    SELECT map_bounds.face_layer_for(map_bounds.resolve_source('carto'), _zoom)
+  )
     AND ST_Intersects(mf.geometry, _bbox)
     AND map_bounds.has_content(mf.map_id)
   GROUP BY mf.map_id
@@ -76,9 +80,10 @@ WHERE u.geom IS NOT NULL AND NOT ST_IsEmpty(u.geom)
   AND l.color IS NOT NULL AND l.color <> '';
 $$ LANGUAGE SQL STABLE;
 
+DROP FUNCTION IF EXISTS tile_layers.carto_image_lines(geometry, integer, double precision);
 CREATE OR REPLACE FUNCTION tile_layers.carto_image_lines(
   _bbox geometry,
-  _layer_id integer,
+  _zoom integer,
   _pixel double precision
 ) RETURNS TABLE (line_id integer, direction text, "type" text, geom geometry) AS $$
 WITH map_bounds AS MATERIALIZED (
@@ -86,7 +91,9 @@ WITH map_bounds AS MATERIALIZED (
     mf.map_id AS source_id,
     ST_UnaryUnion(ST_Collect(ST_ClipByBox2D(mf.geometry, _bbox))) AS geometry
   FROM map_bounds_topology.map_face mf
-  WHERE mf.map_layer = _layer_id
+  WHERE mf.map_layer = (
+    SELECT map_bounds.face_layer_for(map_bounds.resolve_source('carto'), _zoom)
+  )
     AND ST_Intersects(mf.geometry, _bbox)
     AND map_bounds.has_content(mf.map_id)
   GROUP BY mf.map_id
