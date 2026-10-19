@@ -17,16 +17,21 @@ db_url = environ.get("DATABASE_URL")
 
 # The maps a raster tile draws, as the vector route names them in
 # `X-Macrostrat-Sources`: resolved maps whose faces meet the tile envelope.
-# Asked once per render; the cache keeps the answer beside the tile.
+# Asked once per render; the cache keeps the answer beside the tile. The envelope
+# is computed once, as in `faces.sql`: `geographic_envelope` is volatile, so
+# inline it is evaluated per row and the face index goes unused.
 SOURCES_QUERY = """
+WITH tile AS (
+  SELECT tile_layers.geographic_envelope($1, $2, $3, 0.01) AS bbox
+)
 SELECT array_agg(m.map_id ORDER BY m.map_id)
 FROM (
   SELECT DISTINCT mf.map_id
   FROM map_bounds_topology.map_face mf
+  JOIN tile ON ST_Intersects(mf.geometry, tile.bbox)
   WHERE mf.map_layer = (
       SELECT map_bounds.face_layer_for(map_bounds.resolve_source('carto'), $3)
     )
-    AND ST_Intersects(mf.geometry, tile_layers.geographic_envelope($1, $2, $3, 0.01))
 ) m
 WHERE map_bounds.has_content(m.map_id)
 """
