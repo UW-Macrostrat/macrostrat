@@ -5,7 +5,8 @@
   "main": "server.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/UW-Macrostrat/macrostrat-api.git"
+    "url": "https://github.com/UW-Macrostrat/macrostrat.git",
+    "directory": "services/api-v2"
   },
   "scripts": {
     "dev": "tsx watch server.ts",

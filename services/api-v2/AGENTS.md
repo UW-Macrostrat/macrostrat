@@ -1,7 +1,8 @@
 # AGENTS.md
 
-Conventions for `macrostrat-api`, Macrostrat's legacy v2 API: an Express app in
-TypeScript, run directly with `tsx` (no build step).
+Conventions for `services/api-v2`, Macrostrat's legacy v2 API: an Express app in
+TypeScript, run directly with `tsx` (no build step). It was the separate
+`macrostrat-api` repository until 2026-10; its history and tags were imported.
 
 ## Layout
 
@@ -13,7 +14,8 @@ TypeScript, run directly with `tsx` (no build step).
 
 ## Running
 
-- **Yarn 4 (PnP).** Use `yarn` for everything; ignore `npm` in the README.
+- **Yarn 4 (PnP).** Use `yarn` for everything, from this directory; it is its
+  own Yarn project. Ignore `npm` in the README.
 - `yarn dev` serves with reload. Set `MACROSTRAT_DATABASE` (see `.env.example`).
 - `yarn test` runs mocha against a *running* API (`TEST_API_URL`), not in-process.
 - `yarn format` runs prettier.
@@ -22,8 +24,8 @@ TypeScript, run directly with `tsx` (no build step).
 
 - All SQL is hand-written strings through `larkin.queryPg("burwell", sql, params)`.
   `"burwell"` is the `macrostrat` database under its old name.
-- The schema belongs to [macrostrat](https://github.com/UW-Macrostrat/macrostrat).
-  Never change it from here.
+- The schema belongs to the repository's `schema/` tree. Never change it from
+  this service.
 - **Capabilities** let a route use schema that not every database has yet:
   `checkCapabilities` probes at startup, and `hasCapability` gates the SQL (see
   `map-refs`). Use one rather than requiring a migration in lockstep.
@@ -42,7 +44,9 @@ beside `source` on `map_query_v2`).
 
 ## Releases
 
-CI releases on merge to `main`. A `package.json` version with no `v…` tag yet
-is built, tagged and published. A stable version needs a `## [x.y.z]` heading
+CI releases on merge to `main` (`.github/workflows/build-api-v2.yaml` at the
+repository root, via the shared `build-service.yaml`). A `package.json` version
+with no `api-v2-v…` tag yet is built, tagged and published; the image is still
+`macrostrat-api`. A stable version needs a `## [x.y.z]` heading
 in `CHANGELOG.md`. Never create or push version tags by hand. Add terse,
 one-line entries under `## [Unreleased]`.

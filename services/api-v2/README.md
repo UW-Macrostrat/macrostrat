@@ -11,7 +11,7 @@ concise, queryable format.
 
 #### Software
 
-MariaDB, PostgreSQL, Nodejs, and the
+MariaDB, PostgreSQL, Nodejs, and the rest of the
 [Macrostrat system](https://github.com/UW-Macrostrat/macrostrat) are required.
 Redis is optional. When the API starts requests for all columns and all units
 are cached. If Redis is available it will be used, otherwise they are cached in
@@ -25,11 +25,11 @@ The `macrostrat` PostgreSQL database must be available.
 
 ## Setup
 
-First clone the repo:
+The API lives in `services/api-v2` of the Macrostrat platform repository:
 
 ```
-git clone https://github.com/UW-Macrostrat/macrostrat-api.git
-cd macrostrat-api
+git clone https://github.com/UW-Macrostrat/macrostrat.git
+cd macrostrat/services/api-v2
 ```
 
 Next, install dependencies:

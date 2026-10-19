@@ -1,5 +1,9 @@
 # Macrostrat API v2 Changelog
 
+## [Unreleased]
+
+- Moved from `UW-Macrostrat/macrostrat-api` to `services/api-v2` of `UW-Macrostrat/macrostrat`; release tags are now `api-v2-vX.Y.Z`
+
 ## [2.4.0] - 2026-10-12
 
 - `/version` reports the running build; `/health` answers 503 when the database does not
