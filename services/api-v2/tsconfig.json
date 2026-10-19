@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Bundler",
+    "module": "preserve",
+    "skipLibCheck": true,
+    "esModuleInterop": true
+  },
+  "include": [
+    "./v2",
+    "./api-tests"
+  ], // Ensure your test files are included
+}

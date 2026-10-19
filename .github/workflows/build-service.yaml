@@ -1,7 +1,7 @@
 name: Build service image
 
 # Builds one service's image. On a push to main, a version in the service's
-# pyproject.toml that has no `<service>-vX.Y.Z` tag yet is released: the image
+# pyproject.toml (or package.json) that has no `<service>-vX.Y.Z` tag yet is released: the image
 # is also tagged `X.Y.Z` and the git tag is created on this commit. The tag is
 # pushed here because a tag pushed with GITHUB_TOKEN starts no other workflow.
 
@@ -28,6 +28,14 @@ on:
       platforms:
         type: string
         default: ""
+      latest:
+        description: Move `latest` on every main build ("main") or on stable releases ("stable")
+        type: string
+        default: main
+      dated-release-tag:
+        description: Also tag a release `X.Y.Z-<date>`, for prerelease policies that hold dated tags
+        type: boolean
+        default: false
 
 jobs:
   docker:
@@ -63,9 +71,11 @@ jobs:
           tags: |
             type=ref,event=pr,suffix=-{{date 'YYYYMMDDHHmmss'}}
             type=ref,event=branch,suffix=-{{date 'YYYYMMDDHHmmss'}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ inputs.latest == 'main' && '{{is_default_branch}}' || 'false' }}
+            type=raw,value=latest,enable=${{ inputs.latest == 'stable' && steps.release.outputs.release == 'true' && steps.version.outputs.stable == 'true' }}
             type=raw,value=sha-{{sha}}
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.release.outputs.release == 'true' }}
+            type=raw,value=${{ steps.version.outputs.version }}-{{date 'YYYYMMDDHHmmss'}},enable=${{ inputs.dated-release-tag && steps.release.outputs.release == 'true' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

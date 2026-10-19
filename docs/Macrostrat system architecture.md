@@ -16,7 +16,7 @@ The control infrastructure for Macrostrat's core system, including database defi
 
 Macrostrat provides information to geological web applications (including our own apps) using public web services (APIs). These are housed in several repositories.
 
-- [`UW-Macrostrat/macrostrat-api`](https://github.com/UW-Macrostrat/macrostrat-api): Macrostrat's production API (v2; NodeJS)
+- [`services/api-v2`](https://github.com/UW-Macrostrat/macrostrat/tree/main/services/api-v2) in `UW-Macrostrat/macrostrat`: Macrostrat's production API (v2; NodeJS)
 - [`UW-Macrostrat/tileserver`](https://github.com/UW-Macrostrat/tileserver): Vector and raster tile server for geologic maps (Python)
 - [`UW-Macrostrat/api-v3`](https://github.com/UW-Macrostrat/api-v3): Macrostrat's development API (v3; Python)
 

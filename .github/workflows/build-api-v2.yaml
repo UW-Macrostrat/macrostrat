@@ -1,0 +1,29 @@
+name: Build API v2
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - services/api-v2/**
+      - scripts/service-release
+      - .github/workflows/build-service.yaml
+      - .github/workflows/build-api-v2.yaml
+  pull_request:
+    branches: ["main"]
+    paths:
+      - services/api-v2/**
+      - scripts/service-release
+      - .github/workflows/build-service.yaml
+      - .github/workflows/build-api-v2.yaml
+jobs:
+  build:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-service.yaml
+    with:
+      service: api-v2
+      image: macrostrat-api
+      context: services/api-v2
+      # Staging's prerelease policy holds `X.Y.Z-<date>` tags
+      latest: stable
+      dated-release-tag: true
+    secrets: inherit
