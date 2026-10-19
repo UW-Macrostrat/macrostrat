@@ -1761,7 +1761,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-worker"
-version = "1.0.0b2"
+version = "1.0.0"
 source = { editable = "services/worker" }
 dependencies = [
     { name = "celery", extra = ["redis"] },
