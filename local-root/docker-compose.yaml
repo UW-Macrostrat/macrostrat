@@ -187,6 +187,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - MAPNIK_POOL_SIZE=8
+      # Image tiles follow the core tileserver's switch.
+      - LEGACY_CARTO_FROM_COMPILATION=${LEGACY_CARTO_FROM_COMPILATION:-true}
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app
