@@ -2,18 +2,9 @@
 
 from contextlib import contextmanager
 
-from sqlalchemy import Column, Float, Integer, MetaData, Table, Text, event, text
+from sqlalchemy import MetaData, Table, event, text
 
 from macrostrat.column_ingestion.reconciliation import reconcile
-
-TABLE = Table(
-    "recon_batch",
-    MetaData(),
-    Column("id", Integer, primary_key=True),
-    Column("name", Text),
-    Column("value", Float),
-    Column("note", Text),
-)
 
 
 @contextmanager
@@ -40,15 +31,27 @@ def fetch(db) -> list[dict]:
     return [dict(row._mapping) for row in rows]
 
 
+def reflected_table(db) -> Table:
+    """A table shaped like the macrostrat ones: reflected, `id` defaulting to `nextval`.
+
+    The default draws from a sequence the column does not own, as `units_sections`
+    does, so ids must come from the default rather than `pg_get_serial_sequence`.
+    """
+    db.session.execute(text("CREATE TEMP SEQUENCE recon_batch_draw_seq"))
+    db.session.execute(
+        text(
+            "CREATE TEMP TABLE recon_batch ("
+            " id integer PRIMARY KEY DEFAULT nextval('recon_batch_draw_seq'),"
+            " name text, value float, note text)"
+        )
+    )
+    return Table("recon_batch", MetaData(), autoload_with=db.session.connection())
+
+
 class TestBatchedWrites:
     def test_inserts_and_updates_are_batched(self, db):
-        db.session.execute(
-            text(
-                "CREATE TEMP TABLE recon_batch "
-                "(id serial PRIMARY KEY, name text, value float, note text)"
-            )
-        )
         try:
+            table = reflected_table(db)
             desired = [
                 {"name": "a", "value": 1.0},
                 {"name": "b", "value": 2.0, "note": "set"},
@@ -59,7 +62,7 @@ class TestBatchedWrites:
             with counted(db) as sent:
                 _, ids = reconcile(
                     db,
-                    TABLE,
+                    table,
                     existing=[],
                     desired=desired,
                     key=["name"],
@@ -69,12 +72,16 @@ class TestBatchedWrites:
             assert sent == ["INSERT", "INSERT"]
             by_id = {row["id"]: row for row in fetch(db)}
             assert [by_id[i]["name"] for i in ids] == ["a", "b", "c", "d", "e"]
+            drawn = db.session.execute(
+                text("SELECT last_value FROM recon_batch_draw_seq")
+            ).scalar()
+            assert max(ids) == drawn
 
             moved = [dict(row, value=row["value"] * 10) for row in desired]
             with counted(db) as sent:
                 plan, again = reconcile(
                     db,
-                    TABLE,
+                    table,
                     existing=fetch(db),
                     desired=moved,
                     key=["name"],

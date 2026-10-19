@@ -32,11 +32,12 @@ incidentally cleans them up. See `age_model.reconciliation` for the standing TOD
 replacing this with real unique constraints and an upsert.
 """
 
+import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Callable, Mapping, Sequence
 
-from sqlalchemy import Table, bindparam
+from sqlalchemy import Table, bindparam, text
 
 KeySpec = Sequence[str] | Callable[[dict], tuple]
 
@@ -134,6 +135,46 @@ def plan_reconciliation(
     return plan
 
 
+_NEXTVAL = re.compile(r"^nextval\('([^']+)'::regclass\)$")
+
+_ID_SEQUENCE_SQL = text(
+    """
+    SELECT pg_get_expr(d.adbin, d.adrelid), pg_get_serial_sequence(CAST(:t AS text), 'id')
+    FROM pg_attribute a
+    LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE a.attrelid = CAST(:t AS regclass) AND a.attname = 'id'
+    """
+)
+
+
+def _id_sequence(db, table: Table) -> str:
+    """The sequence `table.id` actually draws from, cached on the table.
+
+    Read from the column default first: `pg_get_serial_sequence` names the sequence
+    the column *owns*, which is not always the one its default calls
+    (`units_sections` owns `units_sections_id_seq` but draws from
+    `units_sections_new_id_seq`). Identity columns have no default and fall through.
+    """
+    if "id_sequence" not in table.info:
+        name = table.name if table.schema is None else f"{table.schema}.{table.name}"
+        default, owned = db.session.execute(_ID_SEQUENCE_SQL, {"t": name}).one()
+        found = _NEXTVAL.match(default or "")
+        sequence = found.group(1) if found else owned
+        if sequence is None:
+            raise ValueError(f"{name}.id has no sequence to allocate ids from")
+        table.info["id_sequence"] = sequence
+    return table.info["id_sequence"]
+
+
+def _allocate_ids(db, table: Table, n: int) -> list[int]:
+    return list(
+        db.session.execute(
+            text("SELECT nextval(CAST(:seq AS regclass)) FROM generate_series(1, :n)"),
+            {"seq": _id_sequence(db, table), "n": n},
+        ).scalars()
+    )
+
+
 def apply_reconciliation(
     db,
     table: Table,
@@ -154,7 +195,10 @@ def apply_reconciliation(
     to objects or to write dependent rows.
 
     Updates and inserts are each sent as one batched statement, not one per row: on a
-    remote database every statement is a network round trip.
+    remote database every statement is a network round trip. Insert ids are drawn from
+    the table's sequence up front rather than read back with `RETURNING`, because
+    SQLAlchemy cannot vouch for the order of ids from a reflected `nextval` default and
+    falls back to one INSERT per row to preserve it.
     """
     if owned_columns and plan.updates:
         # Prefixed names: a bind parameter may not share a name with a SET column
@@ -177,17 +221,21 @@ def apply_reconciliation(
         )
 
     ids: list[int] = list(plan.matched)
+    missing = [position for position, row_id in enumerate(ids) if row_id is None]
+    if missing:
+        allocated = _allocate_ids(db, table, len(missing))
+        for position, new_id in zip(missing, allocated, strict=True):
+            ids[position] = new_id
+
     # A batched insert takes its columns from its first row, so rows that set different
     # columns are inserted in separate batches.
     batches: dict[frozenset, list[int]] = defaultdict(list)
-    for position, row_id in enumerate(ids):
-        if row_id is None:
-            batches[frozenset(desired[position])].append(position)
+    for position in missing:
+        batches[frozenset(desired[position])].append(position)
     for positions in batches.values():
-        stmt = table.insert().returning(table.c.id, sort_by_parameter_order=True)
-        result = db.session.execute(stmt, [desired[p] for p in positions])
-        for position, new_id in zip(positions, result.scalars(), strict=True):
-            ids[position] = new_id
+        db.session.execute(
+            table.insert(), [{**desired[p], "id": ids[p]} for p in positions]
+        )
 
     if plan.deletes:
         db.session.execute(table.delete().where(table.c.id.in_(plan.deletes)))
