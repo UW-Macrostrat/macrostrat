@@ -37,8 +37,10 @@ builds them.
   shared `--target` / `--no-dependents` option block (see below). Per category:
     - *views* (`views.py`) — `CREATE OR REPLACE` by default; drop-and-recreate (restoring grants)
       only on a signature change (SQLSTATE 42P16), via the `macrostrat.database` `on_error` hook.
-    - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; signature changes
-      are left to the diff.
+    - *procedures* (`procedures.py`) — `CREATE OR REPLACE FUNCTION`/`PROCEDURE`; a change it
+      refuses (SQLSTATE 42P13: renamed parameter, new return type) is dropped and recreated in
+      one transaction, restoring `EXECUTE` grants. No cascade: dependents or an overloaded name
+      leave the old definition and record a failure.
     - *seed* (`seed_data.py`) — re-run the data-writing statements (`INSERT`/`UPDATE`/`DELETE`/
       `MERGE`, including `WITH … INSERT`), detected by `sqlparse` statement type, plus the
       `SELECT setval(…)` calls that realign a sequence with freshly seeded rows (`sqlparse`

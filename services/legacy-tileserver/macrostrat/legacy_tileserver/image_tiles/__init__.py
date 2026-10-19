@@ -23,20 +23,21 @@ SELECT array_agg(m.map_id ORDER BY m.map_id)
 FROM (
   SELECT DISTINCT mf.map_id
   FROM map_bounds_topology.map_face mf
-  WHERE mf.map_layer = $1
-    AND ST_Intersects(mf.geometry, tile_layers.geographic_envelope($2, $3, $4, 0.01))
+  WHERE mf.map_layer = (
+      SELECT map_bounds.face_layer_for(map_bounds.resolve_source('carto'), $3)
+    )
+    AND ST_Intersects(mf.geometry, tile_layers.geographic_envelope($1, $2, $3, 0.01))
 ) m
 WHERE map_bounds.has_content(m.map_id)
 """
 
 
 async def tile_sources(request: Request, tile) -> Optional[list]:
-    """The maps a tile draws, or None for a band carto has no member for."""
-    layer_id = request.app.state.bands.layer_for_zoom(tile.z)
-    if layer_id is None:
+    """The maps a compilation tile draws; the legacy build names none."""
+    if not request.app.state.carto_from_compilation:
         return None
     async with request.app.state.pool.acquire() as conn:
-        return await conn.fetchval(SOURCES_QUERY, layer_id, tile.x, tile.y, tile.z)
+        return await conn.fetchval(SOURCES_QUERY, tile.x, tile.y, tile.z)
 
 
 async def get_image_tile(request: Request, args: CachedTileArgs) -> RenderedTile:
