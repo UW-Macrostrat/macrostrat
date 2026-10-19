@@ -17,7 +17,11 @@ from ..intervals import (
 )
 from ..reconciliation import ReconciliationPlan
 from ..units import Unit
-from .reconciliation import reconcile_unit_boundaries, write_unit_boundaries
+from .reconciliation import (
+    reconcile_section_boundaries,
+    reconcile_unit_boundaries,
+    write_unit_boundaries,
+)
 
 log = get_logger(__name__)
 
@@ -290,16 +294,25 @@ def build_age_model(db, units: list[Unit]) -> dict[int, ReconciliationPlan]:
     Idempotent: reconciles against the existing boundaries, so re-running over an
     unchanged column is a no-op. Returns the plan per section.
     """
+    return reconcile_section_boundaries(db, section_boundaries(db, units))
+
+
+def section_boundaries(db, units: list[Unit]) -> dict[int, list[UnitBoundary]]:
+    """The modeled boundaries of every section represented in `units`.
+
+    Sections that yield none are left out: reconciling an empty model reads as
+    "delete everything".
+    """
     sections = defaultdict(list)
     for unit in units:
         sections[unit.section_id].append(unit)
 
-    plans = {}
+    boundaries = {}
     for section_id, section_units in sections.items():
-        plan = build_section_age_model(db, section_units)
-        if plan is not None:
-            plans[section_id] = plan
-    return plans
+        built = _build_section_age_model(db, section_units)
+        if built:
+            boundaries[section_id] = built
+    return boundaries
 
 
 def _declared_status(position: float, units: list[Unit]) -> BoundaryStatus:

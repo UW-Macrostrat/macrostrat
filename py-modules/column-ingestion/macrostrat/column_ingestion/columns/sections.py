@@ -28,7 +28,7 @@ from macrostrat.utils import get_logger
 from ..boundary_type import NON_CONFORMABLE
 from ..database import get_macrostrat_table
 from ..intervals import UNMODELED_INTERVAL
-from ..reconciliation import ReconciliationPlan, reconcile
+from ..reconciliation import ReconciliationPlan, reconcile_groups
 
 if TYPE_CHECKING:
     from ..units.parse import Unit
@@ -244,30 +244,36 @@ def section_bounds(units: list) -> tuple[int, int]:
     return fo, lo
 
 
-def _existing_sections(db, col_id: int, direction: float) -> list[dict]:
+def _existing_sections(db, col_ids: list[int]) -> dict[int, list[dict]]:
+    """Existing sections of each column, with the base positions of their units.
+
+    Membership comes from `units_sections`, as everywhere in the writers.
+    """
+    by_column: dict[int, list[dict]] = {col_id: [] for col_id in col_ids}
+    for row in db.run_query(
+        """
+        SELECT s.id, s.col_id, s.fo, s.lo, s.orig_id,
+               min(u.position_bottom) AS lowest_base,
+               max(u.position_bottom) AS highest_base
+        FROM macrostrat.sections s
+        LEFT JOIN macrostrat.units_sections us ON us.section_id = s.id
+        LEFT JOIN macrostrat.units u ON u.id = us.unit_id
+        WHERE s.col_id = ANY(:col_ids)
+        GROUP BY s.id ORDER BY s.id
+        """,
+        dict(col_ids=list(col_ids)),
+    ):
+        by_column[row.col_id].append(dict(row._mapping))
+    return by_column
+
+
+def _from_base(rows: list[dict], direction: float) -> list[dict]:
     """A column's existing sections, from the base upward.
 
     Ordered by the base position of their units — the same rule `ordered_sections`
     applies to ours — rather than by `id`, which only agrees with stratigraphic order if
-    the sections happened to be first inserted in that order. Membership comes from
-    `units_sections`, as everywhere in the writers.
+    the sections happened to be first inserted in that order.
     """
-    rows = [
-        dict(row._mapping)
-        for row in db.run_query(
-            """
-            SELECT s.id, s.col_id, s.fo, s.lo, s.orig_id,
-                   min(u.position_bottom) AS lowest_base,
-                   max(u.position_bottom) AS highest_base
-            FROM macrostrat.sections s
-            LEFT JOIN macrostrat.units_sections us ON us.section_id = s.id
-            LEFT JOIN macrostrat.units u ON u.id = us.unit_id
-            WHERE s.col_id = :col_id
-            GROUP BY s.id ORDER BY s.id
-            """,
-            dict(col_id=col_id),
-        )
-    ]
     key = _base_key(direction)
     for row in rows:
         base = row.pop("lowest_base") if direction > 0 else row.pop("highest_base")
@@ -280,40 +286,58 @@ def _existing_sections(db, col_id: int, direction: float) -> list[dict]:
 
 
 def reconcile_sections(db, col_id: int, sections: list[Section]) -> ReconciliationPlan:
-    """Bring a column's sections in line with `sections`, and stamp ids onto them.
+    """Bring a column's sections in line with `sections`, and stamp ids onto them."""
+    plans = reconcile_column_sections(db, {col_id: sections})
+    return plans.get(col_id, ReconciliationPlan())
+
+
+def reconcile_column_sections(
+    db, sections_by_column: dict[int, list[Section]]
+) -> dict[int, ReconciliationPlan]:
+    """Bring each column's sections in line with the given ones, and stamp ids onto them.
 
     Sets `section.id` and `section.col_id` on every section, and `unit.section_id` and
-    `unit.col_id` on every unit they hold, so callers can go on to write units. The
-    column must be complete: an existing section that corresponds to none of `sections`
-    is surplus and is deleted, cascading to its units.
+    `unit.col_id` on every unit they hold, so callers can go on to write units. Each
+    column must be complete: an existing section that corresponds to none of its
+    sections is surplus and is deleted, cascading to its units. A column given no
+    sections is left alone.
     """
-    if not sections:
-        return ReconciliationPlan()
-    sections = ordered_sections(sections)
+    columns = {
+        col_id: ordered_sections(sections)
+        for col_id, sections in sections_by_column.items()
+        if sections
+    }
+    if not columns:
+        return {}
 
-    desired = []
-    for section in sections:
-        fo, lo = section_bounds(section.units)
-        desired.append(
-            {"col_id": col_id, "fo": fo, "lo": lo, "orig_id": section.orig_id}
-        )
+    existing = _existing_sections(db, list(columns))
+    groups = []
+    for col_id, sections in columns.items():
+        desired = []
+        for section in sections:
+            fo, lo = section_bounds(section.units)
+            desired.append(
+                {"col_id": col_id, "fo": fo, "lo": lo, "orig_id": section.orig_id}
+            )
+        direction = stacking_direction(u for s in sections for u in s.units)
+        groups.append((_from_base(existing[col_id], direction), desired))
 
-    direction = stacking_direction(u for s in sections for u in s.units)
-    plan, ids = reconcile(
+    results = reconcile_groups(
         db,
         get_macrostrat_table(db, "sections"),
-        existing=_existing_sections(db, col_id, direction),
-        desired=desired,
+        groups,
         key=section_identity,
         owned_columns=SECTION_COLUMNS,
     )
 
-    for section, section_id in zip(sections, ids):
-        section.id = section_id
-        section.col_id = col_id
-        for unit in section.units:
-            unit.col_id = col_id
-            unit.section_id = section_id
-
-    log.info("sections for col %s: %s", col_id, plan)
-    return plan
+    plans = {}
+    for (col_id, sections), (plan, ids) in zip(columns.items(), results):
+        for section, section_id in zip(sections, ids):
+            section.id = section_id
+            section.col_id = col_id
+            for unit in section.units:
+                unit.col_id = col_id
+                unit.section_id = section_id
+        log.info("sections for col %s: %s", col_id, plan)
+        plans[col_id] = plan
+    return plans

@@ -49,7 +49,7 @@ from macrostrat.utils import get_logger
 from ..database import get_macrostrat_table
 from ..intervals import UNMODELED_INTERVAL
 from ..proportions import Proportion, share_remaining
-from ..reconciliation import ReconciliationPlan, reconcile
+from ..reconciliation import ReconciliationPlan, reconcile, reconcile_groups
 from .parse import Unit
 
 if TYPE_CHECKING:
@@ -183,8 +183,8 @@ def _fetch(db, sql: str, params: dict) -> list[dict]:
     return [dict(row._mapping) for row in db.run_query(sql, params)]
 
 
-def _existing_units(db, col_id: int) -> list[dict]:
-    """A **column's** existing units, with membership taken from `units_sections`.
+def _existing_units(db, col_ids: list[int]) -> dict[int, list[dict]]:
+    """Each **column's** existing units, with membership taken from `units_sections`.
 
     Neither `units.col_id` nor `units.section_id` is authoritative — see
     `age_model.eodp.eodp_units`. Reading them here would scope the reconciliation to the
@@ -197,7 +197,8 @@ def _existing_units(db, col_id: int) -> list[dict]:
     cascade this writer exists to avoid. Fallback-keyed rows are unaffected by the wider
     scope because `section_id` is part of their key, so it still discriminates them.
     """
-    return _fetch(
+    by_column: dict[int, list[dict]] = {col_id: [] for col_id in col_ids}
+    for row in _fetch(
         db,
         """
         SELECT u.id, us.col_id, us.section_id, u.strat_name, u.orig_id,
@@ -205,40 +206,36 @@ def _existing_units(db, col_id: int) -> list[dict]:
                u.max_thick, u.min_thick, u.outcrop, u.color, u.fo, u.lo
         FROM macrostrat.units u
         JOIN macrostrat.units_sections us ON us.unit_id = u.id
-        WHERE us.col_id = :col_id
+        WHERE us.col_id = ANY(:col_ids)
         ORDER BY u.id
         """,
-        dict(col_id=col_id),
-    )
+        dict(col_ids=list(col_ids)),
+    ):
+        by_column[row["col_id"]].append(row)
+    return by_column
 
 
-def reconcile_units(db, sections: list[Section]) -> ReconciliationPlan:
-    """Bring `macrostrat.units` in line with the units of `sections`, one whole column.
+def reconcile_units(db, sections: list[Section]) -> dict[int, ReconciliationPlan]:
+    """Bring `macrostrat.units` in line with the units of `sections`, column by column.
 
     Sets `unit.id` on every unit — matched or inserted — so callers can go on to write
     dependent rows and build an age model. `reconcile_sections` must already have run,
-    since units are written against their section's id.
+    since units are written against their section's id. Returns the plan per column.
 
-    Takes the column's sections rather than a flat list of units because the scope of a
-    unit's identity is a property of its section — whether it has an identifier, see
-    `unit_identity` — not something a unit carries. And a column at a time rather than
-    a section, so that a unit which changed sections is matched rather than replaced.
-    The caller must therefore pass **every** section the column should end up with: a
+    Takes sections rather than a flat list of units because the scope of a unit's
+    identity is a property of its section — whether it has an identifier, see
+    `unit_identity` — not something a unit carries. And whole columns rather than
+    sections, so that a unit which changed sections is matched rather than replaced.
+    The caller must therefore pass **every** section each column should end up with: a
     unit present in the database and absent here is surplus and is deleted, which is
     the point of reconciling, but it means a partial set silently prunes the remainder.
     """
-    units = [unit for section in sections for unit in section.units]
-    if not units:
-        return ReconciliationPlan()
-
-    col_ids = {s.col_id for s in sections}
-    if len(col_ids) != 1:
-        raise ValueError(
-            f"reconcile_units handles one col_id at a time; got {sorted(col_ids)}"
-        )
-    col_id = col_ids.pop()
-
-    desired = [_desired_unit_row(u) for u in units]
+    by_column: dict[int, list[Unit]] = defaultdict(list)
+    for section in sections:
+        by_column[section.col_id].extend(section.units)
+    by_column = {col_id: units for col_id, units in by_column.items() if units}
+    if not by_column:
+        return {}
 
     # The section's identifier is a key component but not a column on `macrostrat.units`,
     # so it cannot ride on the desired rows — those are inserted verbatim. Both sides
@@ -251,20 +248,26 @@ def reconcile_units(db, sections: list[Section]) -> ReconciliationPlan:
             {**row, "section_orig_id": scope_of.get(row.get("section_id"))}
         )
 
-    plan, ids = reconcile(
+    existing = _existing_units(db, list(by_column))
+    results = reconcile_groups(
         db,
         get_macrostrat_table(db, "units"),
-        existing=_existing_units(db, col_id),
-        desired=desired,
+        [
+            (existing[col_id], [_desired_unit_row(u) for u in units])
+            for col_id, units in by_column.items()
+        ],
         key=key,
         owned_columns=UNIT_COLUMNS,
         scales=UNIT_SCALES,
     )
-    for unit, unit_id in zip(units, ids):
-        unit.id = unit_id
 
-    log.info("units for col %s: %s", col_id, plan)
-    return plan
+    plans = {}
+    for (col_id, units), (plan, ids) in zip(by_column.items(), results):
+        for unit, unit_id in zip(units, ids):
+            unit.id = unit_id
+        log.info("units for col %s: %s", col_id, plan)
+        plans[col_id] = plan
+    return plans
 
 
 def reconcile_units_sections(db, units: list[Unit]) -> ReconciliationPlan:
@@ -479,7 +482,8 @@ def write_units(db, sections: list[Section]) -> list[Unit]:
     Units are reconciled per column, which is the scope of the `orig_id` key — see
     `reconcile_units` — so a unit that moved between sections of its column is matched
     rather than replaced. The dependent tables are keyed on `unit_id` and so are handled
-    across the whole set at once.
+    across the whole set at once. `sections` may span many columns, and the writes for
+    all of them go out together.
 
     Returns the units with `id` set.
     """
@@ -487,12 +491,7 @@ def write_units(db, sections: list[Section]) -> list[Unit]:
     if not units:
         return units
 
-    by_column: dict[int, list[Section]] = defaultdict(list)
-    for section in sections:
-        by_column[section.col_id].append(section)
-    for column_sections in by_column.values():
-        reconcile_units(db, column_sections)
-
+    reconcile_units(db, sections)
     reconcile_units_sections(db, units)
     reconcile_unit_liths(db, units)
     reconcile_unit_environs(db, units)

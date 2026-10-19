@@ -62,7 +62,7 @@ from typing import TYPE_CHECKING
 from macrostrat.utils import get_logger
 
 from ..database import get_macrostrat_table
-from ..reconciliation import ReconciliationPlan, plan_reconciliation, reconcile
+from ..reconciliation import ReconciliationPlan, plan_reconciliation, reconcile_groups
 
 if TYPE_CHECKING:
     from .model import UnitBoundary
@@ -168,40 +168,57 @@ def plan_boundary_reconciliation(
 def reconcile_unit_boundaries(
     db, section_id: int, boundaries: list["UnitBoundary"], *, dry_run: bool = False
 ) -> ReconciliationPlan:
-    """Bring a section's `unit_boundaries` in line with a rebuilt age model.
+    """Bring a section's `unit_boundaries` in line with a rebuilt age model."""
+    plans = reconcile_section_boundaries(db, {section_id: boundaries}, dry_run=dry_run)
+    return plans[section_id]
+
+
+def reconcile_section_boundaries(
+    db,
+    boundaries_by_section: dict[int, list["UnitBoundary"]],
+    *,
+    dry_run: bool = False,
+) -> dict[int, ReconciliationPlan]:
+    """Bring each section's `unit_boundaries` in line with its rebuilt age model.
 
     Replaces the older delete-everything-then-insert flow: unchanged surfaces keep their
     `id` (which API v2 exposes as `boundary_id`) and their curated columns. Returns the
-    plan, which is also what `dry_run=True` produces without writing.
+    plan per section, which is also what `dry_run=True` produces without writing.
     """
-    existing = [
-        dict(row._mapping)
-        for row in db.run_query(
-            """
-            SELECT id, unit_id, unit_id_2, t1, t1_prop, t1_age,
-                   boundary_status, boundary_position
-            FROM macrostrat.unit_boundaries
-            WHERE section_id = :section_id
-            ORDER BY id
-            """,
-            dict(section_id=section_id),
-        )
+    if not boundaries_by_section:
+        return {}
+    existing: dict[int, list[dict]] = {s: [] for s in boundaries_by_section}
+    for row in db.run_query(
+        """
+        SELECT id, section_id, unit_id, unit_id_2, t1, t1_prop, t1_age,
+               boundary_status, boundary_position
+        FROM macrostrat.unit_boundaries
+        WHERE section_id = ANY(:section_ids)
+        ORDER BY id
+        """,
+        dict(section_ids=list(boundaries_by_section)),
+    ):
+        row = dict(row._mapping)
+        existing[row.pop("section_id")].append(row)
+    groups = [
+        (existing[section_id], [b.to_dict() for b in boundaries])
+        for section_id, boundaries in boundaries_by_section.items()
     ]
-    desired = [b.to_dict() for b in boundaries]
 
     if dry_run:
-        plan = plan_boundary_reconciliation(existing, desired)
-        log.info("Section %s (dry run): %s", section_id, plan)
-        return plan
+        plans = [plan_boundary_reconciliation(e, d) for e, d in groups]
+    else:
+        results = reconcile_groups(
+            db,
+            get_macrostrat_table(db, "unit_boundaries"),
+            groups,
+            key=_identity,
+            owned_columns=AGE_MODEL_COLUMNS,
+            scales=_COLUMN_SCALE,
+        )
+        plans = [plan for plan, _ in results]
 
-    plan, _ = reconcile(
-        db,
-        get_macrostrat_table(db, "unit_boundaries"),
-        existing=existing,
-        desired=desired,
-        key=_identity,
-        owned_columns=AGE_MODEL_COLUMNS,
-        scales=_COLUMN_SCALE,
-    )
-    log.info("Section %s: %s", section_id, plan)
-    return plan
+    by_section = dict(zip(boundaries_by_section, plans))
+    for section_id, plan in by_section.items():
+        log.info("Section %s%s: %s", section_id, " (dry run)" if dry_run else "", plan)
+    return by_section

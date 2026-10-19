@@ -56,12 +56,14 @@ from .model import (
     build_section_age_model,
     create_unit_boundaries,
     remove_existing_age_model,
+    section_boundaries,
 )
 from .reconciliation import (
     AGE_MODEL_COLUMNS,
     BoundaryPlan,
     no_unit,
     plan_boundary_reconciliation,
+    reconcile_section_boundaries,
     reconcile_unit_boundaries,
     write_unit_boundaries,
 )
@@ -82,7 +84,9 @@ __all__ = [
     "no_unit",
     "plan_boundary_reconciliation",
     "recalculate_column_age_model",
+    "reconcile_section_boundaries",
     "reconcile_unit_boundaries",
     "remove_existing_age_model",
+    "section_boundaries",
     "write_unit_boundaries",
 ]
