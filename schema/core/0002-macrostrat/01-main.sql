@@ -687,7 +687,9 @@ CREATE TABLE macrostrat.refs (
   /** TODO - relax the not-null constraint on compilation_code */
   compilation_code macrostrat.refs_compilation_code NOT NULL,
   url text,
-  rgeom geometry
+  rgeom geometry,
+  -- Lets ingests upsert refs; most rows lack a doi or url
+  CONSTRAINT refs_unique UNIQUE NULLS NOT DISTINCT (pub_year, author, ref, doi, url)
 );
 
 
