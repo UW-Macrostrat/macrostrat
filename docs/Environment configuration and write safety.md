@@ -444,8 +444,10 @@ What the new loader does differently:
   environment can ask before even opening a connection:
   `confirm = { read = "prompt", data = "environment-name", schema = "reauthorize" }`.
   A single level (`confirm = "prompt"`) applies to both kinds of write. The
-  prompt needs a terminal, so a gated read is unavailable to an agent by
-  construction. Level words are validated at load.
+  read gate is asked wherever the reader credential is resolved
+  (`settings.database_url`, so `get_database()`, `db psql` and exported URLs
+  alike), once per process. The prompt needs a terminal, so a gated read is
+  unavailable to an agent by construction. Level words are validated at load.
 - **The whole `[default]` section is inherited**, and top-level keys count as
   defaults too. Tables merge recursively, lists replace.
 - **`MACROSTRAT_*` environment variables override settings deliberately:**

@@ -456,10 +456,9 @@ class MacrostratSettings(EnvironmentSettings):
         return self.database_connections().get(name, None)
 
     def database_url(self, role=DatabaseRole.Reader, name: str = DEFAULT_DATABASE):
-        conn = self.database_connection(name)
-        if conn is None:
-            return None
-        return conn.url(role)
+        from .safety import resolve_database_url
+
+        return resolve_database_url(self, role, name)
 
     def storage_endpoints(self):
         if self._endpoints is None:
