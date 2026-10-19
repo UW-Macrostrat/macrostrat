@@ -97,10 +97,14 @@ def _view_transform(ctx: StatementContext) -> list[StatementDirective] | None:
     return None
 
 
-def _is_replace_conflict(err: Exception) -> bool:
+def _is_conflict(err: Exception, sqlstates: set[str]) -> bool:
     orig = getattr(err, "orig", None)
     sqlstate = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
-    return sqlstate in _REPLACE_CONFLICT_SQLSTATES
+    return sqlstate in sqlstates
+
+
+def _is_replace_conflict(err: Exception) -> bool:
+    return _is_conflict(err, _REPLACE_CONFLICT_SQLSTATES)
 
 
 def _split_qualified(name: str) -> tuple[str | None, str]:

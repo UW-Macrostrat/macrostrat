@@ -104,6 +104,8 @@ class RebuildReport:
     # Statements whose failure was expected and is not worth reporting as one —
     # e.g. creating a role that is already there.
     skipped: list[str] = field(default_factory=list)
+    # Statements applied by dropping and recreating their object.
+    recreated: list[str] = field(default_factory=list)
 
     @property
     def failed(self) -> list[str]:
@@ -120,6 +122,7 @@ def apply_statements(
     *,
     transform: Optional[Callable[[str], str]] = None,
     tolerate: Optional[Callable[[Exception], bool]] = None,
+    recover: Optional[Callable[[Database, str, Exception], bool]] = None,
 ) -> RebuildReport:
     """Best-effort: run each statement, recording (not raising on) failures.
 
@@ -133,6 +136,10 @@ def apply_statements(
     ``tolerate`` recognizes an error that is an expected outcome rather than a
     problem (an object that already exists, say); those are counted as skipped
     and left out of the failure report.
+
+    ``recover`` gets a failed statement a second attempt (dropping and recreating
+    its object, say); it returns whether it applied the statement, and an error
+    it raises is recorded in place of the original.
     """
     report = RebuildReport()
     with role_switcher(db) as use_role:
@@ -146,6 +153,13 @@ def apply_statements(
                 if tolerate is not None and tolerate(err):
                     report.skipped.append(statement)
                     continue
+                if recover is not None:
+                    try:
+                        if recover(db, sql, err):
+                            report.recreated.append(statement)
+                            continue
+                    except Exception as recovery_err:  # noqa: BLE001
+                        err = recovery_err
                 log.warning("statement failed (%s): %s", err, str(sql)[:100])
                 report.failures.append(StatementFailure(statement, err))
     return report
