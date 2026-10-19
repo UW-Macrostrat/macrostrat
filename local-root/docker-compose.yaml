@@ -56,7 +56,8 @@ services:
       - 6379
   api_v2:
     image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
-    build: ${MACROSTRAT_API_SRC:-""}
+    build:
+      context: ../services/api-v2
     environment:
       - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable
       - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
