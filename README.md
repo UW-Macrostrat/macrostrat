@@ -25,10 +25,11 @@ caching and harmonization).
 
 Macrostrat's core services are housed in the `services/` directory:
 
+- [API v2](./services/api-v2): Macrostrat's legacy read-only API (TypeScript; formerly [`macrostrat-api`](https://github.com/UW-Macrostrat/macrostrat-api))
 - [API v3](./services/api-v3): An API for managing Macrostrat elements, and authentication
 - Macrostrat task runner: *coming soon*
 
-Other Macrostrat services (e.g., read-only APIs) are housed in other repositories.
+Other Macrostrat services are housed in other repositories.
 
 ## Installation
 

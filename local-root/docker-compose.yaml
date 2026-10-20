@@ -56,7 +56,8 @@ services:
       - 6379
   api_v2:
     image: hub.opensciencegrid.org/macrostrat/macrostrat-api:main
-    build: ${MACROSTRAT_API_SRC:-""}
+    build:
+      context: ../services/api-v2
     environment:
       - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable
       - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
@@ -201,6 +202,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - MAPNIK_POOL_SIZE=8
+      # Image tiles follow the core tileserver's switch.
+      - LEGACY_CARTO_FROM_COMPILATION=${LEGACY_CARTO_FROM_COMPILATION:-true}
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app

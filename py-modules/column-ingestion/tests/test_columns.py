@@ -239,6 +239,7 @@ class TestGeometry:
         assert geom.area_km2 > 12_000, "geodesic km^2, not degrees"
         assert geom.poly_geom is not None
         assert geom.wkt == SQUARE
+        assert geom.is_area
 
     def test_polygon_wins_over_a_supplied_point(self, db):
         geom = resolve_geometry(db.session, lat=80.0, lng=80.0, geom=SQUARE)
@@ -267,13 +268,32 @@ class TestGeometry:
         else:
             raise AssertionError("expected GeometryError")
 
-    def test_non_polygon_geometry_is_rejected(self, db):
+    def test_point_geometry_is_rejected(self, db):
+        """A point belongs in `lat`/`lng`, not `geom`."""
         try:
-            resolve_geometry(db.session, geom="LINESTRING(0 0, 1 1)")
+            resolve_geometry(db.session, geom="POINT(0 0)")
         except GeometryError as err:
-            assert "POLYGON" in str(err)
+            assert "LINESTRING" in str(err)
         else:
             raise AssertionError("expected GeometryError")
+
+    def test_traverse_line(self, db):
+        """A measured traverse: the column sits on the line, with no area."""
+        line = "LINESTRING(0 0, 0 1)"
+        geom = resolve_geometry(db.session, geom=line)
+
+        assert geom.lng == 0 and 0 <= geom.lat <= 1
+        assert geom.area_km2 == POINT_AREA_KM2
+        assert geom.wkt == line and geom.poly_geom is not None
+        assert not geom.is_area, "a line is not written to col_areas"
+
+    def test_point_near_a_line_is_kept(self, db):
+        line = "LINESTRING(0 0, 0 1)"
+        near = resolve_geometry(db.session, lat=0.5, lng=0.001, geom=line)
+        far = resolve_geometry(db.session, lat=0.5, lng=1.0, geom=line)
+
+        assert (near.lat, near.lng) == (0.5, 0.001), "about 110 m from the line"
+        assert far.lng == 0, "over a kilometre away: a point on the line is used"
 
     def test_invalid_polygon_is_rejected(self, db):
         # A bowtie: self-intersecting, so ST_IsValid is false.

@@ -125,6 +125,11 @@ migration-applied one converge on the same `APPLIED` state.
   one; inside `db.transaction` a failed statement rolls back the caller's
   transaction instead, and the fixture's own rollback then fails.
 
+## API v2
+
+`services/api-v2` is the legacy v2 API, in TypeScript under Yarn PnP rather
+than `uv`. Read `services/api-v2/AGENTS.md` before working there.
+
 ## Environments and write safety
 
 Read **`docs/Environment configuration and write safety.md`** before running

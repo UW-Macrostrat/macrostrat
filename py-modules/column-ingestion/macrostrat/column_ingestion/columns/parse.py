@@ -14,7 +14,7 @@ import polars as pl
 from macrostrat.utils import get_logger
 
 from .. import notices
-from ..metadata import parse_axis_type, parse_fill_values
+from ..metadata import parse_axis_type, parse_col_type, parse_fill_values
 from ..refs import parse_ref_ids
 from ..units.parse import (
     ROW_COLUMN,
@@ -23,6 +23,7 @@ from ..units.parse import (
     prepare_section_units,
     rename_aliases,
 )
+from ..wkt import parse_geometry
 from .sections import Section, single_section
 
 log = get_logger(__name__)
@@ -134,7 +135,9 @@ def columns_from_df(df, meta) -> list[Column]:
             seen.add(local_id)
             name = _text(row.get("col_name"))
             if name is None:
-                notices.error("column-missing-name", "A column needs a `col_name`")
+                notices.warning(
+                    "column-missing-name", f"No `col_name`; named 'Column {local_id}'"
+                )
                 name = f"Column {local_id}"
 
             col = Column(
@@ -146,7 +149,9 @@ def columns_from_df(df, meta) -> list[Column]:
                     row.get("status_code"), getattr(meta, "status_code", None)
                 )
                 or "in process",
-                col_type=_coalesce(row.get("col_type"), getattr(meta, "col_type", None))
+                col_type=_coalesce(
+                    parse_col_type(row.get("col_type")), getattr(meta, "col_type", None)
+                )
                 or "column",
                 axis_type=_coalesce(
                     parse_axis_type(row.get("axis_type")),
@@ -159,8 +164,11 @@ def columns_from_df(df, meta) -> list[Column]:
                 lat=_as_float(row.get("lat"), "lat"),
                 lng=_as_float(row.get("lng"), "lng"),
                 ref_ids=parse_ref_ids(row.get("ref_ids")),
-                geom=_text(row.get("geom")),
-                rgeom=_text(_coalesce(row.get("rgeom"), getattr(meta, "rgeom", None))),
+                geom=parse_geometry(row.get("geom"), "geom"),
+                rgeom=_coalesce(
+                    parse_geometry(row.get("rgeom"), "rgeom"),
+                    getattr(meta, "rgeom", None),
+                ),
             )
             columns.append(col)
     return columns
@@ -231,7 +239,12 @@ def get_sections_from_df(
         notices.warning("ambiguous-columns", warning, sheet="units")
 
     if not {"position", "b_pos", "t_pos"} & set(df.columns):
-        raise ValueError("The units sheet needs a `position`, `b_pos` or `t_pos`.")
+        notices.error_or_raise(
+            ValueError("The units sheet needs a `position`, `b_pos` or `t_pos`."),
+            "no-position-column",
+            sheet="units",
+        )
+        return {}
 
     # Remember each row's place in the sheet (header is row 1) before sorting
     if ROW_COLUMN not in df.columns:

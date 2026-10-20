@@ -68,6 +68,199 @@ DELETE FROM map_bounds_topology.dirty_face WHERE map_layer = map_bounds.barrier_
 """
 
 
+# Pieces carry their line's level and lie along it, and no two lines of a level
+# are otherwise collinear, so a line's bounding box containing another of its
+# level (`~`) finds exactly its pieces, nested splits included.
+_PIECE_OF = "d.level = p.level AND d.id <> p.id AND p.geometry ~ d.geometry"
+
+# Split lines none of whose pieces noded, outermost only: restoring one takes
+# the splits nested inside it along.
+_RESTORABLE = f"""
+WITH restorable AS (
+  SELECT p.id, p.level, p.geometry
+  FROM map_bounds.grid_line p
+  WHERE p.topology_error LIKE 'split:%'
+    AND NOT EXISTS (
+      SELECT 1 FROM map_bounds.grid_line d WHERE {_PIECE_OF} AND d.topo IS NOT NULL
+    )
+)
+SELECT d.id
+FROM restorable d
+WHERE NOT EXISTS (SELECT 1 FROM restorable p WHERE {_PIECE_OF})
+"""
+
+_DROP_PIECES = f"""
+DELETE FROM map_bounds.grid_line d
+USING map_bounds.grid_line p
+WHERE p.id = ANY(:ids) AND {_PIECE_OF}
+"""
+
+_RESTORE = "UPDATE map_bounds.grid_line SET topology_error = NULL WHERE id = ANY(:ids)"
+
+# Every other failure, split pieces included, is pending again.
+_CLEAR_FAILED = """
+UPDATE map_bounds.grid_line SET topology_error = NULL
+WHERE topo IS NULL AND topology_error IS NOT NULL
+  AND topology_error NOT LIKE 'split:%'
+"""
+
+
+def retry_grid(db) -> tuple[int, int, int]:
+    """Make every failed line pending again, for a run free of whatever made it
+    fail (`topo update` noding alongside, say).
+
+    A split line none of whose pieces noded is put back whole, its pieces
+    dropped: a whole line halves each face it crosses as it lands, where pieces
+    split nothing until the last. One with noded pieces keeps them, as the whole
+    line would be noded over its own edges. Noded lines are untouched: a failed
+    attempt rolls back, so it leaves no edges behind.
+
+    Returns the lines restored whole, the pieces dropped and the failures cleared.
+    """
+    restored = db.run_query(_RESTORABLE).scalars().all()
+    dropped = 0
+    if restored:
+        dropped = db.run_query(_DROP_PIECES, dict(ids=restored)).rowcount
+        db.run_query(_RESTORE, dict(ids=restored))
+    cleared = db.run_query(_CLEAR_FAILED).rowcount
+    db.session.commit()
+    return len(restored), dropped, cleared
+
+
+#: The cells holding grid edges, read before the grid lets go of them. Every
+#: grid line lies on a multiple of the finest spacing, so a cell's box takes in
+#: the grid edges along its sides.
+_GRID_CELLS = """
+SELECT DISTINCT
+  floor(ST_X(p) / :size) * :size AS x,
+  floor(ST_Y(p) / :size) * :size AS y
+FROM map_bounds_topology.relation r
+JOIN map_bounds_topology.edge_data e ON e.edge_id = r.element_id
+CROSS JOIN LATERAL (SELECT ST_LineInterpolatePoint(e.geom, 0.5) AS p) m
+WHERE r.layer_id = map_bounds.grid_layer_id() AND r.element_type = 2
+ORDER BY 1, 2
+"""
+
+_CLEAR_GRID = """
+SELECT count(topology.clearTopoGeom(topo))
+FROM map_bounds.grid_line WHERE topo IS NOT NULL
+"""
+
+_DROP_ALL_PIECES = f"""
+DELETE FROM map_bounds.grid_line d
+USING map_bounds.grid_line p
+WHERE p.topology_error LIKE 'split:%' AND {_PIECE_OF}
+"""
+
+_RESET_GRID = """
+UPDATE map_bounds.grid_line SET topo = NULL, topology_error = NULL
+WHERE topo IS NOT NULL OR topology_error IS NOT NULL
+"""
+
+_REMOVE_IN_CELL = """
+SELECT topology.RemoveUnusedPrimitives(
+  'map_bounds_topology', ST_MakeEnvelope(:x0, :y0, :x1, :y1, 4326)
+)
+"""
+
+#: Faces a removed grid edge could have merged into.
+_FACES_ON_GRID = """
+SELECT DISTINCT f.face_id
+FROM map_bounds.grid_line g
+JOIN map_bounds_topology.face f ON f.mbr && g.geometry
+WHERE f.face_id > 0
+ORDER BY f.face_id
+"""
+
+_FIX_MBR = """
+WITH computed AS (
+  SELECT f.face_id,
+    ST_Envelope(topology.ST_GetFaceGeometry('map_bounds_topology', f.face_id)) AS mbr
+  FROM map_bounds_topology.face f
+  WHERE f.face_id = ANY(:ids)
+)
+UPDATE map_bounds_topology.face f SET mbr = c.mbr
+FROM computed c
+WHERE f.face_id = c.face_id AND NOT ST_Equals(f.mbr, c.mbr)
+"""
+
+_MBR_BATCH = 1000
+
+
+def reset_grid_lines(db) -> int:
+    """Drop split pieces and clear every line's topogeometry reference and error,
+    so the grid is seeded and noded afresh. Returns the pieces dropped."""
+    pieces = db.run_query(_DROP_ALL_PIECES).rowcount
+    db.run_query(_RESET_GRID)
+    return pieces
+
+
+def drop_grid(db, size: float = GRID_LEVELS[-1]) -> dict:
+    """Take the grid out of the topology, for one whose grid edges a run
+    alongside `topo update` left mislabelled.
+
+    The lines are cleared and reset to be seeded again; the primitives only they
+    held are removed one cell at a time, so a cell that fails is named rather
+    than undoing the rest; and the faces that merged get their bounding boxes
+    recomputed, as removal over mislabelled edges leaves them wrong.
+    """
+    from sqlalchemy.exc import DBAPIError
+
+    cells = db.run_query(_GRID_CELLS, dict(size=size)).all()
+    lines = db.run_query(_CLEAR_GRID).scalar()
+    pieces = reset_grid_lines(db)
+    db.session.commit()
+    print(
+        f"  {lines} lines cleared, {pieces} pieces dropped; {len(cells)} cells to clean"
+    )
+
+    removed = 0
+    failed_cells = []
+    t0 = time.time()
+    for i, c in enumerate(cells, start=1):
+        box = dict(x0=c.x, y0=c.y, x1=c.x + size, y1=c.y + size)
+        try:
+            removed += db.run_query(_REMOVE_IN_CELL, box).scalar() or 0
+            db.session.commit()
+        except DBAPIError as err:
+            db.session.rollback()
+            failed_cells.append((c.x, c.y, str(err.orig).strip().splitlines()[0]))
+        if i % 100 == 0 or i == len(cells):
+            print(
+                f"  [dim]{i}/{len(cells)} cells, {removed} primitives removed"
+                f" ({_duration(time.time() - t0)})[/]"
+            )
+
+    faces = db.run_query(_FACES_ON_GRID).scalars().all()
+    fixed = 0
+    failed_faces = []
+    for start in range(0, len(faces), _MBR_BATCH):
+        batch = faces[start : start + _MBR_BATCH]
+        try:
+            fixed += db.run_query(_FIX_MBR, dict(ids=batch)).rowcount
+            db.session.commit()
+            continue
+        except DBAPIError:
+            db.session.rollback()
+        # A face too damaged to rebuild its geometry fails alone.
+        for face_id in batch:
+            try:
+                fixed += db.run_query(_FIX_MBR, dict(ids=[face_id])).rowcount
+                db.session.commit()
+            except DBAPIError as err:
+                db.session.rollback()
+                failed_faces.append((face_id, str(err.orig).strip().splitlines()[0]))
+
+    return dict(
+        lines=lines,
+        pieces=pieces,
+        removed=removed,
+        failed_cells=failed_cells,
+        mbrs_fixed=fixed,
+        failed_faces=failed_faces,
+    )
+
+
 def seed_grid(db, levels=GRID_LEVELS, *, extent=None) -> int:
     """Insert the grid's lines, one level per spacing; existing ones are kept.
     `extent`, a lon/lat (xmin, ymin, xmax, ymax), limits them to the lines

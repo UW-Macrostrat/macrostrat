@@ -17,9 +17,11 @@ def reset_ctx():
     """Each test starts as a fresh invocation would: no connection, Reader."""
     db_module.db_ctx.set(None)
     db_module.db_role_ctx.set(DatabaseRole.Reader)
+    safety._reads_confirmed.clear()
     yield
     db_module.db_ctx.set(None)
     db_module.db_role_ctx.set(DatabaseRole.Reader)
+    safety._reads_confirmed.clear()
 
 
 @fixture
@@ -274,3 +276,29 @@ class TestReadConfirmation:
         monkeypatch.setattr(safety, "is_interactive", lambda: False)
         db_module.use_writer_connection()
         db_module._confirm_read_if_gated()  # no exception
+
+    def test_resolving_a_reader_credential_asks_the_gate(
+        self, monkeypatch, stub_resolver
+    ):
+        """Any path to the reader credential, not only `get_database()`."""
+        s = self._settings(monkeypatch, "prompt", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        with raises(WriteRefused):
+            safety.resolve_database_url(s, DatabaseRole.Reader)
+
+    def test_the_read_gate_is_asked_once_per_process(self, monkeypatch, stub_resolver):
+        s = self._settings(monkeypatch, "prompt", stub_resolver)
+        asked = []
+        monkeypatch.setattr(safety, "is_interactive", lambda: True)
+        monkeypatch.setattr(safety, "_prompt", lambda message: asked.append(1) or "y")
+        safety.resolve_database_url(s, DatabaseRole.Reader)
+        safety.resolve_database_url(s, DatabaseRole.Reader)
+        db_module._confirm_read_if_gated()
+        assert len(asked) == 1
+
+    def test_a_writer_credential_is_not_read_gated(self, monkeypatch, stub_resolver):
+        """Writers pass a write gate first; resolving theirs asks nothing more."""
+        s = self._settings(monkeypatch, "prompt", stub_resolver)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        url = safety.resolve_database_url(s, DatabaseRole.Writer)
+        assert url.password == "pw-shared"

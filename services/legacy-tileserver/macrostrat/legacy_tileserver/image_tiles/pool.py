@@ -1,7 +1,6 @@
 import time
 from asyncio import Queue
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from mapnik import Map, load_map_from_string
 from sqlalchemy.engine import URL
@@ -10,6 +9,8 @@ from macrostrat.utils import get_logger
 
 from .config import ScaleBands
 from .mapnik_styles import (
+    create_line_query,
+    create_polygon_query,
     make_line_datasource,
     make_mapnik_xml,
     make_polygon_datasource,
@@ -30,12 +31,16 @@ class MapnikMapPool:
     def __init__(self, n_instances: int = 4):
         self.n_instances = n_instances
 
-    async def setup(self, db_url: URL, bands: ScaleBands):
-        for scale, _, layer_id in bands.bands:
-            self.storage[scale] = await self.setup_queue(db_url, scale, layer_id)
+    async def setup(self, db_url: URL, bands: ScaleBands, from_compilation: bool):
+        for scale, min_zoom in bands.bands:
+            self.storage[scale] = await self.setup_queue(
+                db_url, scale, min_zoom, from_compilation
+            )
 
-    async def setup_queue(self, db_url: URL, scale: str, layer_id: Optional[int]):
-        """Set up the queue for a given scale, drawing the given map layer."""
+    async def setup_queue(
+        self, db_url: URL, scale: str, min_zoom: int, from_compilation: bool
+    ):
+        """Set up the queue for a given scale."""
         q = Queue(self.n_instances)
         # Fill the queue with Mapnik maps
         t = time.time()
@@ -43,8 +48,12 @@ class MapnikMapPool:
 
         # Set up PostGIS data sources for shared use here
 
-        line_datasource = make_line_datasource(db_url, layer_id)
-        polygon_datasource = make_polygon_datasource(db_url, layer_id)
+        line_datasource = make_line_datasource(
+            db_url, create_line_query(scale, min_zoom, from_compilation)
+        )
+        polygon_datasource = make_polygon_datasource(
+            db_url, create_polygon_query(scale, min_zoom, from_compilation)
+        )
 
         self.line_datasources[scale] = line_datasource
         self.polygon_datasources[scale] = polygon_datasource

@@ -170,9 +170,9 @@ def get_interval_from_text(db, text: str | None):
         if match:
             ints.append(match)
         else:
-            notices.error(
+            notices.warning(
                 "unknown-interval",
-                f"No interval named {a!r}",
+                f"No interval named {a!r}; this age constraint was left out",
                 detail={"text": text},
             )
 
@@ -188,7 +188,7 @@ def get_interval_from_text(db, text: str | None):
             _int.age_bottom >= last_int.age_top and _int.age_top <= last_int.age_bottom
         )
         if not overlaps:
-            notices.error(
+            notices.warning(
                 "interval-mismatch",
                 f"Intervals {_int.name!r} and {last_int.name!r} do not overlap",
                 detail={"text": text},

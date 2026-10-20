@@ -114,6 +114,16 @@ def get_all_environs(db):
     ).fetchall()
 
 
+def get_compilation_codes(db) -> list[str]:
+    """The members of the `refs.compilation_code` enum."""
+    return [
+        row[0]
+        for row in db.run_query(
+            "SELECT unnest(enum_range(NULL::macrostrat.refs_compilation_code))::text"
+        )
+    ]
+
+
 def get_all_intervals(db):
     """Get all intervals from the database."""
     return db.run_query(

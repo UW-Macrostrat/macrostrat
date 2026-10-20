@@ -3,10 +3,12 @@
 from .catalog import CATALOG
 from .model import (
     Check,
+    Compressed,
     Contains,
     ContentType,
     Expectation,
     JSONPath,
+    MaxElapsed,
     NonEmpty,
     Redirect,
     Result,

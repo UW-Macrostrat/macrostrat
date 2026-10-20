@@ -150,3 +150,32 @@ class TestReferenceValidation:
 
         assert "does-not-exist" in str(err.value)
         assert "9999" in str(err.value)
+
+
+def test_incomplete_references_are_warnings():
+    """Only a missing year, which `refs.pub_year` needs, leaves a reference out."""
+    import polars as pl
+
+    from macrostrat.column_ingestion import notices
+    from macrostrat.column_ingestion.refs import references_from_df
+
+    df = pl.DataFrame(
+        {
+            "ref_id": ["a", "b", "c", None],
+            "authors": ["Hogan", None, "Fedo", "Cooper"],
+            "title": ["Sauk boundary", "Untitled", None, "Orphan"],
+            "date": ["2011", "2012", "around then", "2013"],
+        }
+    )
+    with notices.collect_notices() as collected:
+        references = references_from_df(df)
+
+    assert [r.local_id for r in references] == ["a", "b"]
+    assert references[1].author == ""
+    assert not collected.has_errors
+    assert {n.column for n in collected.warnings} == {
+        "authors",
+        "title",
+        "date",
+        "ref_id",
+    }

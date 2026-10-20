@@ -1,0 +1,55 @@
+import dotenv from "dotenv";
+// Load environment variables from .env file
+dotenv.config();
+
+import express from "express";
+import bodyParser from "body-parser";
+
+//defs = require("./v2/defs"),
+
+//TODO: update port to designated env.
+const listenPort = process.argv[2] ?? process.env.PORT ?? 5000;
+
+async function runServer() {
+  const buildAPI = await import("./v2/index").then((mod) => mod.buildAPI);
+
+  const app = express();
+  // parse application/x-www-form-urlencoded
+  app.use(bodyParser.urlencoded({ extended: false }));
+
+  // parse application/json
+  app.use(bodyParser.json());
+
+  // parse application/vnd.api+json as json
+  app.use(bodyParser.json({ type: "application/vnd.api+json" }));
+
+  const v2 = await buildAPI();
+  const { healthRoute, versionRoute } = await import("./v2/status");
+
+  // Before the v2 router, whose catch-all would answer these paths
+  app.get(["/version", "/v2/version"], versionRoute);
+  app.get(["/health", "/v2/health"], healthRoute);
+
+  // Load and prefix all routes with /api and appropriate version
+  app.use("/v2", v2);
+
+  app.route("/v1*splat").get(function (req, res, next) {
+    res.status(410).send({
+      error:
+        "Macrostrat's v1 API has been retired. Please update your usage to newer endpoints.",
+    });
+  });
+
+  // If no version specified, fall back to more current
+  app.use("/", v2);
+
+  app.set("json spaces", 2);
+
+  app.listen(listenPort, function () {
+    console.log("Listening on port " + listenPort);
+  });
+}
+
+runServer().catch((error) => {
+  console.error("Failed to start server:", error);
+});

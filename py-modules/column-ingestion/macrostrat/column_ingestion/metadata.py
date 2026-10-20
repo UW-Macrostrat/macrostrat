@@ -14,6 +14,8 @@ import polars as pl
 from pydantic import BaseModel
 
 from . import notices
+from .headers import clean_header
+from .wkt import parse_geometry
 
 
 class ProjectIdentifier(BaseModel):
@@ -74,9 +76,9 @@ def metadata_from_df(df: pl.DataFrame) -> Metadata:
     if ix is not None:
         df = df.slice(0, ix)
     metadata = {
-        str(key).strip(): value
+        clean_header(key): value
         for key, value in zip(df["key"], df["value"])
-        if key is not None and str(key).strip()
+        if key is not None and clean_header(key)
     }
     return metadata_from_dict(metadata)
 
@@ -89,6 +91,31 @@ def _text(value) -> str | None:
 
 
 AXIS_TYPES = ("height", "depth", "age")
+
+#: `col_type` as the workbook writes it, to the `macrostrat.cols.col_type` it is stored as.
+#: `section` and `column` are the older names.
+COL_TYPES = {
+    "measured": "section",
+    "composite": "column",
+    "section": "section",
+    "column": "column",
+}
+
+
+def parse_col_type(value, **where) -> str | None:
+    """`col_type` as stored; `None` where it is not given or not recognised."""
+    text = _text(value)
+    if text is None:
+        return None
+    col_type = COL_TYPES.get(text.lower())
+    if col_type is None:
+        notices.warning(
+            "unknown-column-type",
+            f"col_type should be `measured` or `composite`, got {text!r}",
+            column="col_type",
+            **where,
+        )
+    return col_type
 
 
 def parse_axis_type(value, **where) -> str | None:
@@ -137,9 +164,10 @@ def metadata_from_dict(metadata: dict) -> Metadata:
                 project_slug = project_id
                 project_id = None
             else:
-                notices.error(
+                notices.warning(
                     "bad-project-id",
-                    f"project_id must be an integer, got {project_id!r}",
+                    f"project_id must be an integer, got {project_id!r}; using the "
+                    "project slug",
                     sheet="metadata",
                 )
                 project_id = None
@@ -148,13 +176,7 @@ def metadata_from_dict(metadata: dict) -> Metadata:
     if project_id or project_slug or project_name:
         project = ProjectIdentifier(id=project_id, slug=project_slug, name=project_name)
 
-    col_type = _text(metadata.get("col_type")) or "column"
-    if col_type not in ("column", "section"):
-        notices.warning(
-            "unknown-column-type",
-            f"col_type should be `column` or `section`, got {col_type!r}",
-            sheet="metadata",
-        )
+    col_type = parse_col_type(metadata.get("col_type"), sheet="metadata") or "column"
 
     default_axis_type = "age" if col_type == "column" else "height"
     axis_type = parse_axis_type(metadata.get("axis_type"), sheet="metadata")
@@ -168,5 +190,5 @@ def metadata_from_dict(metadata: dict) -> Metadata:
         fill_values=bool(
             parse_fill_values(metadata.get("fill_values"), sheet="metadata")
         ),
-        rgeom=_text(metadata.get("rgeom")),
+        rgeom=parse_geometry(metadata.get("rgeom"), "rgeom", sheet="metadata"),
     )

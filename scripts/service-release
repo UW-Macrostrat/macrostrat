@@ -3,12 +3,14 @@
 
 Usage: scripts/service-release <service-dir> <tag-prefix>
 
-Reads the version from the service's pyproject.toml, writes it in semver form,
-and says whether its tag is new (a merge to main then releases it). A stable
-version not yet tagged must have a `## [X.Y.Z]` heading in CHANGELOG.md.
-Writes `version`, `tag` and `new` to $GITHUB_OUTPUT when it is set.
+Reads the version from the service's pyproject.toml (or package.json), writes it
+in semver form, and says whether its tag is new (a merge to main then releases
+it). A stable version not yet tagged must have a `## [X.Y.Z]` heading in
+CHANGELOG.md.
+Writes `version`, `tag`, `new` and `stable` to $GITHUB_OUTPUT when it is set.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -47,10 +49,16 @@ def has_changelog_heading(changelog: Path, version: str) -> bool:
     return heading.search(changelog.read_text()) is not None
 
 
+def read_version(root: Path) -> str:
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists():
+        return tomllib.loads(pyproject.read_text())["project"]["version"]
+    return json.loads((root / "package.json").read_text())["version"]
+
+
 def main(service_dir: str, tag_prefix: str):
     root = Path(service_dir)
-    pyproject = tomllib.loads((root / "pyproject.toml").read_text())
-    version = semver(pyproject["project"]["version"])
+    version = semver(read_version(root))
     tag = tag_prefix + version
     new = not tag_exists(tag)
 
@@ -65,6 +73,7 @@ def main(service_dir: str, tag_prefix: str):
     if output:
         with open(output, "a") as f:
             f.write(f"version={version}\ntag={tag}\nnew={str(new).lower()}\n")
+            f.write(f"stable={str(stable).lower()}\n")
 
 
 if __name__ == "__main__":

@@ -444,7 +444,10 @@ def sync(
         permissions=permissions,
     )
     if res.procedures is not None:
-        _report("procedures", res.procedures.applied, len(res.procedures.failed))
+        r = res.procedures
+        _report("procedures", r.applied, len(r.failed))
+        if r.recreated:
+            print(f"[dim]  {len(r.recreated)} recreated with a changed signature")
     if res.views is not None:
         r = res.views
         extra = f", {len(r.recreated)} recreated" if r.recreated else ""

@@ -11,7 +11,6 @@ from macrostrat.utils import get_logger
 
 from ..config import PG_DATABASE, settings
 from ..connections import DEFAULT_DATABASE, DatabaseRole, connection_for
-from ..environment import WriteGate, WriteScope
 from ..exc import MacrostratError
 
 log = get_logger(__name__)
@@ -121,12 +120,9 @@ def _confirm_read_if_gated() -> None:
     """
     if db_role_ctx.get() != DatabaseRole.Reader:
         return
-    policy = getattr(settings, "policy", None)
-    if policy is None or policy.gate_for(WriteScope.Read) == WriteGate.NoGate:
-        return
-    from ..safety import require_read_access
+    from ..safety import confirm_read
 
-    require_read_access(settings=settings)
+    confirm_read(settings)
 
 
 #: The main database's name in the connection registry; `[<env>.databases]`
@@ -169,12 +165,15 @@ def database_url_for(name: str = MAIN_DATABASE, env: str | None = None) -> str:
     login and none of this process's `application_name` attribution.
     """
     from ..config import exported_database_url
+    from ..safety import confirm_read
 
     cfg = _settings_for_env(env)
     conn = connection_for(cfg, name)
     if conn is None:
         where = f"environment {env!r}" if env else "the active environment"
         raise KeyError(f"No database {name!r} configured for {where}")
+    # A credential leaves this process here; at least the read gate applies.
+    confirm_read(cfg)
     return exported_database_url(conn, DatabaseRole.Writer)
 
 
