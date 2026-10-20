@@ -589,7 +589,7 @@ async function buildAndExecuteMainQuery(req, internal = false) {
     lookup_units.pbdb_occurrences::integer`;
 
   if (req.query.response === "long" || internal) {
-    const colRefsSubquery = `SELECT string_agg(col_refs.ref_id::text, '|') FROM macrostrat.col_refs WHERE col_refs.col_id = cols.id`;
+    const colRefsSubquery = `SELECT string_agg(DISTINCT col_refs.ref_id::text, '|') FROM macrostrat.col_refs WHERE col_refs.col_id = cols.id`;
 
     columnList += `,
       lookup_unit_attrs_api.lith,

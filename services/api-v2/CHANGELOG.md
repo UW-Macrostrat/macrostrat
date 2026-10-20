@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 - Moved from `UW-Macrostrat/macrostrat-api` to `services/api-v2` of `UW-Macrostrat/macrostrat`; release tags are now `api-v2-vX.Y.Z`
+- `/columns` and `/units` list a column's `refs` once each when it cites a reference at several locators
 
 ## [2.4.0] - 2026-10-12
 

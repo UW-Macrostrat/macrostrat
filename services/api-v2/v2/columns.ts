@@ -215,7 +215,7 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
         cols.project_id,
         col_type,
         cols.status_code::text AS status_code,
-        string_agg(col_refs.ref_id::varchar, '|') AS refs
+        string_agg(DISTINCT col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
       ${join_text}`,
