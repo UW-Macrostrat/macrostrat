@@ -500,9 +500,6 @@ CREATE VIEW macrostrat_api.kg_macrostrat_terms_descriptions AS
 CREATE VIEW macrostrat_api.kg_relationship_type AS
     SELECT * FROM macrostrat_kg.relationship_type;
 
-CREATE VIEW macrostrat_api.kg_source_text AS
-    SELECT * FROM macrostrat_kg.source_text;
-
 
 GRANT SELECT ON TABLE macrostrat_api.kg_entities TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_entity_tree TO web_anon;
@@ -516,6 +513,7 @@ GRANT UPDATE(color) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
 GRANT SELECT ON TABLE macrostrat_api.kg_extraction_feedback_type TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_user;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_source_text TO web_admin;
 GRANT SELECT ON TABLE macrostrat_api.kg_matches TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_user;
@@ -528,5 +526,3 @@ GRANT SELECT ON TABLE macrostrat_api.kg_macrostrat_terms_descriptions TO web_ano
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_macrostrat_terms_descriptions TO web_admin;
 GRANT SELECT ON TABLE macrostrat_api.kg_relationship_type TO web_anon;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_relationship_type TO web_admin;
-GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_anon;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_source_text TO web_admin;

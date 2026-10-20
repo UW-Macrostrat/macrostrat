@@ -305,7 +305,7 @@ CREATE TABLE macrostrat_kg.relationship_type (
     name text NOT NULL,
     description text,
     id integer NOT NULL,
-    src_entity_type_id integer NOT NULL
+    src_entity_type_id integer NOT NULL,
     dst_entity_type_id integer NOT NULL
 );
 
