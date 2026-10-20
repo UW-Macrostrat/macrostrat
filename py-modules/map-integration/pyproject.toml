@@ -29,7 +29,6 @@ dependencies = [
     # only because the root workspace package declares them -- so installing this
     # package anywhere else (e.g. `data-integration`) failed on import.
     "spectra>=0.0.11,<0.0.12",
-    "fiona>=1.9,<2",
     "geoalchemy2>=0.14,<1",
     "pandas>=2,<3",
     "psycopg2-binary>=2.9,<3",
@@ -45,8 +44,12 @@ dependencies = [
 macrostrat-maps = "macrostrat.map_integration.cli:cli"
 
 [project.optional-dependencies]
+# The GDAL-bound ingestion tools. fiona is here rather than in the base install:
+# it ships no Linux arm64 wheel, so a base install on Apple silicon would have to
+# build it against system GDAL, and only `utils.gems_utils` reads with it.
 gis = [
     "GDAL>=3.10.0,<4",
+    "fiona>=1.9,<2",
 ]
 
 [dependency-groups]
