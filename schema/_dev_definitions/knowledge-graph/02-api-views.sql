@@ -345,12 +345,144 @@ FROM (((macrostrat_api.kg_source_text t
 GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
 
 
-CREATE VIEW macrostrat_api.kg_context_entities AS
+CREATE OR REPLACE FUNCTION macrostrat_kg.build_context_entities(
+    p_model_run integer
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+AS $$
+DECLARE
+    nodes       jsonb;
+    edges       jsonb;
+    pending     jsonb;
+    completed   jsonb := '{}'::jsonb;
+    ready       jsonb;
+    children    jsonb;
+    child_ids   text[];
+    node        record;
+    result      jsonb;
+BEGIN
+    SELECT COALESCE(
+        jsonb_object_agg(
+            e.id::text,
+            jsonb_strip_nulls(
+                to_jsonb(e) - 'model_run' - 'source'
+            )
+        ),
+        '{}'::jsonb
+    )
+    INTO nodes
+    FROM macrostrat_api.kg_entities e
+    WHERE e.model_run = p_model_run;
+
+    IF nodes = '{}'::jsonb THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    SELECT COALESCE(
+        jsonb_object_agg(g.parent_id, g.child_ids),
+        '{}'::jsonb
+    )
+    INTO edges
+    FROM (
+        SELECT
+            pairs.parent_id,
+            jsonb_agg(
+                pairs.child_id ORDER BY pairs.child_id::bigint
+            ) AS child_ids
+        FROM (
+            SELECT DISTINCT
+                r.src_entity_id::text AS parent_id,
+                r.dst_entity_id::text AS child_id
+            FROM macrostrat_kg.relationship r
+            WHERE nodes ? r.src_entity_id::text
+              AND nodes ? r.dst_entity_id::text
+        ) pairs
+        GROUP BY pairs.parent_id
+    ) g;
+
+    SELECT COALESCE(
+        array_agg(DISTINCT c.id),
+        ARRAY[]::text[]
+    )
+    INTO child_ids
+    FROM jsonb_each(edges) adjacency
+    CROSS JOIN LATERAL
+        jsonb_array_elements_text(adjacency.value) c(id);
+
+    pending := nodes;
+
+    WHILE pending <> '{}'::jsonb LOOP
+        ready := '{}'::jsonb;
+
+        FOR node IN
+            SELECT key, value
+            FROM jsonb_each(pending)
+        LOOP
+            IF EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(
+                    COALESCE(edges -> node.key, '[]'::jsonb)
+                ) c(id)
+                WHERE NOT (completed ? c.id)
+            ) THEN
+                CONTINUE;
+            END IF;
+
+            SELECT jsonb_agg(
+                completed -> c.id ORDER BY c.id::bigint
+            )
+            INTO children
+            FROM jsonb_array_elements_text(
+                COALESCE(edges -> node.key, '[]'::jsonb)
+            ) c(id);
+
+            ready := ready || jsonb_build_object(
+                node.key,
+                (node.value - 'children')
+                ||
+                CASE
+                    WHEN children IS NULL THEN '{}'::jsonb
+                    ELSE jsonb_build_object('children', children)
+                END
+            );
+        END LOOP;
+
+        IF ready = '{}'::jsonb THEN
+            RAISE EXCEPTION
+                'Cannot build entity trees for model run %: cycle detected',
+                p_model_run
+                USING ERRCODE = '23514';
+        END IF;
+
+        completed := completed || ready;
+
+        pending := pending - ARRAY(
+            SELECT jsonb_object_keys(ready)
+        );
+    END LOOP;
+
+    SELECT COALESCE(
+        jsonb_agg(n.value ORDER BY n.key::bigint),
+        '[]'::jsonb
+    )
+    INTO result
+    FROM jsonb_each(completed) n
+    WHERE NOT (n.key = ANY(child_ids));
+
+    RETURN result;
+END;
+$$;
+
+
+CREATE OR REPLACE VIEW macrostrat_api.kg_context_entities AS
 SELECT
     st.id AS source_text,
     st.paper_id,
     mr.id AS model_run,
-    COALESCE(result.entities, '[]'::jsonb) AS entities,
+    macrostrat_kg.build_context_entities(mr.id) AS entities,
     st.weaviate_id,
     st.paragraph_text,
     st.hashed_text,
@@ -360,7 +492,7 @@ SELECT
     mr.user_id
 FROM macrostrat_kg.source_text st
 LEFT JOIN macrostrat_kg.model_run mr
-    ON mr.source_text_id = st.id
+    ON mr.source_text_id = st.id;
 
 LEFT JOIN LATERAL (
     WITH RECURSIVE
