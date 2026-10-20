@@ -403,9 +403,11 @@ from .auth import cli as auth_cli
 main.add_typer(auth_cli, name="auth", rich_help_panel="Subsystems")
 
 
+# No help option: `--help` after a pipeline name belongs to the pipeline.
 @main.command(
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
     name="run",
+    add_help_option=False,
 )
 def _run(
     ctx: typer.Context,
@@ -418,6 +420,7 @@ def _run(
     anywhere inside the workbook, or give a path from anywhere at all:
 
         macrostrat run                       list the pipelines here
+        macrostrat run ngs --help            the pipeline's own help
         macrostrat run ngs sources --apply   Maps/NGS/cli.py sources --apply
         macrostrat --env development run Stratigraphy/GBDB ingest
 
@@ -428,6 +431,11 @@ def _run(
     from . import pipelines
 
     bindir = Path(settings.srcroot) / "bin"
+
+    # Without a help option, Click hands a bare `--help` over as the command.
+    if command == "--help":
+        typer.echo(ctx.get_help())
+        raise typer.Exit()
 
     if command is None:
         root = pipelines.find_workbook()

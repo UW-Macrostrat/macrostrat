@@ -90,6 +90,15 @@ class TestDeclaredStatus:
         ]
         assert _declared_status(10, units) is BoundaryStatus.MODELED
 
+    def test_a_side_status_overrides_the_unit_status(self):
+        """Mixed provenance within one unit: a relative base under an imposed top."""
+        below = self._unit(0, 10, BoundaryStatus.RELATIVE)
+        below.t_age_status = BoundaryStatus.IMPOSED
+        above = self._unit(10, 20, BoundaryStatus.RELATIVE)
+        above.b_age_status = BoundaryStatus.IMPOSED
+        assert _declared_status(10, [below, above]) is BoundaryStatus.IMPOSED
+        assert _declared_status(0, [below, above]) is BoundaryStatus.RELATIVE
+
     def test_only_ages_bearing_on_this_surface_count(self):
         """A unit's `b_age` constrains its base and its `t_age` its top; a unit
         that merely spans the position claims nothing about it."""

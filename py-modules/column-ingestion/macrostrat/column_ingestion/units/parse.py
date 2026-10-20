@@ -68,6 +68,11 @@ class Unit:
     #: dataset with no chronostratigraphic anchors, whose ages are interpolated
     #: through thickness, sets `IMPOSED` on every unit instead.
     age_status: BoundaryStatus = BoundaryStatus.RELATIVE
+    #: Per-side overrides of `age_status`, for a source whose base and top can be
+    #: constrained differently — a ChinaLex unit may sit on a dated stage boundary and
+    #: under a thickness-interpolated one.
+    b_age_status: BoundaryStatus | None = None
+    t_age_status: BoundaryStatus | None = None
 
 
 log = get_logger(__name__)

@@ -158,17 +158,17 @@ BEGIN
     WHERE source_id = _source_id
       AND ST_Intersects(geom, projected_bbox)
   ),
-       expanded AS (
-         SELECT
-           z.strike,
-           z.dip,
-           z.dip_dir,
-           z.point_type,
-           z.certainty,
-           z.comments,
-           tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
-         FROM mvt_features z
-       )
+   expanded AS (
+     SELECT
+       z.strike,
+       z.dip,
+       z.dip_dir,
+       z.point_type,
+       z.certainty,
+       z.comments,
+       tile_layers.tile_geom(z.geom, mercator_bbox) AS geom
+     FROM mvt_features z
+   )
   SELECT ST_AsMVT(expanded, 'points') INTO points
   FROM expanded;
 
