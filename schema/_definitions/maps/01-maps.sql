@@ -405,44 +405,22 @@ CREATE INDEX legend_strat_names_strat_name_id_idx
 CREATE INDEX legend_strat_names_manual_idx
     ON maps.legend_strat_names USING btree (legend_id) WHERE is_manual;
 
-/** How a map, legend entry, polygon or line relates to a reference: the verbs of
-  the four `*_refs` tables, read from the feature's side.
+/* A map, legend entry, polygon or line relates to a reference by a verb from
+  `macrostrat.ref_type`. A reference is written at the highest level it holds
+  throughout -- the map, else the legend entry, else the feature -- and a
+  feature's references are the union of all levels, so each table stays sparse.
 
-  A reference is written at the highest level it holds throughout -- the map,
-  else the legend entry, else the feature -- and a feature's references are the
-  union of all levels, so each table stays sparse.
-
-  Rows rather than an enum, so a new verb is an insert. Provenance is stored, not
-  read off `map_bounds.compilation_member`: membership says how maps are stacked,
-  and `ngs-bedrock` stacks maps whose data came from the NGS release.
+  Provenance is stored, not read off `map_bounds.compilation_member`: membership
+  says how maps are stacked, and `ngs-bedrock` stacks maps whose data came from
+  the NGS release.
 */
-CREATE TABLE maps.ref_type (
-    id text PRIMARY KEY,
-    /** The phrase a client renders before the citation. */
-    label text NOT NULL,
-    /** Whether APIs return it; internal relations are recorded but not served. */
-    is_public boolean NOT NULL DEFAULT true,
-    /** Order within a response. */
-    position smallint NOT NULL
-);
-
-/* In lineage order, oldest first: what a map was drawn from, the map itself,
-  then what gathered it. Labels and order are updated in place by `schema sync`. */
-INSERT INTO maps.ref_type (id, label, position) VALUES
-    ('data-from', 'Data from', 1),
-    ('described-in', 'Described in', 2),
-    ('original', 'Published as', 3),
-    ('updated-by', 'Updated by', 4),
-    ('compiled-in', 'Compiled in', 5)
-ON CONFLICT (id) DO UPDATE
-  SET label = EXCLUDED.label, position = EXCLUDED.position;
 
 /** A map's references. Any source, compilations included. */
 CREATE TABLE maps.map_refs (
     source_id integer NOT NULL
         REFERENCES maps.sources (source_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    ref_type text NOT NULL REFERENCES macrostrat.ref_type (id),
     PRIMARY KEY (source_id, ref_id, ref_type)
 );
 
@@ -454,7 +432,7 @@ CREATE TABLE maps.legend_refs (
     legend_id integer NOT NULL
         REFERENCES maps.legend (legend_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    ref_type text NOT NULL REFERENCES macrostrat.ref_type (id),
     PRIMARY KEY (legend_id, ref_id, ref_type)
 );
 
@@ -466,7 +444,7 @@ CREATE TABLE maps.polygon_refs (
     map_id integer NOT NULL
         REFERENCES maps.polygons (map_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    ref_type text NOT NULL REFERENCES macrostrat.ref_type (id),
     PRIMARY KEY (map_id, ref_id, ref_type)
 );
 
@@ -478,7 +456,7 @@ CREATE TABLE maps.line_refs (
     line_id integer NOT NULL
         REFERENCES maps.lines (line_id) ON DELETE CASCADE,
     ref_id integer NOT NULL REFERENCES macrostrat.refs (id),
-    ref_type text NOT NULL REFERENCES maps.ref_type (id),
+    ref_type text NOT NULL REFERENCES macrostrat.ref_type (id),
     PRIMARY KEY (line_id, ref_id, ref_type)
 );
 

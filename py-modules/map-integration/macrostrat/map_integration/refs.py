@@ -2,7 +2,7 @@
 
 A reference is linked at the highest level it holds throughout -- the map, a
 legend entry, a polygon, a line -- and a feature's references are the union of
-every level (see `maps.ref_type`). A pipeline resolves its citations to
+every level (see `macrostrat.ref_type`). A pipeline resolves its citations to
 reference ids with `resolve_refs`, then replaces the links it owns with
 `write_links`.
 

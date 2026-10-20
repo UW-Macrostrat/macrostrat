@@ -692,6 +692,34 @@ CREATE TABLE macrostrat.refs (
   CONSTRAINT refs_unique UNIQUE NULLS NOT DISTINCT (pub_year, author, ref, doi, url)
 );
 
+/** How a record relates to a reference: the verbs of the `*_refs` link tables
+  (`col_refs` and the map tables), read from the record's side.
+
+  Rows rather than an enum, so a new verb is an insert.
+*/
+CREATE TABLE macrostrat.ref_type (
+    id text PRIMARY KEY,
+    /** The phrase a client renders before the citation. */
+    label text NOT NULL,
+    /** Whether APIs return it; internal relations are recorded but not served. */
+    is_public boolean NOT NULL DEFAULT true,
+    /** Order within a response. */
+    position smallint NOT NULL
+);
+
+/* In lineage order, oldest first: what a record was drawn from, the record
+  itself, then what gathered it. `unspecified` is for links that never said,
+  and renders no phrase. Labels and order are updated in place by `schema sync`. */
+INSERT INTO macrostrat.ref_type (id, label, position) VALUES
+    ('data-from', 'Data from', 1),
+    ('described-in', 'Described in', 2),
+    ('original', 'Published as', 3),
+    ('updated-by', 'Updated by', 4),
+    ('compiled-in', 'Compiled in', 5),
+    ('unspecified', '', 6)
+ON CONFLICT (id) DO UPDATE
+  SET label = EXCLUDED.label, position = EXCLUDED.position;
+
 
 CREATE TABLE macrostrat.autocomplete (
     id integer DEFAULT 0 NOT NULL,
@@ -858,10 +886,16 @@ CREATE TABLE macrostrat.col_refs (
     id integer NOT NULL,
     col_id integer NOT NULL,
     ref_id integer NOT NULL,
+    ref_type text NOT NULL DEFAULT 'unspecified' REFERENCES macrostrat.ref_type (id),
+    /** A pinpoint within the reference: a record identifier, figure or pages. */
+    locator text,
+    locator_url text,
     CONSTRAINT idx_44157051_primary PRIMARY KEY (id),
     CONSTRAINT col_refs_col_fk FOREIGN KEY (col_id) REFERENCES macrostrat.cols(id) ON DELETE CASCADE,
     CONSTRAINT col_refs_ref_fk FOREIGN KEY (ref_id) REFERENCES macrostrat.refs(id) ON DELETE CASCADE,
-    CONSTRAINT col_refs_unique UNIQUE (col_id, ref_id)
+    /* One reference may be cited at several locators, as GeoLex columns merged into one. */
+    CONSTRAINT col_refs_unique UNIQUE NULLS NOT DISTINCT (col_id, ref_id, ref_type, locator),
+    CONSTRAINT col_refs_locator_url_has_locator CHECK (locator_url IS NULL OR locator IS NOT NULL)
 );
 
 CREATE SEQUENCE macrostrat.col_refs_id_seq
