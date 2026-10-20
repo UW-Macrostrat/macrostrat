@@ -1,6 +1,6 @@
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -64,6 +64,23 @@ class UpdateSummary:
         dt = time.time() - t0
         self.phases.append((label, dt))
         print(f"[dim]{label}: {_duration(dt)}[/dim]")
+
+    def as_dict(self) -> dict:
+        """The summary as plain data, for a run record."""
+        faces = self.faces.model_dump() if self.faces is not None else None
+        return {
+            "maps_checked": self.maps_checked,
+            "maps_noded": self.maps_noded,
+            "maps_released": self.maps_released,
+            "pieces": asdict(self.pieces),
+            "compilations_built": self.compilations_built,
+            "compilation_errors": self.compilation_errors,
+            "marked_stale": self.marked_stale,
+            "faces": faces,
+            "units": self.units,
+            "units_rebuilt": self.units_rebuilt,
+            "phases": [{"label": k, "seconds": round(v, 3)} for k, v in self.phases],
+        }
 
     def print(self):
         f = self.faces
@@ -749,9 +766,10 @@ def _node_one(db, map_id: int, piece, *, failed: bool, tolerance: float, timeout
             timeout=timeout,
         )
     except OperationalError as err:
-        # Only a cancelled statement is a piece's verdict; anything else is ours.
+        # Only a timed-out statement is a piece's verdict. A cancel from outside
+        # shares its SQLSTATE and is told apart by the server's message.
         code = getattr(err.orig, "sqlstate", None) or getattr(err.orig, "pgcode", None)
-        if code != "57014":
+        if code != "57014" or "statement timeout" not in str(err.orig):
             raise
         db.session.rollback()
         db.run_query(

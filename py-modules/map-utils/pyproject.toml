@@ -15,6 +15,12 @@ dependencies = [
     "minio>=7.2,<8",
 ]
 
+# `macrostrat.map_utils.tasks` imports `macrostrat.task_runner`, deliberately
+# undeclared: only `load_registry()`, in that package, loads this entry point,
+# so the tileserver and other consumers of map-utils never carry the runner.
+[project.entry-points."macrostrat.tasks"]
+maps = "macrostrat.map_utils.tasks:TASKS"
+
 [tool.uv.sources]
 
 [tool.hatch.build.targets.sdist]

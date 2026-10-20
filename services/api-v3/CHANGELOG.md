@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- `/tasks`: start, watch (Server-Sent Events), cancel and kill runs of registered
+  management tasks, recorded in `macrostrat_meta.task_run`. Admin only.
+
 ## [3.0.0] - 2026-10-19
 
 - Removed `POST /security/token` and `GET /security/groups`; delegated tokens are issued at `POST /security/tokens`, listed at `GET /security/tokens` and revoked at `POST /security/tokens/{token_id}/revoke`

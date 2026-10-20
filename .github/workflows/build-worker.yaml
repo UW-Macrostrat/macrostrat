@@ -31,5 +31,7 @@ jobs:
       service: worker
       image: worker
       context: services/worker
-      build-contexts: py-modules=./py-modules
+      build-contexts: |
+        py-modules=./py-modules
+        submodules=./submodules
     secrets: inherit

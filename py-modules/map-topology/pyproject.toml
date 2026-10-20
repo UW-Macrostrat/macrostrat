@@ -9,8 +9,12 @@ readme = "README.md"
 # manager and its CLI need the `topology` extra.
 dependencies = [
     "macrostrat.database>=4.2.0",
+    "macrostrat.task-runner",
     "pydantic>=2",
 ]
+
+[project.entry-points."macrostrat.tasks"]
+topology = "macrostrat.map_topology.tasks:TASKS"
 
 [project.optional-dependencies]
 topology = [
@@ -31,6 +35,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
+"macrostrat.task-runner" = { path = "../task-runner", editable = true }
 "mapboard.topology-manager" = { path = "../../submodules/topology-manager", editable = true }
 "macrostrat.core" = { path = "../core", editable = true }
 "macrostrat.map_utils" = { path = "../map-utils", editable = true }
