@@ -12,6 +12,7 @@ import defs from "./defs";
 enum APICapability {
   COMPOSITE_PROJECTS = "composite-projects",
   MAP_REFS = "map-refs",
+  COLUMN_REF_TYPES = "column-ref-types",
 }
 
 (function () {
@@ -734,6 +735,21 @@ enum APICapability {
       larkin.capabilities.add(APICapability.MAP_REFS);
     } catch (e) {
       console.log("Map references not supported");
+    }
+
+    // COLUMN REFERENCE TYPES
+    // Verbs and locators on `col_refs`, for `refs_expanded` on columns
+    try {
+      await larkin.queryPgAsync(
+        "burwell",
+        `SELECT cr.locator, cr.locator_url, t.label
+         FROM macrostrat.col_refs cr
+         JOIN macrostrat.ref_type t ON t.id = cr.ref_type
+         LIMIT 0`,
+      );
+      larkin.capabilities.add(APICapability.COLUMN_REF_TYPES);
+    } catch (e) {
+      console.log("Column reference types not supported");
     }
 
     if (larkin.capabilities.size > 0) {
