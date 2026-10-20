@@ -42,6 +42,14 @@ CREATE TABLE macrostrat_kg.macrostrat_terms (
         UNIQUE (entity_type, entity_id)
 );
 
+CREATE TABLE macrostrat_kg.macrostrat_terms_descriptions (
+    macrostrat_terms_id INT NOT NULL,
+    description TEXT,
+    source TEXT,
+    model TEXT NOT NULL,
+    PRIMARY KEY (macrostrat_terms_id, model)
+);
+
 CREATE INDEX macrostrat_terms_name_idx
     ON macrostrat_kg.macrostrat_terms (name);
 
@@ -61,6 +69,11 @@ CREATE OR REPLACE FUNCTION macrostrat_kg.refresh_macrostrat_terms()
         )
         SELECT 'minerals', id, mineral as name
         FROM macrostrat.minerals
+
+
+        UNION ALL
+        SELECT 'strat_names', id, strat_name as name
+        FROM macrostrat.strat_names
 
 
         UNION ALL
@@ -291,7 +304,9 @@ ALTER SEQUENCE macrostrat_kg.relationship_id_seq OWNED BY macrostrat_kg.relation
 CREATE TABLE macrostrat_kg.relationship_type (
     name text NOT NULL,
     description text,
-    id integer NOT NULL
+    id integer NOT NULL,
+    src_entity_type_id integer NOT NULL,
+    dst_entity_type_id integer NOT NULL
 );
 
 CREATE SEQUENCE macrostrat_kg.relationship_type_id_seq
@@ -392,6 +407,9 @@ ALTER TABLE ONLY macrostrat_kg.users
 ALTER TABLE ONLY macrostrat_kg.users
     ADD CONSTRAINT users_unique_enforcement UNIQUE (external_user_id);
 
+ALTER TABLE ONLY macrostrat_kg.source_text
+    ADD CONSTRAINT source_text_type_paragraph_text_unique_key UNIQUE (source_text_type, paragraph_text);
+
 CREATE UNIQUE INDEX duplicate_id_check ON macrostrat_kg.source_text USING btree (weaviate_id, map_legend_id);
 
 CREATE UNIQUE INDEX duplicate_relationships ON macrostrat_kg.relationship USING btree (run_id, src_entity_id, dst_entity_id, relationship_type_id);
@@ -458,6 +476,15 @@ ALTER TABLE ONLY macrostrat_kg.all_runs
 
 ALTER TABLE ONLY macrostrat_kg.all_runs
     ADD CONSTRAINT all_runs_root_id_fkey FOREIGN KEY (root_id) REFERENCES macrostrat_kg.macrostrat_terms(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY macrostrat_kg.macrostrat_terms_descriptions
+    ADD CONSTRAINT fk_macrostrat_terms_id FOREIGN KEY (macrostrat_terms_id) REFERENCES macrostrat_kg.macrostrat_terms(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY macrostrat_kg.relationship_type
+    ADD CONSTRAINT fk_src_entity_type_id FOREIGN KEY (src_entity_type_id) REFERENCES macrostrat_kg.entity_type(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY macrostrat_kg.relationship_type
+    ADD CONSTRAINT fk_dst_entity_type_id FOREIGN KEY (dst_entity_type_id) REFERENCES macrostrat_kg.entity_type(id) ON DELETE CASCADE;
 
 -- Allow PostgREST anonymous role to access objects in the schema
 GRANT USAGE ON SCHEMA macrostrat_kg TO web_anon;

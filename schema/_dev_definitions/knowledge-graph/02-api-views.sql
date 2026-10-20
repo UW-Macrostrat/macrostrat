@@ -345,41 +345,292 @@ FROM (((macrostrat_api.kg_source_text t
 GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
 
 
-CREATE OR REPLACE VIEW macrostrat_api.kg_context_entities AS
-WITH entities AS (
-  SELECT
-    et.source_text,
-    et.paper_id,
-    et.model_run,
-    jsonb_agg(
-      et.tree
-      ORDER BY et.entity
-    ) AS entities
-  FROM macrostrat_api.kg_entity_tree et
-  GROUP BY
-    et.source_text,
-    et.paper_id,
-    et.model_run
+CREATE OR REPLACE FUNCTION macrostrat_kg.build_context_entities(
+    p_model_run integer
 )
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+AS $$
+DECLARE
+    nodes       jsonb;
+    edges       jsonb;
+    pending     jsonb;
+    completed   jsonb := '{}'::jsonb;
+    ready       jsonb;
+    children    jsonb;
+    child_ids   text[];
+    node        record;
+    result      jsonb;
+BEGIN
+    SELECT COALESCE(
+        jsonb_object_agg(
+            e.id::text,
+            jsonb_strip_nulls(
+                to_jsonb(e) - 'model_run' - 'source'
+            )
+        ),
+        '{}'::jsonb
+    )
+    INTO nodes
+    FROM macrostrat_api.kg_entities e
+    WHERE e.model_run = p_model_run;
+
+    IF nodes = '{}'::jsonb THEN
+        RETURN '[]'::jsonb;
+    END IF;
+
+    SELECT COALESCE(
+        jsonb_object_agg(g.parent_id, g.child_ids),
+        '{}'::jsonb
+    )
+    INTO edges
+    FROM (
+        SELECT
+            pairs.parent_id,
+            jsonb_agg(
+                pairs.child_id ORDER BY pairs.child_id::bigint
+            ) AS child_ids
+        FROM (
+            SELECT DISTINCT
+                r.src_entity_id::text AS parent_id,
+                r.dst_entity_id::text AS child_id
+            FROM macrostrat_kg.relationship r
+            WHERE nodes ? r.src_entity_id::text
+              AND nodes ? r.dst_entity_id::text
+        ) pairs
+        GROUP BY pairs.parent_id
+    ) g;
+
+    SELECT COALESCE(
+        array_agg(DISTINCT c.id),
+        ARRAY[]::text[]
+    )
+    INTO child_ids
+    FROM jsonb_each(edges) adjacency
+    CROSS JOIN LATERAL
+        jsonb_array_elements_text(adjacency.value) c(id);
+
+    pending := nodes;
+
+    WHILE pending <> '{}'::jsonb LOOP
+        ready := '{}'::jsonb;
+
+        FOR node IN
+            SELECT key, value
+            FROM jsonb_each(pending)
+        LOOP
+            IF EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(
+                    COALESCE(edges -> node.key, '[]'::jsonb)
+                ) c(id)
+                WHERE NOT (completed ? c.id)
+            ) THEN
+                CONTINUE;
+            END IF;
+
+            SELECT jsonb_agg(
+                completed -> c.id ORDER BY c.id::bigint
+            )
+            INTO children
+            FROM jsonb_array_elements_text(
+                COALESCE(edges -> node.key, '[]'::jsonb)
+            ) c(id);
+
+            ready := ready || jsonb_build_object(
+                node.key,
+                (node.value - 'children')
+                ||
+                CASE
+                    WHEN children IS NULL THEN '{}'::jsonb
+                    ELSE jsonb_build_object('children', children)
+                END
+            );
+        END LOOP;
+
+        IF ready = '{}'::jsonb THEN
+            RAISE EXCEPTION
+                'Cannot build entity trees for model run %: cycle detected',
+                p_model_run
+                USING ERRCODE = '23514';
+        END IF;
+
+        completed := completed || ready;
+
+        pending := pending - ARRAY(
+            SELECT jsonb_object_keys(ready)
+        );
+    END LOOP;
+
+    SELECT COALESCE(
+        jsonb_agg(n.value ORDER BY n.key::bigint),
+        '[]'::jsonb
+    )
+    INTO result
+    FROM jsonb_each(completed) n
+    WHERE NOT (n.key = ANY(child_ids));
+
+    RETURN result;
+END;
+$$;
+
+
+CREATE OR REPLACE VIEW macrostrat_api.kg_context_entities AS
 SELECT
-  st.id AS source_text,
-  st.paper_id,
-  mr.id AS model_run,
-  COALESCE(e.entities, '[]'::jsonb) AS entities,
-  st.weaviate_id,
-  st.paragraph_text,
-  st.hashed_text,
-  st.preprocessor_id,
-  mr.model_id,
-  mr.version_id,
-  mr.user_id
+    st.id AS source_text,
+    st.paper_id,
+    mr.id AS model_run,
+    macrostrat_kg.build_context_entities(mr.id) AS entities,
+    st.weaviate_id,
+    st.paragraph_text,
+    st.hashed_text,
+    st.preprocessor_id,
+    mr.model_id,
+    mr.version_id,
+    mr.user_id
 FROM macrostrat_kg.source_text st
 LEFT JOIN macrostrat_kg.model_run mr
-ON mr.source_text_id = st.id
-LEFT JOIN entities e
-ON e.source_text = st.id
-  AND e.paper_id = st.paper_id
-  AND e.model_run = mr.id;
+    ON mr.source_text_id = st.id;
+
+LEFT JOIN LATERAL (
+    WITH RECURSIVE
+    e0 AS (
+        SELECT
+            e.model_run,
+            e.id,
+            jsonb_strip_nulls(
+                to_jsonb(e.*) - 'model_run' - 'source'
+            ) AS tree,
+            (e.match IS NOT NULL)::integer AS n_matches
+        FROM macrostrat_api.kg_entities e
+
+        -- Filter BEFORE building trees.
+        WHERE e.model_run = mr.id
+    ),
+
+    start_entities AS (
+        SELECT e.id
+        FROM e0 e
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM macrostrat_kg.relationship r
+            WHERE r.src_entity_id = e.id
+        )
+    ),
+
+    tree AS (
+        SELECT
+            e0.model_run,
+            r.src_entity_id AS parent_id,
+            se.id AS entity_id,
+            e0.tree,
+            0 AS depth,
+            1 AS n_entities,
+            e0.n_matches
+        FROM e0
+        JOIN start_entities se
+            ON se.id = e0.id
+        LEFT JOIN macrostrat_kg.relationship r
+            ON r.dst_entity_id = se.id
+
+        UNION
+
+        SELECT
+            a.model_run,
+            a.src_entity_id,
+            a.parent_id,
+            e0.tree || jsonb_build_object(
+                'children', jsonb_agg(a.tree)
+            ),
+            a.depth + 1,
+            sum(a.n_entities)::integer + 1,
+            sum(a.n_matches)::integer + e0.n_matches
+        FROM (
+            SELECT
+                t.model_run,
+                r.src_entity_id,
+                t.parent_id,
+                t.tree,
+                t.depth,
+                t.n_entities,
+                t.n_matches
+            FROM tree t
+            LEFT JOIN macrostrat_kg.relationship r
+                ON r.dst_entity_id = t.parent_id
+        ) a
+        JOIN e0
+            ON e0.id = a.parent_id
+        GROUP BY
+            a.model_run,
+            a.depth,
+            e0.tree,
+            e0.n_matches,
+            a.src_entity_id,
+            a.parent_id
+    ),
+
+    root_rows AS (
+        SELECT
+            t.model_run,
+            t.entity_id AS entity,
+            t.tree,
+            t.depth
+        FROM tree t
+        WHERE t.parent_id IS NULL
+    ),
+
+    root_children AS (
+        SELECT
+            rr.model_run,
+            rr.entity,
+            jsonb_agg(
+                child.value
+                ORDER BY (child.value ->> 'id')::bigint
+            ) AS children
+        FROM root_rows rr
+        CROSS JOIN LATERAL jsonb_array_elements(
+            COALESCE(rr.tree -> 'children', '[]'::jsonb)
+        ) child(value)
+        GROUP BY rr.model_run, rr.entity
+    ),
+
+    merged_roots AS (
+        SELECT
+            rr.model_run,
+            rr.entity,
+            (array_agg(
+                rr.tree - 'children'
+                ORDER BY rr.depth DESC
+            ))[1]
+            ||
+            CASE
+                WHEN rc.children IS NOT NULL
+                THEN jsonb_build_object('children', rc.children)
+                ELSE '{}'::jsonb
+            END AS tree
+        FROM root_rows rr
+        LEFT JOIN root_children rc
+            ON rc.model_run = rr.model_run
+           AND rc.entity = rr.entity
+        GROUP BY
+            rr.model_run,
+            rr.entity,
+            rc.children
+    )
+
+    SELECT jsonb_agg(
+        merged.tree ORDER BY merged.entity
+    ) AS entities
+    FROM merged_roots merged
+) result ON true;
+
+CREATE VIEW macrostrat_api.kg_macrostrat_terms_descriptions AS
+    SELECT * FROM macrostrat_kg.macrostrat_terms_descriptions;
+
+CREATE VIEW macrostrat_api.kg_relationship_type AS
+    SELECT * FROM macrostrat_kg.relationship_type;
 
 
 GRANT SELECT ON TABLE macrostrat_api.kg_entities TO web_anon;
@@ -394,6 +645,7 @@ GRANT UPDATE(color) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
 GRANT SELECT ON TABLE macrostrat_api.kg_extraction_feedback_type TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_source_text TO web_user;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_source_text TO web_admin;
 GRANT SELECT ON TABLE macrostrat_api.kg_matches TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_model TO web_user;
@@ -402,3 +654,7 @@ GRANT SELECT ON TABLE macrostrat_api.kg_model_run TO web_user;
 GRANT SELECT ON TABLE macrostrat_api.kg_publication_entities TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_source_text_casted TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_macrostrat_terms TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_macrostrat_terms_descriptions TO web_anon;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_macrostrat_terms_descriptions TO web_admin;
+GRANT SELECT ON TABLE macrostrat_api.kg_relationship_type TO web_anon;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_relationship_type TO web_admin;
