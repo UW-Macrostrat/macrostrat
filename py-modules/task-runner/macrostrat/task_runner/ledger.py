@@ -1,4 +1,4 @@
-"""The `tasks.run` ledger: what the runner was asked to do, by whom, how it ended.
+"""The `macrostrat_meta.task_run` ledger: what the runner was asked to do, by whom, how it ended.
 
 Sync helpers take a `macrostrat.database.Database`; the SQL constants serve the
 API's async engine for the two reads a streaming route makes.
@@ -18,12 +18,12 @@ RUN_COLUMNS = """
     r.celery_task_id, r.state, r.created_on, r.started_on, r.finished_on,
     r.result, r.error
 """
-RUN_FROM = (
-    'FROM tasks.run r LEFT JOIN macrostrat_auth."user" u ON u.id = r.requested_by'
-)
+RUN_FROM = 'FROM macrostrat_meta.task_run r LEFT JOIN macrostrat_auth."user" u ON u.id = r.requested_by'
 
-RUN_STATE_SQL = "SELECT state FROM tasks.run WHERE id = CAST(:id AS uuid)"
-RUN_LOG_SQL = "SELECT log FROM tasks.run WHERE id = CAST(:id AS uuid)"
+RUN_STATE_SQL = (
+    "SELECT state FROM macrostrat_meta.task_run WHERE id = CAST(:id AS uuid)"
+)
+RUN_LOG_SQL = "SELECT log FROM macrostrat_meta.task_run WHERE id = CAST(:id AS uuid)"
 
 
 def create_run(
@@ -31,7 +31,7 @@ def create_run(
 ) -> str:
     run_id = db.run_query(
         """
-        INSERT INTO tasks.run (task, params, requested_by)
+        INSERT INTO macrostrat_meta.task_run (task, params, requested_by)
         VALUES (:task, CAST(:params AS jsonb), :requested_by)
         RETURNING id
         """,
@@ -43,7 +43,7 @@ def create_run(
 
 def set_celery_task(db: Database, run_id: str, celery_task_id: str) -> None:
     db.run_query(
-        "UPDATE tasks.run SET celery_task_id = :tid WHERE id = CAST(:id AS uuid)",
+        "UPDATE macrostrat_meta.task_run SET celery_task_id = :tid WHERE id = CAST(:id AS uuid)",
         dict(id=run_id, tid=celery_task_id),
     )
     db.session.commit()
@@ -74,7 +74,7 @@ def live_run(db: Database, task: str):
 
 def start_run(db: Database, run_id: str) -> None:
     db.run_query(
-        "UPDATE tasks.run SET state = 'running', started_on = :now"
+        "UPDATE macrostrat_meta.task_run SET state = 'running', started_on = :now"
         " WHERE id = CAST(:id AS uuid)",
         dict(id=run_id, now=_now()),
     )
@@ -93,7 +93,7 @@ def finish_run(
     assert state in FINAL_STATES, state
     db.run_query(
         """
-        UPDATE tasks.run
+        UPDATE macrostrat_meta.task_run
         SET state = :state, finished_on = :now, result = CAST(:result AS jsonb),
             error = :error, log = :log
         WHERE id = CAST(:id AS uuid)

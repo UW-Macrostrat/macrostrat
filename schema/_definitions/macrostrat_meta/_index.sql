@@ -1,15 +1,17 @@
--- @subsystem: tasks
+-- @subsystem: macrostrat_meta
 -- @depends-on: core
 /**
- * Management task runs: the ledger of what the task runner was asked to do, by
- * whom, and how it ended. A run's output streams through Redis while it runs
- * and is archived on its row when it ends, so history outlives the stream.
- * Read and written by api-v3 and the admin worker, never through PostgREST.
+ * Operational records about the system itself, as opposed to the data it
+ * holds: today the management task ledger, later comments, opinions and the
+ * like. Read and written by api-v3 and the admin worker, never through PostgREST.
  */
 
-CREATE SCHEMA tasks;
+CREATE SCHEMA macrostrat_meta;
 
-CREATE TABLE tasks.run (
+/* What the task runner was asked to do, by whom, and how it ended. A run's
+ * output streams through Redis while it runs and is archived on its row when
+ * it ends, so history outlives the stream. */
+CREATE TABLE macrostrat_meta.task_run (
     id              uuid primary key default gen_random_uuid(),
     task            text not null,
     params          jsonb not null default '{}'::jsonb,
@@ -25,8 +27,8 @@ CREATE TABLE tasks.run (
     log             text
 );
 
-CREATE INDEX run_created_on_idx ON tasks.run (created_on DESC);
+CREATE INDEX task_run_created_on_idx ON macrostrat_meta.task_run (created_on DESC);
 
 -- One live run per task: the API refuses a duplicate, and this holds it to that.
-CREATE UNIQUE INDEX run_live_task_idx ON tasks.run (task)
+CREATE UNIQUE INDEX task_run_live_idx ON macrostrat_meta.task_run (task)
     WHERE state IN ('queued', 'running');

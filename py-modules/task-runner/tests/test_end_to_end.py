@@ -1,7 +1,7 @@
 """The runner against real Redis and Postgres: output, ledger, and a cancel that
 lands mid-statement.
 
-Needs a database holding the `tasks` chunk and an admin user, plus Redis:
+Needs a database holding the `macrostrat_meta` chunk and an admin user, plus Redis:
 
     TASK_RUNNER_E2E_DB_URL=postgresql://… TASK_RUNNER_E2E_REDIS_URL=redis://… pytest
 

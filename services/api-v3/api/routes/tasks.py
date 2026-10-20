@@ -2,7 +2,7 @@
 
 Admin only. A task is a `TaskSpec` registered through the `macrostrat.tasks`
 entry points; this service validates parameters against its model, records the
-run in `tasks.run`, and enqueues `macrostrat.tasks.run` for the admin worker,
+run in `macrostrat_meta.task_run`, and enqueues `macrostrat.tasks.run` for the admin worker,
 which executes it and streams its terminal output to Redis.
 `GET /runs/{id}/output` serves that stream as Server-Sent Events — replaying
 from the start or from `Last-Event-ID`, then following until the run ends —

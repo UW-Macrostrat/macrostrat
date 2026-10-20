@@ -1,4 +1,4 @@
-"""Management tasks: `macrostrat.tasks.run` executes one `tasks.run` ledger row.
+"""Management tasks: `macrostrat.tasks.run` executes one `macrostrat_meta.task_run` ledger row.
 
 The task is looked up by name in the registry (`macrostrat.tasks` entry
 points) and run by `macrostrat.task_runner.execute_run`, which streams its

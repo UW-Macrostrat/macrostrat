@@ -39,7 +39,7 @@ celery_app.send_task("macrostrat.maps.delete", args=["some-slug"])
 
 `macrostrat.tasks.run <run_id>` (the `tasks` extra, `admin` queue) executes a
 registered management task — `topology.update`, `maps.process-pipeline` — for the row of that id
-in `tasks.run`, streaming its terminal output to Redis and ending it like
+in `macrostrat_meta.task_run`, streaming its terminal output to Redis and ending it like
 Ctrl-C when cancelled. See `py-modules/task-runner` for the framework and the
 API's `/tasks` routes for how a run is started. The `admin` worker runs one task
 at a time in a fresh process (`--concurrency=1 --max-tasks-per-child=1`) with a

@@ -96,7 +96,7 @@ select * from audit.changes where schema_name = 'macrostrat_auth' order by id de
 `/tasks` runs registered management tasks — `topology.update`, `maps.process-pipeline` — on the
 admin worker, out of a terminal: `GET /tasks` is the catalog with each task's
 parameter schema, `POST /tasks/runs {task, params}` records a run in
-`tasks.run` and enqueues it, `GET /tasks/runs/{id}/output` streams its
+`macrostrat_meta.task_run` and enqueues it, `GET /tasks/runs/{id}/output` streams its
 terminal output as Server-Sent Events (replay, then follow; the archived copy
 once the stream has expired), and `POST …/cancel` ends it as Ctrl-C would,
 with `POST …/kill` as the last resort. One live run per task. Admin only; the

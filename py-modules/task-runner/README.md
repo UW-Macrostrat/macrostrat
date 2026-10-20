@@ -17,7 +17,7 @@ Pieces, in `macrostrat/task_runner/`:
 - `cancel.py` — `TaskCancelled`, `interruptible()` and `CancelWatcher`: a
   cancel published on the run's control channel interrupts the task's main
   thread and cancels its Postgres statements, as Ctrl-C does in a terminal.
-- `ledger.py` — the `tasks.run` rows (`schema/_definitions/tasks`).
+- `ledger.py` — the `macrostrat_meta.task_run` rows (`schema/_definitions/macrostrat_meta`).
 - `run.py` — `execute_run`, what the worker task calls.
 
 The design and its rationale are in the workbench note *Management task runner*.

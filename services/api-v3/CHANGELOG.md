@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 - `/tasks`: start, watch (Server-Sent Events), cancel and kill runs of registered
-  management tasks, recorded in `tasks.run`. Admin only.
+  management tasks, recorded in `macrostrat_meta.task_run`. Admin only.
 
 ## [3.0.0] - 2026-10-19
 
