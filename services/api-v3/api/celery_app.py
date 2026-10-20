@@ -6,9 +6,9 @@ not import the worker's Celery app. The worker that executes them lives in
 `macrostrat.worker` (task name `macrostrat.maps.delete`).
 
 The task_routes below MUST match the worker's routing
-(py-modules/worker/macrostrat/worker/app.py): the worker consumes only the
-`maps` queue (`-Q maps`), so sends have to be routed there — otherwise
-send_task() publishes to the default queue that the worker never listens on.
+(services/worker/macrostrat/worker/app.py): workers consume only their own
+queues (`-Q maps,columns`, `-Q admin`), so sends have to be routed there — otherwise
+send_task() publishes to the default queue that no worker listens on.
 """
 
 import os
@@ -25,4 +25,5 @@ celery_app = Celery("macrostrat_api", broker=BROKER_URL, backend=RESULT_BACKEND)
 celery_app.conf.task_routes = {
     "macrostrat.maps.*": {"queue": "maps"},
     "macrostrat.columns.*": {"queue": "columns"},
+    "macrostrat.tasks.*": {"queue": "admin"},
 }
