@@ -624,7 +624,7 @@ requires-dist = [
 
 [[package]]
 name = "macrostrat-database"
-version = "4.6.1"
+version = "4.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -638,9 +638,9 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/03/82fd804d899849981702388aad613315487891e481cf5019809d5c2ef088/macrostrat_database-4.6.1.tar.gz", hash = "sha256:35c636095016c42650d5301772c64d7608a572ce8448942f1d96986e83ccc0a1", size = 26921, upload-time = "2026-08-28T07:49:25.779Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/c5/4ca3cf28eba6eefbd6be68b7562c3fd08f312cf4cc74e580e25bfc8fb785/macrostrat_database-4.7.0.tar.gz", hash = "sha256:447cab4bb0aaf8e9376ebb9d85e4423871a5306dc7c3a1b51082bcfa16593083", size = 29189, upload-time = "2026-09-23T19:21:50.559Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/bf/685df168adff875c02b6735b11dffc9247e01e22d14803b111022264a2c3/macrostrat_database-4.6.1-py3-none-any.whl", hash = "sha256:ca971d909ab902614e43a7c4178d0391b808da82573da1e11c9328f519623f34", size = 34089, upload-time = "2026-08-28T07:49:24.852Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/33/1a0a05e2ee44a093794ace321f931e14e23726b4689ae77929294d19af26/macrostrat_database-4.7.0-py3-none-any.whl", hash = "sha256:15edca9851a27b8436338317b9b905fbd390f95e19f6dc91a00559ccbd0a9191", size = 36740, upload-time = "2026-09-23T19:21:49.505Z" },
 ]
 
 [[package]]
@@ -648,13 +648,13 @@ name = "macrostrat-map-integration"
 version = "2.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "fiona" },
     { name = "geoalchemy2" },
     { name = "geopandas" },
     { name = "ipython" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
     { name = "macrostrat-map-utils" },
+    { name = "macrostrat-match-utils" },
     { name = "minio" },
     { name = "numpy" },
     { name = "pandas" },
@@ -679,6 +679,7 @@ dependencies = [
 
 [package.optional-dependencies]
 gis = [
+    { name = "fiona" },
     { name = "gdal" },
 ]
 
@@ -693,14 +694,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fiona", specifier = ">=1.9,<2" },
+    { name = "fiona", marker = "extra == 'gis'", specifier = ">=1.9,<2" },
     { name = "gdal", marker = "extra == 'gis'", specifier = ">=3.10.0,<4" },
     { name = "geoalchemy2", specifier = ">=0.14,<1" },
     { name = "geopandas", specifier = ">=1.1.3,<2" },
     { name = "ipython", specifier = ">=8.5.0,<10" },
     { name = "macrostrat-core", editable = "../core" },
-    { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
+    { name = "macrostrat-database", specifier = ">=4.7.0,<5" },
     { name = "macrostrat-map-utils", editable = "../map-utils" },
+    { name = "macrostrat-match-utils", editable = "../match-utils" },
     { name = "minio", specifier = ">=7.2.5,<8" },
     { name = "numpy", specifier = ">=2.0.0,<3" },
     { name = "pandas", specifier = ">=2,<3" },
@@ -748,6 +750,25 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.0.0,<5" },
     { name = "minio", specifier = ">=7.2,<8" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.0,<4" },
+]
+
+[[package]]
+name = "macrostrat-match-utils"
+version = "0.1.0"
+source = { editable = "../match-utils" }
+dependencies = [
+    { name = "geopandas" },
+    { name = "macrostrat-database" },
+    { name = "pandas" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "geopandas", specifier = ">=0.14.4" },
+    { name = "macrostrat-database", specifier = ">=4.0.0" },
+    { name = "pandas", specifier = ">=2.3.3" },
+    { name = "pydantic", specifier = ">=2.12.4" },
 ]
 
 [[package]]
