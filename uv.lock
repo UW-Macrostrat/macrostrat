@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.12.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -1342,7 +1342,6 @@ name = "macrostrat-map-integration"
 version = "2.0.0"
 source = { editable = "py-modules/map-integration" }
 dependencies = [
-    { name = "fiona" },
     { name = "geoalchemy2" },
     { name = "geopandas" },
     { name = "ipython" },
@@ -1379,7 +1378,6 @@ gis = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fiona", specifier = ">=1.9,<2" },
     { name = "gdal", marker = "extra == 'gis'", specifier = ">=3.10.0,<4" },
     { name = "geoalchemy2", specifier = ">=0.14,<1" },
     { name = "geopandas", specifier = ">=1.1.3,<2" },
@@ -2102,7 +2100,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [

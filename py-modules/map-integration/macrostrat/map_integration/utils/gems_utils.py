@@ -1,9 +1,9 @@
 import re
 from typing import Optional, Tuple
 
-import fiona
 import geopandas as G
 import pandas as pd
+import pyogrio
 
 from macrostrat.map_integration.utils.ingestion_utils import (
     get_age_interval_df,
@@ -32,7 +32,7 @@ def extract_gdb_layer(
     # ingest any non-spatial metadata from .gdb just specify the file name in the re.search function
     # ex. GeoMaterialDict or DescriptionOfMapUnits
     # then we merge meta_df into the polygons df on a join_col
-    for name in fiona.listlayers(meta_path):
+    for name in pyogrio.list_layers(meta_path)[:, 0]:
         if name in (
             "DescriptionOfMapUnits",
             "GeoMaterialDict",
@@ -43,7 +43,7 @@ def extract_gdb_layer(
         if re.search(rf"{layer_name}", name, re.IGNORECASE):
             dmu_layer = name
     if dmu_layer is None and ingest_pipeline == "Gems pipeline":
-        comments = f"[yellow]No {layer_name} table found in {meta_path.name}.  Layers:{', '.join(fiona.listlayers(meta_path))}[/yellow]"
+        comments = f"[yellow]No {layer_name} table found in {meta_path.name}.  Layers:{', '.join(pyogrio.list_layers(meta_path)[:, 0])}[/yellow]"
         return None, ingest_pipeline, comments
     elif dmu_layer is None and ingest_pipeline == "":
         ingest_pipeline = ".gdb pipeline"

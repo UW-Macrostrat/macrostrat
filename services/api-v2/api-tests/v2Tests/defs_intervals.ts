@@ -94,6 +94,15 @@ it("should accept an early and late age", function (done) {
     .expect(validators.aSuccessfulRequest)
     .expect(validators.json)
     .expect(validators.atLeastOneResult)
+    .expect(function (res: any) {
+      res.body.success.data.forEach(function (d: any) {
+        if (!(d.b_age > 0 && d.t_age < 130)) {
+          throw new Error(
+            `Interval ${d.int_id} (${d.t_age}-${d.b_age} Ma) is outside late_age=0, early_age=130`,
+          );
+        }
+      });
+    })
     .end(function (error: any, res: any) {
       if (error) return done(error);
       done();

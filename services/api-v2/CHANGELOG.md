@@ -2,7 +2,10 @@
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-20
+
 - Moved from `UW-Macrostrat/macrostrat-api` to `services/api-v2` of `UW-Macrostrat/macrostrat`; release tags are now `api-v2-vX.Y.Z`
+- `/defs/intervals` honors `late_age`/`early_age` as aliases for `t_age`/`b_age`
 
 ## [2.4.0] - 2026-10-12
 
