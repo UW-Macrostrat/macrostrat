@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- `macrostrat.tasks.run` executes registered management tasks (`topology.update`, `maps.process-pipeline`)
+  on the `admin` queue, with live terminal output and Ctrl-C-style cancel (`tasks` extra)
+
 ## [1.0.0] - 2026-10-19
 
 - Column ingestion takes a `placement` (project, and group by id or name) that overrides the workbook's project

@@ -13,6 +13,7 @@ dependencies = [
     "macrostrat.schema-management",
     "api",
     "macrostrat.map_utils",
+    "macrostrat.task-runner",
     "macrostrat.tileserver-utils",
     "macrostrat.worker[maps]",
     "macrostrat.raster_index[s3,footprints]>=0.3.1,<1",
@@ -48,6 +49,7 @@ default-groups = [
 "macrostrat.schema-management" = { editable = true, path = "py-modules/schema-management" }
 "api" = { editable = true, path = "services/api-v3" }
 "macrostrat.map_utils" = { editable = true, path = "py-modules/map-utils" }
+"macrostrat.task-runner" = { editable = true, path = "py-modules/task-runner" }
 "macrostrat.tileserver-utils" = { editable = true, path = "py-modules/tileserver-utils" }
 "macrostrat.worker" = { editable = true, path = "services/worker" }
 

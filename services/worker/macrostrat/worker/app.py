@@ -21,6 +21,7 @@ app = Celery(
     include=[
         "macrostrat.worker.tasks.maps",
         "macrostrat.worker.tasks.columns",
+        "macrostrat.worker.tasks.management",
     ],
 )
 
@@ -28,4 +29,6 @@ app = Celery(
 app.conf.task_routes = {
     "macrostrat.maps.*": {"queue": "maps"},
     "macrostrat.columns.*": {"queue": "columns"},
+    # Management tasks run one at a time, on a worker of their own.
+    "macrostrat.tasks.*": {"queue": "admin"},
 }

@@ -36,25 +36,13 @@ add_cli = Typer(
 cli.add_typer(add_cli, name="add")
 
 
-def _sources_with_bounds(db):
-    """Every source with a `map_area` row -- maps and compilations alike."""
-    return db.run_query(
-        """
-        SELECT a.source_id AS map_id, s.slug, s.scale, a.area_km
-        FROM map_bounds.map_area a
-        JOIN maps.sources s ON s.source_id = a.source_id
-        ORDER BY a.area_km DESC NULLS LAST
-        """
-    ).all()
-
-
 def _resolve(
     maps: list[str], exclude: list[str] | None = None, state: str | None = None
 ) -> list:
     """Resolve selectors as `macrostrat maps` does, keeping maps that have bounds."""
     db = get_database()
     selected = resolve_maps(db, maps, exclude=exclude, state=state)
-    with_bounds = {m.map_id: m for m in _sources_with_bounds(db)}
+    with_bounds = {m.map_id: m for m in build_mod.sources_with_bounds(db)}
     missing = [m.slug for m in selected if m.id not in with_bounds]
     if missing:
         print(
@@ -158,43 +146,20 @@ def build_cmd(
     db = get_database()
     if not all_maps:
         targets = _resolve(maps, exclude, state)
-    elif rebuild:
-        targets = _sources_with_bounds(db)
     else:
-        stale = build_mod.needs_build(db)
-        everything = _sources_with_bounds(db)
-        targets = [m for m in everything if m.map_id in stale]
-        print(
-            f"[dim]{len(everything) - len(targets)} maps up to date;"
-            " --rebuild to build them anyway[/]"
-        )
+        targets = build_mod.stale_sources(db, rebuild=rebuild)
+        if not rebuild:
+            n_current = len(build_mod.sources_with_bounds(db)) - len(targets)
+            print(
+                f"[dim]{n_current} maps up to date; --rebuild to build them anyway[/]"
+            )
 
     failures = 0
     for m in targets:
         res = build_mod.build(db, m.map_id, init=init, dry_run=dry_run, strict=strict)
-        label = f"[bold]{res.slug or m.map_id}[/]"
         if res.error:
             failures += 1
-            where = (
-                f" at position {res.failed_op.position} ({res.failed_op.operation})"
-                if res.failed_op
-                else ""
-            )
-            print(f"  [red]FAILED[/] {label}{where}: {res.error}")
-        elif res.skipped:
-            print(f"  [dim]skipped[/] {label} -- {res.skipped}")
-        elif res.unchanged:
-            if res.diff_km:
-                print(
-                    f"  [dim]unchanged[/] {label} -- moved {res.diff_km:,.4g} km²,"
-                    " within tolerance; --strict to write"
-                )
-            else:
-                print(f"  [dim]unchanged[/] {label}")
-        else:
-            verb = "would be" if dry_run else "built"
-            area = f"{res.area_km:,.1f} km²" if res.area_km is not None else "?"
-            print(f"  [green]{verb}[/] {label} -- {area} from {len(res.ops)} ops")
+        print(build_mod.describe(res, dry_run=dry_run))
     if failures:
         raise typer.Exit(1)
 

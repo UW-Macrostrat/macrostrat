@@ -17,6 +17,11 @@ DBCallable = Callable[[Database], None]
 Provider = Union[Path, DBCallable]
 
 
+# Application chunks are applied as this role (create-as-owner), so their objects
+# are born owned by it and the SQL carries no ``ALTER … OWNER TO`` boilerplate.
+APP_OWNER = "macrostrat"
+
+
 @dataclass
 class SchemaDefinition:
     """A named, dependency-ordered unit of declarative schema.
