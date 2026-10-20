@@ -327,9 +327,9 @@ def _declared_status(position: float, units: list[Unit]) -> BoundaryStatus:
     claimed = set()
     for unit in units:
         if unit.b_pos == position and unit.b_age is not None:
-            claimed.add(unit.age_status)
+            claimed.add(unit.b_age_status or unit.age_status)
         if unit.t_pos == position and unit.t_age is not None:
-            claimed.add(unit.age_status)
+            claimed.add(unit.t_age_status or unit.age_status)
     if len(claimed) == 1:
         return claimed.pop()
     if len(claimed) > 1:
