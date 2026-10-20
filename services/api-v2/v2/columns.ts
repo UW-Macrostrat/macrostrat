@@ -144,6 +144,27 @@ function synthesizeColumnDataFromGroupedUnits(cols) {
   return new_cols;
 }
 
+/* Each citation with its verb and locator, beside `refs`' ids; a reference cited
+   at several locators appears once per locator. Left out where the database has
+   no verbs, and from CSV, where a nested list has no cell. */
+function refsExpandedSelect(req) {
+  if (!larkin.hasCapability("column-ref-types")) return "";
+  if (req.query.format === "csv") return "";
+  return `,
+      COALESCE((
+        SELECT json_agg(json_build_object(
+          'ref_type', t.id, 'label', t.label, 'ref_id', f.id,
+          'citation', concat_ws(', ', nullif(f.author, ''), f.pub_year::text, nullif(f.ref, '')),
+          'doi', f.doi, 'url', f.url,
+          'locator', cr.locator, 'locator_url', cr.locator_url
+        ) ORDER BY t.position, f.id, cr.locator)
+        FROM macrostrat.col_refs cr
+        JOIN macrostrat.ref_type t ON t.id = cr.ref_type
+        JOIN macrostrat.refs f ON f.id = cr.ref_id
+        WHERE cr.col_id = cols.id AND t.is_public
+      ), '[]') AS refs_expanded`;
+}
+
 async function queryColumnsData(req, new_cols: UnitDataMap | null) {
   let { orderByClauses, whereClauses, groupByClauses, params } =
     getColumnFilters(req, "col_areas");
@@ -197,6 +218,7 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
     geo += ", p.project AS project_name";
     joins.push("macrostrat.projects p ON p.id = cols.project_id");
     groupByClauses.push("p.project");
+    geo += refsExpandedSelect(req);
   }
 
   const join_text = joins.map((d) => "LEFT JOIN " + d).join("\n");
@@ -215,7 +237,7 @@ async function queryColumnsData(req, new_cols: UnitDataMap | null) {
         cols.project_id,
         col_type,
         cols.status_code::text AS status_code,
-        string_agg(col_refs.ref_id::varchar, '|') AS refs
+        string_agg(DISTINCT col_refs.ref_id::varchar, '|') AS refs
         ${geo}
       FROM macrostrat.cols
       ${join_text}`,

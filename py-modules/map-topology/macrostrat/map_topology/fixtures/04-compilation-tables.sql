@@ -997,7 +997,7 @@ SELECT
   f.doi,
   f.url
 FROM links l
-JOIN maps.ref_type t ON t.id = l.ref_type
+JOIN macrostrat.ref_type t ON t.id = l.ref_type
 JOIN macrostrat.refs f ON f.id = l.ref_id
 WHERE t.is_public
 ORDER BY t.position, f.pub_year, f.id;

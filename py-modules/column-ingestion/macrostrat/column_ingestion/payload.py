@@ -310,7 +310,7 @@ def _column_record(col: Column, t_units: int, t_sections: int) -> dict:
         "description": col.description,
         "t_units": t_units,
         "t_sections": t_sections,
-        "refs": list(col.ref_ids),
+        "refs": list(dict.fromkeys(getattr(r, "local_id", r) for r in col.ref_ids)),
     }
 
 

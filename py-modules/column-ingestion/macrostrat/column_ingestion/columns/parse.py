@@ -15,7 +15,7 @@ from macrostrat.utils import get_logger
 
 from .. import notices
 from ..metadata import parse_axis_type, parse_col_type, parse_fill_values
-from ..refs import parse_ref_ids
+from ..refs import ColumnReference, parse_ref_ids
 from ..units.parse import (
     ROW_COLUMN,
     PositionAxisType,
@@ -55,8 +55,9 @@ class Column:
     #: columns. Distinct from `local_id`, which is a workbook-local label used to attach
     #: units and references during one run and is not stored.
     orig_id: str | None = None
-    #: Workbook-local `ref_id`s this column cites, resolved to `refs.id` by `refs`.
-    ref_ids: list[str] = field(default_factory=list)
+    #: Workbook-local `ref_id`s this column cites, resolved to `refs.id` by `refs`. A
+    #: `ColumnReference` adds a verb and a locator to the citation.
+    ref_ids: list[str | ColumnReference] = field(default_factory=list)
     #: The column's sections, each holding its units. Every unit belongs to exactly one
     #: section. **The norm is one section per column**: assign `units` and that is what
     #: you get. Set `sections` directly only when told otherwise — a source that owns its

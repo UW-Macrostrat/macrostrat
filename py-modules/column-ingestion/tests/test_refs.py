@@ -179,3 +179,50 @@ def test_incomplete_references_are_warnings():
         "date",
         "ref_id",
     }
+
+
+class TestLocatedColumnReferences:
+    def test_one_reference_at_several_locators(
+        self, db, test_project, default_age_model_ref, excel_file
+    ):
+        """A column merged from a dataset's records cites the dataset once per record."""
+        from macrostrat.column_ingestion.refs import reconcile_column_references
+
+        ingest_columns_from_file(db, excel_file)
+        col_id, ref_id = db.run_query(
+            "SELECT col_id, ref_id FROM macrostrat.col_refs ORDER BY id LIMIT 1"
+        ).one()
+
+        def located(url_host="geolex.org"):
+            return [
+                ref_id,
+                *(
+                    {
+                        "ref_id": ref_id,
+                        "ref_type": "compiled-in",
+                        "locator": loc,
+                        "locator_url": f"https://{url_host}/{loc}",
+                    }
+                    for loc in ("Cenoz11", "Cret17a", "Cenoz11")
+                ),
+            ]
+
+        reconcile_column_references(db, col_id, located())
+        rows = db.run_query(
+            """
+            SELECT ref_type, locator FROM macrostrat.col_refs
+            WHERE col_id = :col_id ORDER BY ref_type, locator
+            """,
+            dict(col_id=col_id),
+        ).fetchall()
+        assert [tuple(r) for r in rows] == [
+            ("compiled-in", "Cenoz11"),
+            ("compiled-in", "Cret17a"),
+            ("unspecified", None),
+        ], "a repeated locator is one link; the bare id keeps its legacy link"
+
+        again = reconcile_column_references(db, col_id, located())
+        assert again.is_noop, "re-running changes nothing"
+
+        moved = reconcile_column_references(db, col_id, located("example.org"))
+        assert len(moved.updates) == 2 and not moved.inserts and not moved.deletes

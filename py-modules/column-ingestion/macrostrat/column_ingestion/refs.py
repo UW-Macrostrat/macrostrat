@@ -11,8 +11,10 @@ the legacy importer. `ref` is a composed citation string: the title, then the pu
 joined with `". "`.
 
 `col_refs` is the one table in this work with a **real** unique constraint,
-`UNIQUE (col_id, ref_id)`, so its links do not need the natural-key machinery — but they
-do still need dereferenced links removed when a column stops citing something.
+`(col_id, ref_id, ref_type, locator)`, so its links do not need the natural-key
+machinery — but they do still need dereferenced links removed when a column stops
+citing something. A column citing one reference at several locators (a dataset's
+records, merged into one column) is several links.
 """
 
 from dataclasses import dataclass
@@ -227,44 +229,81 @@ def reconcile_references(db, references: list[Reference]) -> dict[str, int]:
     return mapping
 
 
+@dataclass(frozen=True)
+class ColumnReference:
+    """A column's citation of a workbook reference, with its verb and pinpoint.
+
+    A bare `ref_ids` entry is the same citation with the defaults.
+    """
+
+    local_id: str
+    #: A verb from `macrostrat.ref_type`.
+    ref_type: str = "unspecified"
+    #: Where in the reference: a record identifier, figure or pages.
+    locator: str | None = None
+    locator_url: str | None = None
+
+
+#: `col_refs_unique`: one reference may be cited at several locators.
+LINK_KEY = ("col_id", "ref_id", "ref_type", "locator")
+
+
+def _link(col_id: int, ref: int | dict) -> dict:
+    """A `col_refs` row from a `refs.id`, or from a dict of the link's columns."""
+    if isinstance(ref, int):
+        ref = {"ref_id": ref}
+    return {
+        "col_id": col_id,
+        "ref_type": "unspecified",
+        "locator": None,
+        "locator_url": None,
+        **ref,
+    }
+
+
 def reconcile_column_references(
-    db, col_id: int, ref_ids: list[int]
+    db, col_id: int, refs: list[int | dict]
 ) -> ReconciliationPlan:
     """Reconcile one column's `col_refs` links."""
-    return reconcile_columns_references(db, {col_id: ref_ids})[col_id]
+    return reconcile_columns_references(db, {col_id: refs})[col_id]
 
 
 def reconcile_columns_references(
-    db, ref_ids_by_column: dict[int, list[int]]
+    db, refs_by_column: dict[int, list[int | dict]]
 ) -> dict[int, ReconciliationPlan]:
-    """Reconcile the `col_refs` links of many columns at once."""
-    if not ref_ids_by_column:
+    """Reconcile the `col_refs` links of many columns at once.
+
+    Each link is a `refs.id`, or a dict of `ref_id` and any of `ref_type`, `locator`
+    and `locator_url`.
+    """
+    if not refs_by_column:
         return {}
-    existing: dict[int, list[dict]] = {col_id: [] for col_id in ref_ids_by_column}
+    existing: dict[int, list[dict]] = {col_id: [] for col_id in refs_by_column}
     for row in db.run_query(
         """
-        SELECT id, col_id, ref_id FROM macrostrat.col_refs
+        SELECT id, col_id, ref_id, ref_type, locator, locator_url
+        FROM macrostrat.col_refs
         WHERE col_id = ANY(:col_ids) ORDER BY id
         """,
-        dict(col_ids=list(ref_ids_by_column)),
+        dict(col_ids=list(refs_by_column)),
     ):
         existing[row.col_id].append(dict(row._mapping))
-    # Deduplicate: `UNIQUE (col_id, ref_id)` means a repeated citation is one link.
-    groups = [
-        (
-            existing[col_id],
-            [{"col_id": col_id, "ref_id": r} for r in dict.fromkeys(ref_ids)],
-        )
-        for col_id, ref_ids in ref_ids_by_column.items()
-    ]
+    groups = []
+    for col_id, refs in refs_by_column.items():
+        # A repeated citation is one link under the unique key.
+        links = {}
+        for ref in refs:
+            link = _link(col_id, ref)
+            links.setdefault(tuple(link[k] for k in LINK_KEY), link)
+        groups.append((existing[col_id], list(links.values())))
     results = reconcile_groups(
         db,
         get_macrostrat_table(db, "col_refs"),
         groups,
-        key=("col_id", "ref_id"),
-        owned_columns=(),  # a pure link: presence is the whole content
+        key=LINK_KEY,
+        owned_columns=("locator_url",),
     )
-    return {col_id: plan for col_id, (plan, _) in zip(ref_ids_by_column, results)}
+    return {col_id: plan for col_id, (plan, _) in zip(refs_by_column, results)}
 
 
 def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> None:
@@ -273,14 +312,23 @@ def resolve_column_references(db, columns: list, ref_map: dict[str, int]) -> Non
     Used on its own, without a notice collector, unknown ids still raise.
     """
     problems = []
-    ref_ids_by_column: dict[int, list[int]] = {}
+    ref_ids_by_column: dict[int, list[dict]] = {}
     for col in columns:
         ref_ids, unknown = [], []
-        for local_id in col.ref_ids:
-            if local_id in ref_map:
-                ref_ids.append(ref_map[local_id])
+        for cited in col.ref_ids:
+            if not isinstance(cited, ColumnReference):
+                cited = ColumnReference(cited)
+            if cited.local_id in ref_map:
+                ref_ids.append(
+                    {
+                        "ref_id": ref_map[cited.local_id],
+                        "ref_type": cited.ref_type,
+                        "locator": cited.locator,
+                        "locator_url": cited.locator_url,
+                    }
+                )
             else:
-                unknown.append(local_id)
+                unknown.append(cited.local_id)
         if unknown:
             message = (
                 f"column {col.local_id or col.name!r} cites unknown ref_id(s): "

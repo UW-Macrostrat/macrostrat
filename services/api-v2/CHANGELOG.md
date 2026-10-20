@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 - Moved from `UW-Macrostrat/macrostrat-api` to `services/api-v2` of `UW-Macrostrat/macrostrat`; release tags are now `api-v2-vX.Y.Z`
+- `/columns` and `/units` list a column's `refs` once each when it cites a reference at several locators
+- `/columns?response=long` returns `refs_expanded`: each citation with its verb (`ref_type`, `label`) and locator. Left out where the database lacks `macrostrat.ref_type`, and from CSV
 
 ## [2.4.0] - 2026-10-12
 
