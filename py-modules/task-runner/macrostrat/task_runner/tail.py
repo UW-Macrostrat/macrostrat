@@ -13,22 +13,25 @@ async def tail_output(
     *,
     since: str = "0-0",
     finished: Callable[[], Awaitable[bool]],
-    block_ms: int = 15_000,
+    poll_ms: int = 1_000,
+    keepalive_ms: int = 15_000,
     count: int = 500,
 ) -> AsyncIterator[Entry | None]:
-    """Yield `(entry_id, text)` from `since` onward; `None` when a block elapses
-    with nothing new, so the caller can keep its connection alive.
+    """Yield `(entry_id, text)` from `since` onward; `None` every `keepalive_ms`
+    of silence, so the caller can keep its connection alive.
 
-    `finished` is consulted only after a quiet block: a run that is still
+    `finished` is consulted only after a quiet poll: a run that is still
     producing output is plainly not over, and the ledger is the authority on
     when it is. A last non-blocking read drains what was written between the
-    quiet block and the state change.
+    quiet poll and the state change.
     """
     key = output_key(run_id)
     last = since
+    quiet_ms = 0
     while True:
-        batches = await redis.xread({key: last}, block=block_ms, count=count)
+        batches = await redis.xread({key: last}, block=poll_ms, count=count)
         if batches:
+            quiet_ms = 0
             for _, entries in batches:
                 for entry_id, fields in entries:
                     last = _text(entry_id)
@@ -40,4 +43,7 @@ async def tail_output(
                 for entry_id, fields in entries:
                     yield _text(entry_id), _text(fields[b"d"])
             return
-        yield None
+        quiet_ms += poll_ms
+        if quiet_ms >= keepalive_ms:
+            quiet_ms = 0
+            yield None
