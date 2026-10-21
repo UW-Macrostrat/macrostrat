@@ -10,7 +10,7 @@ a report, and the reusable ``--target`` / ``--no-dependents`` CLI option block.
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterator, NamedTuple, Optional
+from typing import Callable, Iterable, Iterator, NamedTuple, Optional
 
 from typer import Option
 
@@ -20,6 +20,7 @@ from macrostrat.database import Database
 from macrostrat.utils import get_logger
 
 from .composer import set_applying_role
+from .selection import ObjectName, ObjectSelector
 
 log = get_logger(__name__)
 
@@ -37,12 +38,16 @@ class ChunkStatement(NamedTuple):
 
 
 def iter_chunk_statements(
-    chunks, extract: Callable[[str], Iterator[str]]
+    chunks,
+    extract: Callable[[str], Iterator[str]],
+    only: Optional[ObjectSelector] = None,
+    objects: Optional[Callable[[str], Iterable[ObjectName]]] = None,
 ) -> Iterator[ChunkStatement]:
     """Yield statements from the file-backed providers of ``chunks`` (in order).
 
     ``extract`` pulls the statements of interest out of one SQL file's text.
-    Function-backed providers manage their own objects and are skipped.
+    Function-backed providers manage their own objects and are skipped. With
+    ``only``, a statement is kept when one of the ``objects`` it names matches.
     """
     for chunk in chunks:
         for provider in chunk.provides:
@@ -50,6 +55,8 @@ def iter_chunk_statements(
                 continue
             for f in sql_files(provider):
                 for statement in extract(f.read_text()):
+                    if only is not None and not only.matches(objects(statement)):
+                        continue
                     yield ChunkStatement(chunk.owner, statement)
 
 
@@ -181,4 +188,12 @@ NO_DEPENDENTS_OPTION = Option(
     False,
     "--no-dependents",
     help="With --target, act on only that chunk, not the chunks it depends on.",
+)
+
+OBJECT_OPTION = Option(
+    None,
+    "--object",
+    "-o",
+    help="Restrict to statements on objects matching SCHEMA or SCHEMA.NAME "
+    "(globs allowed). Repeatable.",
 )

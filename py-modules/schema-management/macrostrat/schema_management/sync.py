@@ -14,6 +14,7 @@ from rich.markup import escape
 from macrostrat.database import Database
 
 from .rebuild import RebuildReport, StatementFailure
+from .selection import ObjectSelector
 from .views import ViewRebuildReport
 
 
@@ -24,6 +25,11 @@ class SyncReport:
     data: Optional[RebuildReport] = None
     permissions: Optional[RebuildReport] = None
     failures: list[StatementFailure] = field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        parts = (self.procedures, self.views, self.data, self.permissions)
+        return sum(p.total for p in parts if p is not None)
 
 
 def print_failures(failures: list[StatementFailure], indent: str = "  "):
@@ -44,12 +50,14 @@ def sync_schema_chunks(
     procedures: bool = True,
     data: bool = True,
     permissions: bool = True,
+    only: Optional[ObjectSelector] = None,
 ) -> SyncReport:
     """Re-apply the views, procedures, seed data and permissions of `chunks`.
 
     Dependencies first (functions before the views and seed rows that use them);
     permissions last -- roles and grants are swept together, in the order the
-    schema declares them, so each grant follows the role it names.
+    schema declares them, so each grant follows the role it names. `only`
+    restricts every sweep to statements on the objects it selects.
     """
     from .grants import rebuild_grants
     from .procedures import rebuild_procedures
@@ -58,15 +66,15 @@ def sync_schema_chunks(
 
     report = SyncReport()
     if procedures:
-        report.procedures = rebuild_procedures(db, chunks)
+        report.procedures = rebuild_procedures(db, chunks, only)
         report.failures += report.procedures.failures
     if views:
-        report.views = rebuild_views(db, chunks)
+        report.views = rebuild_views(db, chunks, only)
     if data:
-        report.data = rebuild_seed_data(db, chunks)
+        report.data = rebuild_seed_data(db, chunks, only)
         report.failures += report.data.failures
     if permissions:
-        report.permissions = rebuild_grants(db, chunks)
+        report.permissions = rebuild_grants(db, chunks, only)
         report.failures += report.permissions.failures
 
     db.run_sql("NOTIFY pgrst, 'reload schema';")
