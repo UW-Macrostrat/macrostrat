@@ -22,6 +22,26 @@ def engine_for_db_name(name: str | None):
     return create_engine(url)
 
 
+def libpq_environment(url: URL, docker_localhost: str = "localhost") -> dict[str, str]:
+    """Connection settings for a libpq tool in a container, as `PG*` variables.
+
+    Handed to `docker` through its own environment and forwarded by name
+    (`-e PGPASSWORD`, no value), so the password is in neither argv nor
+    `docker inspect` of anything that outlives the command.
+    """
+    # On mac and windows the container reaches the host by another name.
+    host = (url.host or "localhost").replace("localhost", docker_localhost)
+    env = {
+        "PGHOST": host,
+        "PGPORT": str(url.port or 5432),
+        "PGUSER": url.username,
+        "PGPASSWORD": url.password,
+        "PGDATABASE": url.database,
+        "PGAPPNAME": url.query.get("application_name"),
+    }
+    return {k: v for k, v in env.items() if v is not None}
+
+
 def docker_internal_url(url: URL | str) -> URL:
     url = make_url(url)
     if url.host == "localhost":

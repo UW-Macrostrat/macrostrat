@@ -42,7 +42,7 @@ from ._legacy import get_db
 # NOTE: right now, this is quite implicit.
 from .load_csv import load_csv
 from .load_geo import load_geo
-from .utils import engine_for_db_name, setup_postgrest_access
+from .utils import engine_for_db_name, libpq_environment, setup_postgrest_access
 
 log = get_logger(__name__)
 
@@ -257,22 +257,7 @@ def psql(
     # The URL never becomes a string: libpq reads the parts from the environment.
     url = settings.database_url(current_database_role())
 
-    # On mac and windows the container reaches the host by another name.
-    docker_localhost = settings.get("docker_localhost", "localhost")
-    host = (url.host or "localhost").replace("localhost", docker_localhost)
-
-    # Handed to `docker` through its own environment and forwarded by name
-    # (`-e PGPASSWORD`, no value), so the password is in neither argv nor
-    # `docker inspect` of anything that outlives this process.
-    pg_env = {
-        "PGHOST": host,
-        "PGPORT": str(url.port or 5432),
-        "PGUSER": url.username,
-        "PGPASSWORD": url.password,
-        "PGDATABASE": url.database,
-        "PGAPPNAME": url.query.get("application_name"),
-    }
-    pg_env = {k: v for k, v in pg_env.items() if v is not None}
+    pg_env = libpq_environment(url, settings.get("docker_localhost", "localhost"))
     env = dict(environ)
     env.update(pg_env)
 
