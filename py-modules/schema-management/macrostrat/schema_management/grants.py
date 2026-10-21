@@ -20,7 +20,7 @@ role's attributes, which is a change to a live credential rather than a rebuild.
 """
 
 import re
-from typing import Iterator
+from typing import Iterator, Optional
 
 import sqlparse
 
@@ -32,12 +32,24 @@ from .rebuild import (
     apply_statements,
     iter_chunk_statements,
 )
+from .selection import ObjectName, ObjectSelector, parse_object_name, schema_names
 
 # Statements that create a principal or (re)assign permissions. `CREATE USER` and
 # `CREATE GROUP` are documented aliases for `CREATE ROLE` — the same catalog object.
 _PERMISSION_STMT_RE = re.compile(
     r"^\s*(create\s+(role|user|group)|grant|revoke|alter\s+default\s+privileges)\b",
     re.IGNORECASE,
+)
+
+_DEFAULT_PRIVILEGES_RE = re.compile(r"^\s*alter\s+default\s+privileges\b", re.I)
+_IN_SCHEMA_RE = re.compile(r"\bin\s+schema\s+(.+?)\s+(?:grant|revoke)\b", re.I | re.S)
+_ON_CLAUSE_RE = re.compile(r"\bon\s+(.+?)\s+(?:to|from)\s", re.I | re.S)
+_SCHEMA_WIDE_RE = re.compile(r"^(?:all\s+\w+\s+in\s+)?schema\s+(.+)$", re.I | re.S)
+_OBJECT_KIND_RE = re.compile(
+    r"^(?:table|sequence|function|procedure|routine|type|domain)\s+", re.I
+)
+_UNSELECTABLE_RE = re.compile(
+    r"^(?:database|language|tablespace|large\s+object|foreign|parameter)\b", re.I
 )
 
 # SQLSTATE 42710 (duplicate_object) — the role is already there, which is the
@@ -54,9 +66,33 @@ def grant_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_grant_statements(chunks) -> Iterator[ChunkStatement]:
+def grant_objects(statement: str) -> list[ObjectName]:
+    """The objects or schemas a permission statement covers.
+
+    Roles and role membership are cluster-wide, so they name nothing and fall
+    outside any selection; so do grants on the database itself.
+    """
+    if _DEFAULT_PRIVILEGES_RE.match(statement):
+        m = _IN_SCHEMA_RE.search(statement)
+        return [] if m is None else schema_names(m.group(1))
+    m = _ON_CLAUSE_RE.search(statement)
+    if m is None:
+        return []
+    # Function signatures and column lists hold commas of their own.
+    target = re.sub(r"\([^()]*\)", "", m.group(1)).strip()
+    if _UNSELECTABLE_RE.match(target):
+        return []
+    if m := _SCHEMA_WIDE_RE.match(target):
+        return schema_names(m.group(1))
+    target = _OBJECT_KIND_RE.sub("", target)
+    return [parse_object_name(n) for n in target.split(",")]
+
+
+def iter_grant_statements(
+    chunks, only: Optional[ObjectSelector] = None
+) -> Iterator[ChunkStatement]:
     """Yield permission statements from ``chunks``, in dependency/apply order."""
-    yield from iter_chunk_statements(chunks, grant_statements_in)
+    yield from iter_chunk_statements(chunks, grant_statements_in, only, grant_objects)
 
 
 def object_already_exists(err: Exception) -> bool:
@@ -71,7 +107,9 @@ def object_already_exists(err: Exception) -> bool:
     return code == _DUPLICATE_OBJECT
 
 
-def rebuild_grants(db: Database, chunks) -> RebuildReport:
+def rebuild_grants(
+    db: Database, chunks, only: Optional[ObjectSelector] = None
+) -> RebuildReport:
     """Re-apply every declared role and grant in ``chunks``, in dependency order.
 
     Creating a role needs `CREATEROLE` (or superuser); against a connection with
@@ -79,5 +117,5 @@ def rebuild_grants(db: Database, chunks) -> RebuildReport:
     does a grant on an object absent in this environment.
     """
     return apply_statements(
-        db, iter_grant_statements(chunks), tolerate=object_already_exists
+        db, iter_grant_statements(chunks, only), tolerate=object_already_exists
     )

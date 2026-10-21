@@ -16,7 +16,7 @@ whose conflicting signature cannot be told apart here.
 """
 
 import re
-from typing import Iterator
+from typing import Iterator, Optional
 
 import sqlparse
 from sqlalchemy import text
@@ -30,6 +30,7 @@ from .rebuild import (
     apply_statements,
     iter_chunk_statements,
 )
+from .selection import ObjectName, ObjectSelector, parse_object_name
 from .views import _is_conflict, _split_qualified
 
 log = get_logger(__name__)
@@ -86,9 +87,17 @@ def _as_create_or_replace(statement: str) -> str:
     )
 
 
-def iter_procedure_statements(chunks) -> Iterator[ChunkStatement]:
+def procedure_objects(statement: str) -> list[ObjectName]:
+    return [parse_object_name(_PROC_NAME_RE.match(statement).group(2))]
+
+
+def iter_procedure_statements(
+    chunks, only: Optional[ObjectSelector] = None
+) -> Iterator[ChunkStatement]:
     """Yield function/procedure statements from ``chunks``, in dependency/apply order."""
-    yield from iter_chunk_statements(chunks, procedure_statements_in)
+    yield from iter_chunk_statements(
+        chunks, procedure_statements_in, only, procedure_objects
+    )
 
 
 def _recreate(db: Database, statement: str, err: Exception) -> bool:
@@ -120,11 +129,13 @@ def _recreate(db: Database, statement: str, err: Exception) -> bool:
     return True
 
 
-def rebuild_procedures(db: Database, chunks) -> RebuildReport:
+def rebuild_procedures(
+    db: Database, chunks, only: Optional[ObjectSelector] = None
+) -> RebuildReport:
     """Re-apply every function/procedure in ``chunks`` as ``CREATE OR REPLACE``."""
     return apply_statements(
         db,
-        iter_procedure_statements(chunks),
+        iter_procedure_statements(chunks, only),
         transform=_as_create_or_replace,
         recover=_recreate,
     )

@@ -19,7 +19,7 @@ grants, an owner can't be restored after the fact without ``ALTER … OWNER TO``
 
 import re
 from dataclasses import dataclass, field
-from typing import Iterator
+from typing import Iterator, Optional
 
 import sqlparse
 from sqlalchemy import text
@@ -29,6 +29,7 @@ from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.utils import get_logger
 
 from .rebuild import ChunkStatement, iter_chunk_statements, role_switcher
+from .selection import ObjectName, ObjectSelector, parse_object_name
 
 log = get_logger(__name__)
 
@@ -56,9 +57,15 @@ def view_statements_in(sql_text: str) -> Iterator[str]:
             yield bare
 
 
-def iter_view_statements(chunks) -> Iterator[ChunkStatement]:
+def view_objects(statement: str) -> list[ObjectName]:
+    return [parse_object_name(_view_name(statement))]
+
+
+def iter_view_statements(
+    chunks, only: Optional[ObjectSelector] = None
+) -> Iterator[ChunkStatement]:
     """Yield ``CREATE VIEW`` statements from ``chunks``, in dependency/apply order."""
-    yield from iter_chunk_statements(chunks, view_statements_in)
+    yield from iter_chunk_statements(chunks, view_statements_in, only, view_objects)
 
 
 # --- statement helpers ----------------------------------------------------
@@ -141,6 +148,8 @@ def _grant_statements(connectable, schema: str, view: str) -> list[str]:
 class ViewRebuildReport:
     total: int = 0
     recreated: list[str] = field(default_factory=list)
+    # Views outside a selection, rebuilt after a recreate cascade-dropped them.
+    restored: list[str] = field(default_factory=list)
 
     @property
     def replaced(self) -> int:
@@ -177,17 +186,28 @@ def _make_recovery(report: ViewRebuildReport):
     return recover
 
 
-def rebuild_views(db: Database, chunks) -> ViewRebuildReport:
+def _is_missing(db: Database, statement: str) -> bool:
+    return db.run_query(
+        "SELECT to_regclass(CAST(:name AS text)) IS NULL",
+        dict(name=_view_name(statement)),
+    ).scalar()
+
+
+def rebuild_views(
+    db: Database, chunks, only: Optional[ObjectSelector] = None
+) -> ViewRebuildReport:
     """Re-apply the views in ``chunks``, dropping and recreating only when needed.
 
     Runs each view through the database library's find-run loop; the drop/recreate
     fallback and grant restoration are handled by an ``on_error`` recovery hook.
+    With ``only``, dependents a recreate cascade-dropped are restored afterwards.
     """
     report = ViewRebuildReport()
     recover = _make_recovery(report)
 
     with role_switcher(db) as use_role:
-        for owner, statement in iter_view_statements(chunks):
+
+        def apply(owner, statement):
             use_role(owner)
             db.run_sql(
                 statement,
@@ -195,6 +215,15 @@ def rebuild_views(db: Database, chunks) -> ViewRebuildReport:
                 on_error=recover,
                 raise_errors=False,
             )
+
+        for owner, statement in iter_view_statements(chunks, only):
+            apply(owner, statement)
             report.total += 1
+
+        if only is not None and report.recreated:
+            for owner, statement in iter_view_statements(chunks):
+                if _is_missing(db, statement):
+                    apply(owner, statement)
+                    report.restored.append(_view_name(statement))
 
     return report

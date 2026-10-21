@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from sys import exit, stderr
+from typing import Optional
 
 import click
 from results import db as results_db
@@ -43,7 +44,7 @@ from .migrations import (
     ReadinessState,
     run_migrations,
 )
-from .rebuild import NO_DEPENDENTS_OPTION, TARGET_OPTION
+from .rebuild import NO_DEPENDENTS_OPTION, OBJECT_OPTION, TARGET_OPTION
 
 log = get_logger(__name__)
 
@@ -421,19 +422,26 @@ def sync(
     ),
     target: str = TARGET_OPTION,
     no_dependents: bool = NO_DEPENDENTS_OPTION,
+    objects: Optional[list[str]] = OBJECT_OPTION,
 ):
     """Re-apply the re-runnable schema content: views, procedures, seed data, permissions.
 
     Everything a schema diff can't manage on its own — code objects, idempotent seed
     rows, and the roles and grants that make up permissions — so that
     [cyan]provision[/] ≡ [cyan]diff[/] + [cyan]sync[/]. Select a subset with
-    [cyan]--no-views[/] etc., and restrict to a subsystem with [cyan]--target[/].
+    [cyan]--no-views[/] etc., restrict to a subsystem with [cyan]--target[/], and to
+    a schema or object with [cyan]--object[/] (e.g. [cyan]maps[/],
+    [cyan]maps.legend_lookup[/], [cyan]'maps.legend_*'[/]).
     """
     from .composer import selected_chunks
+    from .selection import ObjectSelector
     from .sync import print_failures, sync_schema_chunks
 
     db = get_database()
     chunks = selected_chunks(settings.env, target=target, no_dependents=no_dependents)
+    only = None
+    if objects:
+        only = ObjectSelector.parse(objects)
 
     res = sync_schema_chunks(
         db,
@@ -442,7 +450,11 @@ def sync(
         procedures=procedures,
         data=data,
         permissions=permissions,
+        only=only,
     )
+    if only is not None and res.total == 0:
+        print(f"[yellow]No statements matched {', '.join(objects)}")
+        return
     if res.procedures is not None:
         r = res.procedures
         _report("procedures", r.applied, len(r.failed))
@@ -452,6 +464,8 @@ def sync(
         r = res.views
         extra = f", {len(r.recreated)} recreated" if r.recreated else ""
         print(f"[dim]{r.replaced} views replaced{extra}")
+        if r.restored:
+            print(f"[dim]  {len(r.restored)} dependents restored after a cascade")
     if res.data is not None:
         _report("data statements", res.data.applied, len(res.data.failed))
     if res.permissions is not None:
