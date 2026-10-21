@@ -724,9 +724,14 @@ for entry_point in discovered_plugins:
 from macrostrat.core.console import err_console
 from macrostrat.core.plugins import HostContext, load_plugins
 
-plugin_statuses = load_plugins(
-    HostContext(main_app=main, db_app=db_app, active=getattr(settings, "env", None))
-)
+_host = HostContext(main_app=main, db_app=db_app, active=getattr(settings, "env", None))
+plugin_statuses = load_plugins(_host)
+
+# The cluster plugin adds `db copy` for Kubernetes; elsewhere it runs here.
+if _host.active is not None and _host.active.backend != "kubernetes":
+    from .database.copy import copy_command
+
+    db_app.command(name="copy", no_args_is_help=True)(copy_command(_host))
 for _status in plugin_statuses:
     if _status.error is None:
         continue
