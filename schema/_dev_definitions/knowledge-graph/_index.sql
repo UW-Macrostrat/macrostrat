@@ -56,6 +56,7 @@ CREATE INDEX macrostrat_terms_name_idx
 CREATE INDEX macrostrat_terms_entity_idx
     ON macrostrat_kg.macrostrat_terms (entity_type, entity_id);
 
+GRANT SELECT ON macrostrat_kg.macrostrat_terms_descriptions TO web_user;
 
 CREATE OR REPLACE FUNCTION macrostrat_kg.refresh_macrostrat_terms()
     RETURNS void
