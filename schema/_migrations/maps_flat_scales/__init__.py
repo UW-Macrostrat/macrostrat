@@ -263,3 +263,42 @@ class MapsLookupUnified(_OneTransaction):
             f"{kept} of {self._rows} lookup rows carried over; the rest had no"
             " polygon or duplicated a map_id and are rebuilt by processing."
         )
+
+
+_LOOKUP_DEFAULTS = """
+SELECT count(*) FROM pg_attrdef d
+JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+WHERE a.attname = 'scale'
+  AND d.adrelid IN (SELECT to_regclass(v) FROM unnest(CAST(:views AS text[])) v)
+"""
+
+
+def _lookup_defaults(db: Database) -> bool:
+    return (
+        db.run_query(
+            _LOOKUP_DEFAULTS, dict(views=[f"public.lookup_{s}" for s in _SCALES])
+        ).scalar()
+        > 0
+    )
+
+
+class MapsLookupViewDefaults(Migration):
+    name = "maps-lookup-view-defaults"
+    subsystem = "maps"
+    description = """
+    Drop the `scale` defaults `maps-lookup-unified` gave the `public.lookup_<scale>`
+    views, which the declarative schema does not have and a diff cannot remove.
+    """
+    depends_on = ["maps-lookup-unified"]
+    readiness_state = "ga"
+    load_sql_files = False
+
+    preconditions = [_lookup_defaults]
+    postconditions = [lambda db: not _lookup_defaults(db)]
+
+    def apply(self, db: Database):
+        for scale in _SCALES:
+            db.run_sql(
+                f"ALTER VIEW public.lookup_{scale} ALTER COLUMN scale DROP DEFAULT",
+                raise_errors=True,
+            )
