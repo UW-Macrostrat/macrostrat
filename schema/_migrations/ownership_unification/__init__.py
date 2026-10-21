@@ -12,7 +12,8 @@ Scope: **application schemas only** — the same boundary create-as-owner establ
 ``test_schema_ownership`` asserts. Foundational/shared ownership is deliberately left
 alone: the ``public`` and PostGIS ``topology`` schemas, extensions, external data
 (``sources``/``tiger``), the ``temp`` scratch schema and ``text_vectors`` stay as
-they are — see ``_EXCLUDED`` for why each is out of scope. (This is why a blunt
+they are — see ``_EXCLUDED`` for why each is out of scope, and ``_INCLUDED`` for
+the few application objects that live in them anyway. (This is why a blunt
 ``REASSIGN OWNED BY macrostrat_admin`` is *not* used — it would also drag those
 foundational objects to ``macrostrat``.)
 
@@ -80,7 +81,15 @@ _EXCLUDED = (
     "macrostratbak2",
 )
 
+# Application objects inside an excluded schema. `maps-lookup-unified` turned the
+# old `public.lookup_<scale>` tables into views as the connector, but the `maps`
+# chunk declaring them applies as `macrostrat`, which must own them to replace them.
+_INCLUDED = tuple(
+    f"public.lookup_{scale}" for scale in ("tiny", "small", "medium", "large")
+)
+
 _APP_SCHEMA = "n.nspname <> ALL(:excluded) AND n.nspname NOT LIKE 'pg\\_%'"
+_APP_RELATION = f"(({_APP_SCHEMA}) OR n.nspname || '.' || c.relname = ANY(:included))"
 
 
 def _not_extension_member(catalog: str, oid: str) -> str:
@@ -105,7 +114,7 @@ SELECT
   EXISTS (
     SELECT 1 FROM pg_catalog.pg_class c
     JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_SCHEMA}
+    WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_RELATION}
       AND pg_catalog.pg_get_userbyid(c.relowner) = ANY(:legacy)
       AND {_REL_FREE}
   ) OR EXISTS (
@@ -142,7 +151,7 @@ SELECT statement FROM (
       || ' OWNER TO macrostrat' AS statement
   FROM pg_catalog.pg_class c
   JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-  WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_SCHEMA}
+  WHERE c.relkind IN ('r','p','v','m','S','f') AND {_APP_RELATION}
     AND pg_catalog.pg_get_userbyid(c.relowner) = ANY(:legacy)
     AND {_REL_FREE}
     AND NOT (c.relkind = 'S' AND EXISTS (
@@ -195,6 +204,11 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_kg
 """
 
 
+_PARAMS = dict(
+    legacy=list(LEGACY_OWNERS), excluded=list(_EXCLUDED), included=list(_INCLUDED)
+)
+
+
 class OwnershipUnificationMigration(Migration):
     name = "ownership-unification"
     owner = None  # its own `apply`, written for the connector's privileges
@@ -203,20 +217,11 @@ class OwnershipUnificationMigration(Migration):
     load_sql_files = False
 
     def should_apply(self, db: Database) -> ApplicationStatus:
-        needs = db.run_query(
-            _NEEDS_RECONCILIATION,
-            dict(legacy=list(LEGACY_OWNERS), excluded=list(_EXCLUDED)),
-        ).scalar()
+        needs = db.run_query(_NEEDS_RECONCILIATION, _PARAMS).scalar()
         return ApplicationStatus.CAN_APPLY if needs else ApplicationStatus.APPLIED
 
     def apply(self, db: Database):
-        pending = [
-            r.statement
-            for r in db.run_query(
-                _REASSIGNMENTS,
-                dict(legacy=list(LEGACY_OWNERS), excluded=list(_EXCLUDED)),
-            )
-        ]
+        pending = [r.statement for r in db.run_query(_REASSIGNMENTS, _PARAMS)]
         db.session.commit()
         print(f"Re-owning {len(pending)} objects")
 

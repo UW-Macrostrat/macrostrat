@@ -114,5 +114,11 @@ COMMENT ON VIEW public.lookup_tiny IS 'Compatibility view over maps.lookup, whic
 COMMENT ON VIEW public.lookup_small IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';
 COMMENT ON VIEW public.lookup_medium IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';
 COMMENT ON VIEW public.lookup_large IS 'Compatibility view over maps.lookup, which replaced the per-scale lookup tables. New code reads and writes maps.lookup.';
+/* This runs as the connector, but the `maps` chunk declaring these views applies
+   as `macrostrat`, which must own them to replace them. */
+ALTER VIEW public.lookup_tiny OWNER TO macrostrat;
+ALTER VIEW public.lookup_small OWNER TO macrostrat;
+ALTER VIEW public.lookup_medium OWNER TO macrostrat;
+ALTER VIEW public.lookup_large OWNER TO macrostrat;
 
 ANALYZE maps.lookup;
