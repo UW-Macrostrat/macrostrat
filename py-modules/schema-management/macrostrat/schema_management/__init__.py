@@ -80,13 +80,11 @@ def plan():
             excluded_schemas=["sources", "tiger", "tiger_data"],
         )
 
+        # Inspectors that support multiple schemas; given a database, it would
+        # inspect every schema itself.
         m = DiffMigration(
-            from_db,
-            target_db,
+            get_inspector(from_db, schemas), get_inspector(target_db, schemas)
         )
-        # Subsitute inspectors for ones that support multiple schemas
-        m.changes.i_from = get_inspector(from_db, schemas)
-        m.changes.i_target = get_inspector(target_db, schemas)
         # Extension versions are not important
 
         filter_changes_from_plan(m.changes)

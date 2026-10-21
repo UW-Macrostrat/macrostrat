@@ -5,6 +5,8 @@ The key acceptance check: the harness's minimal build reproduces the legacy
 transform), and can then be grown to a full build in place.
 """
 
+from types import SimpleNamespace
+
 from pytest import mark
 from results.dbdiff import Migration as DiffMigration
 
@@ -14,7 +16,12 @@ from macrostrat.schema_management import (
     get_all_schemas,
     get_inspector,
 )
-from macrostrat.schema_management.defs import temporary_database_cluster
+from macrostrat.schema_management.defs import (
+    SCHEMA_FILTERED_QUERIES,
+    SYSTEM_SCHEMAS,
+    OurPostgreSQL,
+    temporary_database_cluster,
+)
 from macrostrat.schema_management.test_harness import (
     DatabaseTestHarness,
     optimize_transform,
@@ -33,9 +40,7 @@ def _diff_statements(from_db, target_db) -> list[str]:
     r_from = _get_results_db(from_db)
     r_target = _get_results_db(target_db)
 
-    m = DiffMigration(r_from, r_target)
-    m.changes.i_from = get_inspector(r_from, schemas)
-    m.changes.i_target = get_inspector(r_target, schemas)
+    m = DiffMigration(get_inspector(r_from, schemas), get_inspector(r_target, schemas))
     m.changes.ignore_extension_versions = True
     m.set_safety(False)
     m.add_all_changes(privileges=True)
@@ -74,3 +79,39 @@ def test_harness_replicates_macrostrat_schema_only():
         harness.load_schema()
         full_schemas = set(get_all_schemas(db_harness))
         assert minimal_schemas < full_schemas
+
+
+# Stand-ins for the two connections the inspector takes; it builds its queries
+# as `text()` clauses over SQLAlchemy and as strings over psycopg.
+_CONNECTIONS = {
+    "sqlalchemy": SimpleNamespace(dialect=SimpleNamespace(server_version_info=(17,))),
+    "psycopg": SimpleNamespace(
+        connection=SimpleNamespace(pgconn=SimpleNamespace(server_version=170000))
+    ),
+}
+
+
+class _QueriesOnly(OurPostgreSQL):
+    """The inspector's catalog queries, without running them."""
+
+    def load_all(self):
+        pass
+
+
+@mark.parametrize("connection", _CONNECTIONS)
+def test_catalog_queries_can_exclude_schemas(connection):
+    """`results` keeps the system-schema list the exclusion is spliced into.
+
+    If an upgrade rewords it, inspection silently reads every schema again.
+    """
+    inspector = _QueriesOnly(_CONNECTIONS[connection])
+
+    def sql(attr):
+        return str(getattr(inspector, attr))
+
+    for attr in SCHEMA_FILTERED_QUERIES:
+        assert SYSTEM_SCHEMAS in sql(attr), attr
+
+    inspector.exclude_schemas(["sources", "o'brien"])
+    for attr in SCHEMA_FILTERED_QUERIES:
+        assert f"{SYSTEM_SCHEMAS}, 'sources', 'o''brien'" in sql(attr), attr
