@@ -42,9 +42,7 @@ def _plan(from_db, target_db) -> list[str]:
     r_from = _get_results_db(from_db)
     r_target = _get_results_db(target_db)
 
-    m = DiffMigration(r_from, r_target)
-    m.changes.i_from = get_inspector(r_from, schemas)
-    m.changes.i_target = get_inspector(r_target, schemas)
+    m = DiffMigration(get_inspector(r_from, schemas), get_inspector(r_target, schemas))
     m.changes.ignore_extension_versions = True
     m.set_safety(False)
     m.add_all_changes(privileges=True)

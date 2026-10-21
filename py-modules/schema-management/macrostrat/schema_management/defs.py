@@ -6,6 +6,7 @@ from results.dbdiff.statements import check_for_drop
 from results.schemainspect.pg import PostgreSQL
 from results.schemainspect.pg.obj import PROPS
 from rich import print
+from sqlalchemy import TextClause, text
 
 from macrostrat.core.config import settings
 from macrostrat.database import Database
@@ -98,13 +99,58 @@ def planning_database(environment, **kwargs):
         yield plan_db
 
 
+# Each of these catalog queries skips system schemas with a `not in (…)` list
+# holding this pair, which other schemas can be added to.
+SYSTEM_SCHEMAS = "'information_schema', 'pg_toast'"
+SCHEMA_FILTERED_QUERIES = (
+    "ALL_RELATIONS_QUERY",
+    "COLLATIONS_QUERY",
+    "CONSTRAINTS_QUERY",
+    # Both ends of a dependency, so none names an object left unloaded.
+    "DEPS_QUERY",
+    "ENUMS_QUERY",
+    "FUNCTIONS_QUERY",
+    "INDEXES_QUERY",
+    "PRIVILEGES_QUERY",
+    "SCHEMAS_QUERY",
+    "SEQUENCES_QUERY",
+)
+
+
+def _add_to_system_schemas(query, names: str):
+    # Over a SQLAlchemy connection, the inspector's queries are `text()` clauses.
+    if isinstance(query, TextClause):
+        return text(_add_to_system_schemas(query.text, names))
+    return query.replace(SYSTEM_SCHEMAS, f"{SYSTEM_SCHEMAS}, {names}")
+
+
 class OurPostgreSQL(PostgreSQL):
     included_schemas = ["public"]
 
     def __init__(self, conn, schemas=None):
-        super().__init__(conn)
+        # Read by `load_all`, which the parent constructor calls.
         if schemas is not None:
             self.included_schemas = schemas
+        super().__init__(conn)
+
+    def load_all(self):
+        # Large unmanaged schemas (`sources`) dominate the catalog; never read them.
+        query = (
+            "SELECT nspname FROM pg_catalog.pg_namespace"
+            " WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema'"
+        )
+        if self.connection_type == "sqlalchemy":
+            query = text(query)
+        present = [r.nspname for r in self.execute(query)]
+        self.exclude_schemas([s for s in present if s not in self.included_schemas])
+        super().load_all()
+
+    def exclude_schemas(self, schemas):
+        if not schemas:
+            return
+        names = ", ".join("'" + s.replace("'", "''") + "'" for s in schemas)
+        for attr in SCHEMA_FILTERED_QUERIES:
+            setattr(self, attr, _add_to_system_schemas(getattr(self, attr), names))
 
     def filter_schema(self, schema=None, exclude_schema=None):
         for prop in PROPS.split():
