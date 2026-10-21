@@ -325,26 +325,6 @@ FROM ((macrostrat_kg.publication pub
   LEFT JOIN entities e ON ((p.paper_id = e.paper_id)))
 ORDER BY p.n_matches DESC;
 
-CREATE VIEW macrostrat_api.kg_source_text_casted AS
-SELECT (t.id)::text AS id,
-  (t.created)::text AS created,
-  (t.last_update)::text AS last_update,
-  t.paper_id,
-  t.paragraph_text,
-  t.n_runs,
-  t.n_entities,
-  t.n_matches,
-  t.n_strat_names,
-  e.model_id,
-  m.name AS model_name,
-  bool_or((r.user_id IS NOT NULL)) AS has_feedback
-FROM (((macrostrat_api.kg_source_text t
-  LEFT JOIN macrostrat_api.kg_context_entities e ON ((e.source_text = t.id)))
-  LEFT JOIN macrostrat_api.kg_model m ON ((m.id = e.model_id)))
-  LEFT JOIN macrostrat_api.kg_model_run r ON ((t.id = r.source_text_id)))
-GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
-
-
 CREATE OR REPLACE FUNCTION macrostrat_kg.build_context_entities(
     p_model_run integer
 )
@@ -494,6 +474,7 @@ FROM macrostrat_kg.source_text st
 LEFT JOIN macrostrat_kg.model_run mr
     ON mr.source_text_id = st.id;
 
+/**
 LEFT JOIN LATERAL (
     WITH RECURSIVE
     e0 AS (
@@ -625,6 +606,29 @@ LEFT JOIN LATERAL (
     ) AS entities
     FROM merged_roots merged
 ) result ON true;
+*/
+
+CREATE VIEW macrostrat_api.kg_source_text_casted AS
+SELECT (t.id)::text AS id,
+  (t.created)::text AS created,
+  (t.last_update)::text AS last_update,
+  t.paper_id,
+  t.paragraph_text,
+  t.n_runs,
+  t.n_entities,
+  t.n_matches,
+  t.n_strat_names,
+  e.model_id,
+  m.name AS model_name,
+  bool_or((r.user_id IS NOT NULL)) AS has_feedback
+FROM (((macrostrat_api.kg_source_text t
+  LEFT JOIN macrostrat_api.kg_context_entities e ON ((e.source_text = t.id)))
+  LEFT JOIN macrostrat_api.kg_model m ON ((m.id = e.model_id)))
+  LEFT JOIN macrostrat_api.kg_model_run r ON ((t.id = r.source_text_id)))
+GROUP BY t.id, t.created, t.last_update, t.paper_id, t.paragraph_text, t.n_runs, t.n_entities, t.n_matches, t.n_strat_names, e.model_id, m.name;
+
+
+
 
 CREATE VIEW macrostrat_api.kg_macrostrat_terms_descriptions AS
     SELECT * FROM macrostrat_kg.macrostrat_terms_descriptions;
