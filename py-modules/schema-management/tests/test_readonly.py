@@ -17,8 +17,8 @@ def admin_cluster():
     """A bare cluster shared by this module — these tests need no schema at all.
 
     Deliberately not conftest's ``empty_db``: the first test creates
-    ``public.thing``, and ``empty_db`` is the database ``test_test_harness``
-    compares builds in, where a stray table would read as drift.
+    ``public.thing``, and ``empty_db`` is the session's shared schema build,
+    where a stray table would leak into every later test.
     """
     with temporary_database_cluster(username="macrostrat_admin") as db:
         yield db

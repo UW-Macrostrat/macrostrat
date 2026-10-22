@@ -32,7 +32,8 @@ def test_files_are_mounted_at_their_own_paths(tmp_path, monkeypatch):
     assert flags[flags.index("-w") + 1] == str(work)
 
 
-@mark.parametrize("cwd", ["/", "/usr/lib", "/etc"])
+# Not `/etc`: on macOS it resolves to `/private/etc`, which shadows nothing.
+@mark.parametrize("cwd", ["/", "/usr/lib", "/dev"])
 def test_a_directory_shadowing_the_containers_own_is_refused(cwd, monkeypatch):
     """Mounted at the same path, `/usr/lib` would replace the image's libraries."""
     monkeypatch.chdir(cwd)
@@ -42,5 +43,5 @@ def test_a_directory_shadowing_the_containers_own_is_refused(cwd, monkeypatch):
 
 def test_a_file_in_a_system_directory_is_refused(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    with raises(ClickException, match="/etc"):
-        _local_file_flags(["-f", "/etc/hosts"])
+    with raises(ClickException, match="/usr/share"):
+        _local_file_flags(["-f", "/usr/share/plan.sql"])

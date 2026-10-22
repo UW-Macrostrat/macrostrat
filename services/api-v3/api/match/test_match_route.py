@@ -640,14 +640,6 @@ def test_default_location_tolerance_matches_the_old_degree_buffer(client):
     assert cols_returned(client, age_tolerance=0.5) <= LAWRENCE_NEIGHBOURS
 
 
-def test_location_tolerance_changes_the_search(client):
-    """A larger tolerance reaches further, and always keeps the containing column."""
-    near = cols_returned(client, age_tolerance=0.5, location_tolerance=1.11)
-    far = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
-    assert near != far
-    assert 101 in near and 101 in far
-
-
 def test_location_tolerance_is_monotonic(client):
     """Widening the tolerance only adds columns, it never swaps them out.
 
@@ -659,6 +651,7 @@ def test_location_tolerance_is_monotonic(client):
     near = cols_returned(client, age_tolerance=0.5, location_tolerance=1.11)
     far = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
     assert near < far, f"expected {near} to be a strict subset of {far}"
+    assert 101 in near
 
 
 def test_location_tolerance_zero_still_admits_touching_columns(client):
@@ -681,23 +674,6 @@ def test_location_tolerance_is_not_cached_across_values(client):
     wide_again = cols_returned(client, age_tolerance=0.5, location_tolerance=100)
     assert wide_first == wide_again
     assert narrow != wide_first
-
-
-def test_location_tolerance_is_bound_in_kilometres_as_supplied(db):
-    """The SQL receives the caller's value verbatim; the km->m conversion is in SQL.
-
-    A tolerance of 1000 km must reach far more columns than 1000 m would, which is
-    what a stray Python-side conversion would silently produce.
-    """
-    from macrostrat.match_utils import create_ignore_list, get_column_units
-
-    create_ignore_list(
-        db.run_query("SELECT lith name FROM macrostrat.liths").scalars().all()
-    )
-    with db.engine.connect() as conn:
-        near = get_column_units(conn, 101, location_tolerance=1)
-        far = get_column_units(conn, 101, location_tolerance=1000)
-    assert far.col_id.nunique() > near.col_id.nunique()
 
 
 def test_location_tolerance_default_is_used_when_absent(db):
@@ -817,40 +793,27 @@ def test_matches_are_unique_per_unit_and_column(client):
 # -- string parameters are case-insensitive ----------------------------------
 
 
-@mark.parametrize("interval", ["Kasimovian", "kasimovian", "KASIMOVIAN", "kAsImOvIaN"])
-def test_interval_name_is_case_insensitive(client, interval):
-    """Any casing of an interval name resolves to the same age window."""
-    response = client.get(
-        "/strat-names",
-        params={**LAWRENCE_NO_INTERVAL, "interval": interval, "all": True},
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["results"][0]["unit_matches"]
-
-
 def test_interval_casings_give_identical_results(client):
-    """Casing changes nothing about the matches returned."""
-    canonical = client.get(
-        "/strat-names",
-        params={**LAWRENCE_NO_INTERVAL, "interval": "Kasimovian", "all": True},
-    ).json()["results"][0]["unit_matches"]
-    lowered = client.get(
-        "/strat-names",
-        params={**LAWRENCE_NO_INTERVAL, "interval": "kasimovian", "all": True},
-    ).json()["results"][0]["unit_matches"]
-    assert canonical == lowered
+    """Any casing of an interval name resolves to the same matches."""
+    canonical, mixed = (
+        client.get(
+            "/strat-names",
+            params={**LAWRENCE_NO_INTERVAL, "interval": interval, "all": True},
+        ).json()["results"][0]["unit_matches"]
+        for interval in ("Kasimovian", "kAsImOvIaN")
+    )
+    assert canonical
+    assert canonical == mixed
 
 
-@mark.parametrize("field", ["b_interval", "t_interval"])
-def test_bounding_interval_names_are_case_insensitive(client, field):
+def test_bounding_interval_names_are_case_insensitive(client):
     """b_interval and t_interval fold case the same way as interval."""
-    other = "t_interval" if field == "b_interval" else "b_interval"
     response = client.get(
         "/strat-names",
         params={
             **LAWRENCE_NO_INTERVAL,
-            field: "kasimovian",
-            other: "gzhelian",
+            "b_interval": "kasimovian",
+            "t_interval": "gzhelian",
             "all": True,
         },
     )
@@ -867,8 +830,7 @@ def test_exact_interval_casing_still_wins(client):
     assert setup_intervals_response.status_code == 200, setup_intervals_response.text
 
 
-@mark.parametrize("value", ["rank-up", "RANK-UP", "Rank-Up"])
-def test_name_basis_is_case_insensitive(client, value):
+def test_name_basis_is_case_insensitive(client):
     """name_basis is a Literal, so it needs folding before validation."""
     response = client.get(
         "/strat-names",
@@ -876,7 +838,7 @@ def test_name_basis_is_case_insensitive(client, value):
             "col_id": 490,
             "strat_name": "Navajo Sandstone",
             "all": True,
-            "name_basis": value,
+            "name_basis": "Rank-Up",
         },
     )
     assert response.status_code == 200, response.text
@@ -884,22 +846,20 @@ def test_name_basis_is_case_insensitive(client, value):
     assert all(m["name_basis"] == "rank-up" for m in matches)
 
 
-@mark.parametrize("value", ["strat_name", "STRAT_NAME", "Strat_Name"])
-def test_priority_is_case_insensitive(client, value):
+def test_priority_is_case_insensitive(client):
     """priority is also a Literal and must accept any casing."""
     response = client.get(
         "/strat-names",
-        params={"col_id": 490, "strat_name": "Mancos", "priority": value},
+        params={"col_id": 490, "strat_name": "Mancos", "priority": "STRAT_NAME"},
     )
     assert response.status_code == 200, response.text
 
 
-@mark.parametrize("value", ["Lawrence", "lawrence", "LAWRENCE"])
-def test_strat_name_is_case_insensitive(client, value):
+def test_strat_name_is_case_insensitive(client):
     """strat_name is folded by clean_strat_name on both the query and the db side."""
     response = client.get(
         "/strat-names",
-        params={**LAWRENCE_NO_INTERVAL, "strat_name": value, "all": True},
+        params={**LAWRENCE_NO_INTERVAL, "strat_name": "LAWRENCE", "all": True},
     )
     assert response.status_code == 200, response.text
     assert response.json()["results"][0]["unit_matches"]

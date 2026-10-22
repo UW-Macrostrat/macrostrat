@@ -19,6 +19,7 @@ package survives modest schema drift between environments.
 import json
 import re
 import sqlite3
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Optional
@@ -241,14 +242,17 @@ def _write_rows(path: Path, layer: Layer, rows: list):
             geometry_type="Unknown",
             layer_options={"GEOMETRY_NAME": layer.geometry_column},
         )
-    pyogrio.write_dataframe(
-        df,
-        path,
-        layer=layer.name,
-        driver="GPKG",
-        append=layer.row_count > 0,
-        **opts,
-    )
+    with warnings.catch_warnings():
+        # SRID 0 (e.g. a geometry column NULL in every row) has no CRS to declare
+        warnings.filterwarnings("ignore", "'crs' was not provided", UserWarning)
+        pyogrio.write_dataframe(
+            df,
+            path,
+            layer=layer.name,
+            driver="GPKG",
+            append=layer.row_count > 0,
+            **opts,
+        )
     layer.row_count += len(df)
 
 

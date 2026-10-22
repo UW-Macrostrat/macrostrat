@@ -1,7 +1,7 @@
 from fnmatch import fnmatch
 from typing import Optional
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 from pydantic import BaseModel
 from typer import Argument, Option
 from typing_extensions import Annotated

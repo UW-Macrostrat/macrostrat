@@ -68,6 +68,8 @@ markers = [
     "docker: marks tests as requiring a docker container",
     "requires_gdal: marks tests as requiring GDAL",
     "slow: marks tests as slow-running",
+    "requires_canonical_db: marks tests as requiring Macrostrat's core dataset",
+    "web: marks tests as calling the public Macrostrat API",
 ]
 # Don't show captured logs by default
 addopts = "--log-disable=sqlalchemy.engine.Engine"
