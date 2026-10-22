@@ -1,4 +1,4 @@
-from psycopg2.sql import Identifier, Literal
+from psycopg.sql import Identifier, Literal
 from rich import print
 
 from macrostrat.core.exc import MacrostratError

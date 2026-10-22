@@ -455,10 +455,11 @@ def match_row(row, strat_names) -> tuple[bool, bool]:
         if strat_name.name == name:
             return True, True
 
-    # Fall back to included match
+    # Fall back to included match, on whole words: `j` (J-Sandstone) is not in `jelm`
     # change to concept
+    padded = f" {name} "
     for strat_name in strat_names:
-        if name in strat_name.name:
+        if padded in f" {strat_name.name} ":
             return True, False
 
     return False, False

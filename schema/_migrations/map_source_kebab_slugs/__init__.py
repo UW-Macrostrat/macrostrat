@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from psycopg2.sql import Identifier
+from psycopg.sql import Identifier
 
 from macrostrat.core.exc import MacrostratError
 from macrostrat.database import Database

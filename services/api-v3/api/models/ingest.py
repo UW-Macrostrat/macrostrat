@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class Post(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
     # Free text — validated by the FK to maps_metadata.ingest_state, not here.
     state: Optional[str] = None
     comments: Optional[str] = None
@@ -17,10 +19,6 @@ class Post(BaseModel):
     # mapped column raises a TypeError.
     # map_id: Optional[str] = None
     tags: Optional[list[str]] = None
-
-    class Config:
-        orm_mode = True
-        extra = "ignore"
 
 
 class Get(Post):

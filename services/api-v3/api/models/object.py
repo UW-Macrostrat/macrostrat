@@ -2,16 +2,15 @@ import datetime
 from typing import Optional
 
 from api.schemas import SchemeEnum
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Base(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     source: Optional[dict] = None
     mime_type: Optional[str] = None
     sha256_hash: Optional[str] = None
-
-    class Config:
-        orm_mode = True
 
 
 class Post(Base):
@@ -19,9 +18,6 @@ class Post(Base):
     host: str
     bucket: str
     key: str
-
-    class Config:
-        orm_mode = True
 
 
 class Get(Post):
