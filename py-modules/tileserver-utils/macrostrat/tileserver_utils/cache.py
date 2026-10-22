@@ -3,6 +3,7 @@ from ctypes import c_int32
 from enum import Enum
 from hashlib import md5
 from json import dumps
+from time import perf_counter
 from typing import Awaitable, Callable, NamedTuple, Optional, Union
 
 from buildpg import asyncpg, render
@@ -47,6 +48,15 @@ class RenderedTile(NamedTuple):
     sources: Optional[list[int]] = None
 
 
+class CachedTile(NamedTuple):
+    """A cache hit, and whether it should be copied into the current generation."""
+
+    content: bytes
+    sources: Optional[list[int]] = None
+    generation: Optional[int] = None
+    should_promote: bool = False
+
+
 TileGetter = Callable[[Request, CachedTileArgs], Awaitable[Union[bytes, RenderedTile]]]
 
 
@@ -65,6 +75,10 @@ async def handle_cached_tile_request(
         cached = await get_cached_tile(pool, args)
         timer.step("check_cache")
         if cached is not None:
+            if cached.should_promote:
+                background_tasks.add_task(
+                    promote_cached_tile, pool, args, cached.generation
+                )
             return TileResponse(
                 cached.content,
                 timer,
@@ -84,13 +98,15 @@ async def handle_cached_tile_request(
             },
         )
 
+    start = perf_counter()
     rendered = await get_tile(request, args)
+    render_ms = round((perf_counter() - start) * 1000)
     if not isinstance(rendered, RenderedTile):
         rendered = RenderedTile(rendered)
     timer.step("get_tile")
 
     if args.mode != CacheMode.bypass:
-        background_tasks.add_task(set_cached_tile, pool, args, rendered)
+        background_tasks.add_task(set_cached_tile, pool, args, rendered, render_ms)
 
     return TileResponse(
         rendered.content,
@@ -104,55 +120,90 @@ async def handle_cached_tile_request(
 async def get_cached_tile(
     pool: asyncpg.BuildPgPool,
     args: CachedTileArgs,
-) -> Optional[RenderedTile]:
+) -> Optional[CachedTile]:
     """Get tile data from cache."""
     # Get the tile from the tile_cache.tile table
     tile = args.tile
 
-    layer_id = await get_layer_id(pool, args.layer)
+    try:
+        layer_id = await get_layer_id(pool, args.layer)
+        async with pool.acquire() as conn:
+            q, p = render(
+                prepared_statement("get-cached-tile"),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
+                params=create_params_hash(args.params),
+                layer=layer_id,
+            )
+            row = await conn.fetchrow(q, *p)
+    except Exception:
+        # A failing cache should cost a render, not the tile.
+        log.warning("Tile cache lookup failed for %s", tile, exc_info=True)
+        return None
 
-    async with pool.acquire() as conn:
-        q, p = render(
-            prepared_statement("get-cached-tile"),
-            x=tile.x,
-            y=tile.y,
-            z=tile.z,
-            params=create_params_hash(args.params),
-            tms=args.tms,
-            layer=layer_id,
-        )
-        log.debug("Got cached tile: %s", tile)
-
-        row = await conn.fetchrow(q, *p)
-        if row is None:
-            return None
-        return RenderedTile(row["tile"], row["sources"])
+    if row is None:
+        return None
+    return CachedTile(
+        row["tile"],
+        row["sources"],
+        row.get("generation"),
+        bool(row.get("should_promote")),
+    )
 
 
 async def set_cached_tile(
     pool: asyncpg.BuildPgPool,
     args: CachedTileArgs,
     rendered: Union[bytes, RenderedTile],
+    render_ms: Optional[int] = None,
 ):
     if not isinstance(rendered, RenderedTile):
         rendered = RenderedTile(rendered)
 
     tile = args.tile
 
-    layer_id = await get_layer_id(pool, args.layer)
+    try:
+        layer_id = await get_layer_id(pool, args.layer)
+        async with pool.acquire() as conn:
+            q, p = render(
+                prepared_statement("set-cached-tile"),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
+                params=create_params_hash(args.params),
+                tile=rendered.content,
+                sources=rendered.sources,
+                profile=layer_id,
+                render_ms=render_ms or 0,
+            )
+            await conn.execute(q, *p)
+    except Exception:
+        log.warning("Tile cache write failed for %s", tile, exc_info=True)
 
-    async with pool.acquire() as conn:
-        q, p = render(
-            prepared_statement("set-cached-tile"),
-            x=tile.x,
-            y=tile.y,
-            z=tile.z,
-            params=create_params_hash(args.params),
-            tile=rendered.content,
-            sources=rendered.sources,
-            profile=layer_id,
-        )
-        await conn.execute(q, *p)
+
+async def promote_cached_tile(
+    pool: asyncpg.BuildPgPool,
+    args: CachedTileArgs,
+    generation: int,
+):
+    """Copy a hit from an older generation into the current one."""
+    tile = args.tile
+    try:
+        layer_id = await get_layer_id(pool, args.layer)
+        async with pool.acquire() as conn:
+            q, p = render(
+                prepared_statement("promote-cached-tile"),
+                x=tile.x,
+                y=tile.y,
+                z=tile.z,
+                params=create_params_hash(args.params),
+                layer=layer_id,
+                generation=generation,
+            )
+            await conn.execute(q, *p)
+    except Exception:
+        log.warning("Tile cache promotion failed for %s", tile, exc_info=True)
 
 
 profiles = ContextVar("profiles", default={})

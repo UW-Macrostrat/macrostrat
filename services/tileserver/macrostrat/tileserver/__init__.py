@@ -93,29 +93,34 @@ async def startup_event():
     )
 
 
-# Budget for the L2 tile cache, in bytes of tile payload. This is a *logical* size
-# (mean tile length times row count), not the relation's on-disk size -- see
-# `tile_cache.remove_excess_tiles`. Sized against the database volume: the cache is
-# the largest discretionary consumer on it, and an unbounded one filled the volume and
-# took production down in September 2026.
-TILE_CACHE_MAX_BYTES = 20_000_000_000  # 20 GB
+# Budgets for the L2 tile cache, on disk. Sized against the database volume: the
+# cache is the largest discretionary consumer on it, and an unbounded one filled the
+# volume and took production down in September 2026.
+TILE_CACHE_MAX_BYTES = 20_000_000_000  # 20 GB across the rotating generations
+TILE_CACHE_MAX_PINNED_BYTES = 2_000_000_000  # 2 GB of pinned tiles
 
 
 @app.on_event("startup")
 @repeat_every(seconds=600)  # 10 minutes
-async def trim_tile_cache_if_needed() -> None:
-    """Evict least-recently-used tiles until the cache fits its byte budget."""
-    pool = app.state.pool
-    async with pool.acquire() as conn:
-        q, p = render(
-            "SELECT tile_cache.remove_excess_tiles(:max_bytes)",
-            max_bytes=TILE_CACHE_MAX_BYTES,
-        )
+async def rotate_tile_cache() -> None:
+    """Advance the cache's generation ring when the current one is full."""
+    try:
+        async with app.state.pool.acquire() as conn:
+            q, p = render(
+                "SELECT * FROM tile_cache.rotate(:max_bytes, :max_pinned_bytes)",
+                max_bytes=TILE_CACHE_MAX_BYTES,
+                max_pinned_bytes=TILE_CACHE_MAX_PINNED_BYTES,
+            )
+            row = await conn.fetchrow(q, *p)
+    except Exception:
+        # Includes a TRUNCATE that hit its lock timeout; the next call retries.
+        log.warning("Tile cache rotation failed", exc_info=True)
+        return
 
-        deleted = await conn.fetchval(q, *p)
-
-    if deleted:
-        log.info("Evicted %s tiles from the L2 cache", deleted)
+    if row is not None and row["rotated_to"] is not None:
+        log.info("Tile cache rotated to generation %s", row["rotated_to"])
+    if row is not None and row["pinned_evicted"]:
+        log.info("Evicted %s pinned tiles from the L2 cache", row["pinned_evicted"])
 
 
 @app.on_event("shutdown")

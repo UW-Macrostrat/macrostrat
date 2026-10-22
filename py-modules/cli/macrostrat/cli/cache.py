@@ -55,7 +55,7 @@ WHERE s.source_id = ANY(:source_ids)
 ORDER BY s.source_id
 """
 
-# Constant bounds per zoom, so the planner can range-scan `tile_pkey` on x.
+# Constant bounds per zoom, so the planner can range-scan each partition's key on x.
 _DELETE_TILE_RANGE_SQL = """
 WITH deleted AS (
   DELETE FROM tile_cache.tile
@@ -119,14 +119,12 @@ def clear_cache(
         _clear_maps(db, settings, maps, exclude, yes, varnish, also)
         return
 
+    # The partitioned parent holds nothing itself; its partitions hold the tiles.
     tiles, size = db.run_query(
         """SELECT
-            greatest(
-                (SELECT reltuples FROM pg_class
-                 WHERE oid = 'tile_cache.tile'::regclass),
-                0
-            )::bigint AS tiles,
-            pg_size_pretty(pg_total_relation_size('tile_cache.tile')) AS size"""
+            coalesce(sum(est_tiles), 0)::bigint AS tiles,
+            pg_size_pretty(coalesce(sum(bytes), 0)) AS size
+          FROM tile_cache.partition_info"""
     ).one()
 
     if not yes:

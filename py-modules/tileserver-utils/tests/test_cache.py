@@ -114,3 +114,54 @@ def test_a_miss_stores_the_sources_with_the_tile():
     assert res.headers["X-Tile-Cache"] == "miss"
     (params,) = pool.conn.executed
     assert b"tile" in params and [5] in params
+
+
+def test_a_hit_from_an_older_generation_is_promoted():
+    async def get_tile(req, a):
+        raise AssertionError("a hit must not render")
+
+    pool = FakePool(
+        {"tile": b"cached", "sources": None, "generation": 3, "should_promote": True}
+    )
+    res = run(get_tile, CacheMode.prefer, pool)
+    assert res.headers["X-Tile-Cache"] == "hit"
+    (params,) = pool.conn.executed
+    assert 3 in params
+
+
+def test_a_current_hit_writes_nothing():
+    async def get_tile(req, a):
+        raise AssertionError("a hit must not render")
+
+    pool = FakePool(
+        {"tile": b"cached", "sources": None, "generation": 1, "should_promote": False}
+    )
+    run(get_tile, CacheMode.prefer, pool)
+    assert pool.conn.executed == []
+
+
+class FailingPool(FakePool):
+    @asynccontextmanager
+    async def acquire(self):
+        raise ConnectionError("cache table unavailable")
+        yield
+
+
+def test_a_failing_cache_still_serves_the_tile():
+    async def get_tile(req, a):
+        return b"tile"
+
+    res = run(get_tile, CacheMode.prefer, FailingPool())
+    assert res.body == b"tile"
+    assert res.headers["X-Tile-Cache"] == "miss"
+
+
+def test_a_miss_records_its_render_time():
+    async def get_tile(req, a):
+        await asyncio.sleep(0.02)
+        return b"tile"
+
+    pool = FakePool(None)
+    run(get_tile, CacheMode.prefer, pool)
+    (params,) = pool.conn.executed
+    assert any(isinstance(v, int) and 15 <= v < 1000 for v in params)
