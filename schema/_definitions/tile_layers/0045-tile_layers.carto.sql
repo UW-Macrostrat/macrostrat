@@ -348,8 +348,15 @@ CREATE OR REPLACE FUNCTION tile_layers.tile_geom(
   geom geometry,
   bbox geometry
 ) RETURNS geometry AS $$
-  /* It is difficult to reduce tile precision quickly, so we just make a smaller vector tile and scale it up */
-SELECT ST_Scale(ST_Simplify(ST_AsMVTGeom(ST_Transform(geom, 3857), bbox, 2048, 8, true), 1.5), 2, 2);
+  /* Simplifying to half a 512 px pixel first keeps the clip cheap on dense polygons.
+     No simplify after encoding: it left invalid polygons. */
+SELECT ST_Scale(
+  ST_AsMVTGeom(
+    ST_Simplify(ST_Transform(geom, 3857), (ST_XMax(bbox) - ST_XMin(bbox)) / 1024),
+    bbox, 2048, 8, true
+  ),
+  2, 2
+);
 $$ LANGUAGE sql IMMUTABLE;
 
 /**
