@@ -4,7 +4,7 @@
 # build used to compile, and `libmapnik3.1` carries the PostGIS input plugin.
 FROM debian:bookworm-slim
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.3 /uv /uvx /bin/
 
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1

@@ -18,7 +18,7 @@ RUN apt-get update -y && \
     python3.11-dev && \
   rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.9 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.3 /uv /uvx /bin/
 # https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
 
 WORKDIR /services/main
