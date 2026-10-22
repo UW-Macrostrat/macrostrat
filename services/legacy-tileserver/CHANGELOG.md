@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Reads and writes the generational tile cache (`tile-cache-generations` migration;
+  deploy before it is applied)
+- A failing tile-cache lookup or write serves the tile uncached instead of failing it
+
 ## [3.0.0] - 2026-10-19
 
 - The `X-Macrostrat-Sources` lookup uses the face index; it scanned every face, ~3.5 s per uncached tile

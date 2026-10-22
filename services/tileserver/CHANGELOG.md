@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Tile cache is generational: eviction truncates the oldest of six unlogged generations
+  (checked every 10 minutes, 20 GB budget); hits from older generations are copied forward;
+  tiles at z ≤ 6 or slower than 2 s to render are pinned in a logged partition (2 GB);
+  `last_used` is gone. Needs the `tile-cache-generations` migration, applied after this
+  release is deployed
+- A failing tile-cache lookup or write serves the tile uncached instead of failing it
 - `/version` reports the running build; `/health` answers 503 when the database does not
 - `/map/{slug}/{z}/{x}/{y}`: tiles for any source by slug or id, `carto` included,
   resolved through `map_bounds.serving_source`; `/dev/carto` is a deprecated alias of
