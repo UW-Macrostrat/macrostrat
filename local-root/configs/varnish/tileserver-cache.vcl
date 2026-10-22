@@ -158,6 +158,12 @@ sub vcl_backend_response {
         return (deliver);
     }
 
+    # A failed copy into storage must reach clients as a 503, not a short 200.
+    # Tiles arrive whole from the tileserver, so streaming them saves little.
+    if (beresp.http.Content-Type ~ "^(application/x-protobuf|image/)") {
+        set beresp.do_stream = false;
+    }
+
     # Set a long TTL for tiles
     if (bereq.url ~ ".*\.(png|mvt)$") {
         set beresp.ttl = 1d;
