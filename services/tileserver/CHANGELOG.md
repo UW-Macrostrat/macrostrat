@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-22
+
 - Tile cache is generational: eviction truncates the oldest of six unlogged generations
   (checked every 10 minutes, 20 GB budget); hits from older generations are copied forward;
   tiles at z ≤ 6 or slower than 2 s to render are pinned in a logged partition (2 GB);

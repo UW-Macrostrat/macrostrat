@@ -30,7 +30,7 @@ class TileCacheGenerationsMigration(Migration):
     read the new layout first; older ones fail their cache lookups against it.
     """
     depends_on = []
-    readiness_state = "alpha"
+    readiness_state = "ga"
     destructive = True
 
     fixtures = [
