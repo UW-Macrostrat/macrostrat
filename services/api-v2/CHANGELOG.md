@@ -1,6 +1,6 @@
 # Macrostrat API v2 Changelog
 
-## [Unreleased]
+## [2.5.0] - 2026-10-22
 
 - `/columns` and `/units` list a column's `refs` once each when it cites a reference at several locators
 - `/columns?response=long` returns `refs_expanded`: each citation with its verb (`ref_type`, `label`) and locator. Left out where the database lacks `macrostrat.ref_type`, and from CSV
