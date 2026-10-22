@@ -2,10 +2,13 @@
 
 Two kinds of bearer token are accepted:
 
-- A *delegated* token: an opaque credential minted by `macrostrat auth
-  create-token` (or `POST /api/v3/security/tokens`) and handed to a third party.
-  Only its sha256 digest is stored, so this module digests whatever arrives and
-  looks that up.
+- A *delegated* token: a credential minted by `macrostrat auth create-token`
+  (or `POST /api/v3/security/tokens`) and handed to a third party. Only its
+  sha256 digest is stored, so this module digests whatever arrives and looks
+  that up -- and the row, not the token, is what grants scopes and what
+  revocation acts on. It is *also* a JWT (signed with `SECRET_KEY`, no `aud`),
+  so it is **not** distinguishable from a signed token by shape; see
+  `scopes_for_token`.
 - A *signed* token: a short-lived JWT the website mints for its own visitors,
   HS256 over `TILESERVER_SECRET_KEY`, audience `tileserver`, scopes in `scope`
   (space-separated). Verified here with no database round trip. The key is the
@@ -13,9 +16,11 @@ Two kinds of bearer token are accepted:
   process can check tile tokens and forge nothing else. During a rotation
   `TILESERVER_SECRET_KEY_PREVIOUS` is accepted too, for one token lifetime.
 
-Plain sha256, unkeyed, deliberately. The tile server holds a database
-connection but no `SECRET_KEY`, and at ~190 bits of token entropy there is no
-dictionary attack for a salt or pepper to defend against. The digest has to
+The digest is plain sha256, unkeyed, deliberately: this process holds a
+database connection but no `SECRET_KEY`, so an unkeyed digest is the only kind
+it can compute. A delegated token resists guessing through its *signature*
+rather than through entropy in its payload — which is only `{label, exp}` —
+so there is nothing here for a salt or pepper to defend. The digest has to
 match `hash_token` in `services/api-v3/api/routes/security.py` and
 `py-modules/cli/macrostrat/cli/auth.py` — all three verify the same tokens.
 
@@ -116,11 +121,6 @@ def _scopes_from_signed(raw_token: str) -> Optional[list[str]]:
     return None
 
 
-def _looks_signed(raw_token: str) -> bool:
-    """A JWT is three dot-separated parts; a delegated token has no dots."""
-    return raw_token.count(".") == 2
-
-
 def hash_token(raw_token: str) -> str:
     """The digest stored in `macrostrat_auth.token.token`."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
@@ -161,10 +161,25 @@ async def _scopes_for(pool, token_hash: str) -> Optional[list[str]]:
 
 
 async def scopes_for_token(pool, raw_token: str) -> Optional[list[str]]:
-    """The scopes a bearer token grants, or None if it is unknown or expired:
-    a signed token is verified in process, anything else is looked up."""
-    if _looks_signed(raw_token):
-        return _scopes_from_signed(raw_token)
+    """The scopes a bearer token grants, or None if it is unknown or expired.
+
+    The two kinds cannot be told apart by shape. A delegated token is itself a
+    JWT -- signed with `SECRET_KEY` and carrying no `aud` -- so a shape test
+    sends every one of them down the signature path, where it fails and is
+    rejected without the database ever being consulted.
+
+    Verification is attempted first because it is in-process and conclusive:
+    a token this key can verify is signed, and anything else is offered to the
+    database. A delegated token therefore pays one failed signature check
+    before the lookup it was always going to make.
+
+    Note `_scopes_from_signed` returns `[]`, not None, for a verified token
+    carrying no scopes -- that token exists and grants nothing, so it must not
+    fall through to a lookup that would find no row and report it as unknown.
+    """
+    scopes = _scopes_from_signed(raw_token)
+    if scopes is not None:
+        return scopes
     return await _scopes_for(pool, hash_token(raw_token))
 
 

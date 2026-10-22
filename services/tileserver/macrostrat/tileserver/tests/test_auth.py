@@ -227,4 +227,61 @@ class TestSignedTokens:
         monkeypatch.delenv("TILESERVER_SECRET_KEY")
         client, pool = client_for({})
         assert get(client, self.mint()).status_code == 401
+        # With no key this process cannot tell a signed token from a delegated
+        # one, so it offers the digest to the database rather than rejecting on
+        # shape. The lookup finds nothing here, hence the 401.
+        assert pool.queries == 1
+
+
+class TestDispatch:
+    """Which of the two paths a token takes.
+
+    The kinds are **not** distinguishable by shape. `macrostrat auth
+    create-token` mints a JWT signed with `SECRET_KEY`, so a delegated token
+    has two dots exactly like a signed one. Choosing the path by counting dots
+    sent every delegated token down the signature branch, where it failed
+    against the tileserver's key and was rejected with "unknown or expired" —
+    without the database ever being consulted.
+    """
+
+    KEY = "a-test-tileserver-secret-key-of-reasonable-length"
+
+    @pytest.fixture(autouse=True)
+    def _key(self, monkeypatch):
+        monkeypatch.setenv("TILESERVER_SECRET_KEY", self.KEY)
+        monkeypatch.delenv("TILESERVER_SECRET_KEY_PREVIOUS", raising=False)
+
+    def delegated(self):
+        """What `macrostrat auth create-token` actually produces: a JWT signed
+        with a *different* key and carrying no `aud`."""
+        import jwt
+
+        return jwt.encode(
+            {"label": "Colorado School of Mines", "exp": 4102444800},
+            "the-signing-key-for-delegated-tokens-not-the-tileservers",
+            algorithm="HS256",
+        )
+
+    def test_a_jwt_shaped_delegated_token_still_reaches_the_database(self):
+        token = self.delegated()
+        assert token.count(".") == 2, "the regression depends on this shape"
+
+        client, pool = client_for({hash_token(token): [SCOPE]})
+        assert get(client, token).status_code == 200
+        assert pool.queries == 1
+
+    def test_a_verifiable_signed_token_never_reaches_the_database(self):
+        """The short-circuit still holds: verification is tried first."""
+        import time
+
+        import jwt
+
+        now = int(time.time())
+        signed = jwt.encode(
+            {"aud": "tileserver", "scope": SCOPE, "iat": now, "exp": now + 3600},
+            self.KEY,
+            algorithm="HS256",
+        )
+        client, pool = client_for({})
+        assert get(client, signed).status_code == 200
         assert pool.queries == 0

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-10-22
+
+- Fix: delegated tokens were rejected without the database being consulted. The two
+  kinds of bearer token were told apart by shape — a JWT has two dots, a delegated
+  token was assumed to have none — but `macrostrat auth create-token` has minted
+  signed JWTs since the delegated-token work landed, so every delegated token took
+  the signature path, failed against `TILESERVER_SECRET_KEY` (it is signed with
+  `SECRET_KEY` and carries no `aud`), and returned "Token is unknown or expired".
+  Verification is now attempted first and anything unverifiable falls through to the
+  digest lookup, so both kinds work and signed tokens still cost no database round
+  trip
+
 ## [3.2.0] - 2026-10-22
 
 - Tile cache is generational: eviction truncates the oldest of six unlogged generations
