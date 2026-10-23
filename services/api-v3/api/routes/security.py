@@ -435,7 +435,8 @@ class CookieParams(BaseModel):
 def auth_cookie_params() -> CookieParams:
     """Where and how the session cookies are scoped.
 
-    Production: the API's own host, `SameSite=Lax`, `Secure` under https.
+    Deployed: host-only (no `Domain` attribute, which would also cover every
+    subdomain), `SameSite=Lax`, `Secure` under https.
 
     Local development reaches the API at a `.local` subdomain (e.g.
     `api.macrostrat.local`) from a site served elsewhere (`https://macrostrat.local`
@@ -453,6 +454,9 @@ def auth_cookie_params() -> CookieParams:
     ):
         cookie_domain = ".".join(cookie_domain.split(".")[-2:])
         samesite = "none" if secure else "lax"
+    elif cookie_domain is not None and not cookie_domain.endswith(".local"):
+        # Otherwise macrostrat.org's session also reaches dev.macrostrat.org.
+        cookie_domain = None
     return CookieParams(domain=cookie_domain, samesite=samesite, secure=secure)
 
 

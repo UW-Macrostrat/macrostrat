@@ -95,10 +95,16 @@ def test_audit_actor_matches_the_trigger_fallback():
 @pytest.mark.parametrize(
     "redirect_uri,domain,samesite,secure",
     [
-        # Production: the API's own host, first-party.
+        # Deployed: host-only, so production's session never reaches dev.
         (
             "https://macrostrat.org/api/v3/security/callback",
-            "macrostrat.org",
+            None,
+            "lax",
+            True,
+        ),
+        (
+            "https://dev.macrostrat.org/api/v3/security/callback",
+            None,
             "lax",
             True,
         ),
@@ -127,6 +133,23 @@ def test_auth_cookie_params(monkeypatch, redirect_uri, domain, samesite, secure)
     assert params.domain == domain
     assert params.samesite == samesite
     assert params.secure is secure
+
+
+def test_logout_clears_domain_cookies(monkeypatch):
+    # Sessions issued before cookies went host-only carry Domain=macrostrat.org.
+    from starlette.responses import Response
+
+    monkeypatch.setenv(
+        "REDIRECT_URI", "https://macrostrat.org/api/v3/security/callback"
+    )
+    response = Response()
+    security.clear_auth_cookies(response)
+    cleared = response.headers.getlist("set-cookie")
+    for key in (security.access_token_key, security.refresh_token_key):
+        assert any(
+            c.startswith(f"{key}=") and "Domain=macrostrat.org" in c for c in cleared
+        )
+        assert any(c.startswith(f"{key}=") and "Domain=" not in c for c in cleared)
 
 
 def test_redirect_uri_falls_back_to_old_name(monkeypatch):
