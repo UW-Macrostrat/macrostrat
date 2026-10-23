@@ -399,6 +399,9 @@ SELECT * FROM maps.sources_metadata
 WHERE is_finalized
 ORDER BY source_id DESC;
 
+GRANT SELECT ON macrostrat_api.maps TO web_anon;
+
+
 CREATE VIEW macrostrat_api.strat_concepts_with_names AS
  SELECT m.concept_id,
     m.orig_id,
@@ -581,9 +584,6 @@ SELECT strat_names.id,
 FROM macrostrat.strat_names
 where concept_id is null;
 
-GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
-
-GRANT USAGE ON SCHEMA macrostrat_api TO web_user;
 
 -- These two rewrite the column tree. EXECUTE on a function is PUBLIC by
 -- default, so it is revoked outright and granted to administrators alone.
@@ -729,9 +729,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELE
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE macrostrat IN SCHEMA macrostrat_api GRANT SELECT ON TABLES  TO web_anon;
-
---this is important so that postgrest works for the ingest process
-GRANT USAGE ON SCHEMA macrostrat_api TO web_admin;
 
 GRANT INSERT, SELECT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA macrostrat_api

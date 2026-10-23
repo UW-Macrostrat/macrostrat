@@ -8,6 +8,7 @@ Many are direct copies, however some are more customized data views for the fron
 */
 
 CREATE SCHEMA IF NOT EXISTS macrostrat_api;
+GRANT USAGE ON SCHEMA macrostrat_api TO web_anon;
 
 CREATE OR REPLACE VIEW macrostrat_api.projects AS
 SELECT * FROM macrostrat.projects;

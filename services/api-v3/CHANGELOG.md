@@ -1,7 +1,8 @@
 # API v3 changelog
 
-## [Unreleased]
+## [3.1.0]
 
+- Authentication cookie fixes, so that `dev` and production environments are not mixed.
 - `/tasks`: start, watch (Server-Sent Events), cancel and kill runs of registered
   management tasks, recorded in `macrostrat_meta.task_run`. Admin only.
 
