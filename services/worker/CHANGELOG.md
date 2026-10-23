@@ -1,5 +1,9 @@
 # Worker changelog
 
+## [1.1.1] - 2026-10-23
+
+- Fixes a bug in `macrostrat bounds build` that caused failure for global maps.
+
 ## [1.1.0] - 2026-10-23
 
 - `macrostrat.tasks.run` executes registered management tasks (`topology.update`, `maps.process-pipeline`)
