@@ -26,8 +26,12 @@ TOLERANCE_KM = 1.0
 TOLERANCE_REL = 1e-6
 
 #: Equal-area planar, since the difference against world-sized bounds is near-global
-#: and the geography type cannot measure it.
-_MOVED_KM = "ST_Area(ST_Transform({geom}, 6933)) / 1e6"
+#: and the geography type cannot measure it. Clipped first because PROJ rejects
+#: latitudes past ±90, which sources reaching the poles can carry and the
+#: geography cast in `_AREA_KM` silently coerces.
+_MOVED_KM = """ST_Area(ST_Transform(
+  ST_ClipByBox2D({geom}, ST_MakeEnvelope(-180, -90, 180, 90, 4326)), 6933
+)) / 1e6"""
 
 #: A stamp over a map's operation list, geometry operands included, so a
 #: recomputed opening counts as a change.
