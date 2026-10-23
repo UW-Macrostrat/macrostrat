@@ -1,6 +1,6 @@
 # Worker changelog
 
-## [Unreleased]
+## [1.1.0] - 2026-10-23
 
 - `macrostrat.tasks.run` executes registered management tasks (`topology.update`, `maps.process-pipeline`)
   on the `admin` queue, with live terminal output and Ctrl-C-style cancel (`tasks` extra)
