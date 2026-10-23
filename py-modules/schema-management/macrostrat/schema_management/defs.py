@@ -117,6 +117,24 @@ SCHEMA_FILTERED_QUERIES = (
 )
 
 
+# schemainspect finds the owner in `pg_tables`, which lacks views, so view grants vanished.
+PRIVILEGES_QUERY = f"""
+select
+  g.table_schema as schema,
+  g.table_name as name,
+  'table' as object_type,
+  g.grantee as user,
+  g.privilege_type as privilege
+from information_schema.role_table_grants g
+join pg_catalog.pg_namespace n on n.nspname = g.table_schema
+join pg_catalog.pg_class c on c.relnamespace = n.oid and c.relname = g.table_name
+where g.grantee <> pg_catalog.pg_get_userbyid(c.relowner)
+  and g.table_schema not in ('pg_internal', 'pg_catalog', {SYSTEM_SCHEMAS})
+  and g.table_schema not like 'pg_temp_%' and g.table_schema not like 'pg_toast_temp_%'
+order by schema, name, user
+"""
+
+
 def _add_to_system_schemas(query, names: str):
     # Over a SQLAlchemy connection, the inspector's queries are `text()` clauses.
     if isinstance(query, TextClause):
@@ -142,6 +160,9 @@ class OurPostgreSQL(PostgreSQL):
         if self.connection_type == "sqlalchemy":
             query = text(query)
         present = [r.nspname for r in self.execute(query)]
+        self.PRIVILEGES_QUERY = PRIVILEGES_QUERY
+        if self.connection_type == "sqlalchemy":
+            self.PRIVILEGES_QUERY = text(PRIVILEGES_QUERY)
         self.exclude_schemas([s for s in present if s not in self.included_schemas])
         super().load_all()
 

@@ -38,7 +38,5 @@ LEFT JOIN tags
   ON s.source_id = tags.source_id
 ORDER BY s.source_id DESC;
 
--- TODO: tighten this to "web_user" and possible only specific users.
-GRANT USAGE ON SCHEMA map_ingestion_api TO web_anon;
-GRANT SELECT ON map_ingestion_api.maps TO web_anon;
-
+GRANT USAGE ON SCHEMA map_ingestion_api TO web_authorized;
+GRANT SELECT ON map_ingestion_api.maps, map_ingestion_api.line_types, map_ingestion_api.point_types TO web_authorized;
