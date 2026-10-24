@@ -1,6 +1,6 @@
 # Worker changelog
 
-## [Unreleased]
+## [1.1.2] - 2026-10-24
 
 - A `build` inspect command reports the worker's build and queues over the broker
 

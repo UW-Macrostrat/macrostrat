@@ -1,6 +1,6 @@
 # API v3 changelog
 
-## [Unreleased]
+## [3.1.1] - 2026-10-24
 
 - `/workers/version` lists the build each Celery worker reports; 503 when the broker is unreachable
 
