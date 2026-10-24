@@ -48,5 +48,6 @@ CI releases on merge to `main` (`.github/workflows/build-api-v2.yaml` at the
 repository root, via the shared `build-service.yaml`). A `package.json` version
 with no `api-v2-v…` tag yet is built, tagged and published; the image is still
 `macrostrat-api`. A stable version needs a `## [x.y.z]` heading
-in `CHANGELOG.md`. Never create or push version tags by hand. Add terse,
-one-line entries under `## [Unreleased]`.
+in `CHANGELOG.md`. Never create or push version tags by hand. Record changes
+as fragments (`uv run mono changeset` from the repository root, naming
+`api-v2`); prereleases collect under `## [Unreleased]`, as for the other services.

@@ -177,6 +177,18 @@ anything against a non-local environment. In short:
   cluster costs CI minutes. Spin one up only when a test genuinely needs its own
   (e.g. the unoptimized drift build).
 
+## Releasing services
+
+Services in `services/` are versioned with `mono` from `macrostrat.package_tools`
+(configured in `[tool.mono]` in the root `pyproject.toml`; see `.changes/README.md`).
+
+- A pull request that changes a service adds a fragment: `uv run mono changeset`.
+  Do not hand-edit service versions or write changelog entries directly.
+- A release branch runs `uv run mono version --pre` (prereleases) or
+  `uv run mono version [-p <service>]` (stable), which also refreshes `uv.lock`.
+- Merging releases: each service's build tags `<service>-vX.Y.Z`. Never create
+  release tags by hand.
+
 ## Python
 
 - The workspace is `uv`-managed; py-modules are editable path dependencies wired

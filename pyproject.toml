@@ -28,6 +28,7 @@ gis = ["macrostrat.cli[gis]"]
 dev = [
     "pytest>=8.3.2,<9",
     "ruff>=0.9.0,<1",
+    "macrostrat.package_tools>=2.2.0,<3",
 ]
 
 [tool.setuptools]
@@ -52,6 +53,15 @@ default-groups = [
 "macrostrat.task-runner" = { editable = true, path = "py-modules/task-runner" }
 "macrostrat.tileserver-utils" = { editable = true, path = "py-modules/tileserver-utils" }
 "macrostrat.worker" = { editable = true, path = "services/worker" }
+
+# Service releases: `uv run mono changeset` in a PR, `uv run mono version` to release.
+# The build workflows tag `<service>-vX.Y.Z` on merge; mono only sets versions.
+[tool.mono]
+packages = ["services/*"]
+released-by = "tag"
+update-internal-dependencies = "none"
+changelog = "unreleased"
+prerelease-label = "beta"
 
 [tool.ruff]
 line-length = 88

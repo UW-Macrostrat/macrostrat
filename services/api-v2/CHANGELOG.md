@@ -1,5 +1,7 @@
 # Macrostrat API v2 Changelog
 
+## [Unreleased]
+
 ## [2.5.0] - 2026-10-22
 
 - `/columns` and `/units` list a column's `refs` once each when it cites a reference at several locators
@@ -15,14 +17,11 @@
 - `/version` reports the running build; `/health` answers 503 when the database does not
 - Fix ~13 s responses from `/mobile/map_query_v2`, `/mobile/map_query` and `/carto/small` on the flattened map schema: join `maps.polygons`, `maps.lookup` and `maps.lines` by key instead of unions of the per-scale views. Requires the flattened schema
 - Fix `/carto/small` geometry formats without `shape`, which failed on an ambiguous `geom`
-
-Note: This release now depends on a unified `maps.lookup` table, unifying all the scale lookup tables and adding a `source_id` column.
-
-## [2.4.0-beta.1] - 2026-10-09
-
 - `/mobile/map_query_v2` returns `refs` on each `mapData` item: the polygon's references from its map (a mosaic's member for SGMC), legend entry and own links, as `{ref_type, label, ref_id, citation, doi, url}`. Left out where the database lacks `map_bounds.polygon_refs_for`; `ref` is unchanged
 - `/mobile/map_query_v2` takes `source` (a map or compilation slug or source id, e.g. `carto`; `sys:carto-legacy` for the materialized build; `compilation` is accepted as an earlier name): the polygon and lines then come from the compilation system through `map_bounds.polygon_at` / `lines_at`, with the legend from `maps.legend`, and a zoom below the source's drawn range is refused. Absent, the legacy query runs unchanged
 - `/elevation` (and so `/mobile/map_query_v2` and `/mobile/dashboard`) can be served by the tile server's COG-backed elevation service instead of the `elevation` Postgres database: set `ELEVATION_SERVICE_URL` (e.g. `https://tiles.macrostrat.org/elevation`). Response shapes are unchanged. Unset, the legacy database is used as before
+
+Note: This release now depends on a unified `maps.lookup` table, unifying all the scale lookup tables and adding a `source_id` column.
 
 ## [2.3.11] - 2026-09-17
 
@@ -40,23 +39,14 @@ Note: This release now depends on a unified `maps.lookup` table, unifying all th
 ## [2.3.8] - 2026-07-28
 
 - Fix unit ordering in `/mobile/map_query`
-
-## [2.3.1-beta.2] - 2026-02-21
-
-- Fix SQL error with fossil route filtering by concept IDs
-
-## [2.3.1-beta.1] - 2026-02-16
-
 - Fix behavior where columns that lack matching units are retained in results
 - Add `project_name` to `/columns?response=long` output
+- Fix SQL error with fossil route filtering by concept IDs
 
 ## [2.3.0] - 2026-01-25
 
 - Modify tests to output warnings instead of errors in certain cases
 - Add support for filtering by concept name
-
-## [2.3.0-beta.1] - 2026-01-24
-
 - Create a "fast path" for column queries that do not require unit-based filtering
 - Reduce the number of queries made when fetching columns and units
 - Convert lots of callback-based code to async/await for better readability
