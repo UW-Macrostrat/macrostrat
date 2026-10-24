@@ -1,5 +1,9 @@
 # Worker changelog
 
+## [Unreleased]
+
+- A `build` inspect command reports the worker's build and queues over the broker
+
 ## [1.1.1] - 2026-10-23
 
 - Fixes a bug in `macrostrat bounds build` that caused failure for global maps.

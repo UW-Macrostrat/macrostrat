@@ -1,5 +1,9 @@
 # API v3 changelog
 
+## [Unreleased]
+
+- `/workers/version` lists the build each Celery worker reports; 503 when the broker is unreachable
+
 ## [3.1.0]
 
 - Authentication cookie fixes, so that `dev` and production environments are not mixed.
