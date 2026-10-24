@@ -1486,6 +1486,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "macrostrat-package-tools"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "macrostrat-utils" },
+    { name = "packaging" },
+    { name = "requests" },
+    { name = "rich" },
+    { name = "toml" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6f/5a/11553b97789e4b20afa4093a678eadb392445f54e9b45e4fdeaad8661933/macrostrat_package_tools-2.2.0.tar.gz", hash = "sha256:9be67a1785c8444bd7b365834b7af6d3c49d1ba875842b842242f5b489a1bc83", size = 13266, upload-time = "2026-10-24T07:13:10.148Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/89/1b1700f592343314ae2800b910b6040da440247bae5e5dc006c543311494/macrostrat_package_tools-2.2.0-py3-none-any.whl", hash = "sha256:448fc84add7d1e32c206c42c15903b88eb9273f05f4b557efa00e7b5aa501f92", size = 16976, upload-time = "2026-10-24T07:13:09.263Z" },
+]
+
+[[package]]
 name = "macrostrat-radosgw-admin"
 version = "0.9.0"
 source = { editable = "submodules/storage-admin" }
@@ -1647,6 +1664,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "macrostrat-package-tools" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -1675,6 +1693,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "macrostrat-package-tools", specifier = ">=2.2.0,<3" },
     { name = "pytest", specifier = ">=8.3.2,<9" },
     { name = "ruff", specifier = ">=0.9.0,<1" },
 ]
