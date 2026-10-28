@@ -41,6 +41,7 @@ from pydantic import BaseModel
 
 from macrostrat.utils import get_logger
 
+from ..sync_engine import sync_engine
 from .legacy import LEGACY_TABLES, LegacyElevation, LegacySample
 
 log = get_logger(__name__)
@@ -398,7 +399,7 @@ def register_elevation_routes(
 
             # Synchronous, like the raster layers: rio-tiler's readers are
             # synchronous, so these are sync endpoints run in the threadpool.
-            index = RasterIndex(url)
+            index = RasterIndex(sync_engine(url))
     else:
         log.warning(
             "macrostrat.raster_layers >= 0.4 is not installed; no COG elevation"
