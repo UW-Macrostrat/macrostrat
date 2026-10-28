@@ -50,6 +50,8 @@ def run_update(db, params: UpdateParams, ctx: RunContext) -> dict:
         for res in build_all(db):
             failures += bool(res.error)
             print(describe(res))
+        # The topology works on its own connection; end this read transaction.
+        db.session.commit()
         if failures:
             raise RuntimeError(f"{failures} bounds failed to build")
 

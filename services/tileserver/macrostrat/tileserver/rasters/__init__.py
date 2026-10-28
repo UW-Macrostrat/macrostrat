@@ -25,6 +25,7 @@ from typing_extensions import Annotated
 from macrostrat.utils import get_logger
 
 from ..auth import require_scope
+from ..sync_engine import sync_engine
 
 log = get_logger(__name__)
 
@@ -253,7 +254,7 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
     # A synchronous index alongside the app's asyncpg pool: rio-tiler's readers
     # are synchronous, so these routes are sync `def` endpoints run in
     # Starlette's threadpool, where a sync engine is the right tool.
-    index = RasterIndex(url)
+    index = RasterIndex(sync_engine(url))
     configs = raster_layer_configs()
 
     # Mounted per layer rather than through `register_raster_layers`, so the
