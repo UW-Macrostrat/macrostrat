@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-10-28
+
+- Raster and elevation routes share one small, named (`tileserver-rasters`) connection pool per worker
+
 ## [3.2.1] - 2026-10-22
 
 - Fix: delegated tokens were rejected without the database being consulted. The two

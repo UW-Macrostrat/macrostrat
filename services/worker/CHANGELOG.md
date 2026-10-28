@@ -1,5 +1,11 @@
 # Worker changelog
 
+## [Unreleased]
+
+## [1.1.3] - 2026-10-28
+
+- `topology.update` no longer holds its first connection idle in a transaction for the whole run
+
 ## [1.1.2] - 2026-10-24
 
 - A `build` inspect command reports the worker's build and queues over the broker
