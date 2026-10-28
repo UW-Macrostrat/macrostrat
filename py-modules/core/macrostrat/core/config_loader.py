@@ -69,6 +69,7 @@ CONTROL_VARIABLES = frozenset(
         "SHOULD_REINSTALL",
         "INSTALL_PATH",
         "DATABASE_URL",
+        "RUNNER_DATABASE_URL",
         "DB_PORT",
     }
 )

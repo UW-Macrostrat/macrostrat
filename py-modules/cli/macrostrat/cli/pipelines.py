@@ -10,7 +10,8 @@ Python at all. What Macrostrat contributes is the environment. The child receive
     MACROSTRAT_DATABASE_URL  for a child that has no Macrostrat in it
 
 so that `--env`, the remembered environment and its lapse rules all apply to the
-pipeline exactly as they do to `macrostrat db`.
+pipeline exactly as they do to `macrostrat db`. The URL is the reader login: write
+capability comes from the write gate, asked by the step that writes.
 
 Pipelines are found by walking the workbook that contains the current directory —
 or, outside any workbook, the one `sources.data_integration` names in
@@ -212,8 +213,12 @@ def _command_for_file(file: str, args: list[str]) -> list[str]:
 
 
 def child_environment() -> dict[str, str]:
-    """The environment a pipeline runs in: ours, with Macrostrat's resolved into it."""
-    from macrostrat.core.database import database_url_for
+    """The environment a pipeline runs in: ours, with Macrostrat's resolved into it.
+
+    The URL carries the reader login. A step that writes acquires the writer's
+    itself, through the write gate, so `--apply` is asked about where it is used.
+    """
+    from macrostrat.core.database import RUNNER_DATABASE_URL, database_url_for
 
     child = dict(environ)
     # The launcher exports its own VIRTUAL_ENV; leaving it set makes `uv` ignore it
@@ -224,7 +229,10 @@ def child_environment() -> dict[str, str]:
     if app.settings.env is not None:
         child["MACROSTRAT_ENV"] = app.settings.env
     try:
-        child["MACROSTRAT_DATABASE_URL"] = database_url_for("macrostrat")
+        url = database_url_for("macrostrat")
+        child["MACROSTRAT_DATABASE_URL"] = url
+        # Lets a Macrostrat-aware child connect without asking the read gate again.
+        child[RUNNER_DATABASE_URL] = url
     except KeyError as err:
         # Not fatal: a pipeline may read from somewhere else entirely, and refusing
         # here would break the runner for the case it exists to support.

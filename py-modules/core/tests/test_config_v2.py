@@ -166,6 +166,7 @@ class TestEnvironmentOverrides:
             "MACROSTRAT_ROOT",
             "MACROSTRAT_PYROOT",
             "MACROSTRAT_DATABASE_URL",
+            "MACROSTRAT_RUNNER_DATABASE_URL",
             "MACROSTRAT_DB_PORT",
             "MACROSTRAT_API_SRC",
         ],

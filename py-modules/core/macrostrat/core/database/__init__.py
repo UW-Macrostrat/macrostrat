@@ -151,7 +151,11 @@ def _settings_for_env(env: str | None):
     return settings.from_env(env)
 
 
-def database_url_for(name: str = MAIN_DATABASE, env: str | None = None) -> str:
+def database_url_for(
+    name: str = MAIN_DATABASE,
+    env: str | None = None,
+    role: DatabaseRole = DatabaseRole.Reader,
+) -> str:
     """Look up a database URL by name, optionally in a named environment.
 
     Independent of the process-global active environment, so a caller can target a
@@ -161,23 +165,35 @@ def database_url_for(name: str = MAIN_DATABASE, env: str | None = None) -> str:
     Composed through the connection registry rather than read from a config key,
     so an environment whose credentials live in a secret manager resolves here
     too, and a `[<env>.databases]` entry written as a bare name inherits its
-    server. The URL is for handing to another process, so it carries the write
-    login and none of this process's `application_name` attribution.
+    server. The URL is for handing to another process, so it carries none of this
+    process's `application_name` attribution.
+
+    A credential leaves this process here, so *role* passes its gate first: the
+    read gate for the reader login, the data-write gate for the writer's.
     """
     from ..config import exported_database_url
-    from ..safety import confirm_read
+    from ..environment import WriteScope
+    from ..safety import confirm_read, require_write_access
 
+    role = DatabaseRole(role)
     cfg = _settings_for_env(env)
     conn = connection_for(cfg, name)
     if conn is None:
         where = f"environment {env!r}" if env else "the active environment"
         raise KeyError(f"No database {name!r} configured for {where}")
-    # A credential leaves this process here; at least the read gate applies.
-    confirm_read(cfg)
-    return exported_database_url(conn, DatabaseRole.Writer)
+    if role == DatabaseRole.Writer:
+        # The writer login is for another process; this one stays a reader.
+        require_write_access(WriteScope.Data, settings=cfg, escalate_connection=False)
+    else:
+        confirm_read(cfg)
+    return exported_database_url(conn, role)
 
 
-def database_for(name: str = MAIN_DATABASE, env: str | None = None) -> Database:
+def database_for(
+    name: str = MAIN_DATABASE,
+    env: str | None = None,
+    role: DatabaseRole = DatabaseRole.Writer,
+) -> Database:
     """Resolve a named database from configuration. See `database_url_for`.
 
     Pass the result explicitly to library functions, or install it for code that
@@ -186,7 +202,27 @@ def database_for(name: str = MAIN_DATABASE, env: str | None = None) -> Database:
         with database_context(database_for(env="test")):
             ...
     """
-    return Database(database_url_for(name, env))
+    return Database(database_url_for(name, env, role))
+
+
+#: The reader URL `macrostrat run` resolved for the pipeline it launched. Not
+#: `MACROSTRAT_DATABASE_URL`, which config import and compose commands overwrite.
+RUNNER_DATABASE_URL = "MACROSTRAT_RUNNER_DATABASE_URL"
+
+
+def _runner_database_url() -> str | None:
+    """The launcher's reader URL, when this process is its pipeline and still reading.
+
+    The launcher passed the read gate before resolving it, and holding the URL is
+    holding the credential, so connecting with it asks nothing again. A writer
+    resolves its own login, behind the write gate that made it one.
+    """
+    if db_role_ctx.get() != DatabaseRole.Reader:
+        return None
+    env = environ.get("MACROSTRAT_ENV")
+    if env is None or env != getattr(settings, "env", None):
+        return None
+    return environ.get(RUNNER_DATABASE_URL) or None
 
 
 def get_database():
@@ -194,10 +230,12 @@ def get_database():
 
     db = db_ctx.get()
     if db is None:
-        url = _default_database_url()
+        url = _runner_database_url()
         if url is None:
-            raise NoDatabaseConfigured()
-        _confirm_read_if_gated()
+            url = _default_database_url()
+            if url is None:
+                raise NoDatabaseConfigured()
+            _confirm_read_if_gated()
         db = Database(url)
         db_ctx.set(db)
     return db

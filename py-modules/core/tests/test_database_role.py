@@ -302,3 +302,82 @@ class TestReadConfirmation:
         monkeypatch.setattr(safety, "is_interactive", lambda: False)
         url = safety.resolve_database_url(s, DatabaseRole.Writer)
         assert url.password == "pw-shared"
+
+
+class TestPipelineLaunch:
+    """`macrostrat run` asks the read gate once; the pipeline it launches does not."""
+
+    RUNNER_URL = "postgresql://reader:pw@h:5432/d"
+
+    @fixture
+    def production(self, monkeypatch, stub_resolver):
+        policy = EnvironmentPolicy.resolve(
+            "production", env_class="production", confirm={"read": "prompt"}
+        )
+        conn = DatabaseConnection.parse(
+            {
+                "host": "h",
+                "database": "d",
+                "read_password": "stub://reader",
+                "write_password": "stub://writer",
+            }
+        )
+        s = _Settings(conn)
+        s.env = "production"
+        s.policy = policy
+        s.database_connection = lambda name="macrostrat": conn
+        monkeypatch.setattr(db_module, "PG_DATABASE", None)
+        monkeypatch.setattr(db_module, "settings", s)
+        monkeypatch.setattr(db_module, "connection_for", lambda cfg, name: conn)
+        monkeypatch.setattr(safety, "is_interactive", lambda: False)
+        return s
+
+    @fixture
+    def launched(self, monkeypatch, production):
+        monkeypatch.setenv("MACROSTRAT_ENV", "production")
+        monkeypatch.setenv(db_module.RUNNER_DATABASE_URL, self.RUNNER_URL)
+
+    @fixture
+    def opened(self, monkeypatch):
+        """URLs `get_database()` connects with, without connecting."""
+        import macrostrat.database
+
+        urls = []
+        monkeypatch.setattr(macrostrat.database, "Database", urls.append)
+        return urls
+
+    def test_the_child_connects_with_the_launchers_url_unasked(self, launched, opened):
+        db_module.get_database()
+        assert opened == [self.RUNNER_URL]
+
+    def test_a_url_for_another_environment_is_not_trusted(
+        self, monkeypatch, launched, opened
+    ):
+        monkeypatch.setenv("MACROSTRAT_ENV", "staging")
+        with raises(WriteRefused):
+            db_module.get_database()
+        assert opened == []
+
+    def test_a_writer_resolves_its_own_login(self, launched, opened):
+        db_module.use_writer_connection()
+        db_module.get_database()
+        assert opened[0].password == "pw-writer"
+
+    def test_the_launcher_exports_the_reader_login(self, monkeypatch, production):
+        monkeypatch.setattr(safety, "is_interactive", lambda: True)
+        monkeypatch.setattr(safety, "_prompt", lambda message: "y")
+        url = db_module.database_url_for("macrostrat")
+        assert "pw-reader" in url and "pw-writer" not in url
+
+    def test_exporting_the_writer_login_asks_the_write_gate(self, production):
+        with raises(WriteRefused):
+            db_module.database_url_for("macrostrat", role=DatabaseRole.Writer)
+
+    def test_exporting_the_writer_login_does_not_escalate_this_process(
+        self, monkeypatch, production
+    ):
+        monkeypatch.setattr(safety, "is_interactive", lambda: True)
+        monkeypatch.setattr(safety, "_prompt", lambda message: "production")
+        url = db_module.database_url_for("macrostrat", role=DatabaseRole.Writer)
+        assert "pw-writer" in url
+        assert db_module.current_database_role() == DatabaseRole.Reader
