@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+
 from psycopg.sql import Identifier, Literal
 from rich import print
 
@@ -103,6 +105,206 @@ def copy_to_maps(
         db.run_sql(sql_file(f"copy-{kind}-to-maps"), params, raise_errors=True)
 
 
+@dataclass
+class CopyPlan:
+    """What `copy_sources_to_maps` would do, worked out without writing."""
+
+    staging_prefix: str
+    kinds: list[str]
+    #: Source ids to copy, grouped by scale in `maps.map_scale` order.
+    by_scale: dict[str, list[int]]
+    #: Sources whose `maps` rows match their staged rows: replaced, or else skipped.
+    complete: list[int]
+    #: Sources with some rows in `maps` but not all, from an interrupted copy.
+    #: Always cleared and copied again.
+    partial: list[int]
+    replace: bool
+    #: Source id → why the staged polygons look unattributed or absent.
+    unattributed: dict[int, str] = field(default_factory=dict)
+
+    @property
+    def targets(self) -> list[int]:
+        return [i for ids in self.by_scale.values() for i in ids]
+
+    @property
+    def to_delete(self) -> list[int]:
+        return self.partial + (self.complete if self.replace else [])
+
+
+def plan_copy(
+    db, source_ids: list[int], *, staging_prefix: str, delete_existing: bool = False
+) -> CopyPlan:
+    """Decide which of *source_ids* a set-based copy would insert, and check them.
+
+    Reads only. Each source is compared kind by kind, staged rows against rows in
+    `maps`: equal counts are complete, none at all is missing, anything between is
+    partial. A source without a scale is refused outright; one whose staged
+    polygons are missing or have an `ATTEMPTED_COLUMNS` column null throughout is
+    recorded in `unattributed`, for the caller to refuse or allow.
+    """
+    kinds = [
+        kind
+        for kind in STAGING_KINDS
+        if table_exists(db, f"{staging_prefix}_{kind}", schema="sources")
+    ]
+    if "polygons" not in kinds:
+        raise MacrostratError(
+            f"Refusing to insert: sources.{staging_prefix}_polygons does not exist"
+        )
+
+    ids = list(source_ids)
+    rows = db.run_query(
+        """
+        SELECT source_id, scale::text AS scale FROM maps.sources
+        WHERE source_id = ANY(:ids)
+        ORDER BY scale, source_id
+        """,
+        dict(ids=ids),
+    ).all()
+
+    unscaled = [r.source_id for r in rows if r.scale is None]
+    if unscaled:
+        raise MacrostratError(
+            f"Refusing to insert: no scale for sources {unscaled}",
+            details="Set `maps.sources.scale`; the flat tables need one per row.",
+        )
+
+    polygons = _staged_polygons(db, staging_prefix, ids)
+    staged = {
+        kind: _counts(
+            db, _STAGED_COUNTS, Identifier("sources", f"{staging_prefix}_{kind}"), ids
+        )
+        for kind in kinds
+        if kind != "polygons"
+    }
+    staged["polygons"] = {i: r.n_rows for i, r in polygons.items()}
+    in_maps = {
+        kind: _counts(db, _MAPS_COUNTS, Identifier("maps", kind), ids)
+        for kind in STAGING_KINDS
+    }
+
+    complete, partial = [], []
+    by_scale: dict[str, list[int]] = {}
+    for r in rows:
+        have = [in_maps[kind].get(r.source_id, 0) for kind in STAGING_KINDS]
+        want = [staged.get(kind, {}).get(r.source_id, 0) for kind in STAGING_KINDS]
+        if any(have):
+            (complete if have == want else partial).append(r.source_id)
+            if have == want and not delete_existing:
+                continue
+        by_scale.setdefault(r.scale, []).append(r.source_id)
+
+    plan = CopyPlan(
+        staging_prefix=staging_prefix,
+        kinds=kinds,
+        by_scale=by_scale,
+        complete=complete,
+        partial=partial,
+        replace=delete_existing,
+    )
+    plan.unattributed = _unattributed(polygons, plan.targets)
+    return plan
+
+
+_STAGED_COUNTS = """
+SELECT source_id, count(*) FROM {table}
+WHERE source_id = ANY(:ids) AND NOT coalesce(omit, false)
+GROUP BY source_id
+"""
+
+_MAPS_COUNTS = """
+SELECT source_id, count(*) FROM {table}
+WHERE source_id = ANY(:ids)
+GROUP BY source_id
+"""
+
+
+def _counts(db, sql: str, table: Identifier, ids: list[int]) -> dict[int, int]:
+    return dict(db.run_query(sql, dict(table=table, ids=ids)).all())
+
+
+def _staged_polygons(db, prefix: str, ids: list[int]) -> dict:
+    """Per source, the staged polygons to copy and how many carry each attribute."""
+    return {
+        r.source_id: r
+        for r in db.run_query(
+            """
+            SELECT source_id, count(*) AS n_rows, count(lith) AS lith,
+                   count(t_interval) AS t_interval, count(b_interval) AS b_interval
+            FROM {polygons_table}
+            WHERE source_id = ANY(:ids) AND NOT coalesce(omit, false)
+            GROUP BY source_id
+            """,
+            dict(polygons_table=Identifier("sources", prefix + "_polygons"), ids=ids),
+        )
+    }
+
+
+def _unattributed(polygons: dict, source_ids: list[int]) -> dict[int, str]:
+    """`_check_attempted_columns` for many sources, from `_staged_polygons`."""
+    problems = {}
+    for source_id in source_ids:
+        c = polygons.get(source_id)
+        if c is None:
+            problems[source_id] = "no staged polygons"
+            continue
+        empty = [col for col in ATTEMPTED_COLUMNS if getattr(c, col) == 0]
+        if empty:
+            problems[source_id] = f"{', '.join(empty)} null on all {c.n_rows} polygons"
+    return problems
+
+
+def copy_sources_to_maps(
+    db, plan: CopyPlan, *, allow_unattributed: bool = False
+) -> dict[str, int]:
+    """Copy every source in *plan* into the flat `maps` tables, in one transaction.
+
+    The set-based counterpart to `copy_to_maps`, for a compilation whose members
+    share one staging table: one `INSERT … SELECT` per scale and kind rather than
+    three per member. Scales are inserted in `maps.map_scale` order so the heap
+    appends in the `(scale, source_id)` cluster order without a sort. Either every
+    source goes in, or -- on any error -- none does, existing data included.
+
+    Returns the rows inserted per kind.
+    """
+    if plan.unattributed and not allow_unattributed:
+        listed = "; ".join(f"{k}: {v}" for k, v in plan.unattributed.items())
+        raise MacrostratError(
+            f"Refusing to insert: {len(plan.unattributed)} sources look unattributed",
+            details=(
+                f"{listed}. These columns come from the attribute crosswalk, so an"
+                " entirely null column means that step has not run."
+            ),
+        )
+
+    inserted = dict.fromkeys(plan.kinds, 0)
+    if not plan.targets:
+        return inserted
+
+    tables = {
+        f"{kind}_table": Identifier("sources", f"{plan.staging_prefix}_{kind}")
+        for kind in plan.kinds
+    }
+
+    def copy(kind, source_ids, **params):
+        res = db.run_query(
+            sql_file(f"copy-sources-{kind}-to-maps"),
+            dict(tables, source_ids=source_ids, **params),
+        )
+        inserted[kind] += res.rowcount
+
+    with db.transaction():
+        if plan.to_delete:
+            _delete_map_data(db, *plan.to_delete)
+        for scale, source_ids in plan.by_scale.items():
+            for kind in ("polygons", "lines"):
+                if kind in plan.kinds:
+                    copy(kind, source_ids, scale=scale)
+        if "points" in plan.kinds:
+            copy("points", plan.targets)
+    return inserted
+
+
 def remove(db, source: MapInfo):
     """Remove a map's data from the `maps` schema.
 
@@ -127,12 +329,13 @@ def remove(db, source: MapInfo):
     _delete_map_data(db, source.id)
 
 
-def _delete_map_data(db, source_id):
+def _delete_map_data(db, *source_ids):
     db.run_sql(
-        """DELETE FROM maps.polygons WHERE source_id = :source_id;
-        DELETE FROM maps.lines WHERE source_id = :source_id;
-        DELETE FROM maps.points WHERE source_id = :source_id;""",
-        dict(source_id=source_id),
+        """DELETE FROM maps.polygons WHERE source_id = ANY(:source_ids);
+        DELETE FROM maps.lines WHERE source_id = ANY(:source_ids);
+        DELETE FROM maps.points WHERE source_id = ANY(:source_ids);""",
+        dict(source_ids=list(source_ids)),
+        raise_errors=True,
     )
 
 
