@@ -1,3 +1,0 @@
-#!/usr/bin/env zsh
-# Follow dev-server logs from remote server
-ssh acadia 'cd /data/macrostrat/app; python3 -m compose logs -f'

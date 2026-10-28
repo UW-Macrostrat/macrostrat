@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-ssh acadia -C "cd /data/macrostrat/app; ~/.local/bin/docker-compose restart tileserver_cache"
