@@ -47,6 +47,7 @@ new AS MATERIALIZED (SELECT ({expr}) AS g),
 cmp AS MATERIALIZED (
   SELECT n.g,
     ST_AsBinary(n.g) = ST_AsBinary(a.geometry) AS identical,
+    ST_IsEmpty(a.geometry) AS was_empty,
     {area_new} AS area_km,
     CASE WHEN ST_AsBinary(n.g) <> ST_AsBinary(a.geometry)
       THEN ST_SymDifference(n.g, a.geometry) END AS moved
@@ -58,6 +59,7 @@ d AS (
     -- A NULL fold is passed through, for `map_area`'s NOT NULL to report.
     g IS NULL OR NOT identical AND (
       CAST(:strict AS boolean)
+      OR was_empty
       OR coalesce({area_moved}, 0) > :tolerance_km
       OR coalesce({area_moved}, 0) > :tolerance_rel * area_km
     ) AS significant
@@ -117,14 +119,16 @@ def load_ops(db: Database, source_id: int) -> list[OpRow]:
 
 
 def needs_build(db: Database) -> set[int]:
-    """Sources whose operations have changed since their boundary was built."""
+    """Sources whose operations have changed since their boundary was built,
+    and those whose boundary was never computed."""
     rows = db.run_query(
         f"""
         SELECT a.source_id
         FROM map_bounds.map_area a
-        JOIN map_bounds.boundary_op o ON o.source_id = a.source_id
+        LEFT JOIN map_bounds.boundary_op o ON o.source_id = a.source_id
         GROUP BY a.source_id, a.ops_hash
-        HAVING a.ops_hash IS DISTINCT FROM {OPS_HASH}
+        HAVING count(o.id) > 0 AND a.ops_hash IS DISTINCT FROM {OPS_HASH}
+          OR bool_or(ST_IsEmpty(a.geometry))
         """
     ).all()
     return {r.source_id for r in rows}
@@ -338,6 +342,11 @@ def build(
 
     ops = load_ops(db, source_id)
 
+    if not ops and not dry_run and _is_empty(db, source_id):
+        # Empty bounds were never computed (e.g. a placeholder from a patch)
+        recompute_opening(db, source_id)
+        ops = load_ops(db, source_id)
+
     if not ops:
         # Nothing to replay. The boundary is whatever the union pipeline last
         # produced, which is already in map_area.geometry.
@@ -461,6 +470,14 @@ def build(
     result.written = row.written
     result.unchanged = not row.written
     return result
+
+
+def _is_empty(db: Database, source_id: int) -> bool:
+    return db.run_query(
+        "SELECT ST_IsEmpty(geometry) FROM map_bounds.map_area"
+        " WHERE source_id = :source_id",
+        dict(source_id=source_id),
+    ).scalar()
 
 
 def sources_with_bounds(db: Database):

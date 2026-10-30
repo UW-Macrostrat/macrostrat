@@ -21,6 +21,7 @@ from macrostrat.map_integration.package import (
 from macrostrat.map_integration.package.patch import apply_patch, plan_patch
 from macrostrat.map_integration.source_tables import create_source_tables
 from macrostrat.map_integration.utils.map_info import get_map_info, resolve_maps
+from macrostrat.map_topology.bounds import build
 
 SEED = """
 INSERT INTO maps.sources (slug, name, scale, primary_table, keywords) VALUES
@@ -561,3 +562,64 @@ def test_patch_partial(target_db, package, ops_package):
         "Renamed here"
     )
     assert scalar(db, "SELECT count(*) FROM maps.sources WHERE slug = 'pkg-b'") == 0
+
+
+def test_patch_without_bounds(target_db, package, ops_package):
+    db = target_db
+    import_package(db, package, only=["pkg-a"])
+    db.run_sql(
+        "DELETE FROM map_bounds.map_area WHERE id = map_bounds.source_id('pkg-a')",
+        raise_errors=True,
+    )
+    db.session.commit()
+
+    plan = plan_patch(db, ops_package)
+    assert [(c.slug, c.element) for c in plan.changes] == [("pkg-a", "boundary-ops")]
+    assert plan.warnings == []
+    apply_patch(db, plan)
+    # An empty placeholder the stack can hang on
+    assert scalar(
+        db,
+        "SELECT ST_IsEmpty(geometry) FROM map_bounds.map_area"
+        " WHERE id = map_bounds.source_id('pkg-a')",
+    )
+    assert [o[0] for o in _ops(db, "pkg-a")] == ["union", "simplify"]
+
+    source_id = scalar(db, "SELECT map_bounds.source_id('pkg-a')")
+    # The seeded `simplify` predates typed distances, which `build` rejects
+    db.run_sql(
+        "DELETE FROM map_bounds.boundary_op WHERE source_id = :id AND position = 1",
+        dict(id=source_id),
+        raise_errors=True,
+    )
+    db.session.commit()
+    assert source_id in build.needs_build(db)
+    result = build.build(db, source_id)
+    assert result.error is None and result.written
+    assert not scalar(
+        db,
+        "SELECT ST_IsEmpty(geometry) FROM map_bounds.map_area WHERE id = :id",
+        id=source_id,
+    )
+    assert source_id not in build.needs_build(db)
+
+
+def test_build_empty_bounds_without_ops(target_db, package):
+    db = target_db
+    import_package(db, package, only=["pkg-a"])
+    source_id = scalar(db, "SELECT map_bounds.source_id('pkg-a')")
+    db.run_sql(
+        "DELETE FROM map_bounds.boundary_op WHERE source_id = :id;"
+        " UPDATE map_bounds.map_area"
+        " SET geometry = ST_GeomFromText('MULTIPOLYGON EMPTY', 4326) WHERE id = :id",
+        dict(id=source_id),
+        raise_errors=True,
+    )
+    db.session.commit()
+
+    assert source_id in build.needs_build(db)
+    result = build.build(db, source_id)
+    assert result.error is None and result.written
+    # Opened from the map's own features
+    assert [o[0] for o in _ops(db, "pkg-a")] == ["union"]
+    assert source_id not in build.needs_build(db)
