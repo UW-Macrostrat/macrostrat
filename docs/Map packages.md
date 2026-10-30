@@ -128,8 +128,10 @@ and maps with slug globs. Each patched map gets a `patch-package` entry in
 A computed opening's cached geometry (`union`, `compile`, `world`) describes
 the environment it was computed in, so it isn't compared and doesn't travel:
 the target keeps its own cache when the opening is unchanged, and recomputes it
-from its own features otherwise. Finish with `macrostrat topo update` to node
-the changed boundaries.
+from its own features otherwise. A map with no bounds in the target gets an
+empty `map_area` for the rebuild to fill; `macrostrat bounds build` treats
+empty bounds as stale. Finish with `macrostrat topo update` to node the changed
+boundaries.
 
 A package exported with `--element` is **partial** (format version 2, listing
 its `elements`); `ingest` refuses it. `patch` also accepts a whole package and

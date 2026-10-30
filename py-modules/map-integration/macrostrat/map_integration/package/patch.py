@@ -240,12 +240,6 @@ class BoundaryOps(Element):
             ops = [o for _, o in new]
             if ops == current[t.source_id]:
                 continue
-            if t.source_id not in with_area:
-                plan.warnings.append(
-                    f"{t.slug}: no map_area in the target, so boundary operations"
-                    " can't be attached; build its bounds first"
-                )
-                continue
             unknown = {o.operation for o in ops} - vocabulary
             if unknown:
                 plan.warnings.append(
@@ -254,19 +248,32 @@ class BoundaryOps(Element):
                 )
                 continue
             old = current[t.source_id]
+            details = _stack_diff(old, ops)
+            if t.source_id not in with_area:
+                details.append("[yellow]+ map_area, built from this stack[/]")
             plan.changes.append(
                 Change(
                     t.slug,
                     t.source_id,
                     self.name,
                     f"replace stack: {len(old)} → {len(ops)} ops",
-                    _stack_diff(old, ops),
+                    details,
                     [r for r, _ in new],
                 )
             )
 
     def apply(self, conn, change):
         params = dict(id=change.source_id)
+        # Operations need a map_area to hang on; the rebuild fills empty bounds
+        conn.execute(
+            text(
+                "INSERT INTO map_bounds.map_area (id, geometry, area_km, map_layer)"
+                " VALUES (:id, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326), 0,"
+                " map_bounds.barrier_layer())"
+                " ON CONFLICT (id) DO NOTHING"
+            ),
+            params,
+        )
         kept = conn.execute(
             text(
                 "SELECT operation, parameters, CAST(geometry AS text) AS geometry"
