@@ -483,6 +483,31 @@ def vacuum(
         print(f"[red]{errors} tables could not be vacuumed[/]", file=stderr)
 
 
+@db_app.command(name="status", rich_help_panel="Helpers")
+def status(
+    sizes: bool = Option(
+        False,
+        "--sizes",
+        help="Also report database and table sizes, which stat every file "
+        "(minutes on production).",
+    ),
+    database: str = Option(None, help="Database to connect to"),
+):
+    """Report the cluster's headroom: connections, WAL backlog, replication, vacuum.
+
+    Read-only. Exits non-zero when a check passes its threshold.
+    """
+    from rich.console import Console
+
+    from .status import database_status
+
+    engine = engine_for_db_name(database)
+    warnings = database_status(engine, Console(), sizes=sizes)
+    if warnings:
+        print(f"\n[yellow bold]{len(warnings)} warnings[/]", file=stderr)
+        raise typer.Exit(1)
+
+
 class TableInspector:
     def __init__(self, db: Database, table, schema=None):
         self.db = db
