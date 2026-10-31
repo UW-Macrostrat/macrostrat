@@ -49,6 +49,9 @@ class Column:
     lng: float | None = None
     geom: str | None = None
     rgeom: str | None = None
+    #: Keep `lat`/`lng` when a polygon is also given, which must then contain the point —
+    #: for a footprint drawn around a located section rather than a point standing in.
+    keep_point: bool = False
     #: The identifier this column carries in the dataset it came from, written to
     #: `macrostrat.cols.orig_id` and preferred over `(project_id, col_group_id, col_name)`
     #: when reconciling — see `columns.writer.column_identity`. `None` for workbook

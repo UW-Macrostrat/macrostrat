@@ -22,7 +22,7 @@ identifier — see `column_identity` for why an ingested dataset cannot rely on 
 
 from datetime import datetime, timezone
 
-from macrostrat.column_utils import resolve_geometry
+from macrostrat.column_utils import ColumnGeometry, resolve_geometry
 from macrostrat.utils import get_logger
 
 from ..database import get_macrostrat_table
@@ -65,8 +65,10 @@ def column_identity(row: dict) -> tuple:
 #:
 #: `col_name` *is* here, so that a column matched by `orig_id` picks up an upstream
 #: rename. For a name-matched row the update is a provable no-op, since the name is its
-#: key.
+#: key. `col_group_id` is here for the same reason: a column matched by `orig_id` from
+#: another group moves into this one.
 COL_COLUMNS = (
+    "col_group_id",
     "col_name",
     "status_code",
     "col_type",
@@ -149,13 +151,14 @@ def _column_number(col: Column, fallback: int) -> float:
     return COL_NUMBER_NONE
 
 
-def _desired_column_row(db, col: Column, ordinal: int) -> dict:
+def _desired_column_row(db, col: Column, ordinal: int) -> tuple[dict, ColumnGeometry]:
     geometry = resolve_geometry(
         db.session,
         lat=col.lat,
         lng=col.lng,
         geom=col.geom or col.rgeom,
         label=f"column {col.local_id or col.name!r}",
+        keep_point=col.keep_point,
     )
     return {
         "project_id": col.project_id,
@@ -167,7 +170,7 @@ def _desired_column_row(db, col: Column, ordinal: int) -> dict:
         "col_position": "",
         "col": _column_number(col, ordinal),
         **geometry.column_values(),
-    }
+    }, geometry
 
 
 def reconcile_columns(
@@ -181,12 +184,14 @@ def reconcile_columns(
     if not columns:
         return ReconciliationPlan()
 
-    desired, problems = [], []
+    desired, geometries, problems = [], [], []
     for ordinal, col in enumerate(columns, start=1):
         col.project_id = project_id
         col.group_id = col_group_id
         try:
-            desired.append(_desired_column_row(db, col, ordinal))
+            row, geometry = _desired_column_row(db, col, ordinal)
+            desired.append(row)
+            geometries.append(geometry)
         except ValueError as err:
             problems.append(str(err))
     if problems:
@@ -197,10 +202,13 @@ def reconcile_columns(
 
     # Scoped to one column group, not to the project, because anything in `existing`
     # that no longer corresponds to a desired row is deleted — a project-wide fetch would
-    # prune every other group. The consequence is that a column which changed group is not
-    # found here and is inserted, which the `(project_id, orig_id)` unique index then
-    # rejects. That is a loud failure rather than a silent duplicate, and this ingest path
-    # gives a project a single "Default" group, so it is not reachable today.
+    # prune every other group. Columns elsewhere in the project are fetched only by an
+    # `orig_id` this run names, so they always match and are moved into the group.
+    orig_ids = [
+        str(row["orig_id"]).strip()
+        for row in desired
+        if row.get("orig_id") is not None and str(row["orig_id"]).strip()
+    ]
     existing = [
         dict(row._mapping)
         for row in db.run_query(
@@ -208,10 +216,11 @@ def reconcile_columns(
             SELECT id, project_id, col_group_id, col_name, orig_id, status_code,
                    col_type, col_position, col, lat, lng, col_area, wkt
             FROM macrostrat.cols
-            WHERE project_id = :project_id AND col_group_id = :col_group_id
+            WHERE project_id = :project_id
+              AND (col_group_id = :col_group_id OR orig_id = ANY(:orig_ids))
             ORDER BY id
             """,
-            dict(project_id=project_id, col_group_id=col_group_id),
+            dict(project_id=project_id, col_group_id=col_group_id, orig_ids=orig_ids),
         )
     ]
 
@@ -233,6 +242,35 @@ def reconcile_columns(
     )
     for col, col_id in zip(columns, ids):
         col.id = col_id
+    _write_column_areas(db, columns, geometries)
 
     log.info("columns: %s", plan)
     return plan
+
+
+def _write_column_areas(db, columns: list[Column], geometries: list[ColumnGeometry]):
+    """Replace the `col_areas` rows of columns given a polygon.
+
+    The v2 API serves a column's footprint from `col_areas`, not `cols.poly_geom`.
+    Columns given only a point keep whatever footprint they already have.
+    """
+    rows = [
+        {"col_id": col.id, "wkt": geometry.wkt}
+        for col, geometry in zip(columns, geometries)
+        if geometry.is_area
+    ]
+    if not rows:
+        return
+    db.run_query(
+        "DELETE FROM macrostrat.col_areas WHERE col_id = ANY(:col_ids)",
+        dict(col_ids=[r["col_id"] for r in rows]),
+    )
+    db.run_query(
+        """
+        INSERT INTO macrostrat.col_areas (col_id, gmap, col_area, wkt)
+        VALUES (
+          :col_id, '', ST_GeomFromText(CAST(:wkt AS text), 4326), CAST(:wkt AS text)
+        )
+        """,
+        rows,
+    )

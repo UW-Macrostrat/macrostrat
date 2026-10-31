@@ -374,6 +374,34 @@ class TestIngestedColumns:
         assert polygons, "the workbook has polygon columns"
         assert all(r.col_area > 0 for r in polygons), "polygons get a geodesic area"
 
+    def test_footprint_keeps_its_point_and_reaches_col_areas(
+        self, db, test_project, default_age_model_ref
+    ):
+        """A footprint drawn around a located section, as ChinaLex's Voronoi cells are."""
+        column = Column(
+            local_id="1",
+            orig_id="footprint-1",
+            name="Footprinted column",
+            lat=0.25,
+            lng=0.75,
+            geom=SQUARE,
+            keep_point=True,
+            sections=[Section(units=[unit(orig_id="1")])],
+        )
+        ingest_columns(db, [column], project=ProjectIdentifier(id=13))
+
+        row = db.run_query(
+            """
+            SELECT c.lat, c.lng, count(a.id) n_areas, max(a.wkt) area_wkt
+            FROM macrostrat.cols c
+            LEFT JOIN macrostrat.col_areas a ON a.col_id = c.id
+            WHERE c.id = :col_id GROUP BY c.id
+            """,
+            dict(col_id=column.id),
+        ).one()
+        assert (float(row.lat), float(row.lng)) == (0.25, 0.75)
+        assert row.n_areas == 1 and row.area_wkt == SQUARE
+
     def test_column_footprint_is_rewritten(
         self, db, test_project, default_age_model_ref, excel_file
     ):
@@ -440,6 +468,30 @@ class TestIdentifiedSections:
             r.orig_id: r.id
             for r in db.run_query(f"SELECT id, orig_id FROM {table} ORDER BY id")
         }
+
+    def test_a_column_moves_to_another_group_by_its_identifier(
+        self, db, test_project, default_age_model_ref
+    ):
+        """Regrouping a dataset keeps its columns' ids and units rather than colliding
+        with the `(project_id, orig_id)` index."""
+        column = self._column([Section(units=[unit(orig_id="1")])])
+        ingest_columns(db, [column], project=self.PROJECT, group=("name", "Default"))
+        col_id, units = column.id, self._rows(db, "macrostrat.units")
+
+        column = self._column([Section(units=[unit(orig_id="1")])])
+        ingest_columns(db, [column], project=self.PROJECT, group=("name", "Region"))
+
+        assert column.id == col_id
+        assert self._rows(db, "macrostrat.units") == units
+        group = db.run_query(
+            """
+            SELECT g.col_group FROM macrostrat.cols c
+            JOIN macrostrat.col_groups g ON g.id = c.col_group_id
+            WHERE c.id = :col_id
+            """,
+            dict(col_id=col_id),
+        ).scalar()
+        assert group == "Region"
 
     def test_section_ids_survive_reordering_and_insertion(
         self, db, test_project, default_age_model_ref
