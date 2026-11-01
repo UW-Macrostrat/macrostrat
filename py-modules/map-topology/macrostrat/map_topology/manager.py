@@ -322,8 +322,12 @@ def release_map(db, map_id: int):
 
 def _print_map_info(map, prefix=""):
     print(
-        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] {_print_area(map.area_km)}[/dim]"
     )
+
+
+def _print_area(area_km: float):
+    return f"[green]{area_km:.1f}[/green] km²"
 
 
 # Which maps are noded into the topology, over `map_bounds.map_area a`. The one
