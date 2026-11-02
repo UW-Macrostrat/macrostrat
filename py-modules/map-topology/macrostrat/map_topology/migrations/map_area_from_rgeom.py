@@ -5,13 +5,12 @@ from macrostrat.schema_management import Migration, exists
 
 from ..bounds.build import OPS_HASH
 
-#: Maps `copy-all-maps` would seed that hold an `rgeom` to adopt instead. None can
-#: be the trigger's mirror: `sync_source_rgeom` writes only maps with a `map_area`.
+#: Maps holding an `rgeom` to adopt, whatever their status or scale: once the
+#: column is dropped, it is the only footprint an unfinalized or obsolete map has
+#: to be viewed by. None can be the trigger's mirror: `sync_source_rgeom` writes
+#: only maps with a `map_area`.
 _CANDIDATE = """
-  s.is_finalized
-  AND s.status_code = 'active'
-  AND s.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
-  AND s.rgeom IS NOT NULL
+  s.rgeom IS NOT NULL
   AND NOT ST_IsEmpty(s.rgeom)
   AND NOT EXISTS (SELECT 1 FROM map_bounds.map_area a WHERE a.id = s.source_id)
   AND NOT EXISTS (SELECT 1 FROM map_bounds.boundary_op o WHERE o.source_id = s.source_id)
