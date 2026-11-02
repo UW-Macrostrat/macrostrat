@@ -216,16 +216,41 @@ class MacrostratTopologyManager(TopologyManager):
         # submodule for linework mode. Boundaries are noded above, piece by
         # piece, so the library's whole-row pass is not run. What follows is the
         # faces half of the library's `update()`, called directly for its stats.
-        # The barrier layer is marked like any layer a boundary change touches;
-        # that is how the marks reach the solved layers composed of it. The
-        # library solves every layer with marks, so the marks on any layer
-        # without rankings -- the barrier layer -- are dropped here, after they
-        # have propagated and before the dissolve.
+        # A boundary change marks every solved layer, including those where no
+        # map is ranked near it. A mark that no map owns and no face holds would
+        # seed a walk of the layer's whole unowned region that releases nothing,
+        # so it is dropped here, after the marks have propagated. This is exact
+        # because every boundary is a barrier (so unowned regions never join
+        # owned ones) and `mark-stale-identity` has queued every held primitive
+        # that lost its owner. The barrier layer, which ranks nothing, is the
+        # case where every mark goes.
         db.run_query(
             """
+            WITH layers AS (
+              SELECT DISTINCT map_layer FROM map_bounds_topology.dirty_face
+            ),
+            owned AS MATERIALIZED (
+              SELECT l.map_layer, x.face_id
+              FROM layers l
+              CROSS JOIN LATERAL map_bounds_topology.resolve_layer_identity(l.map_layer) x
+            ),
+            held AS MATERIALIZED (
+              SELECT DISTINCT f.map_layer, r.element_id AS face_id
+              FROM map_bounds_topology.map_face f
+              JOIN layers l ON l.map_layer = f.map_layer
+              JOIN map_bounds_topology.relation r
+                ON r.layer_id = (f.topo).layer_id
+               AND r.topogeo_id = (f.topo).id
+               AND r.element_type = 3
+            )
             DELETE FROM map_bounds_topology.dirty_face d
             WHERE NOT EXISTS (
-              SELECT 1 FROM map_bounds.map_priority mp WHERE mp.map_layer = d.map_layer
+              SELECT 1 FROM owned o
+              WHERE o.map_layer = d.map_layer AND o.face_id = d.id
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM held h
+              WHERE h.map_layer = d.map_layer AND h.face_id = d.id
             )
             """
         )
@@ -297,8 +322,12 @@ def release_map(db, map_id: int):
 
 def _print_map_info(map, prefix=""):
     print(
-        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] [green]{map.area_km:.1f}[/green] km²"
+        f"{prefix}[bold green]{map.slug}[/][dim] - #[bold gray]{map.map_id}[/bold gray] {_print_area(map.area_km)}[/dim]"
     )
+
+
+def _print_area(area_km: float):
+    return f"[green]{area_km:.1f}[/green] km²"
 
 
 # Which maps are noded into the topology, over `map_bounds.map_area a`. The one

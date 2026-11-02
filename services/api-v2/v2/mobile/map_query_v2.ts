@@ -341,9 +341,10 @@ function compilationSelect() {
         COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
     FROM map_bounds.polygon_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
     JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
-    JOIN maps.sources ON m.source_id = sources.source_id
     LEFT JOIN maps.map_legend ON map_legend.map_id = m.map_id
     LEFT JOIN maps.legend l ON l.legend_id = map_legend.legend_id
+    -- The legend entry's map: a materialized compilation's polygon keeps its member's.
+    JOIN maps.sources ON sources.source_id = COALESCE(l.source_id, m.source_id)
     LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
     LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
 `;

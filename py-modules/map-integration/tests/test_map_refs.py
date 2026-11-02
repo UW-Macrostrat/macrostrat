@@ -240,3 +240,60 @@ def test_write_links_replaces_only_its_types(db):
     )
     assert remaining == ["original"]
     db.session.rollback()
+
+
+COMPILATION_ID = 999202
+
+
+def test_derived_polygons_are_cited_as_their_member(db):
+    """A materialized compilation's polygon keeps its member's legend entry, and
+    with it the member's map references."""
+    utah = parse_citation(UTAH)
+    ids = resolve_refs(db, [utah])
+    write_links(
+        db,
+        "map",
+        [(SOURCE_ID, ids[utah], "original")],
+        keys=[SOURCE_ID],
+        ref_types=["original"],
+    )
+    first, _ = _polygons(db)
+    db.run_query(
+        """
+        INSERT INTO maps.sources (source_id, slug, is_finalized)
+        VALUES (:comp, 'test-refs-compilation', true)
+        """,
+        dict(comp=COMPILATION_ID),
+    )
+    db.run_query(
+        """
+        INSERT INTO map_bounds.compilation_member (compilation_id, member_id)
+        VALUES (:comp, :id)
+        """,
+        dict(comp=COMPILATION_ID, id=SOURCE_ID),
+    )
+    # As `materialize` writes one
+    derived = db.run_query(
+        """
+        INSERT INTO maps.polygons (source_id, scale, orig_id, geom)
+        SELECT :comp, scale, map_id::text, geom FROM maps.polygons WHERE map_id = :first
+        RETURNING map_id
+        """,
+        dict(comp=COMPILATION_ID, first=first),
+    ).scalar()
+    db.run_query(
+        """
+        INSERT INTO maps.map_legend (legend_id, map_id)
+        SELECT legend_id, :derived FROM maps.map_legend WHERE map_id = :first
+        """,
+        dict(derived=derived, first=first),
+    )
+
+    def refs(map_id):
+        return db.run_query(
+            "SELECT ref_type, ref_id FROM map_bounds.polygon_refs_for(:id)",
+            dict(id=map_id),
+        ).all()
+
+    assert refs(derived) == refs(first) == [("original", ids[utah])]
+    db.session.rollback()

@@ -13,6 +13,7 @@ from .grid import drop_grid, node_grid, retry_grid, seed_grid
 from .manager import (
     RETRY_TOLERANCE,
     _duration,
+    _print_area,
     _print_map_info,
     filter_maps,
     get_held_maps,
@@ -448,7 +449,8 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
     rows = db.run_query(
         """
         SELECT t.id, t.source_id AS map_id, s.slug, a.area_km, t.tolerance,
-               t.topology_error
+               t.topology_error,
+                ST_Area(t.geometry::geography) / 1e6 AS piece_km
         FROM map_bounds.map_topo t
         JOIN maps.sources s ON s.source_id = t.source_id
         JOIN map_bounds.map_area a ON a.source_id = t.source_id
@@ -466,9 +468,10 @@ def errors(maps: list[str] = Argument(None), fix: bool = False):
             _print_map_info(row, prefix="Source ")
             curr_map_id = row.map_id
         err = row.topology_error
-        print(f"[dim]- {row.id} (at {row.tolerance}): [/dim]", end="")
+        area_km = _print_area(row.piece_km)
+        print(f"[dim]- {row.id} - {area_km} - (at {row.tolerance}): [/dim]", end="")
         if fix:
-            err = _fix_error(db, row.map_id, row.id)
+            err = _fix_error(db, row.map_id, row.id, tolerance=row.tolerance)
         if err is None:
             print("[green]fixed")
         else:

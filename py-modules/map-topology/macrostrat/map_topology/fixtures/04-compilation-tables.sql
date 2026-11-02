@@ -947,10 +947,12 @@ END;
 $$ LANGUAGE plpgsql STABLE ROWS 50;
 
 /** A polygon's public references, in the order a client lists them: its map's,
-  its legend entry's and its own (`maps.map_refs` and the rest). A mosaic's
-  polygon takes the map references of the member whose footprint holds it, whose
-  `compiled-in` names the mosaic; the mosaic's own are the fallback. The one
-  place the levels are combined, so every API answers alike. */
+  its legend entry's and its own (`maps.map_refs` and the rest). Its map is its
+  legend entry's, so a derived polygon, which keeps its member's entry, is cited
+  as that member. A mosaic's polygon takes the map references of the member
+  whose footprint holds it, whose `compiled-in` names the mosaic; the mosaic's
+  own are the fallback. The one place the levels are combined, so every API
+  answers alike. */
 CREATE OR REPLACE FUNCTION map_bounds.polygon_refs_for(_map_id integer)
   RETURNS TABLE (
     ref_type text,
@@ -960,21 +962,33 @@ CREATE OR REPLACE FUNCTION map_bounds.polygon_refs_for(_map_id integer)
     doi text,
     url text
   ) AS $$
-WITH member AS (
-  SELECT cm.member_id
+WITH polygon AS MATERIALIZED (
+  SELECT
+    p.map_id,
+    p.geom,
+    coalesce((
+      SELECT l.source_id
+      FROM maps.map_legend ml
+      JOIN maps.legend l ON l.legend_id = ml.legend_id
+      WHERE ml.map_id = p.map_id
+      LIMIT 1
+    ), p.source_id) AS source_id
   FROM maps.polygons p
+  WHERE p.map_id = _map_id
+),
+member AS (
+  SELECT cm.member_id
+  FROM polygon p
   JOIN map_bounds.compilation_member cm ON cm.compilation_id = p.source_id
   JOIN map_bounds.map_area a ON a.id = cm.member_id
-  WHERE p.map_id = _map_id
-    AND map_bounds.is_mosaic(p.source_id)
+  WHERE map_bounds.is_mosaic(p.source_id)
     AND ST_Contains(a.geometry, ST_PointOnSurface(p.geom))
 ),
 links AS (
   SELECT r.ref_id, r.ref_type
-  FROM maps.polygons p
+  FROM polygon p
   JOIN maps.map_refs r ON r.source_id = p.source_id
-  WHERE p.map_id = _map_id
-    AND NOT EXISTS (SELECT 1 FROM member)
+  WHERE NOT EXISTS (SELECT 1 FROM member)
   UNION
   SELECT r.ref_id, r.ref_type
   FROM member m

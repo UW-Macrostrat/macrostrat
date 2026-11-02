@@ -9,6 +9,7 @@ GRANT USAGE ON SCHEMA topology TO rockd_reader;
 
 GRANT SELECT ON ALL TABLES IN SCHEMA macrostrat TO rockd_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO rockd_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO macrostrat;
 GRANT SELECT ON ALL TABLES IN SCHEMA topology TO rockd_reader;
 
 GRANT USAGE ON SCHEMA

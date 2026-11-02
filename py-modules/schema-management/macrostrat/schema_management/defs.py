@@ -142,6 +142,22 @@ def _add_to_system_schemas(query, names: str):
     return query.replace(SYSTEM_SCHEMAS, f"{SYSTEM_SCHEMAS}, {names}")
 
 
+# The stock query assumes types are on the search path: it drops the rest as not
+# "visible", and `format_type` would schema-qualify their names a second time.
+TYPES_QUERY_FIXES = {
+    "AND pg_catalog.pg_type_is_visible ( t.oid )": "",
+    "pg_catalog.format_type (t.oid, NULL) AS name": "t.typname AS name",
+}
+
+
+def _types_off_search_path(query):
+    if isinstance(query, TextClause):
+        return text(_types_off_search_path(query.text))
+    for old, new in TYPES_QUERY_FIXES.items():
+        query = query.replace(old, new)
+    return query
+
+
 class OurPostgreSQL(PostgreSQL):
     included_schemas = ["public"]
 
@@ -163,6 +179,7 @@ class OurPostgreSQL(PostgreSQL):
         self.PRIVILEGES_QUERY = PRIVILEGES_QUERY
         if self.connection_type == "sqlalchemy":
             self.PRIVILEGES_QUERY = text(PRIVILEGES_QUERY)
+        self.TYPES_QUERY = _types_off_search_path(self.TYPES_QUERY)
         self.exclude_schemas([s for s in present if s not in self.included_schemas])
         super().load_all()
 
@@ -174,7 +191,8 @@ class OurPostgreSQL(PostgreSQL):
             setattr(self, attr, _add_to_system_schemas(getattr(self, attr), names))
 
     def filter_schema(self, schema=None, exclude_schema=None):
-        for prop in PROPS.split():
+        # Types are not in PROPS; the visibility filter used to bound them instead.
+        for prop in PROPS.split() + ["types"]:
             att = getattr(self, prop)
             filtered = {
                 k: v for k, v in att.items() if v.schema in self.included_schemas
