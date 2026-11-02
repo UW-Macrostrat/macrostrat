@@ -8,9 +8,14 @@ from ..bounds.build import OPS_HASH
 #: Maps holding an `rgeom` to adopt, whatever their status or scale: once the
 #: column is dropped, it is the only footprint an unfinalized or obsolete map has
 #: to be viewed by. None can be the trigger's mirror: `sync_source_rgeom` writes
-#: only maps with a `map_area`.
+#: only maps with a `map_area`. Compilations other than mosaics open with
+#: `compile`, so their leftover `rgeom` is not adopted.
 _CANDIDATE = """
   s.rgeom IS NOT NULL
+  AND NOT (
+    map_bounds.is_compilation(s.source_id)
+    AND NOT map_bounds.is_mosaic(s.source_id)
+  )
   AND NOT ST_IsEmpty(s.rgeom)
   AND NOT EXISTS (SELECT 1 FROM map_bounds.map_area a WHERE a.id = s.source_id)
   AND NOT EXISTS (SELECT 1 FROM map_bounds.boundary_op o WHERE o.source_id = s.source_id)

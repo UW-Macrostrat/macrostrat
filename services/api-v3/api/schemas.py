@@ -47,7 +47,6 @@ class Sources(Base):
     features: Mapped[int] = mapped_column(INTEGER)
     area: Mapped[int] = mapped_column(INTEGER)
     priority: Mapped[bool] = mapped_column(BOOLEAN)
-    rgeom: Mapped[str] = mapped_column(Geometry("POLYGON"))
     display_scales: Mapped[list[str]] = mapped_column(ARRAY(TEXT))
     web_geom: Mapped[str] = mapped_column(Geometry("POLYGON"))
     new_priority: Mapped[int] = mapped_column(INTEGER)

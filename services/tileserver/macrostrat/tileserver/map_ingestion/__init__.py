@@ -11,7 +11,7 @@ from macrostrat.map_utils.slugs import is_slug, staging_table
 from macrostrat.tileserver_utils import MimeTypes
 from macrostrat.utils import get_logger
 
-from ..map_bounds import get_rgeom
+from ..map_bounds import get_bounds
 
 print_sql_statements = False
 
@@ -37,9 +37,7 @@ async def map_bounds_tile(
     y: int,
 ):
     """Bounds for ingested maps"""
-    return await get_rgeom(
-        request.app.state.pool, where="rgeom IS NOT null", z=z, x=x, y=y
-    )
+    return await get_bounds(request.app.state.pool, where="true", z=z, x=x, y=y)
 
 
 @router.get(

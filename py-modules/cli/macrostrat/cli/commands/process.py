@@ -13,12 +13,8 @@ class Process(Base):
 
     Available commands:
         burwell_lookup <source_id> - Refresh the appropriate lookup tables for a given map source
-        carto_lines <source_id> - Refresh the table carto.lines_<scale> for a given map source
-        carto <source_id> - Refresh the table carto.<scale> for a given map source
-        rgeom <source_id> - Update the field `rgeom` in maps.sources for a given map source
         web_geom <source_id> - Update the field `web_geom` in maps.sources for a given map source
         tesselate <options> - Create new voronoi polygons for columns
-        map_source <source_id> - Run all the appropriate scripts for processing a new map source
         legend <source_id> - Insert/update a source's records in maps.legend and maps.map_legend
     Usage:
       macrostrat process <script> <source_id>
