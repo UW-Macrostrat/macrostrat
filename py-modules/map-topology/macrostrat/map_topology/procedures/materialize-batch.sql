@@ -19,8 +19,9 @@
   Each written polygon records where it came from: `orig_id` is the member
   polygon's `map_id`, and its legend link is the member's legend entry, which is
   what makes the result recognisable as a cache (`is_derived`) and removable
-  (`dematerialize`). Returns the batch's last source polygon, its size, and how
-  many polygons were written. */
+  (`dematerialize`), and cites it as the member (`polygon_refs_for`). Returns
+  the batch's last source polygon, its size, and how many polygons were
+  written. */
 WITH member AS (
   SELECT cm.member_id, c.source_id AS content_id, c.footprint, cs.scale AS content_scale
   FROM map_bounds.compilation_member cm
@@ -100,6 +101,16 @@ linked AS (
   FROM written w
   JOIN maps.map_legend ml ON ml.map_id = CAST(w.orig_id AS integer)
   ON CONFLICT (legend_id, map_id) DO NOTHING
+  RETURNING 1
+),
+/* So do the references a polygon carries itself; its map's and its legend
+   entry's are reached through the legend link. */
+cited AS (
+  INSERT INTO maps.polygon_refs (map_id, ref_id, ref_type)
+  SELECT w.map_id, r.ref_id, r.ref_type
+  FROM written w
+  JOIN maps.polygon_refs r ON r.map_id = CAST(w.orig_id AS integer)
+  ON CONFLICT DO NOTHING
   RETURNING 1
 )
 SELECT
