@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-11-01
+
+- `map_query_v2` cites a materialized compilation's polygon as the map it was cut from
+
 ## [2.5.0] - 2026-10-22
 
 - `/columns` and `/units` list a column's `refs` once each when it cites a reference at several locators
