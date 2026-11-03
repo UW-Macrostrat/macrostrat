@@ -33,11 +33,13 @@ def build_raster_cli() -> Typer:
 def _database_url() -> str:
     """Resolved per command, not at import, so a missing URL isn't fatal here."""
     from macrostrat.core.config import settings
+    from macrostrat.core.connections import DatabaseRole
 
-    url = getattr(settings, "pg_database", None)
+    # Scanning registers rasters, so it needs the writer login.
+    url = settings.database_url(role=DatabaseRole.Writer)
     if url is None:
-        raise MacrostratError("No database URL found in settings")
-    return url
+        raise MacrostratError("No database configured for this environment")
+    return url.render_as_string(hide_password=False)
 
 
 def _add_legacy_commands(cli: Typer) -> None:
