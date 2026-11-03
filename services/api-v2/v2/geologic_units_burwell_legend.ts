@@ -1,6 +1,63 @@
+import { cartoFromCompilation } from "./mobile/map-source";
+
 var api = require("./api"),
   async = require("async"),
   larkin = require("./larkin");
+
+const CARTO_SCALES = ["tiny", "small", "medium", "large"];
+
+/* The legend entries `carto` draws at a scale, under `CARTO_BUILD=compilation`:
+   every map owning a face in the layer for the scale's first zoom, with its
+   whole legend (a mosaic member's within its footprint). API v3's `legend.sql`,
+   `all` form. */
+function compilationLegendIds(scale) {
+  return `
+    WITH target AS (
+      SELECT
+        map_bounds.serving_source(s.id, sb.min_zoom) AS source_id,
+        map_bounds.face_layer_for(s.id, sb.min_zoom) AS layer_id
+      FROM (SELECT map_bounds.resolve_source('carto') AS id) s
+      CROSS JOIN map_bounds.scale_band sb
+      WHERE sb.scale = '${scale}'
+    ),
+    owners AS MATERIALIZED (
+      SELECT DISTINCT mf.map_id
+      FROM map_bounds_topology.map_face mf
+      WHERE mf.map_layer = (SELECT layer_id FROM target)
+        AND map_bounds.has_content(mf.map_id)
+      UNION ALL
+      SELECT t.source_id FROM target t WHERE t.layer_id IS NULL
+    ),
+    content AS MATERIALIZED (
+      SELECT c.source_id, c.footprint, cs.scale
+      FROM owners o
+      CROSS JOIN LATERAL map_bounds.content_of(o.map_id) c
+      JOIN maps.sources cs
+        ON cs.source_id = c.source_id
+       AND cs.scale = ANY (enum_range(NULL::maps.map_scale)::text[])
+    )
+    SELECT ml.legend_id
+    FROM content c
+    JOIN maps.polygons p
+      ON p.source_id = c.source_id
+     AND p.scale = CAST(c.scale AS maps.map_scale)
+     AND ST_Intersects(p.geom, c.footprint)
+    JOIN maps.map_legend ml ON ml.map_id = p.map_id
+    WHERE c.footprint IS NOT NULL
+    UNION
+    SELECT l.legend_id
+    FROM content c
+    JOIN maps.legend l ON l.source_id = c.source_id
+    WHERE c.footprint IS NULL
+  `;
+}
+
+function cartoLegendFilter(scale) {
+  if (!CARTO_SCALES.includes(scale)) return "";
+  let legendIds = `SELECT legend_id FROM maps.map_legend JOIN carto_new.${scale} USING (map_id)`;
+  if (cartoFromCompilation()) legendIds = compilationLegendIds(scale);
+  return ` AND m.legend_id IN (${legendIds})`;
+}
 
 module.exports = function (req, res, next, cb) {
   if (Object.keys(req.query).length < 1) {
@@ -163,18 +220,7 @@ module.exports = function (req, res, next, cb) {
         // lith_classes
         function (callback) {
           if (req.query.carto) {
-            if (req.query.carto == "large")
-              carto_scale =
-                " AND m.legend_id IN (SELECT distinct legend_id from maps.map_legend JOIN carto_new.large USING (map_id))";
-            if (req.query.carto == "medium")
-              carto_scale =
-                " AND m.legend_id IN (SELECT distinct legend_id from maps.map_legend JOIN carto_new.medium USING (map_id))";
-            if (req.query.carto == "small")
-              carto_scale =
-                " AND m.legend_id IN (SELECT distinct legend_id from maps.map_legend JOIN carto_new.small USING (map_id))";
-            if (req.query.carto == "tiny")
-              carto_scale =
-                " AND m.legend_id IN (SELECT distinct legend_id from maps.map_legend JOIN carto_new.tiny USING (map_id))";
+            carto_scale = cartoLegendFilter(req.query.carto);
           }
 
           callback(null);

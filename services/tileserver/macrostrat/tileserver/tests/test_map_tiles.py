@@ -113,16 +113,16 @@ class TestRouting:
 
 class TestLegacyCartoRewrite:
     """`/carto-slim` and `/carto` tiles are served from `/map/carto`, under their
-    own addresses, once an environment switches `legacy_carto_from_compilation`
-    on; before that they are the legacy build."""
+    own addresses, once an environment sets `CARTO_BUILD=compilation`; before
+    that they are the legacy build."""
 
     @fixture
     def rewriting(self, app):
-        from macrostrat.tileserver import db_settings
+        from macrostrat.tileserver import CartoBuild, db_settings
 
-        db_settings.legacy_carto_from_compilation = True
+        db_settings.carto_build = CartoBuild.compilation
         yield
-        db_settings.legacy_carto_from_compilation = False
+        db_settings.carto_build = CartoBuild.legacy
 
     @fixture
     def served(self, monkeypatch):
@@ -178,7 +178,7 @@ class TestLegacyCartoRewrite:
     def test_off_by_default(self, app):
         from macrostrat.tileserver import db_settings
 
-        assert db_settings.legacy_carto_from_compilation is False
+        assert db_settings.carto_from_compilation is False
 
 
 class TestRewriteAddress:
