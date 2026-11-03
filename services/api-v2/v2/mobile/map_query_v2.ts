@@ -1,13 +1,11 @@
+import { LEGACY_CARTO, requestedSource } from "./map-source";
+
 const api = require("../api");
 const async = require("async");
 const larkin = require("../larkin");
 const _ = require("underscore");
 
 const LINE_TOLERANCE = 20;
-
-// The materialized `carto.*` build, addressed like a source; never a
-// `maps.sources` row, so it has no zoom range of its own.
-const LEGACY_CARTO = "sys:carto-legacy";
 
 /* A polygon's references at every level, in the order a client lists them,
    where the database combines them (`map_bounds.polygon_refs_for`); absent, `refs`
@@ -283,10 +281,9 @@ function buildSQL(scale, where) {
    carry (`legend_id`, `color`) -- rather than the legacy `lookup_<scale>`
    tables, so a unit's color here is the color it is drawn with.
 
-   Without `source`, nothing below runs and the legacy query is used
-   unchanged, so a database without the compilation schema, or a regression in
-   it, leaves the default behaviour untouched. `carto` becomes the default once
-   the new design is the only one served. */
+   Without `source`, the environment's `CARTO_BUILD` decides (`./map-source`):
+   `carto` through this path, or the legacy query unchanged, so a database
+   without the compilation schema keeps its old behaviour. */
 
 function compilationSelect() {
   return `
@@ -446,10 +443,8 @@ module.exports = (req, res, next) => {
   req.query.z = parseInt(req.query.z || 0);
 
   // A map or compilation slug, or a source id, selects the compilation path;
-  // absent, the legacy carto query runs unchanged. See `compilationSelect`.
-  // `compilation` is the earlier name, accepted until clients have moved.
-  const sourceParam = req.query.source ?? req.query.compilation;
-  const source = sourceParam ? String(sourceParam) : null;
+  // null runs the legacy carto query. See `compilationSelect`.
+  const source = requestedSource(req.query);
 
   if (source == null || source === LEGACY_CARTO) {
     return answer(req, res, next, source);

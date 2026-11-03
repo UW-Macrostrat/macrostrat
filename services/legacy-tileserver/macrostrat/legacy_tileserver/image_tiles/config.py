@@ -1,9 +1,9 @@
 """Where carto's image tiles come from, and which scale draws each zoom.
 
-`LEGACY_CARTO_FROM_COMPILATION`, the core tileserver's switch for `/carto` and
-`/carto-slim`, selects the source here too, so an environment changes both with
-one setting. Off, tiles are drawn from the legacy `carto.*` build in the zoom
-bands it has always used; on, from the compilation system in the bands of
+`CARTO_BUILD`, the core tileserver's switch for `/carto` and `/carto-slim`,
+selects the source here too, so an environment changes both with one setting.
+`legacy` (the default) draws the `carto.*` build in the zoom bands it has always
+used; `compilation` draws the compilation system in the bands of
 `map_bounds.scale_band`, read at startup.
 """
 
@@ -11,8 +11,7 @@ from os import environ
 
 
 def carto_from_compilation() -> bool:
-    value = environ.get("LEGACY_CARTO_FROM_COMPILATION", "")
-    return value.strip().lower() in ("1", "true", "yes", "on")
+    return environ.get("CARTO_BUILD", "").strip().lower() == "compilation"
 
 
 # The legacy tileserver's bands, kept as served: medium runs to z9.

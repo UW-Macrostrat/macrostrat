@@ -62,6 +62,8 @@ services:
       - MACROSTRAT_DATABASE=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable
       - ELEVATION_DATABASE=${ELEVATION_DATABASE_URL}
       - NODE_TLS_REJECT_UNAUTHORIZED=0
+      # Point queries that name no `source` follow the tileservers' build.
+      - CARTO_BUILD=${CARTO_BUILD:-compilation}
   api_v3:
     # Unlike other services, the API v3 service is packaged as part of this repository.
     # This is because its functionality is tightly coupled in many cases with the command-line
@@ -180,9 +182,9 @@ services:
       # Verifies the short-lived tile tokens the website mints. Derived from
       # SECRET_KEY by `macrostrat up` when unset (see compose_env.py).
       - TILESERVER_SECRET_KEY=${TILESERVER_SECRET_KEY}
-      # Legacy `/carto-slim` and `/carto` tiles are served from `/map/carto`
-      # (on locally; each deployed environment switches when ready).
-      - LEGACY_CARTO_FROM_COMPILATION=${LEGACY_CARTO_FROM_COMPILATION:-true}
+      # `/carto-slim` and `/carto` tiles are served from `/map/carto`
+      # (locally; each deployed environment switches when ready).
+      - CARTO_BUILD=${CARTO_BUILD:-compilation}
     # The `--proxy-headers` flag is necessary for the tileserver to work behind a reverse proxy
     # and correctly notify the app that it should trust the X-Forwarded-Proto header.
     # This is necessary for the tileserver to correctly generate URLs for tilejson files.
@@ -203,7 +205,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
       - MAPNIK_POOL_SIZE=8
       # Image tiles follow the core tileserver's switch.
-      - LEGACY_CARTO_FROM_COMPILATION=${LEGACY_CARTO_FROM_COMPILATION:-true}
+      - CARTO_BUILD=${CARTO_BUILD:-compilation}
     command: >
       uvicorn --host 0.0.0.0 --port 8000
         macrostrat.legacy_tileserver:app

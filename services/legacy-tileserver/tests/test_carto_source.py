@@ -1,4 +1,4 @@
-"""`LEGACY_CARTO_FROM_COMPILATION` selects what image tiles are drawn from.
+"""`CARTO_BUILD` selects what image tiles are drawn from.
 
 Imports Mapnik through the package, so it runs in the image build only.
 """
@@ -20,13 +20,13 @@ from macrostrat.legacy_tileserver.image_tiles.mapnik_styles import (  # noqa: E4
 
 @pytest.mark.parametrize(
     "value, expected",
-    [(None, False), ("", False), ("false", False), ("0", False), ("true", True)],
+    [(None, False), ("", False), ("legacy", False), ("compilation", True)],
 )
 def test_switch_is_off_unless_set(monkeypatch, value, expected):
     if value is None:
-        monkeypatch.delenv("LEGACY_CARTO_FROM_COMPILATION", raising=False)
+        monkeypatch.delenv("CARTO_BUILD", raising=False)
     else:
-        monkeypatch.setenv("LEGACY_CARTO_FROM_COMPILATION", value)
+        monkeypatch.setenv("CARTO_BUILD", value)
     assert carto_from_compilation() is expected
 
 

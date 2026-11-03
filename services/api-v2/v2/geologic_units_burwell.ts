@@ -4,9 +4,11 @@ var api = require("./api"),
   gp = require("geojson-precision"),
   larkin = require("./larkin");
 
-function buildSQL(req, scale, where, limit) {
+/* One query over the flat tables for every requested scale: a UNION of the
+   per-scale views loses the key lookup and scans each of them. */
+function buildSQL(req, where, limit) {
   var sql = `
-  (SELECT
+  SELECT
     m.map_id,
     m.source_id,
     COALESCE(m.name, '') AS name,
@@ -35,25 +37,26 @@ function buildSQL(req, scale, where, limit) {
      ORDER BY age_bottom - age_top
      LIMIT 1
     ) AS best_int_name,
-    '${scale}' AS scale
+    m.scale::text AS scale
   `;
 
   if (req.query.format && api.acceptedFormats.geo[req.query.format]) {
     sql += ", ST_AsGeoJSON(m.geom) AS geometry";
   }
 
-  sql +=
-    " FROM maps." +
-    scale +
-    " m \
-          LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id \
-          LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id \
-          LEFT JOIN lookup_" +
-    scale +
-    " mm ON mm.map_id = m.map_id" +
-    where +
-    limit +
-    ")";
+  sql += `
+    FROM maps.polygons m
+    LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
+    LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
+    LEFT JOIN maps.lookup mm ON mm.map_id = m.map_id
+    ${where}
+    ORDER BY CASE m.scale
+      WHEN 'large' THEN 1
+      WHEN 'medium' THEN 2
+      WHEN 'small' THEN 3
+      WHEN 'tiny' THEN 4
+    END
+    ${limit}`;
 
   return sql;
 }
@@ -173,12 +176,6 @@ module.exports = function (req, res, next, cb) {
           return larkin.error(req, res, next, "No valid parameters passed");
         }
 
-        if (where.length > 0) {
-          where = " WHERE " + where.join(" AND ");
-        } else {
-          where = "";
-        }
-
         if (req.query.scale) {
           var requestedScales = larkin.parseMultipleStrings(req.query.scale);
           var scales = requestedScales.filter(function (d) {
@@ -198,23 +195,18 @@ module.exports = function (req, res, next, cb) {
         } else {
           scales = ["tiny", "small", "medium", "large"];
         }
+        where.push(
+          "m.scale = ANY($" + (where.length + 1) + "::maps.map_scale[])",
+        );
+        params.push(scales);
 
-        var scaleSQL = scales
-          .map(function (d) {
-            return buildSQL(req, d, where, limit);
-          })
-          .join(" UNION ");
+        if (where.length > 0) {
+          where = " WHERE " + where.join(" AND ");
+        } else {
+          where = "";
+        }
 
-        var toRun = "SELECT * FROM ( " + scaleSQL + ") doit";
-
-        // Sort by map scale: large, medium, small, tiny.
-        toRun +=
-          " ORDER BY CASE scale" +
-          " WHEN 'large' THEN 1" +
-          " WHEN 'medium' THEN 2" +
-          " WHEN 'small' THEN 3" +
-          " WHEN 'tiny' THEN 4" +
-          " END";
+        var toRun = buildSQL(req, where, limit);
 
         larkin.queryPg("burwell", toRun, params, function (error, result) {
           if (error) {

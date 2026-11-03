@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from os import environ
 from pathlib import Path
 from typing import Optional
@@ -57,17 +58,26 @@ app = FastAPI(
 )
 
 
+class CartoBuild(str, Enum):
+    legacy = "legacy"
+    compilation = "compilation"
+
+
 class TileServerSettings(PostgresSettings):
     # XDD embedding service URL
     xdd_embedding_service_url: Optional[str] = None
-    #: Serve `/carto-slim` and `/carto` tiles from `/map/carto`, the compilation
-    #: build, instead of the legacy `carto` tables. Off until an environment is
-    #: ready to change what its public clients receive.
-    legacy_carto_from_compilation: bool = False
+    #: Which build answers `/carto-slim` and `/carto`: `compilation` serves them
+    #: from `/map/carto`. Shared with the legacy tileserver and API v2; legacy
+    #: until an environment is ready to change what its public clients receive.
+    carto_build: CartoBuild = CartoBuild.legacy
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="allow",
     )
+
+    @property
+    def carto_from_compilation(self) -> bool:
+        return self.carto_build == CartoBuild.compilation
 
 
 # Read once at import for callers that only need static configuration (e.g. the
@@ -137,7 +147,7 @@ async def shutdown_event():
 app.add_middleware(CompressionMiddleware, minimum_size=1)
 
 # `/carto-slim/{z}/{x}/{y}` and `/carto/{z}/{x}/{y}` are the legacy build's
-# tiles. With `legacy_carto_from_compilation`, both are answered by `/map/carto`
+# tiles. With `carto_build=compilation`, both are answered by `/map/carto`
 # under their own addresses: `carto-slim`'s properties are `/map/carto`'s, and
 # `/carto`'s are its `detail=full` ones. Any query string is kept. Rewritten in
 # process rather than redirected, so clients, Varnish and the access log see one
@@ -158,8 +168,8 @@ def rewrite_legacy_carto(path: str, query: str) -> Optional[tuple[str, str]]:
 
 
 @app.middleware("http")
-async def legacy_carto_from_compilation(request: Request, call_next):
-    if db_settings.legacy_carto_from_compilation:
+async def carto_from_compilation(request: Request, call_next):
+    if db_settings.carto_from_compilation:
         rewritten = rewrite_legacy_carto(
             request.scope["path"], request.scope["query_string"].decode()
         )

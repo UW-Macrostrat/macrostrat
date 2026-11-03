@@ -1,4 +1,5 @@
 import { getUnitsDataCompat } from "../units";
+import { requestedSource } from "./map-source";
 
 var api = require("../api");
 var async = require("async");
@@ -242,6 +243,99 @@ function buildSQL(scale, where) {
   `;
 }
 
+const REF_COLUMNS = `
+  COALESCE(sources.url, '') url,
+  COALESCE(sources.ref_title, '') ref_title,
+  COALESCE(sources.authors, '') authors,
+  COALESCE(sources.ref_year, '') ref_year,
+  COALESCE(sources.ref_source, '') ref_source,
+  COALESCE(sources.isbn_doi, '') isbn_doi`;
+
+function buildLineSQL(scale) {
+  return `
+    SELECT
+      m.line_id,
+      COALESCE(s.name, '') AS name,
+      COALESCE(s.type_legacy, s.type, '') AS type,
+      COALESCE(s.direction_legacy, s.direction, '') AS direction,
+      COALESCE(s.descrip, '') AS descrip,
+      '${scale}' AS scale,
+      (SELECT row_to_json(r) FROM (SELECT
+        sources.source_id,
+        sources.name,${REF_COLUMNS}) r)::jsonb AS ref,
+      ST_DistanceSpheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+    FROM carto_new.lines_${scale} m
+    JOIN maps.lines s ON s.line_id = m.line_id
+    LEFT JOIN maps.sources ON m.source_id = sources.source_id
+    WHERE sources.status_code = 'active'
+    ORDER BY m.geom <-> $1
+    LIMIT 1
+  `;
+}
+
+/* With a `source`, the polygon and line come from `map_bounds.polygon_at` and
+   `lines_at`, as in `map_query_v2`'s compilation path, in this route's shape. */
+function buildCompilationSQL() {
+  return `
+    SELECT
+      m.map_id,
+      m.source_id,
+      COALESCE(m.name, '') AS name,
+      COALESCE(m.strat_name, '') AS strat_name,
+      COALESCE(m.lith, '') AS lith,
+      COALESCE(m.descrip, '') AS descrip,
+      COALESCE(m.comments, '') AS comments,
+      COALESCE(l.unit_ids, '{}') AS macro_units,
+      COALESCE(l.strat_name_ids, '{}') AS strat_names,
+      COALESCE(l.lith_ids, '{}') AS liths,
+      m.t_interval AS t_int_id,
+      ti.age_top::float AS t_int_age,
+      ti.interval_name AS t_int_name,
+      m.b_interval AS b_int_id,
+      tb.age_bottom::float AS b_int_age,
+      tb.interval_name AS b_int_name,
+      l.color,
+      m.scale::text AS scale,
+      (SELECT row_to_json(r) FROM (SELECT
+        sources.name,${REF_COLUMNS}) r)::jsonb AS ref
+    FROM map_bounds.polygon_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
+    JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
+    LEFT JOIN maps.map_legend ON map_legend.map_id = m.map_id
+    LEFT JOIN maps.legend l ON l.legend_id = map_legend.legend_id
+    -- The legend entry's map: a materialized compilation's polygon keeps its member's.
+    JOIN maps.sources ON sources.source_id = COALESCE(l.source_id, m.source_id)
+    LEFT JOIN macrostrat.intervals ti ON m.t_interval = ti.id
+    LEFT JOIN macrostrat.intervals tb ON m.b_interval = tb.id
+    ORDER BY u.priority_path DESC NULLS LAST, m.map_id
+    LIMIT 1
+  `;
+}
+
+function buildCompilationLineSQL() {
+  return `
+    SELECT
+      s.line_id,
+      COALESCE(s.name, '') AS name,
+      COALESCE(s.type_legacy, s.type, '') AS type,
+      COALESCE(s.direction_legacy, s.direction, '') AS direction,
+      COALESCE(s.descrip, '') AS descrip,
+      s.scale::text AS scale,
+      (SELECT row_to_json(r) FROM (SELECT
+        sources.source_id,
+        sources.name,${REF_COLUMNS}) r)::jsonb AS ref,
+      ST_DistanceSpheroid(s.geom, ST_SetSRID(ST_MakePoint($2, $3), 4326), 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
+    FROM map_bounds.lines_at(
+      $1,
+      ST_Buffer(ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $5)::geometry,
+      $4
+    ) u
+    JOIN maps.lines s ON s.line_id = u.line_id AND s.scale = u.scale
+    LEFT JOIN maps.sources ON sources.source_id = s.source_id
+    ORDER BY distance
+    LIMIT 1
+  `;
+}
+
 // Accepts a longitude, a latitude, and a zoom level
 // Returns the proper burwell data and macrostrat data
 module.exports = function (req, res, next) {
@@ -269,6 +363,7 @@ module.exports = function (req, res, next) {
 
   req.query.lng = larkin.normalizeLng(req.query.lng);
   req.query.z = parseInt(req.query.z || 0);
+  const source = requestedSource(req.query);
 
   async.parallel(
     {
@@ -282,37 +377,24 @@ module.exports = function (req, res, next) {
         });
       },
       lines: function (cb) {
-        var scale = scaleLookup[req.query.z];
+        var lineSQL = buildLineSQL(scaleLookup[req.query.z]);
+        var lineParams: any[] = [
+          `SRID=4326;POINT(${req.query.lng} ${req.query.lat})`,
+        ];
+        if (source != null) {
+          lineSQL = buildCompilationLineSQL();
+          lineParams = [
+            source,
+            req.query.lng,
+            req.query.lat,
+            req.query.z,
+            tolerance(req.query.lat, req.query.z) * LINE_TOLERANCE,
+          ];
+        }
         larkin.queryPg(
           "burwell",
-          `
-        SELECT
-          m.line_id,
-          COALESCE(s.name, '') AS name,
-          COALESCE(s.type_legacy, s.type, '') AS type,
-          COALESCE(s.direction_legacy, s.direction, '') AS direction,
-          COALESCE(s.descrip, '') AS descrip,
-          '${scale}' AS scale,
-          (SELECT row_to_json(r) FROM (SELECT
-            source_id,
-            name,
-            COALESCE(url, '') url,
-            COALESCE(ref_title, '') ref_title,
-            COALESCE(authors, '') authors,
-            COALESCE(ref_year, '') ref_year,
-            COALESCE(ref_source, '') ref_source,
-            COALESCE(isbn_doi, '') isbn_doi
-            FROM maps.sources
-            WHERE source_id = m.source_id) r)::jsonb AS ref,
-          ST_DistanceSpheroid(m.geom, $1, 'SPHEROID["WGS 84",6378137,298.257223563]') AS distance
-        FROM carto_new.lines_${scale} m
-        JOIN maps.lines s ON s.line_id = m.line_id
-        LEFT JOIN maps.sources ON m.source_id = sources.source_id
-        WHERE sources.status_code = 'active'
-        ORDER BY m.geom <-> $1
-        LIMIT 1
-      `,
-          [`SRID=4326;POINT(${req.query.lng} ${req.query.lat})`],
+          lineSQL,
+          lineParams,
           function (error, result) {
             if (error) return cb(error);
 
@@ -356,6 +438,10 @@ module.exports = function (req, res, next) {
 
         let z = req.query.z || 10;
         let sql = buildSQL(scaleLookup[z], where);
+        if (source != null) {
+          sql = buildCompilationSQL();
+          params = [source, req.query.lng, req.query.lat, req.query.z];
+        }
 
         larkin.queryPg("burwell", sql, params, function (error, result) {
           if (error) {
