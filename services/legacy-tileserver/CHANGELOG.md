@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-03
+
+- Image tiles follow `CARTO_BUILD=compilation`, replacing `LEGACY_CARTO_FROM_COMPILATION`, which is no longer read
+
 ## [3.1.0] - 2026-10-22
 
 - Reads and writes the generational tile cache (`tile-cache-generations` migration;

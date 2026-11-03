@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-03
+
+- `mobile/map_query` and `mobile/map_query_v2` answer from `carto` when no `source` is given and `CARTO_BUILD=compilation`; `mobile/map_query` accepts `source`
+- `/geologic_units/map/legend?carto=<scale>` lists the compilation's legend for that scale under `CARTO_BUILD=compilation`
+- `/geologic_units/burwell` queries `maps.polygons` once for all scales instead of a `UNION` of the per-scale views
+- `/defs/sources` searches map footprints in `map_bounds.map_area` instead of `maps.sources.rgeom`
+
 ## [2.5.1] - 2026-11-01
 
 - `map_query_v2` cites a materialized compilation's polygon as the map it was cut from

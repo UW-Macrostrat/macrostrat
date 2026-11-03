@@ -1,5 +1,11 @@
 # API v3 changelog
 
+## [Unreleased]
+
+## [3.1.2] - 2026-11-03
+
+- `Sources` drops `rgeom`; `/sources?include_geom=true` no longer returns it
+
 ## [3.1.1] - 2026-10-24
 
 - `/workers/version` lists the build each Celery worker reports; 503 when the broker is unreachable

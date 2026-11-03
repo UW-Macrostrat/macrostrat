@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-03
+
+- Bounds tiles (`/maps/bounds`, `/ingestion/bounds`) draw `map_bounds.map_area` footprints instead of `maps.sources.rgeom`, leaving out compilations
+- `CARTO_BUILD=compilation` replaces `LEGACY_CARTO_FROM_COMPILATION`, which is no longer read
+
 ## [3.2.2] - 2026-10-28
 
 - Raster and elevation routes share one small, named (`tileserver-rasters`) connection pool per worker
