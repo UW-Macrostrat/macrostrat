@@ -238,6 +238,10 @@ CREATE TABLE IF NOT EXISTS map_bounds.map_priority (
 CREATE INDEX IF NOT EXISTS map_area_topogeom_id_idx
   ON map_bounds.map_area (((topo).id));
 
+-- Bounds tiles and v2's point and shape searches intersect footprints.
+CREATE INDEX IF NOT EXISTS map_area_geometry_idx
+  ON map_bounds.map_area USING gist (geometry);
+
 
 /** View to adjust map priority based on scales
   (higher-scale maps are always higher priority)

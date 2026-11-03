@@ -52,7 +52,6 @@ async def get_sources(
     # Delete the geom if not required
     if not include_geom:
         for source in sources:
-            del source.rgeom
             del source.web_geom
 
     # Add the appropriate headers
@@ -69,11 +68,7 @@ async def get_source(source_id: int, database: DatabaseDep) -> Sources.Get:
 
     async with database.async_session() as session:
         select_stmt = select(
-            *[
-                c
-                for c in schemas.Sources.__table__.c
-                if c.name not in ["rgeom", "web_geom"]
-            ]
+            *[c for c in schemas.Sources.__table__.c if c.name not in ["web_geom"]]
         ).where(schemas.Sources.source_id == source_id)
 
         results = await session.execute(select_stmt)

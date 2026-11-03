@@ -348,16 +348,14 @@ AND NOT (
   map_bounds.is_compilation(a.source_id)
   AND NOT map_bounds.is_mosaic(a.source_id)
 )
--- Its members have bounds but are never noded on the mosaic's account: their
--- extent is their bounds. One that also belongs to a topological compilation
--- is an ordinary map there and comes back in.
-AND NOT (
-  map_bounds.is_mosaic_member(a.source_id)
-  AND NOT EXISTS (
-    SELECT 1 FROM map_bounds.compilation_member cm
-    WHERE cm.member_id = a.source_id
-      AND NOT map_bounds.is_mosaic(cm.compilation_id)
-  )
+-- Placed in a topological compilation. Faces are only ever resolved to a map
+-- through one, so a map placed nowhere would split its neighbours' faces and win
+-- none; it is still served alone from its polygons. A mosaic's members are not
+-- placed by the mosaic: their extent is their bounds.
+AND EXISTS (
+  SELECT 1 FROM map_bounds.compilation_member cm
+  WHERE cm.member_id = a.source_id
+    AND NOT map_bounds.is_mosaic(cm.compilation_id)
 )
 """
 
@@ -397,7 +395,8 @@ def get_held_maps(db, filter_by: list[str] = None):
 
 def get_retired_maps(db, filter_by: list[str] = None):
     """Maps holding topology that the rule no longer nodes: SGMC's mosaic-only
-    members, noded before mosaics existed, are the case. Nothing reads their
+    members, noded before mosaics existed, and maps removed from their last
+    compilation are the cases. Nothing reads their
     topogeometries, but their edges still split faces and their failed pieces
     still count, so `topo update` releases them."""
     return _select_maps(db, f"{HOLDS_TOPOLOGY} AND NOT ({NODED_HERE})", filter_by)

@@ -128,11 +128,7 @@ async def get_multiple_ingest_process(
             .offset(page_size * page)
             .where(and_(query_parser.where_expressions()))
             .order_by(*query_parser.get_order_by_columns())
-            .options(
-                joinedload(IngestProcessSchema.source)
-                .defer(Sources.rgeom)
-                .defer(Sources.web_geom)
-            )
+            .options(joinedload(IngestProcessSchema.source).defer(Sources.web_geom))
             .options(selectinload(IngestProcessSchema.tags))
         )
 
@@ -175,11 +171,7 @@ async def get_ingest_process(source_id: int, database: DatabaseDep):
         select_stmt = (
             select(IngestProcessSchema)
             .where(and_(IngestProcessSchema.source_id == source_id))
-            .options(
-                joinedload(IngestProcessSchema.source)
-                .defer(Sources.rgeom)
-                .defer(Sources.web_geom)
-            )
+            .options(joinedload(IngestProcessSchema.source).defer(Sources.web_geom))
             .options(selectinload(IngestProcessSchema.tags))
         )
 

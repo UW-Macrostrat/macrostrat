@@ -11,18 +11,18 @@ __here__ = Path(__file__).parent
 
 
 @router.get("/bounds/{z}/{x}/{y}")
-async def rgeom(
+async def bounds(
     request: Request,
     z: int,
     x: int,
     y: int,
 ):
     """Get a tile from the tileserver."""
-    return await get_rgeom(request.app.state.pool, z=z, x=x, y=y)
+    return await get_bounds(request.app.state.pool, z=z, x=x, y=y)
 
 
 @router.get("/bounds/{slug}/{z}/{x}/{y}")
-async def rgeom_slug(
+async def bounds_slug(
     request: Request,
     slug: str,
     z: int,
@@ -30,12 +30,12 @@ async def rgeom_slug(
     y: int,
 ):
     """Get a tile from the tileserver."""
-    return await get_rgeom(
+    return await get_bounds(
         request.app.state.pool, where="slug = :slug", z=z, x=x, y=y, slug=slug
     )
 
 
-async def get_rgeom(pool, *, where="is_finalized = true", **params):
+async def get_bounds(pool, *, where="is_finalized = true", **params):
     async with pool.acquire() as con:
         data = await run_layer_query(con, "bounds", where=where, **params)
     kwargs = {}

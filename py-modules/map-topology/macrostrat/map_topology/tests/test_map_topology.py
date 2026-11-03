@@ -75,6 +75,13 @@ class TestMapTopology:
             },
         )
 
+        # Placement is authored. Nothing infers a layer from `scale` any more, so
+        # a map that is never placed is ingested, assembled, and served nowhere --
+        # which is why every test that adds a source also says where it goes.
+        #
+        # Before noding: only a placed map is noded.
+        set_priority(db, "large", [(1001, 0), (1002, 0)])
+
         update_maps(mgr, bulk=True)
 
         # Every piece marks the faces it touched dirty: the two maps' faces and
@@ -98,16 +105,6 @@ class TestMapTopology:
             "UPDATE maps.sources SET is_served = true WHERE slug IN ('large', 'medium')"
         )
         db.session.commit()
-
-        # Placement is authored. Nothing infers a layer from `scale` any more, so
-        # a map that is never placed is ingested, assembled, and served nowhere --
-        # which is why every test that adds a source also says where it goes.
-        #
-        # After bounds assembly, not before: a map reaches a layer only once it
-        # has a boundary, and marking faces dirty in a layer the map cannot yet
-        # hold territory in just makes work for the solver. This is the point in
-        # the sequence the retired sweep wrote placements at, for the same reason.
-        set_priority(db, "large", [(1001, 0), (1002, 0)])
 
     def test_dirty_faces(self, ctx):
         db = ctx.database
@@ -332,8 +329,8 @@ class TestMapTopology:
             scale="medium",
         )
         mgr = MacrostratTopologyManager(ctx)
-        update_maps(mgr, subdivide_vertices=32)
         set_priority(db, "medium", [(1004, 0)])
+        update_maps(mgr, subdivide_vertices=32)
         mgr.update_full()
 
         insp = TopologyInspector(ctx)
@@ -724,7 +721,8 @@ class TestMapTopology:
         assert get_identity_for_area(db, layer, Point(3.5, 0.5)) == 1002
 
     def test_retired_mosaic_member(self, ctx):
-        """A noded map that becomes a mosaic-only member is released by update.
+        """A map is noded only once placed, and a noded map that becomes a
+        mosaic-only member is released by update.
 
         Its extent is its bounds from then on, so its topogeometry is dead weight
         -- SGMC's members were noded before mosaics existed and kept theirs.
@@ -750,10 +748,20 @@ class TestMapTopology:
                 """
             ).scalar()
 
+        # Placed nowhere: bounded, so it is served alone, but not noded.
+        assert held() is False
+        assert 1007 not in {m.map_id for m in get_map_list(db)}
+
+        set_priority(db, "large", [(1007, 0)])
+        update_maps(mgr)
         assert held()
         assert 1007 in {m.map_id for m in get_map_list(db)}
 
         for statement in (
+            """
+            DELETE FROM map_bounds.compilation_member
+            WHERE compilation_id = map_bounds.source_id('large') AND member_id = 1007
+            """,
             """
             INSERT INTO maps.sources (source_id, slug, is_finalized, status_code, scale)
             VALUES (1008, 'test-source-8', false, 'active', 'large')
@@ -801,6 +809,7 @@ class TestMapTopology:
                 1012: "ST_Buffer(ST_MakePoint(30, 20)::geography, 50000, 1000)::geometry",
             },
         )
+        set_priority(db, "large", [(1011, 0), (1012, 0)])
 
         def pieces(map_id):
             return db.run_query(
@@ -820,6 +829,12 @@ class TestMapTopology:
         p = pieces(1012)
         assert p.n > 1 and p.timed_out > 0 and p.noded + p.timed_out == p.n
 
+        db.run_query(
+            """
+            DELETE FROM map_bounds.compilation_member
+            WHERE compilation_id = map_bounds.source_id('large') AND member_id = 1012
+            """
+        )
         release_map(db, 1012)
         db.session.commit()
 

@@ -12,7 +12,7 @@ module.exports = function (req, res, next, cb) {
   var where = [];
 
   if (req.query.source_id) {
-    where.push("source_id = ANY($" + (where.length + 1) + ")");
+    where.push("sources.source_id = ANY($" + (where.length + 1) + ")");
     params.push(larkin.parseMultipleIds(req.query.source_id));
   }
 
@@ -21,13 +21,16 @@ module.exports = function (req, res, next, cb) {
     params.push(larkin.parseMultipleStrings(req.query.scale));
   }
 
+  // The exact test reads the footprint by key, so it runs after the cheap filters:
+  // on `ma` it would test every compilation's footprint the box finds.
+  var footprint =
+    "(SELECT geometry FROM map_bounds.map_area WHERE id = sources.source_id)";
+
   if (req.query.lat && req.query.lng) {
-    where.push(
-      "ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_GeomFromText($" +
-        (where.length + 1) +
-        ", 4326))",
-    );
     params.push("POINT(" + req.query.lng + " " + req.query.lat + ")");
+    var point = "ST_GeomFromText($" + params.length + ", 4326)";
+    where.push("ma.geometry && " + point);
+    where.push("ST_Intersects(" + footprint + ", " + point + ")");
   }
 
   if (req.query.shape) {
@@ -36,26 +39,29 @@ module.exports = function (req, res, next, cb) {
         ? parseInt(req.query.buffer) * 1000
         : 1;
 
-    where.push(
-      "ST_Intersects(ST_SetSRID(sources.rgeom, 4326), ST_SetSRID(ST_Buffer($" +
-        (where.length + 1) +
-        "::geography , $" +
-        (where.length + 2) +
-        ")::geometry, 4326))",
-    );
-
     params.push("SRID=4326;" + decodeURI(req.query.shape), buffer);
+    var shape =
+      "ST_SetSRID(ST_Buffer($" +
+      (params.length - 1) +
+      "::geography , $" +
+      params.length +
+      ")::geometry, 4326)";
+    where.push("ma.geometry && " + shape);
+    where.push("ST_Intersects(" + footprint + ", " + shape + ")");
   }
 
   // Remove any empty sources and etopo1
-  where.push("sources.rgeom IS NOT NULL");
+  // Maps only: v2 knows nothing of compilations. A mosaic (SGMC) is a map.
+  where.push(
+    "NOT (map_bounds.is_compilation(sources.source_id) AND NOT map_bounds.is_mosaic(sources.source_id))",
+  );
   where.push("sources.web_geom IS NOT NULL");
   where.push("sources.status_code = 'active'");
   where.push("sources.is_finalized = true");
 
   var sql = `
   SELECT
-    source_id,
+    sources.source_id,
     name,
     COALESCE(url, '') url,
     COALESCE(ref_title, '') ref_title,
@@ -68,6 +74,7 @@ module.exports = function (req, res, next, cb) {
     area
     ${api.acceptedFormats.geo[req.query.format] ? ", web_geom AS geom" : ""}
   FROM maps.sources
+  JOIN map_bounds.map_area ma ON ma.id = sources.source_id
   JOIN (values
     ('tiny', 0),
     ('small', 1),
