@@ -1,0 +1,13 @@
+# Build context for the services' `py-modules` / `submodules` named contexts.
+# Host-side tooling output would otherwise invalidate their dependency layers.
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.egg-info
+**/node_modules
+**/.git
+**/.env
+**/.idea
+**/.claude

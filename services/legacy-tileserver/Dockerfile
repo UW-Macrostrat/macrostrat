@@ -24,14 +24,15 @@ RUN uv venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/venv"
 
-# NEED TO specify a build context for the py-modules directory
-COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
-
-# `--inexact` leaves the venv's extra packages alone.
+# `--inexact` leaves the venv's extra packages alone. Published dependencies go first,
+# so editing local modules keeps this layer; `--frozen` as `--locked` needs their pyproject.toml.
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --inexact --locked --no-install-project --no-editable --active
+    uv sync --inexact --frozen --no-install-project --no-install-local --no-editable --active
+
+# NEED TO specify a build context for the py-modules directory
+COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
 
 # Add source files to project
 ADD . /services/main
