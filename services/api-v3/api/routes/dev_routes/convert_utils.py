@@ -152,13 +152,10 @@ def checkin_to_fieldsite(checkin: dict) -> FieldSite:
     if not _valid_coords(lat, lng):
         raise ValueError("Invalid or missing lat/lng for Checkin")
 
-    # Build a photo reference if the checkin has a photo ID
-    photos = []
-    pid = checkin.get("photo")
-    if isinstance(pid, int):
-        photos.append(
-            Photo(id=pid, url=f"rockd://photo/{pid}", width=0, height=0, checksum="")
-        )
+    photos = [
+        Photo(id=pid, url=f"rockd://photo/{pid}", width=0, height=0, checksum="")
+        for pid in checkin_photo_ids(checkin)
+    ]
 
     # Parse creation time, defaulting to now if missing
     created = _parse_date_time(checkin.get("created")) or datetime.now(timezone.utc)
@@ -538,6 +535,17 @@ def spot_to_checkin(
 
 
 # ── Helper functions ──────────────────────────────────────────────────────────
+
+
+def checkin_photo_ids(checkin: dict) -> list[int]:
+    """
+    Collects the photo IDs on a Rockd checkin: its own photo first,
+    then each observation's photo.
+    """
+    ids = [checkin.get("photo")] + [
+        o.get("photo") for o in checkin.get("observations") or [] if isinstance(o, dict)
+    ]
+    return [i for i in ids if isinstance(i, int)]
 
 
 def _ensure_utc(dt: datetime) -> datetime:
