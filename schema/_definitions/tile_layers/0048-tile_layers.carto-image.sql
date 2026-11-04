@@ -13,10 +13,10 @@
    same polygons: faces of the layer meeting the box, collected per map; content
    resolved once per map; polygons fetched through the clipped faces and clipped
    to the box; only the ones straddling a face edge cut to the face; one
-   simplification pass at half a pixel, with anything under a pixel and a half
-   weeded. Change the two together, and benchmark with EXPLAIN (ANALYZE, BUFFERS)
-   before changing either: the join through the clipped face is what reaches the
-   `(scale, geom)` index of `maps.polygons`. */
+   simplification pass at half a pixel, with lines under a pixel and a half
+   weeded and polygons kept. Change the two together, and benchmark with
+   EXPLAIN (ANALYZE, BUFFERS) before changing either: the join through the
+   clipped face is what reaches the `(scale, geom)` index of `maps.polygons`. */
 
 DROP FUNCTION IF EXISTS tile_layers.carto_image_units(geometry, integer, double precision);
 CREATE OR REPLACE FUNCTION tile_layers.carto_image_units(
@@ -69,7 +69,6 @@ unit_owned AS MATERIALIZED (
       _pixel / 2) AS geom
   FROM unit_clipped
   WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
-    AND ST_Area(geom) > (1.5 * _pixel) ^ 2
 )
 -- Uncolored units are left out, as the `carto.polygons` query always did.
 SELECT u.map_id, l.color::text, u.geom
