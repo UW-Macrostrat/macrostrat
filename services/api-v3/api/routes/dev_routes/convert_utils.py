@@ -232,7 +232,9 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
     # Build the observations list from any planar orientation measurements on this site
     d["observations"] = [
         # Each observation gets a unique ID combining a prefix, index, and timestamp
-        _rockd_observation(f"interchange_obs_{i}_{now_ms}", p.strike, p.dip)
+        _rockd_observation(
+            f"interchange_obs_{i}_{now_ms}", p.strike, p.dip, p.dip_direction
+        )
         for i, p in enumerate(_all_planars_from_fieldsite(fs))
     ]
 
@@ -329,6 +331,7 @@ def _fieldsite_to_spot_feature(fs: FieldSite) -> dict:
                 "type": "planar_orientation",
                 "strike": float(p.strike),
                 "dip": float(p.dip),
+                "dip_direction": _to_float(p.dip_direction),
             }
             for p in planars
         ]
@@ -389,7 +392,7 @@ def _fieldsite_to_spot_single(fs: FieldSite) -> dict:
     if planars:
         feat["properties"]["orientation_data"] = [
             {
-                "dip_direction": None,
+                "dip_direction": _to_float(p.dip_direction),
                 "strike": _to_float(p.strike),
                 "dip": _to_float(p.dip),
                 # Use the facing value from the model, defaulting to upright
@@ -638,12 +641,14 @@ def _iter_spot_features(payload: Any) -> Iterable[dict]:
             )
 
 
-def _planars(items: list, strike_key: str, dip_key: str) -> list[PlanarOrientation]:
+def _planars(
+    items: list, strike_key: str, dip_key: str, dip_direction_key: str
+) -> list[PlanarOrientation]:
     """
     Extracts PlanarOrientation objects from a list of dictionaries.
 
-    Each dictionary is checked for the named strike and dip keys.
-    Items that are missing either value are skipped.
+    Each dictionary is checked for the named strike, dip and dip direction keys.
+    Items that are missing strike or dip are skipped; dip direction is optional.
     This is a reusable helper called by the spot and checkin specific planar functions below.
     """
     out = []
@@ -655,7 +660,14 @@ def _planars(items: list, strike_key: str, dip_key: str) -> list[PlanarOrientati
 
         # Only add an orientation if both strike and dip are present and numeric
         if s is not None and d is not None:
-            out.append(PlanarOrientation(strike=s, dip=d, facing=BeddingFacing.upright))
+            out.append(
+                PlanarOrientation(
+                    strike=s,
+                    dip=d,
+                    dip_direction=_to_float(item.get(dip_direction_key)),
+                    facing=BeddingFacing.upright,
+                )
+            )
 
     return out
 
@@ -678,6 +690,7 @@ def _all_planars_from_spot(props) -> list[PlanarOrientation]:
         ],
         "strike",
         "dip",
+        "dip_direction",
     )
 
 
@@ -698,6 +711,7 @@ def _all_planars_from_checkin(checkin) -> list[PlanarOrientation]:
         ],
         "strike",
         "dip",
+        "dip_dir",
     )
 
 
@@ -715,7 +729,9 @@ def _all_planars_from_fieldsite(fs: FieldSite) -> list[PlanarOrientation]:
     ]
 
 
-def _rockd_observation(new_obs_id: str, strike=None, dip=None) -> dict:
+def _rockd_observation(
+    new_obs_id: str, strike=None, dip=None, dip_direction=None
+) -> dict:
     """
     Builds an observation in the shape the Rockd create-edit-checkin API expects.
 
@@ -737,7 +753,7 @@ def _rockd_observation(new_obs_id: str, strike=None, dip=None) -> dict:
             "strikestd": None,
             "dip": _to_float(dip),
             "dipstd": None,
-            "dip_dir": None,
+            "dip_dir": _to_float(dip_direction),
             "feature": {},
             "notes": "",
             "trend": None,

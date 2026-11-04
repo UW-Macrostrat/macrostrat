@@ -64,10 +64,12 @@ class PlanarOrientation(BaseModel):
     Describes the angle of a flat rock surface, like a bedding plane or fault.
     Strike is the compass direction the surface runs along.
     Dip is how steeply the surface tilts downward.
+    Dip direction is the compass direction it tilts toward, when recorded.
     """
 
     strike: float
     dip: float
+    dip_direction: Optional[float] = None
     facing: BeddingFacing = BeddingFacing.upright
     notes: Optional[str] = None
     associated: list["Orientation"] = []
