@@ -105,3 +105,43 @@ def test_color_key_still_separates_neighbours():
     # A different grid cell.
     assert color_key(-95.0, 40.0, 1000.0) != base
     assert color_key(-105.0, 30.0, 1000.0) != base
+
+
+def _lch(hexcode):
+    import spectra
+
+    return spectra.html(hexcode).to("lch").values
+
+
+def _hue_distance(a, b):
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
+def test_pale_colors_keep_their_hue():
+    """Desaturating past zero chroma used to turn Holocene cream blue."""
+    for base in ("#FEF2E0", "#D9F1F7", "#CCD4C7"):
+        _, _, hue = _lch(base)
+        for v in color_variants(base):
+            _, chroma, h = _lch(v)
+            if chroma > 2:
+                # Brightening near white clips a little hue; a flip is ~180 degrees.
+                assert _hue_distance(h, hue) < 45, (base, v)
+
+
+def test_grays_stay_gray():
+    for base in ("#D6D6D6", "#A6A6A6", "#FFFFFF"):
+        assert all(_lch(v)[1] < 2 for v in color_variants(base)), base
+
+
+def test_saturated_colors_are_unchanged_by_the_hue_guard():
+    # Chroma above 24 never reaches the guard, so their variants must not move.
+    assert color_variants("#ff8800")[14:] == [
+        "#f08e2c",
+        "#f39634",
+        "#e1862a",
+        "#fc9e3c",
+        "#d77f28",
+        "#ffa644",
+        "#ce7726",
+    ]

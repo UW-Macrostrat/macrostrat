@@ -31,6 +31,9 @@ CELL_SIZE = 0.5
 _LIGHTNESS_STEPS = (0, 3, -3, 6, -6, 9, -9)
 _SATURATION_STEPS = (0, 12, -12)
 
+# Below this chroma a color is gray and its hue is noise; saturating would invent one.
+_ACHROMATIC = 1.0
+
 
 @dataclass(frozen=True)
 class LegendRow:
@@ -72,8 +75,13 @@ def variant_index(key: tuple[int, int, int], n: int) -> int:
 def color_variants(base: str) -> list[str]:
     """Variants of `base`, index 0 being `base` itself unaltered."""
     color = spectra.html(base)
+    chroma = color.to("lch").values[1]
     variants = []
     for ds in _SATURATION_STEPS:
+        # spectra lets chroma go negative, which turns the hue around; keep at least half.
+        ds = max(ds, -chroma / 2)
+        if chroma < _ACHROMATIC:
+            ds = 0
         for dl in _LIGHTNESS_STEPS:
             c = color
             if dl > 0:
