@@ -58,19 +58,18 @@ def spot_to_fieldsite(feat: dict) -> FieldSite:
     if not _valid_coords(lat, lng):
         raise ValueError("Invalid or missing lat/lng for Spot feature")
 
-    # Build the photo list from the first image in the spot if one exists
-    photos = []
-    images = props.get("images") or []
-    if images and (img := images[0] or {}) and img.get("id") is not None:
-        photos.append(
-            Photo(
-                id=int(img["id"]),
-                url="https://dev.rockd.org/api/v2/protected/image",
-                width=int(img.get("width") or 0),
-                height=int(img.get("height") or 0),
-                checksum="",
-            )
+    # Build the photo list from every image in the spot, keeping StraboSpot's order
+    photos = [
+        Photo(
+            id=int(img["id"]),
+            url="https://dev.rockd.org/api/v2/protected/image",
+            width=int(img.get("width") or 0),
+            height=int(img.get("height") or 0),
+            checksum="",
         )
+        for img in props.get("images") or []
+        if isinstance(img, dict) and img.get("id") is not None
+    ]
 
     # Parse the creation time from the spot, defaulting to right now if missing
     created = _parse_date_time(props.get("time") or props.get("date")) or datetime.now(
@@ -226,39 +225,25 @@ def fieldsite_to_rockd_checkin(fs: FieldSite) -> dict:
         "new_checkin_id": str(now_ms),
     }
 
-    # Attach the photo filename if the site has a photo
+    # The first photo is the checkin's overview photo
     if fs.photos:
         d["photo"] = f"{int(fs.photos[0].id)}.jpg"
 
     # Build the observations list from any planar orientation measurements on this site
     d["observations"] = [
-        {
-            # Each observation gets a unique ID combining a prefix, index, and timestamp
-            "new_obs_id": f"interchange_obs_{i}_{now_ms}",
-            "rocks": {
-                "strat_name": {},
-                "liths": [],
-                "interval": {},
-                "notes": "",
-                "map_unit": {},
-            },
-            "minerals": {"minerals": [], "notes": ""},
-            "orientation": {
-                "strike": _to_float(p.strike),
-                "strikestd": None,
-                "dip": _to_float(p.dip),
-                "dipstd": None,
-                "dip_dir": None,
-                "feature": {},
-                "notes": "",
-                "trend": None,
-                "trendstd": None,
-                "plunge": None,
-                "plungestd": None,
-            },
-            "fossils": {"taxa": [], "notes": ""},
-        }
+        # Each observation gets a unique ID combining a prefix, index, and timestamp
+        _rockd_observation(f"interchange_obs_{i}_{now_ms}", p.strike, p.dip)
         for i, p in enumerate(_all_planars_from_fieldsite(fs))
+    ]
+
+    # Rockd holds one photo per observation, so each additional photo
+    # becomes its own photo-only observation on the checkin
+    d["observations"] += [
+        {
+            **_rockd_observation(f"{p.id}_{now_ms}"),
+            "photo": f"{int(p.id)}.jpg",
+        }
+        for p in fs.photos[1:]
     ]
 
     return d
@@ -680,14 +665,16 @@ def _all_planars_from_spot(props) -> list[PlanarOrientation]:
     Extracts all planar orientation measurements from a StraboSpot feature's properties.
 
     StraboSpot stores orientations in a list called orientation_data.
-    Only items with type planar_orientation are included here.
+    Only planar_orientation items are included here, tagged by either the
+    type or the orientation_type key.
     Linear orientations and other types are ignored.
     """
     return _planars(
         [
             i
             for i in (props.get("orientation_data") or [])
-            if isinstance(i, dict) and i.get("type") == "planar_orientation"
+            if isinstance(i, dict)
+            and (i.get("type") or i.get("orientation_type")) == "planar_orientation"
         ],
         "strike",
         "dip",
@@ -726,3 +713,37 @@ def _all_planars_from_fieldsite(fs: FieldSite) -> list[PlanarOrientation]:
         for ob in (fs.observations or [])
         if isinstance(getattr(ob, "data", None), PlanarOrientation)
     ]
+
+
+def _rockd_observation(new_obs_id: str, strike=None, dip=None) -> dict:
+    """
+    Builds an observation in the shape the Rockd create-edit-checkin API expects.
+
+    Rockd skips any module that is left empty, so an observation without a
+    strike and dip only creates the observation row itself.
+    """
+    return {
+        "new_obs_id": new_obs_id,
+        "rocks": {
+            "strat_name": {},
+            "liths": [],
+            "interval": {},
+            "notes": "",
+            "map_unit": {},
+        },
+        "minerals": {"minerals": [], "notes": ""},
+        "orientation": {
+            "strike": _to_float(strike),
+            "strikestd": None,
+            "dip": _to_float(dip),
+            "dipstd": None,
+            "dip_dir": None,
+            "feature": {},
+            "notes": "",
+            "trend": None,
+            "trendstd": None,
+            "plunge": None,
+            "plungestd": None,
+        },
+        "fossils": {"taxa": [], "notes": ""},
+    }
