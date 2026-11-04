@@ -3,7 +3,8 @@
   The age is its matched units' range where it has any, and its own intervals'
   otherwise. The colour is that of the tightest interval bracketing the age,
   excluding the New Zealand timescale; `legend_lookup.py` then nudges it to a
-  variant. Reads `unit_ids`, so it runs after they are set.
+  variant where same-age units collide. Reads `unit_ids`, so it runs after they
+  are set.
 
   Colours are looked up once per distinct age range, as `build-lookup-table.sql`
   does. A range with a null end matches no interval and gets no colour.

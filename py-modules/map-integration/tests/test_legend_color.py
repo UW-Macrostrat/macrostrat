@@ -1,4 +1,4 @@
-"""Legend color variants are chosen by place and size, not by chance."""
+"""Same-age legends are told apart by variants chosen by place and size, not by chance."""
 
 from macrostrat.map_integration.utils.legend_color import (
     LegendRow,
@@ -37,16 +37,29 @@ def test_variant_index_is_deterministic_and_in_range():
 def test_variants_start_with_the_base_and_are_distinct():
     variants = color_variants("#ff8800")
     assert variants[0] == "#ff8800"
-    assert len(variants) == 21
+    assert len(variants) == 12
     assert len(set(variants)) == len(variants)
 
 
-def test_color_depends_only_on_base_place_and_size():
-    # The same unit alone in its age class, or beside another of the same age,
-    # gets the same color either way.
-    alone = assign_colors([row(1, -92.3, 38.1, 100.0)])
-    crowded = assign_colors([row(1, -92.3, 38.1, 100.0), row(2, -91.0, 38.1, 100.0)])
-    assert alone.get(1, "#ff8800") == crowded.get(1, "#ff8800")
+def test_a_unit_alone_in_its_age_keeps_the_interval_color():
+    assert assign_colors([row(1, -92.3, 38.1, 100.0)]) == {}
+
+
+def test_the_largest_of_a_group_keeps_the_base_and_the_rest_move():
+    rows = [
+        row(1, -92.3, 38.1, 5000.0),
+        row(2, -91.0, 38.1, 100.0),
+        row(3, -90.0, 37.0, 20.0),
+    ]
+    changes = assign_colors(rows)
+    assert 1 not in changes
+    assert set(changes) == {2, 3}
+    assert all(c != "#ff8800" for c in changes.values())
+
+
+def test_units_of_different_ages_are_not_grouped():
+    rows = [row(1, -92.3, 38.1, 100.0), row(2, -91.0, 38.1, 100.0, bottom=5.33)]
+    assert assign_colors(rows) == {}
 
 
 def test_same_place_and_size_gets_the_same_color_under_a_different_id():
@@ -135,13 +148,14 @@ def test_grays_stay_gray():
 
 
 def test_saturated_colors_are_unchanged_by_the_hue_guard():
-    # Chroma above 24 never reaches the guard, so their variants must not move.
-    assert color_variants("#ff8800")[14:] == [
-        "#f08e2c",
-        "#f39634",
-        "#e1862a",
-        "#fc9e3c",
-        "#d77f28",
-        "#ffa644",
-        "#ce7726",
+    # Chroma above 40 never reaches the guard: plain spectra moves.
+    import spectra
+
+    c = spectra.html("#ff8800")
+    assert color_variants("#ff8800")[7:] == [
+        c.saturate(amount=10).hexcode,
+        c.desaturate(amount=10).hexcode,
+        c.desaturate(amount=20).hexcode,
+        c.saturate(amount=20).hexcode,
+        c.saturate(amount=30).hexcode,
     ]
