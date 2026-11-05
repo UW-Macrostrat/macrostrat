@@ -7,18 +7,19 @@ WORKDIR /services/main
 ENV UV_COMPILE_BYTECODE=1
 
 
+# Install published dependencies before local modules, so editing those keeps this layer.
+# `--frozen`: `--locked` would need the local modules' pyproject.toml to check the lock.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-project --no-install-local
+
 # NEED TO specify another build context for the py-modules directory
 COPY --from=py-modules match-utils /py-modules/match-utils
 COPY --from=py-modules map-topology /py-modules/map-topology
 COPY --from=py-modules column-utils /py-modules/column-utils
 COPY --from=py-modules map-utils /py-modules/map-utils
 COPY --from=py-modules task-runner /py-modules/task-runner
-
-# Install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project
 
 ADD . /services/main
 
