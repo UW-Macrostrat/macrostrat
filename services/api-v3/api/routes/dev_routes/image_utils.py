@@ -70,29 +70,86 @@ async def sync_checkin_image_to_strabospot(
             "rockd_checkin_spot_result": save_result,
         }
 
-    person_id = int(person_id)
-    strabo_upload_results = []
-    # Sequential so only one image is held in memory at a time
-    for photo_id in photo_ids:
-        image_bytes, content_type = await _fetch_rockd_photo_bytes(
-            person_id, photo_id, rockd_token
+    uploaded, failed = await _upload_photos(
+        int(person_id), photo_ids, strabo_token, rockd_token
+    )
+
+    return {
+        "success": len(failed) == 0,
+        "checkin_id": checkin_id,
+        "spot_id": spot_id,
+        "person_id": int(person_id),
+        "photo_ids": photo_ids,
+        "photo_uploaded": len(uploaded) > 0,
+        "uploaded_photo_ids": uploaded,
+        "failed_photos": failed,
+        "rockd_checkin_spot_result": save_result,
+    }
+
+
+async def resync_photos_to_strabospot(
+    checkin_id: int,
+    strabo_token: str,
+    rockd_token: str,
+    photo_ids: Optional[list[int]] = None,
+) -> dict:
+    """
+    Uploads only the given photos of a checkin to StraboSpot, for photos that
+    failed during an earlier sync. The spot and its spot_id are left as they
+    are. With no photo IDs, every photo of the checkin is uploaded (for a sync
+    that failed before any photo was tried).
+    """
+    checkin = await _fetch_rockd_checkin(checkin_id, rockd_token)
+    person_id = checkin.get("person_id")
+    if person_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Checkin {checkin_id} does not have person_id.",
         )
-        strabo_upload_results.append(
+
+    # Only photos that still belong to the checkin (one may have been removed
+    # since the failed sync)
+    checkin_photos = checkin_photo_ids(checkin)
+    if photo_ids is None:
+        photo_ids = checkin_photos
+    else:
+        photo_ids = [p for p in photo_ids if p in checkin_photos]
+
+    uploaded, failed = await _upload_photos(
+        int(person_id), photo_ids, strabo_token, rockd_token
+    )
+    return {
+        "success": len(failed) == 0,
+        "checkin_id": checkin_id,
+        "uploaded_photo_ids": uploaded,
+        "failed_photos": failed,
+    }
+
+
+async def _upload_photos(
+    person_id: int, photo_ids: list[int], strabo_token: str, rockd_token: str
+) -> tuple[list[int], list[dict]]:
+    """
+    Downloads each photo from Rockd and uploads it to StraboSpot, one at a time
+    so only one image is held in memory. A failure is recorded and the next
+    photo still goes, so the caller learns exactly which photos to retry.
+    """
+    uploaded: list[int] = []
+    failed: list[dict] = []
+    for photo_id in photo_ids:
+        try:
+            image_bytes, content_type = await _fetch_rockd_photo_bytes(
+                person_id, photo_id, rockd_token
+            )
             await _upload_photo_to_strabospot(
                 strabo_token, photo_id, image_bytes, content_type
             )
-        )
-
-    return {
-        "success": True,
-        "checkin_id": checkin_id,
-        "spot_id": spot_id,
-        "person_id": person_id,
-        "photo_ids": photo_ids,
-        "photo_uploaded": True,
-        "strabospot_image_result": strabo_upload_results,
-        "rockd_checkin_spot_result": save_result,
-    }
+            uploaded.append(photo_id)
+        except HTTPException as e:
+            failed.append({"photo_id": photo_id, "message": str(e.detail)})
+        except Exception as e:
+            failed.append({"photo_id": photo_id, "message": str(e)})
+    return uploaded, failed
 
 
 # ── Image helper functions ────────────────────────────────────────────────────

@@ -267,6 +267,19 @@ class ImageSyncRequest(BaseModel):
     spot_id: Optional[int] = None
 
 
+class ResyncPhotosRequest(BaseModel):
+    """
+    The request body for resyncing a checkin's photos that failed to reach
+    StraboSpot. Only the listed photos are uploaded; with none listed, every
+    photo of the checkin is. The spot itself is not touched.
+    """
+
+    checkin_id: int
+    strabo_token: str
+    rockd_token: str
+    photo_ids: Optional[list[int]] = None
+
+
 class SyncCheckinsRequest(BaseModel):
     """
     The request body for the bulk checkin sync endpoint.

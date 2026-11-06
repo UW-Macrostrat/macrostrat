@@ -28,18 +28,23 @@ async def sync_checkins_to_strabospot(
     Sync a list of Rockd checkins into a StraboSpot dataset.
 
     Image failures are tracked separately — a failed photo upload does NOT
-    mark the checkin as failed, since the spot was already saved.
+    mark the checkin as failed, since the spot was already saved. Each photo
+    is tried, so the failures name exactly the photos to resync.
 
     Returns:
         {
             "success":               bool — True only if zero checkins failed.
             "sentCheckinIds":        list — IDs successfully posted.
-            "imageFailedCheckinIds": list — IDs where photo upload failed.
+            "imageFailedCheckinIds": list — IDs where any photo upload failed.
+            "imageFailures":         list — { checkinId, photoIds, message } per
+                                     such checkin; photoIds is null when the
+                                     photo step failed before any photo was
+                                     tried (resync them all).
             "failedCheckins":        list — { checkinId, message } for hard failures.
         }
     """
     successes: list[int] = []
-    image_failed_ids: list[int] = []
+    image_failures: list[dict] = []
     failed_checkins: list[dict] = []
 
     for checkin in checkins:
@@ -72,14 +77,28 @@ async def sync_checkins_to_strabospot(
                 )
 
             try:
-                await sync_checkin_image_to_strabospot(
+                image_result = await sync_checkin_image_to_strabospot(
                     checkin_id=checkin_id,
                     strabo_token=strabo_token,
                     rockd_token=rockd_token,
                     spot_id=checkin_id,
                 )
-            except Exception:
-                image_failed_ids.append(checkin_id)
+                failed_photos = image_result.get("failed_photos") or []
+                if failed_photos:
+                    image_failures.append(
+                        {
+                            "checkinId": checkin_id,
+                            "photoIds": [f["photo_id"] for f in failed_photos],
+                            "message": failed_photos[0]["message"],
+                        }
+                    )
+            except Exception as e:
+                # Reading the checkin or saving its spot_id failed, before
+                # any photo was tried
+                detail = getattr(e, "detail", None) or str(e)
+                image_failures.append(
+                    {"checkinId": checkin_id, "photoIds": None, "message": detail}
+                )
 
             successes.append(checkin_id)
 
@@ -91,6 +110,7 @@ async def sync_checkins_to_strabospot(
     return {
         "success": len(failed_checkins) == 0,
         "sentCheckinIds": successes,
-        "imageFailedCheckinIds": image_failed_ids,
+        "imageFailedCheckinIds": [f["checkinId"] for f in image_failures],
+        "imageFailures": image_failures,
         "failedCheckins": failed_checkins,
     }
