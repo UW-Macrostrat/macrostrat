@@ -4,6 +4,7 @@ This file defines all the API route handlers for the Rockd checkins <-> StraboSp
 Endpoints defined here:
   POST /convert/image               Syncs a Rockd photo to StraboSpot
   POST /convert/sync-checkins-to-strabo   Sends a batch of checkins to StraboSpot
+  POST /convert/resync-strabo-photos      Uploads only a checkin's failed photos
   POST /convert/strabospot-setup    Creates the StraboSpot dataset and project
   POST /convert/field-site          Converts data between Rockd and StraboSpot formats
 """
@@ -13,7 +14,7 @@ from typing import Any, List, Optional, Union
 from fastapi import APIRouter, Body, Header, HTTPException, Query
 
 # Import the request body models defined in __init__.py
-from . import ImageSyncRequest, SyncCheckinsRequest
+from . import ImageSyncRequest, ResyncPhotosRequest, SyncCheckinsRequest
 
 # Import the conversion helper functions from their respective modules
 from .convert_utils import (
@@ -24,7 +25,10 @@ from .convert_utils import (
     multiple_spot_to_fieldsite,
     spot_to_checkin,
 )
-from .image_utils import sync_checkin_image_to_strabospot
+from .image_utils import (
+    resync_photos_to_strabospot,
+    sync_checkin_image_to_strabospot,
+)
 from .strabospot_setup_utils import provision_strabospot_resources
 from .sync_to_strabo_pipeline import sync_checkins_to_strabospot
 
@@ -76,6 +80,23 @@ async def sync_checkins_to_strabo(body: SyncCheckinsRequest) -> Any:
         strabo_token=body.strabo_token,
         dataset_id=body.dataset_id,
         rockd_token=body.rockd_token,
+    )
+
+
+@convert_router.post("/resync-strabo-photos")
+async def resync_strabo_photos(body: ResyncPhotosRequest) -> Any:
+    """
+    Uploads only the given photos of an already-sent checkin to StraboSpot —
+    the ones a sync reported in `imageFailures` — so photos that already made
+    it are not sent again. The spot and its spot_id are left as they are.
+
+    Returns which photos uploaded and which failed again (with a message).
+    """
+    return await resync_photos_to_strabospot(
+        checkin_id=body.checkin_id,
+        strabo_token=body.strabo_token,
+        rockd_token=body.rockd_token,
+        photo_ids=body.photo_ids,
     )
 
 

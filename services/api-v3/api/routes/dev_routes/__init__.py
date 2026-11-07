@@ -64,10 +64,12 @@ class PlanarOrientation(BaseModel):
     Describes the angle of a flat rock surface, like a bedding plane or fault.
     Strike is the compass direction the surface runs along.
     Dip is how steeply the surface tilts downward.
+    Dip direction is the compass direction it tilts toward, when recorded.
     """
 
     strike: float
     dip: float
+    dip_direction: Optional[float] = None
     facing: BeddingFacing = BeddingFacing.upright
     notes: Optional[str] = None
     associated: list["Orientation"] = []
@@ -263,6 +265,19 @@ class ImageSyncRequest(BaseModel):
     strabo_token: str
     rockd_token: str
     spot_id: Optional[int] = None
+
+
+class ResyncPhotosRequest(BaseModel):
+    """
+    The request body for resyncing a checkin's photos that failed to reach
+    StraboSpot. Only the listed photos are uploaded; with none listed, every
+    photo of the checkin is. The spot itself is not touched.
+    """
+
+    checkin_id: int
+    strabo_token: str
+    rockd_token: str
+    photo_ids: Optional[list[int]] = None
 
 
 class SyncCheckinsRequest(BaseModel):

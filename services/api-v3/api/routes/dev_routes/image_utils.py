@@ -2,9 +2,9 @@
 This file handles everything related to syncing a photo from Rockd to StraboSpot.
 
 The main function sync_checkin_image_to_strabospot does four things in order:
-  1. Fetches the checkin record from Rockd to find out the person ID and photo ID.
-  2. Downloads the photo from Rockd storage.
-  3. Uploads the photo to StraboSpot.
+  1. Fetches the checkin record from Rockd to find out the person ID and photo IDs.
+  2. Downloads each photo (checkin and observations) from Rockd storage.
+  3. Uploads each photo to StraboSpot.
   4. Saves the StraboSpot spot ID back to the Rockd checkin record.
 
 The photo download is a two step process because Rockd redirects to a pre-signed
@@ -17,6 +17,8 @@ from typing import Optional
 
 import httpx
 from fastapi import HTTPException
+
+from .convert_utils import checkin_photo_ids
 
 # The StraboSpot endpoint that accepts image uploads
 STRABOSPOT_IMAGE_ENDPOINT = "https://strabospot.org/jwtdb/image"
@@ -32,11 +34,11 @@ async def sync_checkin_image_to_strabospot(
     Runs the full image sync pipeline for one Rockd checkin.
 
     Steps:
-      1. Fetch the checkin from Rockd to get the person ID and photo ID.
+      1. Fetch the checkin from Rockd to get the person ID and photo IDs.
       2. Save the spot ID to the Rockd checkin record.
-      3. If there is no photo, return early with a success message.
-      4. Download the photo from Rockd storage.
-      5. Upload the photo to StraboSpot.
+      3. If there are no photos, return early with a success message.
+      4. Download each photo (checkin and observations) from Rockd storage.
+      5. Upload each photo to StraboSpot.
       6. Return a result summary.
 
     The spot ID defaults to the checkin ID if not provided.
@@ -46,7 +48,7 @@ async def sync_checkin_image_to_strabospot(
     spot_id = spot_id if spot_id is not None else checkin_id
 
     checkin = await _fetch_rockd_checkin(checkin_id, rockd_token)
-    person_id, photo_id = checkin.get("person_id"), checkin.get("photo")
+    person_id, photo_ids = checkin.get("person_id"), checkin_photo_ids(checkin)
 
     if person_id is None:
         raise HTTPException(
@@ -58,7 +60,7 @@ async def sync_checkin_image_to_strabospot(
     save_result = await _save_rockd_checkin_spot_id(checkin_id, spot_id, rockd_token)
 
     # If there is no photo attached, stop here and return success
-    if photo_id is None:
+    if not photo_ids:
         return {
             "success": True,
             "checkin_id": checkin_id,
@@ -68,26 +70,86 @@ async def sync_checkin_image_to_strabospot(
             "rockd_checkin_spot_result": save_result,
         }
 
-    # Convert both IDs to integers before using them in URLs
-    person_id, photo_id = int(person_id), int(photo_id)
-
-    image_bytes, content_type = await _fetch_rockd_photo_bytes(
-        person_id, photo_id, rockd_token
-    )
-    strabo_upload_result = await _upload_photo_to_strabospot(
-        strabo_token, photo_id, image_bytes, content_type
+    uploaded, failed = await _upload_photos(
+        int(person_id), photo_ids, strabo_token, rockd_token
     )
 
     return {
-        "success": True,
+        "success": len(failed) == 0,
         "checkin_id": checkin_id,
         "spot_id": spot_id,
-        "person_id": person_id,
-        "photo_id": photo_id,
-        "photo_uploaded": True,
-        "strabospot_image_result": strabo_upload_result,
+        "person_id": int(person_id),
+        "photo_ids": photo_ids,
+        "photo_uploaded": len(uploaded) > 0,
+        "uploaded_photo_ids": uploaded,
+        "failed_photos": failed,
         "rockd_checkin_spot_result": save_result,
     }
+
+
+async def resync_photos_to_strabospot(
+    checkin_id: int,
+    strabo_token: str,
+    rockd_token: str,
+    photo_ids: Optional[list[int]] = None,
+) -> dict:
+    """
+    Uploads only the given photos of a checkin to StraboSpot, for photos that
+    failed during an earlier sync. The spot and its spot_id are left as they
+    are. With no photo IDs, every photo of the checkin is uploaded (for a sync
+    that failed before any photo was tried).
+    """
+    checkin = await _fetch_rockd_checkin(checkin_id, rockd_token)
+    person_id = checkin.get("person_id")
+    if person_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Checkin {checkin_id} does not have person_id.",
+        )
+
+    # Only photos that still belong to the checkin (one may have been removed
+    # since the failed sync)
+    checkin_photos = checkin_photo_ids(checkin)
+    if photo_ids is None:
+        photo_ids = checkin_photos
+    else:
+        photo_ids = [p for p in photo_ids if p in checkin_photos]
+
+    uploaded, failed = await _upload_photos(
+        int(person_id), photo_ids, strabo_token, rockd_token
+    )
+    return {
+        "success": len(failed) == 0,
+        "checkin_id": checkin_id,
+        "uploaded_photo_ids": uploaded,
+        "failed_photos": failed,
+    }
+
+
+async def _upload_photos(
+    person_id: int, photo_ids: list[int], strabo_token: str, rockd_token: str
+) -> tuple[list[int], list[dict]]:
+    """
+    Downloads each photo from Rockd and uploads it to StraboSpot, one at a time
+    so only one image is held in memory. A failure is recorded and the next
+    photo still goes, so the caller learns exactly which photos to retry.
+    """
+    uploaded: list[int] = []
+    failed: list[dict] = []
+    for photo_id in photo_ids:
+        try:
+            image_bytes, content_type = await _fetch_rockd_photo_bytes(
+                person_id, photo_id, rockd_token
+            )
+            await _upload_photo_to_strabospot(
+                strabo_token, photo_id, image_bytes, content_type
+            )
+            uploaded.append(photo_id)
+        except HTTPException as e:
+            failed.append({"photo_id": photo_id, "message": str(e.detail)})
+        except Exception as e:
+            failed.append({"photo_id": photo_id, "message": str(e)})
+    return uploaded, failed
 
 
 # ── Image helper functions ────────────────────────────────────────────────────
@@ -170,13 +232,17 @@ async def _fetch_rockd_photo_bytes(
 
     Returns a tuple of (image bytes, content type string like image/jpeg).
     """
-    rockd_url = f"{_get_rockd_api_url()}/protected/image/{person_id}/banner/{photo_id}"
+    rockd_url = (
+        f"{_get_rockd_api_url()}/protected/image/{person_id}/original/{photo_id}"
+    )
 
     # Step 1: ask Rockd for the photo, expecting a redirect response
     try:
         async with httpx.AsyncClient(follow_redirects=False, timeout=15.0) as client:
             res = await client.get(
                 rockd_url,
+                # Rockd reads the token from the query, not the Authorization header
+                params={"token": rockd_token},
                 headers={"Accept": "*/*", "Authorization": f"Bearer {rockd_token}"},
             )
     except httpx.TimeoutException:
