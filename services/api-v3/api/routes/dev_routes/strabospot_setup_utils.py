@@ -46,23 +46,44 @@ async def provision_strabospot_resources(strabo_token: str) -> dict:
     # ISO format is used for project start dates
     today_ymd = now.strftime("%Y-%m-%d")
 
+    try:
+        return await _provision(strabo_token, now_ts, today_mdy, today_ymd)
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Anything unexpected (an odd StraboSpot reply) comes back readable,
+        # not as a bare "Internal Server Error"
+        raise HTTPException(
+            status_code=502,
+            detail=f"StraboSpot setup failed: {type(e).__name__}: {e}",
+        )
+
+
+async def _provision(
+    strabo_token: str, now_ts: int, today_mdy: str, today_ymd: str
+) -> dict:
     # Reuse a single HTTP client for all requests in this function
     async with httpx.AsyncClient(timeout=30.0) as client:
-        # Step 1: find or create the Rockd Checkins dataset
-        datasets_body = await _strabo_get(
-            client, STRABOSPOT_MY_DATASETS_ENDPOINT, strabo_token
+        # Step 1: find or create the Rockd Checkins dataset. An account with no
+        # datasets (e.g. after deleting the Rockd ones) may not answer with a
+        # list, so read it leniently.
+        datasets = _list_in(
+            await _strabo_get(client, STRABOSPOT_MY_DATASETS_ENDPOINT, strabo_token),
+            "datasets",
         )
-        datasets: list[dict] = datasets_body.get("datasets") or []
 
         # Look for an existing dataset with the right name
         dataset = next((d for d in datasets if d.get("name") == "Rockd Checkins"), None)
 
-        if dataset is None:
+        if dataset is not None:
+            dataset_id = int(dataset["id"])
+        else:
             # Generate a unique ID that does not clash with any existing dataset IDs
-            existing_ids = [int(d["id"]) for d in datasets if d.get("id") is not None]
-            dataset_id = _unique_numeric_id(existing_ids)
+            dataset_id = _unique_numeric_id(_ids_of(datasets))
 
-            dataset = await _strabo_post(
+            # The dataset takes the id we give it, so it is used as-is rather
+            # than read back from StraboSpot's reply
+            await _strabo_post(
                 client,
                 STRABOSPOT_CREATE_DATASET_ENDPOINT,
                 strabo_token,
@@ -74,25 +95,24 @@ async def provision_strabospot_resources(strabo_token: str) -> dict:
                 },
             )
 
-        dataset_id = int(dataset["id"])
-
         # Step 2: find or create the Rockd Integration project
-        projects_body = await _strabo_get(
-            client, STRABOSPOT_MY_PROJECTS_ENDPOINT, strabo_token
+        projects = _list_in(
+            await _strabo_get(client, STRABOSPOT_MY_PROJECTS_ENDPOINT, strabo_token),
+            "projects",
         )
-        projects: list[dict] = projects_body.get("projects") or []
 
         # Look for an existing project with the right name
         project = next(
             (p for p in projects if p.get("name") == "Rockd Integration"), None
         )
 
-        if project is None:
+        if project is not None:
+            project_id = int(project["id"])
+        else:
             # Generate a unique ID that does not clash with any existing project IDs
-            existing_ids = [int(p["id"]) for p in projects if p.get("id") is not None]
-            project_id = _unique_numeric_id(existing_ids)
+            project_id = _unique_numeric_id(_ids_of(projects))
 
-            project = await _strabo_post(
+            await _strabo_post(
                 client,
                 STRABOSPOT_CREATE_PROJECT_ENDPOINT,
                 strabo_token,
@@ -130,8 +150,6 @@ async def provision_strabospot_resources(strabo_token: str) -> dict:
                 },
             )
 
-        project_id = int(project["id"])
-
         # Step 3: link the dataset to the project
         # StraboSpot ignores this call if the link already exists so it is safe to repeat
         await _strabo_post(
@@ -167,7 +185,7 @@ async def _strabo_get(client: httpx.AsyncClient, url: str, token: str) -> Any:
             status_code=res.status_code,
             detail=f"StraboSpot GET {url} failed: {res.text}",
         )
-    return res.json()
+    return _json_or_none(res)
 
 
 async def _strabo_post(
@@ -189,7 +207,43 @@ async def _strabo_post(
             status_code=res.status_code,
             detail=f"StraboSpot POST {url} failed: {res.text}",
         )
-    return res.json()
+    return _json_or_none(res)
+
+
+def _json_or_none(res: httpx.Response) -> Any:
+    """
+    The reply's JSON, or None when StraboSpot sends no body (a 204) or
+    something that isn't JSON. Callers read what they need leniently.
+    """
+    if not res.content:
+        return None
+    try:
+        return res.json()
+    except ValueError:
+        return None
+
+
+def _list_in(body: Any, key: str) -> list[dict]:
+    """
+    The records in a StraboSpot list reply: `{key: [...]}` as documented, or a
+    bare list. Anything else (no body, null, a message object) is no records.
+    """
+    if isinstance(body, dict):
+        body = body.get(key)
+    if not isinstance(body, list):
+        return []
+    return [item for item in body if isinstance(item, dict)]
+
+
+def _ids_of(records: list[dict]) -> list[int]:
+    """The numeric ids among records, skipping any that aren't numbers"""
+    ids = []
+    for record in records:
+        try:
+            ids.append(int(record["id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return ids
 
 
 def _unique_numeric_id(existing_ids: list[int]) -> int:
