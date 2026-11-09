@@ -92,7 +92,7 @@ def reconcile_column_group(
         {
             "project_id": project_id,
             "col_group": name,
-            "col_group_long": long_name or f"{name} column group",
+            "col_group_long": long_name or name,
         }
     ]
     existing = [

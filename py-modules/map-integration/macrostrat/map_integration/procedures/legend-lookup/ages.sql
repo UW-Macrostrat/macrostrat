@@ -2,7 +2,7 @@
 
   The age is its matched units' range where it has any, and its own intervals'
   otherwise. The colour is that of the tightest interval bracketing the age,
-  excluding the New Zealand timescale; `legend_lookup.py` then nudges it to a
+  outside regional timescales; `legend_lookup.py` then nudges it to a
   variant where same-age units collide. Reads `unit_ids`, so it runs after they
   are set.
 
@@ -38,9 +38,12 @@ colors AS (
       FROM macrostrat.intervals i
       WHERE i.age_top <= a.best_age_top
         AND i.age_bottom >= a.best_age_bottom
-        AND i.id NOT IN (
-          SELECT interval_id FROM macrostrat.timescales_intervals
-          WHERE timescale_id = 6
+        -- Regional timescales carry their own colors; an interval in none counts as global.
+        AND NOT EXISTS (
+          SELECT 1 FROM macrostrat.timescales_intervals ti
+          JOIN macrostrat.timescales t ON t.id = ti.timescale_id
+          WHERE ti.interval_id = i.id
+          HAVING bool_and(t.region IS NOT NULL)
         )
       ORDER BY i.age_bottom - i.age_top
       LIMIT 1
