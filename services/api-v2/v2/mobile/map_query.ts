@@ -1,5 +1,6 @@
 import { getUnitsDataCompat } from "../units";
 import { requestedSource } from "./map-source";
+import { refsSelect } from "./map-refs";
 
 var api = require("../api");
 var async = require("async");
@@ -230,7 +231,7 @@ function buildSQL(scale, where) {
         COALESCE(sources.authors, '') authors,
         COALESCE(sources.ref_year, '') ref_year,
         COALESCE(sources.ref_source, '') ref_source,
-        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref
+        COALESCE(sources.isbn_doi, '') isbn_doi) r)::jsonb AS ref${refsSelect()}
       FROM carto_new.${scale} y
       JOIN maps.polygons m
         ON y.map_id = m.map_id AND m.scale = ANY(${scaleArray(scale)})
@@ -297,7 +298,7 @@ function buildCompilationSQL() {
       l.color,
       m.scale::text AS scale,
       (SELECT row_to_json(r) FROM (SELECT
-        sources.name,${REF_COLUMNS}) r)::jsonb AS ref
+        sources.name,${REF_COLUMNS}) r)::jsonb AS ref${refsSelect()}
     FROM map_bounds.polygon_at($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4) u
     JOIN maps.polygons m ON m.map_id = u.map_id AND m.scale = u.scale
     LEFT JOIN maps.map_legend ON map_legend.map_id = m.map_id
