@@ -13,6 +13,8 @@ Map processing pipeline (v2)
 + macrostrat process carto_lines <source_id>
 + macrostrat seed <source_id>
 
++ macrostrat maps process dedupe <source_id>  (repair: a map staged twice)
+
 """
 
 from functools import partial
@@ -21,7 +23,9 @@ from typing import Annotated, Optional
 from rich import print
 from typer import Argument, Option
 
+from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
+from macrostrat.core.safety import require_write_access
 
 from ..database import get_database, sql_file
 from ..match import match_liths, match_strat_names, match_units
@@ -378,3 +382,62 @@ def delete(maps: MapSelector, exclude: MapExclude = None, state: MapState = None
     """Delete all data from the maps schema for the selected map sources."""
     db = get_database()
     for_each_map(maps, partial(remove, db), exclude=exclude, state=state)
+
+
+@cli.command(name="dedupe", rich_help_panel="[red]Destructive[/red]")
+def dedupe(
+    maps: MapSelector,
+    exclude: MapExclude = None,
+    state: MapState = None,
+    staging_prefix: Annotated[
+        Optional[str],
+        Option(
+            "--staging-prefix",
+            help="Name the sources.<prefix>_* staging tables (default: the slug)",
+        ),
+    ] = None,
+    dry_run: bool = Option(False, "--dry-run", help="Report duplicates only"),
+    yes: bool = Option(
+        False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
+    ),
+):
+    """Delete features that exactly duplicate another of the same map.
+
+    Covers the published and staging tables. Rows must match in every column but
+    their key; the first of each set is kept.
+    """
+    from .dedupe import count_duplicates, remove_duplicates
+
+    db = get_database()
+    found = []
+    for m in resolve_maps(db, maps, exclude=exclude, state=state):
+        counts = count_duplicates(db, m, staging_prefix=staging_prefix)
+        print(f"[bold cyan]{m.slug}[/] [dim]#{m.id}[/]")
+        for c in counts:
+            style = "yellow" if c.duplicates else "dim"
+            print(
+                f"  [{style}]{c.table:<48} {c.rows:>9} rows"
+                f" {c.duplicates:>9} duplicates[/]"
+            )
+        if any(c.duplicates for c in counts):
+            found.append((m, sum(c.duplicates for c in counts)))
+
+    total = sum(n for _, n in found)
+    if total == 0:
+        print("\nNo duplicates found")
+        return
+    if dry_run:
+        print(f"\nDry run; {total} duplicate rows in {len(found)} maps not deleted")
+        return
+
+    require_write_access(
+        WriteScope.Data,
+        assume_yes=yes,
+        action=f"deletion of {total} duplicate rows from {len(found)} map(s)",
+    )
+    # The gate replaces the reader connection with a writer one
+    db = get_database()
+    for m, _ in found:
+        deleted = remove_duplicates(db, m, staging_prefix=staging_prefix)
+        summary = ", ".join(f"{t} {n}" for t, n in deleted.items() if n)
+        print(f"{m.slug}: deleted {summary}")

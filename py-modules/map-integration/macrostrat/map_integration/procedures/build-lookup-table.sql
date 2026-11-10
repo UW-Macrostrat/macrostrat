@@ -156,8 +156,8 @@ polygons AS (
   WHERE q.source_id = :source_id
 ),
 
-/* The colour of the tightest interval bracketing each age range, excluding the
-   New Zealand timescale. Looked up once per distinct range -- 4,435 on SGMC --
+/* The colour of the tightest interval bracketing each age range, outside
+   regional timescales. Looked up once per distinct range -- 4,435 on SGMC --
    where it was once per polygon, and was 84% of this statement's time. A range
    with a null end matches no interval, and its polygons get no colour. */
 colors AS (
@@ -169,9 +169,12 @@ colors AS (
       FROM macrostrat.intervals i
       WHERE i.age_top <= a.best_age_top
         AND i.age_bottom >= a.best_age_bottom
-        AND i.id NOT IN (
-          SELECT interval_id FROM macrostrat.timescales_intervals
-          WHERE timescale_id = 6
+        -- Regional timescales carry their own colors; an interval in none counts as global.
+        AND NOT EXISTS (
+          SELECT 1 FROM macrostrat.timescales_intervals ti
+          JOIN macrostrat.timescales t ON t.id = ti.timescale_id
+          WHERE ti.interval_id = i.id
+          HAVING bool_and(t.region IS NOT NULL)
         )
       ORDER BY i.age_bottom - i.age_top
       LIMIT 1

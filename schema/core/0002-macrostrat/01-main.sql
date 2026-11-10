@@ -1901,8 +1901,37 @@ CREATE TABLE macrostrat.temp_areas (
 CREATE TABLE macrostrat.timescales (
     id integer NOT NULL,
     timescale character varying(255) DEFAULT NULL::character varying,
-    ref_id integer NOT NULL
+    ref_id integer NOT NULL,
+    /** Where the timescale applies; null for global ones. Mars counts as a region. */
+    region text
 );
+
+/* Map colors come only from global timescales until maps carry a region. */
+UPDATE macrostrat.timescales t SET region = v.region
+FROM (VALUES
+    ('New Zealand ages', 'New Zealand'),
+    ('custom COSUNA', 'North America'),
+    ('COSUNA', 'North America'),
+    ('North American land mammal ages', 'North America'),
+    ('North American Regional', 'North America'),
+    ('Trilobite Zonation - Laurentia', 'North America'),
+    ('Ammonite Zonation - Western Interior', 'North America'),
+    ('Ammonite Zonation - Boreal', 'Boreal'),
+    ('Low latitude radiolarian zonation', 'Low latitudes'),
+    ('Neogene North Pacific Diatom Biochronology', 'North Pacific'),
+    ('Neogene North Pacific Diatom Biochronology Subzones', 'North Pacific'),
+    ('Siberian Regional', 'Siberia'),
+    ('Australian Regional', 'Australia'),
+    ('Western Europe Regional', 'Western Europe'),
+    ('Russian Platform Regional Stages', 'Russia'),
+    ('Russian Precambrian Eras', 'Russia'),
+    ('Russian Precambrian Eons', 'Russia'),
+    ('Russian Epochs', 'Russia'),
+    ('Russian Stages', 'Russia'),
+    ('Martian Periods', 'Mars'),
+    ('Martian Epochs', 'Mars')
+) AS v(timescale, region)
+WHERE t.timescale = v.timescale AND t.region IS DISTINCT FROM v.region;
 
 CREATE SEQUENCE macrostrat.timescales_id_seq
     AS integer

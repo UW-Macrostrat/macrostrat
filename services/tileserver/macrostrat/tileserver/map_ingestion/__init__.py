@@ -189,10 +189,17 @@ def format_column(
 
 def _color_subquery(b_age, t_age, alias):
     return f"""(
-    SELECT interval_color
-      FROM macrostrat.intervals
-      WHERE age_top <= {t_age} AND age_bottom >= {b_age}
-      ORDER BY age_bottom - age_top
+    SELECT ic.interval_color
+      FROM macrostrat.intervals ic
+      WHERE ic.age_top <= {t_age} AND ic.age_bottom >= {b_age}
+        -- Regional timescales carry their own colors
+        AND NOT EXISTS (
+          SELECT 1 FROM macrostrat.timescales_intervals ti
+          JOIN macrostrat.timescales t ON t.id = ti.timescale_id
+          WHERE ti.interval_id = ic.id
+          HAVING bool_and(t.region IS NOT NULL)
+        )
+      ORDER BY ic.age_bottom - ic.age_top
       LIMIT 1
     ) AS {alias}"""
 

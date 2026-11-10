@@ -50,15 +50,16 @@ ENV GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR \
     VSI_CACHE=TRUE \
     VSI_CACHE_SIZE=52428800
 
-# NEED TO specify another build context for the py-modules directory
-COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
-COPY --from=py-modules map-utils /py-modules/map-utils
-
-# Install dependencies
+# Install published dependencies before local modules, so editing those keeps this layer.
+# `--frozen`: `--locked` would need the local modules' pyproject.toml to check the lock.
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-editable
+    uv sync --frozen --no-install-project --no-install-local --no-editable
+
+# NEED TO specify another build context for the py-modules directory
+COPY --from=py-modules tileserver-utils /py-modules/tileserver-utils
+COPY --from=py-modules map-utils /py-modules/map-utils
 
 ADD . /services/main
 
