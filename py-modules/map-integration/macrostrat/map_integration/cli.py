@@ -554,12 +554,14 @@ def cmd_reingest_points(
     existing ingest record and uploaded archive stay as they are.
 
     Any manual or normalize-* work already done on the points table is lost --
-    re-run 'normalize normalize_az --layer points' afterward.
+    re-run 'macrostrat run normalize --layer points normalize-az' (in
+    data-integration) afterward.
     """
     slug = _reingest_points_for_path(Path(data_path), prefix, crs=crs, filter=filter)
     console.print(
         f"[green]Done:[/green] re-ingested sources.{staging_table(slug, 'points')}. "
-        f"Now run: [bold]normalize normalize_az --only {slug} --layer points[/bold]"
+        "Now run: [bold]macrostrat run normalize "
+        f"--slug {slug} --layer points normalize-az --apply[/bold]"
     )
 
 
@@ -664,8 +666,8 @@ def cmd_bulk_reingest_points(
         console.print(f"  [red]{name}[/red]: {message}")
     if done:
         console.print(
-            "\nNow run: [bold]macrostrat maps staging normalize normalize_az "
-            "--layer points[/bold]"
+            "\nNow run: [bold]macrostrat run normalize --layer points "
+            "normalize-az --apply[/bold]"
         )
 
 
