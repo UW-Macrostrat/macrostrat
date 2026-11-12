@@ -18,6 +18,7 @@ class Post(BaseModel):
     ref_source: Optional[str] = None
     isbn_doi: Optional[str] = None
     scale: Optional[str] = None
+    scale_denominator: Optional[int] = None
     primary_line_table: Optional[str] = None
     license: Optional[str] = None
     features: Optional[int] = None
