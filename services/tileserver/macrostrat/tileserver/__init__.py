@@ -258,6 +258,10 @@ from .integrations import router as integrations_router
 app.include_router(integrations_router, tags=["Integrations"], prefix="/integrations")
 
 
+from .regions import router as regions_router
+
+app.include_router(regions_router, tags=["Regions"], prefix="/regions")
+
 from .stats import stats_router
 
 app.include_router(stats_router, tags=["Stats"], prefix="/stats")
