@@ -22,10 +22,10 @@ from pydantic import BaseModel, Field
 from .units import Area, Distance
 
 #: Operations permitted at position 0. Mirrors `boundary_op_opening_position`.
-OPENING_OPERATIONS = ("union", "adopt", "init", "compile", "world")
+OPENING_OPERATIONS = ("union", "adopt", "init", "compile", "world", "follow")
 
 #: Opening operations whose cached geometry is *computed* and can be recomputed.
-COMPUTED_OPENINGS = ("union", "compile", "world")
+COMPUTED_OPENINGS = ("union", "compile", "world", "follow")
 
 
 class BoundaryOp(BaseModel):
@@ -101,6 +101,19 @@ class World(BoundaryOp):
         # `inner` is the cached envelope for this row. Every opening is read from
         # its cache by the fold, so the envelope is computed into the cache
         # (`_OPENING_GEOMETRY` in build.py) rather than returned here.
+        return inner
+
+
+class Follow(BoundaryOp):
+    """Open the boundary with another source's current boundary."""
+
+    op_id: ClassVar[str] = "follow"
+    takes_geometry: ClassVar[bool] = True  # caches the followed boundary
+
+    source: str = Field(..., description="Slug of the source whose boundary to follow")
+
+    def sql(self, inner: str, params: dict[str, Any], operand: str) -> str:
+        # `inner` is the cached copy, refreshed by `build` before each fold.
         return inner
 
 
@@ -289,6 +302,7 @@ OPERATIONS: dict[str, type[BoundaryOp]] = {
         Union,
         Compile,
         World,
+        Follow,
         Adopt,
         Init,
         Add,

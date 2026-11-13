@@ -129,9 +129,32 @@ def needs_build(db: Database) -> set[int]:
         GROUP BY a.source_id, a.ops_hash
         HAVING count(o.id) > 0 AND a.ops_hash IS DISTINCT FROM {OPS_HASH}
           OR bool_or(ST_IsEmpty(a.geometry))
+        UNION
+        {_FOLLOWING_STALE}
         """
     ).all()
     return {r.source_id for r in rows}
+
+
+#: Sources opening with `follow` whose copy no longer matches the boundary followed.
+_FOLLOWING_STALE = """
+SELECT o.source_id
+FROM map_bounds.boundary_op o
+LEFT JOIN maps.sources s ON s.slug = o.parameters->>'source'
+LEFT JOIN map_bounds.map_area f ON f.source_id = s.source_id
+WHERE o.position = 0 AND o.operation = 'follow'
+  AND ST_AsBinary(o.geometry) IS DISTINCT FROM ST_AsBinary(f.geometry)
+"""
+
+
+def followers(db: Database) -> set[int]:
+    return {
+        r.source_id
+        for r in db.run_query(
+            "SELECT source_id FROM map_bounds.boundary_op"
+            " WHERE position = 0 AND operation = 'follow'"
+        )
+    }
 
 
 def ensure_opening(db: Database, source_id: int) -> int | None:
@@ -204,6 +227,15 @@ _OPENING_GEOMETRY = {
     """,
     # The whole world, by assertion.
     "world": "SELECT ST_Multi(ST_MakeEnvelope(-180, -90, 180, 90, 4326))",
+    # Another source's boundary, named by slug so the operation travels between
+    # environments.
+    "follow": """
+        SELECT f.geometry
+        FROM map_bounds.boundary_op o
+        JOIN maps.sources s ON s.slug = o.parameters->>'source'
+        JOIN map_bounds.map_area f ON f.source_id = s.source_id
+        WHERE o.source_id = :source_id AND o.position = 0
+    """,
 }
 
 
@@ -218,7 +250,9 @@ def opening_operation(db: Database, source_id: int) -> tuple[int, str] | None:
     return row.id, row.operation
 
 
-def set_opening(db: Database, source_id: int, operation: str) -> int:
+def set_opening(
+    db: Database, source_id: int, operation: str, parameters: dict | None = None
+) -> int:
     """Make `operation` the map's opening operation, replacing any existing one.
 
     The row's cached geometry is cleared; `build --init` (or `topo update`, for
@@ -226,21 +260,27 @@ def set_opening(db: Database, source_id: int, operation: str) -> int:
     """
     if operation not in OPENING_OPERATIONS:
         raise ValueError(f"{operation!r} cannot open a boundary")
+    params = dict(
+        source_id=source_id,
+        operation=operation,
+        parameters=load(operation, parameters).model_dump_json(exclude_unset=True),
+    )
     existing = opening_operation(db, source_id)
     if existing is None:
         return db.run_query(
             """
-            INSERT INTO map_bounds.boundary_op (source_id, position, operation)
-            VALUES (:source_id, 0, :operation)
+            INSERT INTO map_bounds.boundary_op (source_id, position, operation, parameters)
+            VALUES (:source_id, 0, :operation, CAST(:parameters AS jsonb))
             RETURNING id
             """,
-            dict(source_id=source_id, operation=operation),
+            params,
         ).scalar()
     db.run_query(
         "UPDATE map_bounds.boundary_op"
-        " SET operation = :operation, geometry = NULL, parameters = jsonb_build_object()"
+        " SET operation = :operation, geometry = NULL,"
+        " parameters = CAST(:parameters AS jsonb)"
         " WHERE id = :id",
-        dict(id=existing[0], operation=operation),
+        dict(params, id=existing[0]),
     )
     return existing[0]
 
@@ -358,7 +398,8 @@ def build(
     if (
         ops[0].position == 0
         and ops[0].operation in COMPUTED_OPENINGS
-        and not ops[0].has_geometry
+        # A followed boundary may have moved since it was copied.
+        and (not ops[0].has_geometry or ops[0].operation == "follow")
     ):
         # A computed opening whose cache was never filled (`bounds open`, or a
         # compilation seeded with `compile` or `world`): compute it now. A dry
@@ -497,7 +538,9 @@ def sources_with_bounds(db: Database):
 def stale_sources(db: Database, *, rebuild: bool = False):
     """The sources `build --all` builds: those whose operations changed since
     their last build, or every one with `rebuild`."""
-    everything = sources_with_bounds(db)
+    # Followers last, so they copy boundaries built in the same pass.
+    last = followers(db)
+    everything = sorted(sources_with_bounds(db), key=lambda m: m.map_id in last)
     if rebuild:
         return everything
     stale = needs_build(db)

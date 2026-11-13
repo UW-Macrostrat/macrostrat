@@ -160,7 +160,7 @@ class Metadata(Element):
 
 
 # Mirrors `map_topology.bounds.operations.COMPUTED_OPENINGS`
-COMPUTED_OPENINGS = ("union", "compile", "world")
+COMPUTED_OPENINGS = ("union", "compile", "world", "follow")
 
 
 @dataclass(frozen=True)

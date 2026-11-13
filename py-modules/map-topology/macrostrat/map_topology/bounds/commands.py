@@ -168,13 +168,18 @@ def build_cmd(
 def open_cmd(
     map: Annotated[str, Argument(help="Map or compilation slug or source id")],
     operation: Annotated[
-        str, Argument(help="Opening operation: union, compile, world, adopt, init")
+        str,
+        Argument(help="Opening operation: union, compile, world, follow, adopt, init"),
     ],
+    source: Annotated[
+        Optional[str], Option(help="For `follow`: the slug of the source to follow")
+    ] = None,
 ):
     """Set how a boundary opens, replacing the existing opening operation.
 
     `compile` unions the bounds of every noded source below a compilation;
-    `world` asserts the whole world. The cached geometry is cleared and
+    `world` asserts the whole world; `follow --source <slug>` copies another
+    source's boundary and tracks it. The cached geometry is cleared and
     recomputed by the next `bounds build` or `topo update`.
     """
     if operation not in OPENING_OPERATIONS:
@@ -182,7 +187,12 @@ def open_cmd(
         raise typer.Exit(1)
     db = get_database()
     m = _resolve_one(map)
-    build_mod.set_opening(db, m.map_id, operation)
+    parameters = dict(source=source) if source is not None else None
+    try:
+        build_mod.set_opening(db, m.map_id, operation, parameters)
+    except ValueError as err:
+        print(f"[red]{err}[/]")
+        raise typer.Exit(1)
     db.session.commit()
     print(f"{m.slug} now opens with [bold]{operation}[/]")
     print("[dim]Run `macrostrat bounds build` to apply.[/]")
