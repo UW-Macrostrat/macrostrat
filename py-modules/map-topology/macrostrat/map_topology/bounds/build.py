@@ -442,7 +442,9 @@ def build(
     except Exception as err:  # noqa: BLE001 -- recorded as data, see below
         db.session.rollback()
         result.error = str(err).strip().splitlines()[0]
-        result.failed_op = _locate_failure(db, ops, params)
+        # A lost connection usually means an OOM kill; replaying would kill it again.
+        if not getattr(err, "connection_invalidated", False):
+            result.failed_op = _locate_failure(db, ops, params)
         _record_error(db, source_id, result)
         return result
 
