@@ -8,7 +8,7 @@ from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
 from macrostrat.core.safety import require_write_access
 from macrostrat.schema_management import SchemaApp, reload_postgrest_schema
-from macrostrat.schema_management.cluster import database_cluster
+from macrostrat.schema_management.database.cluster import database_cluster
 
 from . import topology  # noqa: F401 -- registers the topogeometry type
 from .chunks import chunks_for_class, environment_class

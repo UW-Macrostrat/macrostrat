@@ -3,7 +3,7 @@
 from typing import Optional
 
 from macrostrat.database import Database
-from macrostrat.schema_management import harness
+from macrostrat.schema_management.testing import harness
 
 from .chunks import chunks_for_environment
 

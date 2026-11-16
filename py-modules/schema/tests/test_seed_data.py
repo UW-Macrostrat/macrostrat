@@ -3,7 +3,7 @@
 from pytest import raises
 from sqlalchemy.exc import IntegrityError
 
-from macrostrat.schema_management.seed_data import (
+from macrostrat.schema_management.sync.seed_data import (
     _is_non_idempotent_insert,
     data_statements_in,
     rebuild_seed_data,

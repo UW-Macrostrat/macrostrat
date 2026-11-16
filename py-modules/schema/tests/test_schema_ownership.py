@@ -21,7 +21,7 @@ from macrostrat.core.config import settings
 from macrostrat.schema.app import temporary_database_cluster
 from macrostrat.schema.chunks import chunks_for_environment
 from macrostrat.schema_management import ApplicationStatus
-from macrostrat.schema_management.composer import build_schema
+from macrostrat.schema_management.chunks.composer import build_schema
 
 
 def _load_ownership_migration():

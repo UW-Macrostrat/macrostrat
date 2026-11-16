@@ -9,7 +9,7 @@ from psycopg.errors import DuplicateObject, InsufficientPrivilege
 from sqlalchemy.exc import ProgrammingError
 
 from macrostrat.schema_management import SchemaDefinition
-from macrostrat.schema_management.grants import (
+from macrostrat.schema_management.sync.grants import (
     grant_statements_in,
     object_already_exists,
     rebuild_grants,

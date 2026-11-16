@@ -12,7 +12,10 @@ from sqlalchemy import create_engine
 
 from macrostrat.schema.chunks import chunks_for_environment
 from macrostrat.schema_management import SchemaDefinition
-from macrostrat.schema_management.composer import build_schema, dependency_closure
+from macrostrat.schema_management.chunks.composer import (
+    build_schema,
+    dependency_closure,
+)
 
 _ENV = "development"
 

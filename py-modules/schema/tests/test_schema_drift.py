@@ -29,9 +29,9 @@ from macrostrat.database import Database
 from macrostrat.database.utils import template_database
 from macrostrat.schema.app import temporary_database_cluster
 from macrostrat.schema.chunks import chunks_for_environment
-from macrostrat.schema_management.composer import build_schema
-from macrostrat.schema_management.diff import _results_db as _get_results_db
-from macrostrat.schema_management.diff import get_all_schemas, get_inspector
+from macrostrat.schema_management.chunks.composer import build_schema
+from macrostrat.schema_management.plan import get_all_schemas, get_inspector
+from macrostrat.schema_management.plan.changes import _results_db as _get_results_db
 
 _EXCLUDED_SCHEMAS = ["sources", "tiger", "tiger_data"]
 _ENV = "development"

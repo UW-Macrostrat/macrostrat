@@ -3,11 +3,11 @@
 from pytest import fixture, mark
 
 from macrostrat.schema_management import SchemaDefinition
-from macrostrat.schema_management.grants import grant_objects
-from macrostrat.schema_management.procedures import procedure_objects
-from macrostrat.schema_management.seed_data import data_objects
-from macrostrat.schema_management.selection import ObjectName, ObjectSelector
-from macrostrat.schema_management.views import rebuild_views, view_objects
+from macrostrat.schema_management.sync.grants import grant_objects
+from macrostrat.schema_management.sync.procedures import procedure_objects
+from macrostrat.schema_management.sync.seed_data import data_objects
+from macrostrat.schema_management.sync.selection import ObjectName, ObjectSelector
+from macrostrat.schema_management.sync.views import rebuild_views, view_objects
 
 # --- a selected view's recreate cascades past the selection (database) ----
 
