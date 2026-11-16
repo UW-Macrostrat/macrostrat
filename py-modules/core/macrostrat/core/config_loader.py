@@ -30,6 +30,9 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 
 from pydantic import ConfigDict, Field, PrivateAttr, ValidationError
 
+from macrostrat.app_frame.environments import DEFAULT_ENV, EnvironmentPolicy
+from macrostrat.app_frame.secrets import as_secret, configure_onepassword, reveal
+from macrostrat.core.environment import policy_from_settings
 from macrostrat.utils import get_logger
 
 from .config_model import EnvironmentSettings, RemovedKeys
@@ -39,9 +42,7 @@ from .connections import (
     MissingCredential,
     connections_for,
 )
-from .environment import DEFAULT_ENV, EnvironmentPolicy, policy_from_settings
 from .exc import ConfigError, UnknownEnvironment
-from .secrets import as_secret, configure_onepassword, reveal
 from .storage import DEFAULT_ENDPOINT, buckets_for, endpoints_for
 
 log = get_logger(__name__)

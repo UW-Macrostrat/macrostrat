@@ -15,6 +15,13 @@ from sqlalchemy import make_url, text
 from sqlalchemy.exc import DBAPIError
 from typer import Argument, Option
 
+from macrostrat.app_frame.environments import AccessScope
+from macrostrat.app_frame.secrets import (
+    REDACTED,
+    is_sensitive_name,
+    redact_text,
+    refuse_non_interactive_reveal,
+)
 from macrostrat.core import app
 from macrostrat.core.database import (
     NoDatabaseConfigured,
@@ -28,14 +35,7 @@ from macrostrat.database.transfer.utils import raw_database_url
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
 
-from ...core.environment import WriteScope
 from ...core.safety import require_write_access, writes
-from ...core.secrets import (
-    REDACTED,
-    is_sensitive_name,
-    redact_text,
-    refuse_non_interactive_reveal,
-)
 from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
 
@@ -248,7 +248,7 @@ def psql(
     if write:
         # An interactive shell can run any statement, so it is gated as the
         # widest scope. Passing the gate escalates this invocation's role.
-        require_write_access(WriteScope.Schema, action="psql --write")
+        require_write_access(AccessScope.Schema, action="psql --write")
 
     conn = settings.database_connection()
     if conn is None:
@@ -338,7 +338,7 @@ def _reset_sequence(
 
 
 @db_app.command()
-@writes(WriteScope.Data, action="database restore")
+@writes(AccessScope.Data, action="database restore")
 def restore(
     dumpfile: Path,
     database: str = Argument(None),
@@ -408,7 +408,7 @@ def list_tables(ctx: typer.Context, database: str = Argument(None), schema: str 
 
 
 @db_app.command(name="vacuum", rich_help_panel="Helpers")
-@writes(WriteScope.Data, action="vacuum")
+@writes(AccessScope.Data, action="vacuum")
 def vacuum(
     tables: list[str] = Argument(None, help="Tables to vacuum (default: all)"),
     schema: str = Option(None, help="Only tables in this schema"),
@@ -582,7 +582,7 @@ db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions
 # Gated at registration rather than at the definition, so `load_csv` stays
 # importable and callable as a library function without a policy check.
 db_app.command(name="load-csv", rich_help_panel="Helpers")(
-    writes(WriteScope.Data, action="CSV load")(load_csv)
+    writes(AccessScope.Data, action="CSV load")(load_csv)
 )
 db_app.command(name="load-geo", rich_help_panel="Helpers")(load_geo)
 

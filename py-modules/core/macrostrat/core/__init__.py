@@ -13,7 +13,7 @@ any context without a fully-provisioned config.
 The lazy hooks below keep every existing call site working unchanged
 (`from macrostrat.core import app` behaves exactly as before, and still loads
 config before `get_database` / `SchemaDefinition` are resolved) while letting
-`macrostrat.core.environment`, `macrostrat.core.secrets` and friends be imported
+`macrostrat.core.environment`, `macrostrat.app_frame.secrets` and friends be imported
 on their own.
 """
 

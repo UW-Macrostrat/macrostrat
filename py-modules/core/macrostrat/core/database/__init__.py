@@ -171,8 +171,9 @@ def database_url_for(
     A credential leaves this process here, so *role* passes its gate first: the
     read gate for the reader login, the data-write gate for the writer's.
     """
+    from macrostrat.app_frame.environments import AccessScope
+
     from ..config import exported_database_url
-    from ..environment import WriteScope
     from ..safety import confirm_read, require_write_access
 
     role = DatabaseRole(role)
@@ -183,7 +184,7 @@ def database_url_for(
         raise KeyError(f"No database {name!r} configured for {where}")
     if role == DatabaseRole.Writer:
         # The writer login is for another process; this one stays a reader.
-        require_write_access(WriteScope.Data, settings=cfg, escalate_connection=False)
+        require_write_access(AccessScope.Data, settings=cfg, escalate_connection=False)
     else:
         confirm_read(cfg)
     return exported_database_url(conn, role)

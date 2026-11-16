@@ -11,8 +11,8 @@ from psycopg.sql import Identifier
 from rich.console import Console
 from typer import Argument, Option
 
+from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core import app
-from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import require_write_access, writes
 from macrostrat.database import Database
@@ -177,7 +177,7 @@ def normalize_sources(
     selected = resolve_maps(db, maps, exclude=exclude, state=state)
     if not dry_run:
         require_write_access(
-            WriteScope.Data,
+            AccessScope.Data,
             assume_yes=yes,
             action=f"normalizing staging tables of {len(selected)} map(s)",
         )
@@ -246,7 +246,7 @@ def delete_sources(
     # the slug list can come from a file or stdin, so the caller may not have
     # counted them.
     require_write_access(
-        WriteScope.Data,
+        AccessScope.Data,
         assume_yes=yes,
         action=(
             f"deletion of {len(maps)} map source(s)"
@@ -286,7 +286,7 @@ def change_slug(
     # Gated imperatively so that a dry run needs no authorization.
     if not dry_run:
         require_write_access(
-            WriteScope.Data,
+            AccessScope.Data,
             assume_yes=yes,
             action=f"slug change {map.slug} → {new_slug}",
         )
@@ -346,7 +346,7 @@ def change_slug(
 
 
 @cli.command(name="update-status")
-@writes(WriteScope.Data, action="map status update")
+@writes(AccessScope.Data, action="map status update")
 def update_status(
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
@@ -536,7 +536,7 @@ staging_cli.add_typer(normalize_cli, name="normalize")
 
 
 @staging_cli.command("reingest-points")
-@writes(WriteScope.Data, action="points re-ingestion")
+@writes(AccessScope.Data, action="points re-ingestion")
 def cmd_reingest_points(
     data_path: str = ...,
     prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
@@ -608,7 +608,7 @@ def _reingest_points_for_path(
 
 
 @staging_cli.command("bulk-reingest-points")
-@writes(WriteScope.Data, action="bulk points re-ingestion")
+@writes(AccessScope.Data, action="bulk points re-ingestion")
 def cmd_bulk_reingest_points(
     data_path: str = ...,
     prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
@@ -700,7 +700,7 @@ def cmd_upload_dir(
 
 
 @staging_cli.command("s3-delete")
-@writes(WriteScope.Data, action="staging bucket deletion")
+@writes(AccessScope.Data, action="staging bucket deletion")
 def cmd_delete_dir(
     slug: str = ...,
     file_name: str = Option(
@@ -880,7 +880,7 @@ def convert_e00_to_gpkg(
 
 
 @staging_cli.command("bulk-ingest")
-@writes(WriteScope.Data, action="bulk map ingestion")
+@writes(AccessScope.Data, action="bulk map ingestion")
 def staging_bulk(
     data_path: str,
     prefix: str = Option(..., help="Slug filename_prefix to avoid collisions"),

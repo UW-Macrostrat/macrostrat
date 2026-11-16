@@ -23,7 +23,7 @@ from typing import Annotated, Optional
 from rich import print
 from typer import Argument, Option
 
-from macrostrat.core.environment import WriteScope
+from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import require_write_access
 
@@ -431,7 +431,7 @@ def dedupe(
         return
 
     require_write_access(
-        WriteScope.Data,
+        AccessScope.Data,
         assume_yes=yes,
         action=f"deletion of {total} duplicate rows from {len(found)} map(s)",
     )

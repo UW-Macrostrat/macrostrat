@@ -7,7 +7,7 @@ and applies the gate guarding the scope being written:
 .. code-block:: python
 
     @db_app.command()
-    @writes(WriteScope.Data)
+    @writes(AccessScope.Data)
     def restore(...):
         ...
 
@@ -38,71 +38,52 @@ re-authorize against, so the gate fails closed and says so.
    convenience with none of that, and cannot be set once and forgotten.
 """
 
-import sys
 from enum import Enum
 from functools import wraps
 from typing import Optional
 
-from click.exceptions import ClickException
+from macrostrat.app_frame.environments import (
+    AccessScope,
+    EnvironmentPolicy,
+    WriteGate,
+    access,
+)
+from macrostrat.app_frame.environments.access import (  # noqa: F401
+    AccessRefused,
+    Refusal,
+    StaleEnvironment,
+    is_interactive,
+)
+from macrostrat.utils import get_logger
 
-from macrostrat.utils import ApplicationError, get_logger
-
-from .environment import EnvironmentPolicy, WriteGate, WriteScope, format_duration
 from .utils import active_environment, renew_active_env
 
 log = get_logger(__name__)
 
+#: A write was not authorized. Raised instead of proceeding.
+WriteRefused = AccessRefused
 
-class Refusal(ApplicationError, ClickException):
-    """Something was not authorized. Raised instead of proceeding.
-
-    Also a `ClickException` so that Click renders it as an error and exits 1,
-    rather than letting it escape as a traceback. That matters more here than
-    for an ordinary error: a refusal that *looks* like a crash invites someone
-    to retry harder or assume the tool is broken, which is the opposite of
-    what a guard rail should communicate.
-
-    (The CLI also reports every `MacrostratError` without a traceback, in
-    `MacrostratControlCommand`; this class does not depend on it.)
-    """
-
-    def __init__(self, message: str, details: Optional[str] = None):
-        ApplicationError.__init__(self, message, details)
-        self.exit_code = 1
-
-    def format_message(self) -> str:
-        if self.details:
-            return f"{self.message}\n{self.details}"
-        return self.message
+# This module's own name for the prompt, so one seam covers every gate here.
+_prompt = access.prompt
 
 
-class WriteRefused(Refusal):
-    """A write was not authorized. Raised instead of proceeding."""
+class _ActiveState:
+    """The remembered environment, as the library's checks read it."""
+
+    @property
+    def active(self):
+        return active_environment()
+
+    def renew(self, ttl):
+        return renew_active_env(ttl)
 
 
-class StaleEnvironment(Refusal):
-    """A lapsed environment was not confirmed for use."""
+def _interactive() -> bool:
+    return is_interactive()
 
 
-def is_interactive() -> bool:
-    """Whether a human is plausibly present at a terminal.
-
-    Requires both a readable TTY and a TTY to prompt on. Agents, CI jobs, cron
-    and `subprocess` calls have neither.
-    """
-    try:
-        return sys.stdin.isatty() and sys.stderr.isatty()
-    except (AttributeError, ValueError):  # detached or closed streams
-        return False
-
-
-def _prompt(message: str) -> str:
-    """Ask on stderr, read from stdin.
-
-    stderr so a prompt never lands in a command's piped stdout.
-    """
-    print(message, end="", file=sys.stderr, flush=True)
-    return sys.stdin.readline().strip()
+def _ask(message: str) -> str:
+    return _prompt(message)
 
 
 def _resolve_policy(settings) -> EnvironmentPolicy:
@@ -112,7 +93,6 @@ def _resolve_policy(settings) -> EnvironmentPolicy:
         settings = _settings
     policy = getattr(settings, "policy", None)
     if policy is None:
-        # No policy at all is not a reason to allow a write.
         raise WriteRefused(
             "No environment policy could be resolved",
             details="Refusing to write. Select an environment with --env.",
@@ -123,64 +103,22 @@ def _resolve_policy(settings) -> EnvironmentPolicy:
 def require_environment(*, settings=None, action: Optional[str] = None) -> None:
     """Confirm a *lapsed* environment before it is used, or raise.
 
-    A remembered environment (`macrostrat env <name>`) is kept past its TTL
-    rather than dropped — dropping it left the CLI with *no* environment, where
-    libpq subprocesses quietly fell back to localhost and everything else
-    crashed. Instead the pointer stays, and this asks before the first
-    consequential use in an invocation:
-
-    - fresh, explicit (`--env`) or absent environment → nothing happens;
-    - lapsed, interactive → one `y/N` prompt; yes renews the TTL (a remembered
-      environment) or approves it for this command (a shell session);
-    - lapsed, non-interactive → :class:`StaleEnvironment`, naming the fix.
-
     Called from the CLI's top-level callback for every command that could touch
     an environment, and again from :func:`require_write_access` so a write is
     covered even outside the CLI. Idempotent within an invocation.
     """
-    state = active_environment()
-    if state is None or not state.needs_approval:
+    state = _ActiveState()
+    active = state.active
+    if active is None or not active.needs_approval:
         return None
-
-    policy = _resolve_policy(settings)
-    env = state.name
-    klass = policy.env_class.value
-    lapsed_for = format_duration(-state.remaining) if state.remaining else "a while"
-    what = f" before {action}" if action else ""
-
-    if not is_interactive():
-        raise StaleEnvironment(
-            f"The {state.source} environment {env} ({klass}) lapsed {lapsed_for} ago",
-            details=(
-                f"There is no terminal to confirm it on{what}. Pass --env {env} "
-                f"to use it for this command, or run `macrostrat env {env}` to "
-                "activate it again."
-            ),
-        )
-
-    if state.source == "remembered":
-        grant = format_duration(policy.ttl)
-        answer = _prompt(
-            f"Remembered environment {env} ({klass}) lapsed {lapsed_for} ago. "
-            f"Keep using it for another {grant}? [y/N] "
-        )
-    else:
-        answer = _prompt(
-            f"Shell environment {env} ({klass}) lapsed {lapsed_for} ago. "
-            f"Use it for this command? [y/N] "
-        )
-    if answer.lower() not in ("y", "yes"):
-        raise StaleEnvironment(
-            f"Declined to keep using {env}",
-            details=f"Run `macrostrat env <name>` to choose an environment.",
-        )
-
-    if state.source == "remembered":
-        renew_active_env(policy.ttl)
-        log.info("Environment %s renewed for %s.", env, grant)
-    else:
-        state.approved = True
-    return None
+    access.require_environment(
+        state,
+        _resolve_policy(settings),
+        command_name="macrostrat",
+        action=action,
+        interactive=_interactive,
+        ask=_ask,
+    )
 
 
 def require_read_access(*, settings=None, action: Optional[str] = None) -> None:
@@ -192,7 +130,7 @@ def require_read_access(*, settings=None, action: Optional[str] = None) -> None:
     reader credential. Passing never escalates the connection.
     """
     return _require_access(
-        WriteScope.Read,
+        AccessScope.Read,
         settings=settings,
         action=action or "read",
         escalate_connection=False,
@@ -208,7 +146,7 @@ _reads_confirmed: set[str] = set()
 def confirm_read(settings) -> None:
     """Pass *settings*' read gate, once per process; a no-op where reads are ungated."""
     policy = getattr(settings, "policy", None)
-    if policy is None or policy.gate_for(WriteScope.Read) == WriteGate.NoGate:
+    if policy is None or policy.gate_for(AccessScope.Read) == WriteGate.NoGate:
         return
     key = policy.name or ""
     if key in _reads_confirmed:
@@ -285,93 +223,38 @@ def _require_access(
     escalate_connection: bool = True,
     role: "DatabaseRoleName" = None,
 ) -> None:
-    scope = WriteScope(scope)
+    scope = AccessScope(scope)
     if role is None:
         role = DatabaseRoleName.Writer
     policy = _resolve_policy(settings)
-    gate = policy.gate_for(scope)
     env = policy.name or "<no environment>"
     if action is not None:
         what = action
-    elif scope == WriteScope.Read:
+    elif scope == AccessScope.Read:
         what = "read"
     else:
         what = f"{scope.value} write"
 
-    # A lapsed environment is questioned before the write is, so that the gate
-    # prompt that follows is unambiguously about *this* environment.
     require_environment(settings=settings, action=what)
 
-    inferred = ""
-    if policy.inferred:
-        inferred = (
-            f" This environment declares no class, so it is treated as "
-            f"{policy.env_class.value} ({policy.reason})."
-        )
-
-    def _authorized():
-        """The single success path, so escalation cannot be forgotten."""
-        if escalate_connection:
-            from .database import use_writer_connection
-
-            use_writer_connection()
-        return None
-
-    if gate == WriteGate.NoGate:
-        log.debug("%s in %s is ungated (%s).", what, env, policy.env_class.value)
-        return _authorized()
-
-    if gate == WriteGate.Confirm:
-        if assume_yes:
-            log.warning(
-                "Proceeding with %s in %s (%s) because --yes was passed.",
-                what,
-                env,
-                policy.env_class.value,
-            )
-            return _authorized()
-        if not is_interactive():
-            # A read is confirmed where the connection opens, not by a command
-            # with a --yes flag; only offer the flag where it exists.
-            bypass = "" if scope == WriteScope.Read else ", or pass --yes"
-            raise WriteRefused(
-                f"Refusing {what} in {env} ({policy.env_class.value})",
-                details=(
-                    "This gate needs confirmation and there is no terminal to "
-                    f"ask on. Re-run it interactively{bypass}.{inferred}"
-                ),
-            )
-        answer = _prompt(f"{what.capitalize()} in {env}. Proceed? [y/N] ")
-        if answer.lower() not in ("y", "yes"):
-            raise WriteRefused(f"{what.capitalize()} in {env} was declined")
-        return _authorized()
-
-    # `typed` and `escalate` are never satisfiable without a terminal, and
-    # --yes deliberately does not help.
-    if not is_interactive():
-        raise WriteRefused(
-            f"Refusing {what} in {env} ({policy.env_class.value})",
-            details=(
-                f"The {gate.value!r} gate guarding {scope.value} writes here "
-                "requires an interactive terminal. There is no flag or "
-                f"environment variable that satisfies it.{inferred}"
-            ),
-        )
-
-    typed = _prompt(
-        f"{what.capitalize()} in {env} ({policy.env_class.value}). "
-        f"Type the environment name to proceed: "
+    access.require_access(
+        scope,
+        policy,
+        assume_yes=assume_yes,
+        action=what,
+        # What `reauthorize` adds to typing the name: a fresh credential fetch.
+        reauthorize=lambda _scope: _require_fresh_credential(settings, env, role),
+        interactive=_interactive,
+        ask=_ask,
     )
-    if typed != env:
-        raise WriteRefused(
-            f"Refusing {what} in {env}",
-            details=f"Expected {env!r}, got {typed!r}.",
-        )
 
-    if gate == WriteGate.Escalate:
-        _require_fresh_credential(settings, env, role)
+    # Write capability is acquired here rather than held: the connection is a
+    # reader's until a gate passes.
+    if escalate_connection:
+        from .database import use_writer_connection
 
-    return _authorized()
+        use_writer_connection()
+    return None
 
 
 def _require_fresh_writer_credential(settings, env: str) -> None:
@@ -387,8 +270,9 @@ def _require_fresh_credential(settings, env: str, role: "DatabaseRoleName") -> N
     prompt. A cached value, an ambient `PGPASSWORD`, or a literal password in a
     config file all fail here, because none of them can be re-authorized.
     """
+    from macrostrat.app_frame.secrets import Secret
+
     from .connections import DatabaseRole
-    from .secrets import Secret
 
     if settings is None:
         from .config import settings as _settings

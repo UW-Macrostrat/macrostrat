@@ -16,13 +16,13 @@ from rich import print
 from sqlalchemy.engine.url import URL
 from typer import Argument, Option, echo
 
+from macrostrat.app_frame.secrets import REDACTED
 from macrostrat.core.connections import DatabaseRole
 from macrostrat.database.transfer.stream_utils import (
     print_stdout,
     print_stream_progress,
 )
 
-from ...core.secrets import REDACTED
 from .utils import libpq_environment
 
 if TYPE_CHECKING:

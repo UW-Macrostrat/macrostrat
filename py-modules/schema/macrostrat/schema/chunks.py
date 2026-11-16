@@ -18,13 +18,10 @@ pulled out; the dependency chain preserves today's exact application order.
 from pathlib import Path
 from typing import Optional, Union
 
+from macrostrat.app_frame.environments import EnvironmentClass, classes_up_to
 from macrostrat.core import APP_OWNER
 from macrostrat.core.config import settings
-from macrostrat.core.environment import (
-    EnvironmentClass,
-    classes_up_to,
-    declared_policy_for,
-)
+from macrostrat.core.environment import declared_policy_for
 from macrostrat.map_topology.config import TopologySchema
 from macrostrat.schema_management import SchemaDefinition, discover_chunks
 from macrostrat.usage_stats import build_schema_config

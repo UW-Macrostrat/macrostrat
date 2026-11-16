@@ -1488,6 +1488,7 @@ version = "0.1.0"
 source = { editable = "py-modules/map-topology" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-task-runner" },
     { name = "pydantic" },
 ]
@@ -1505,6 +1506,7 @@ requires-dist = [
     { name = "macrostrat-core", marker = "extra == 'topology'", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "py-modules/map-utils" },
+    { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
     { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },

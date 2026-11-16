@@ -11,9 +11,8 @@ from typing import Optional
 from rich import print
 from typer import Argument, Option, Typer
 
+from macrostrat.app_frame.secrets import REDACTED, refuse_non_interactive_reveal
 from macrostrat.core import app as app_
-
-from ...core.secrets import REDACTED, refuse_non_interactive_reveal
 
 settings = app_.settings
 

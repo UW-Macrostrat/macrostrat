@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pytest import fixture, mark, raises
 
-from macrostrat.core.secrets import (
+from macrostrat.app_frame.secrets import (
     RESOLVERS,
     Secret,
     forget_all_secrets,

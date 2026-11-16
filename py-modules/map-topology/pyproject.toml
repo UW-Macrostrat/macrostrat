@@ -9,6 +9,7 @@ readme = "README.md"
 # manager and its CLI need the `topology` extra.
 dependencies = [
     "macrostrat.database>=4.2.0",
+    "macrostrat.schema_management>=2.0.0,<3",
     "macrostrat.task-runner",
     "pydantic>=2",
 ]

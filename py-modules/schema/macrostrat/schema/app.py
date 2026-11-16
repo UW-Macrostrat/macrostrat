@@ -2,10 +2,10 @@
 
 from contextlib import contextmanager
 
+from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core import APP_OWNER
 from macrostrat.core.config import settings
 from macrostrat.core.database import get_database
-from macrostrat.core.environment import WriteScope
 from macrostrat.core.safety import require_write_access
 from macrostrat.schema_management import SchemaApp, reload_postgrest_schema
 from macrostrat.schema_management.cluster import database_cluster
@@ -36,7 +36,7 @@ def temporary_database_cluster(**kwargs):
 
 
 def _authorize(action: str, assume_yes: bool):
-    require_write_access(WriteScope.Schema, assume_yes=assume_yes, action=action)
+    require_write_access(AccessScope.Schema, assume_yes=assume_yes, action=action)
 
 
 def schema_definition() -> SchemaApp:
