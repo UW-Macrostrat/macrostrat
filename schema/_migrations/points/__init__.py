@@ -1,4 +1,4 @@
-from macrostrat.schema import Migration, exists, view_exists
+from macrostrat.schema_management import Migration, exists, view_exists
 
 
 class PointsMigration(Migration):

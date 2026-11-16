@@ -1,7 +1,7 @@
 """Fill the flattened rank tree, which the lexicon rebuild maintains thereafter."""
 
 from macrostrat.database import Database
-from macrostrat.schema import ApplicationStatus, Migration, exists
+from macrostrat.schema_management import ApplicationStatus, Migration, exists
 
 
 class StratNameTreeMigration(Migration):

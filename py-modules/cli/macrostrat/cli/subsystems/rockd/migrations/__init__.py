@@ -4,7 +4,7 @@ from sqlalchemy.engine import make_url
 
 from macrostrat.core import app as app_
 from macrostrat.database import Database
-from macrostrat.schema.migrations import (
+from macrostrat.schema_management import (
     ApplicationStatus,
     Migration,
     exists,

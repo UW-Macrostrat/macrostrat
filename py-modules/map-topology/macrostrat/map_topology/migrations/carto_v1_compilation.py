@@ -1,7 +1,7 @@
 """Freeze legacy carto's prioritization into the compilations model."""
 
 from macrostrat.database import Database
-from macrostrat.schema import Migration, exists, has_columns
+from macrostrat.schema_management import Migration, exists, has_columns
 
 from ..carto_v1 import UMBRELLA, write
 

@@ -18,9 +18,10 @@ import importlib.util
 from pytest import fixture, mark
 
 from macrostrat.core.config import settings
-from macrostrat.schema.composer import build_schema
-from macrostrat.schema.defs import temporary_database_cluster
-from macrostrat.schema.migrations import ApplicationStatus
+from macrostrat.schema.app import temporary_database_cluster
+from macrostrat.schema.chunks import chunks_for_environment
+from macrostrat.schema_management import ApplicationStatus
+from macrostrat.schema_management.composer import build_schema
 
 
 def _load_ownership_migration():
@@ -74,7 +75,7 @@ def built_schema():
     ALTER … OWNER TO, which is exactly what these tests inspect.
     """
     with temporary_database_cluster(username="macrostrat_admin") as db:
-        build_schema(db, _ENV)
+        build_schema(db, chunks_for_environment(_ENV))
         yield db
 
 

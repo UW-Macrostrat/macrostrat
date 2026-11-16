@@ -8,7 +8,7 @@ authorization.md` in the workbench.
 """
 
 from macrostrat.database import Database
-from macrostrat.schema import Migration
+from macrostrat.schema_management import Migration
 
 # (relation, privileges) that `web_anon` / `web_user` held and should not. All
 # are development-layer objects except the ingestion queue, which the

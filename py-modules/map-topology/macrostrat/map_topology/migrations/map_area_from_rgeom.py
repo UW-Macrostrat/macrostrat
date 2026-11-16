@@ -1,7 +1,7 @@
 """Seed map boundaries from the legacy `rgeom`, before `topo update` unions them."""
 
 from macrostrat.database import Database
-from macrostrat.schema import Migration, exists
+from macrostrat.schema_management import Migration, exists
 
 from ..bounds.build import OPS_HASH
 

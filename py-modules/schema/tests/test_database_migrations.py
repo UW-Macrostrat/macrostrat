@@ -1,8 +1,8 @@
 from psycopg.sql import Identifier
 from pytest import mark
 
-from macrostrat.schema import ReadinessState
-from macrostrat.schema.migrations import _run_migrations_in_database
+from macrostrat.schema.migrations import run_migrations_in_database
+from macrostrat.schema_management import ReadinessState
 
 
 @mark.docker
@@ -12,7 +12,7 @@ def test_database_migrations(test_db_base):
     # NOTE: we need to use readiness_level=ReadinessState.GA here because when running
     # in CI, we don't preload the development schema adjustments. We could potentially change
     # this.
-    res = _run_migrations_in_database(
+    res = run_migrations_in_database(
         test_db_base, legacy=False, raise_errors=True, readiness_level=ReadinessState.GA
     )
     assert res.n_migrations == 0

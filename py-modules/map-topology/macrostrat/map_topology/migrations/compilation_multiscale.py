@@ -1,7 +1,7 @@
 """`multiscale` compilations: `carto` as one source, zoom bands in one table."""
 
 from macrostrat.database import Database
-from macrostrat.schema import Migration, exists
+from macrostrat.schema_management import Migration, exists
 
 from ..bounds.compile import compile_bounds
 from ..bounds.layers import layer_bounds, seed_layer_openings

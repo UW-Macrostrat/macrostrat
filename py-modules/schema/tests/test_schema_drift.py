@@ -27,9 +27,11 @@ from results.dbdiff import Migration as DiffMigration
 
 from macrostrat.database import Database
 from macrostrat.database.utils import template_database
-from macrostrat.schema import _get_results_db, get_all_schemas, get_inspector
-from macrostrat.schema.composer import build_schema
-from macrostrat.schema.defs import temporary_database_cluster
+from macrostrat.schema.app import temporary_database_cluster
+from macrostrat.schema.chunks import chunks_for_environment
+from macrostrat.schema_management.composer import build_schema
+from macrostrat.schema_management.diff import _results_db as _get_results_db
+from macrostrat.schema_management.diff import get_all_schemas, get_inspector
 
 _EXCLUDED_SCHEMAS = ["sources", "tiger", "tiger_data"]
 _ENV = "development"
@@ -53,7 +55,7 @@ def _plan(from_db, target_db) -> list[str]:
 def built_schema():
     """One full, unoptimized declarative build for this module."""
     with temporary_database_cluster(username="macrostrat_admin") as db:
-        build_schema(db, _ENV)
+        build_schema(db, chunks_for_environment(_ENV))
         yield db
 
 

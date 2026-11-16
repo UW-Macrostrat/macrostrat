@@ -8,7 +8,7 @@ from pathlib import Path
 from pytest import fixture, raises
 
 from macrostrat.core.exc import MacrostratError
-from macrostrat.schema import ApplicationStatus
+from macrostrat.schema_management import ApplicationStatus
 
 MIGRATION = (
     Path(__file__).parents[3] / "schema/_migrations/map_source_kebab_slugs/__init__.py"

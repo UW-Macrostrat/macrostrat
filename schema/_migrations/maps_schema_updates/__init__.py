@@ -1,4 +1,4 @@
-from macrostrat.schema import (
+from macrostrat.schema_management import (
     Migration,
     ReadinessState,
     column_type_is,

@@ -1,7 +1,7 @@
 """Pieces stop being topogeometries; compilations stop having them."""
 
 from macrostrat.database import Database
-from macrostrat.schema import Migration, _any
+from macrostrat.schema_management import Migration, _any
 
 
 def _layer_exists(table: str, column: str):

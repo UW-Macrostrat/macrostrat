@@ -1117,8 +1117,8 @@ redis = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "3.1.0"
-source = { registry = "https://pypi.org/simple" }
+version = "3.2.0"
+source = { editable = "../python-libraries/app-frame" }
 dependencies = [
     { name = "macrostrat-utils" },
     { name = "packaging" },
@@ -1127,9 +1127,16 @@ dependencies = [
     { name = "toposort" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/cf/36f040d6f6af77c00be5f04067fc47f8fe338eb6be391bff38145e2c5e94/macrostrat_app_frame-3.1.0.tar.gz", hash = "sha256:ff0824a5f66793454c1bb76eb13f0fe4a110dfbbecdb1bd58eaf2cf4cdc16fba", size = 9364, upload-time = "2026-06-12T06:51:24.545Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/f0/46e12ffdb42f09e4b44d91dba816fd1c682efe2d5e7bc0330d283c06b191/macrostrat_app_frame-3.1.0-py3-none-any.whl", hash = "sha256:8608cceab3487bc194771c223b354b0f185aba625a98d88d89952e47c789cd1e", size = 14982, upload-time = "2026-06-12T06:51:25.219Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-utils", specifier = ">=1.3.0,<2" },
+    { name = "packaging", specifier = ">=24.1,<25" },
+    { name = "python-dotenv", specifier = ">=1.0.0,<2" },
+    { name = "rich", specifier = ">=13,<16" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2,<3" },
+    { name = "toposort", specifier = ">=1.5,<2" },
+    { name = "typer", specifier = ">=0.12.5,<0.27" },
 ]
 
 [[package]]
@@ -1169,7 +1176,6 @@ dependencies = [
     { name = "macrostrat-column-ingestion" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
-    { name = "macrostrat-dinosaur" },
     { name = "macrostrat-integrations" },
     { name = "macrostrat-map-integration" },
     { name = "macrostrat-map-topology", extra = ["topology"] },
@@ -1222,7 +1228,6 @@ requires-dist = [
     { name = "macrostrat-column-ingestion", editable = "py-modules/column-ingestion" },
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-database", specifier = ">=4.0.1,<5" },
-    { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
     { name = "macrostrat-integrations", editable = "py-modules/integrations" },
     { name = "macrostrat-map-integration", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-integration", extras = ["gis"], marker = "extra == 'gis'", editable = "py-modules/map-integration" },
@@ -1331,7 +1336,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
-    { name = "macrostrat-app-frame", specifier = ">=3.1.0,<4" },
+    { name = "macrostrat-app-frame", specifier = ">=3.2.0,<4" },
     { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
     { name = "pydantic", specifier = ">=2.5,<3" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
@@ -1342,7 +1347,7 @@ requires-dist = [
 [[package]]
 name = "macrostrat-database"
 version = "4.7.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../python-libraries/database" }
 dependencies = [
     { name = "aiofiles" },
     { name = "click" },
@@ -1355,29 +1360,23 @@ dependencies = [
     { name = "sqlalchemy-utils" },
     { name = "sqlparse" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/c5/4ca3cf28eba6eefbd6be68b7562c3fd08f312cf4cc74e580e25bfc8fb785/macrostrat_database-4.7.0.tar.gz", hash = "sha256:447cab4bb0aaf8e9376ebb9d85e4423871a5306dc7c3a1b51082bcfa16593083", size = 29189, upload-time = "2026-09-23T19:21:50.559Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/33/1a0a05e2ee44a093794ace321f931e14e23726b4689ae77929294d19af26/macrostrat_database-4.7.0-py3-none-any.whl", hash = "sha256:15edca9851a27b8436338317b9b905fbd390f95e19f6dc91a00559ccbd0a9191", size = 36740, upload-time = "2026-09-23T19:21:49.505Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiofiles", specifier = ">=23.2.1,<26" },
+    { name = "click", specifier = ">=8.1.3,<9" },
+    { name = "geoalchemy2", specifier = ">=0.15.2,<0.21.0" },
+    { name = "macrostrat-utils", editable = "../python-libraries/utils" },
+    { name = "psycopg", specifier = ">=3.2.1,<4" },
+    { name = "psycopg2", specifier = ">=2.9.11,<3" },
+    { name = "rich", specifier = ">=13.7.1,<16" },
+    { name = "sqlalchemy", specifier = ">=2.0.18,<3" },
+    { name = "sqlalchemy-utils", specifier = ">=0.41.1,<0.43" },
+    { name = "sqlparse", specifier = ">=0.5.1,<0.6" },
 ]
 
-[[package]]
-name = "macrostrat-dinosaur"
-version = "4.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "docker" },
-    { name = "macrostrat-database" },
-    { name = "macrostrat-utils" },
-    { name = "migra" },
-    { name = "schemainspect" },
-    { name = "setuptools" },
-    { name = "sqlalchemy" },
-    { name = "testcontainers" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/49/15d2e1821a1e238cc1557e7eeed3d23c3a99bfed40b858b64d891a08c9cb/macrostrat_dinosaur-4.0.0.tar.gz", hash = "sha256:6ef8bab8d2149f51f2bbe12e16d4af4284b25ab0bf9dd015a9c03582a33ada4f", size = 8790, upload-time = "2026-04-29T15:32:27.832Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/07/f5d62e1357ddfaade460abbb04db6f8849e91ee1ea0d9cf202026c851882/macrostrat_dinosaur-4.0.0-py3-none-any.whl", hash = "sha256:39c6c15799318a99b4a166497e936c13fa990bfa04640dc778d8679c8dfee2fe", size = 11946, upload-time = "2026-04-29T15:32:26.78Z" },
-]
+[package.metadata.requires-dev]
+dev = [{ name = "macrostrat-utils", editable = "../python-libraries/utils" }]
 
 [[package]]
 name = "macrostrat-integrations"
@@ -1671,17 +1670,48 @@ version = "1.1.0"
 source = { editable = "py-modules/schema" }
 dependencies = [
     { name = "click" },
-    { name = "docker" },
     { name = "httpx" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
-    { name = "macrostrat-dinosaur" },
     { name = "macrostrat-map-topology", extra = ["topology"] },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-utils" },
     { name = "pytest" },
+    { name = "rich" },
+    { name = "typer" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1.0,<10" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
+    { name = "macrostrat-core", editable = "py-modules/core" },
+    { name = "macrostrat-database", specifier = ">=4.6.0,<5" },
+    { name = "macrostrat-map-topology", extras = ["topology"], editable = "py-modules/map-topology" },
+    { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
+    { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
+    { name = "pytest", specifier = ">=8.3.4,<9" },
+    { name = "rich", specifier = ">=13,<16" },
+    { name = "typer", specifier = ">=0.22,<0.27" },
+]
+
+[[package]]
+name = "macrostrat-schema-management"
+version = "2.0.0"
+source = { editable = "../python-libraries/schema-management" }
+dependencies = [
+    { name = "click" },
+    { name = "docker" },
+    { name = "macrostrat-database" },
+    { name = "macrostrat-utils" },
+    { name = "psycopg" },
+    { name = "pydantic" },
     { name = "results" },
     { name = "rich" },
+    { name = "sqlalchemy" },
+    { name = "sqlparse" },
     { name = "testcontainers" },
     { name = "typer" },
 ]
@@ -1689,19 +1719,24 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
-    { name = "docker", specifier = ">=7,<8" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
-    { name = "macrostrat-core", editable = "py-modules/core" },
-    { name = "macrostrat-database", specifier = ">=4.6.0,<5" },
-    { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
-    { name = "macrostrat-map-topology", extras = ["topology"], editable = "py-modules/map-topology" },
-    { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
-    { name = "pytest", specifier = ">=8.3.4,<9" },
+    { name = "docker", specifier = ">=7.0.0,<8" },
+    { name = "macrostrat-database", editable = "../python-libraries/database" },
+    { name = "macrostrat-utils", editable = "../python-libraries/utils" },
+    { name = "psycopg", specifier = ">=3.1,<4" },
+    { name = "pydantic", specifier = ">=2,<3" },
     { name = "results", specifier = ">=2.0.0,<2.1.0" },
     { name = "rich", specifier = ">=13,<16" },
+    { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
+    { name = "sqlparse", specifier = ">=0.5,<1" },
     { name = "testcontainers", specifier = ">=4.14.2" },
     { name = "typer", specifier = ">=0.22,<0.27" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "macrostrat-database", editable = "../python-libraries/database" },
+    { name = "macrostrat-utils", editable = "../python-libraries/utils" },
+    { name = "pytest", specifier = ">=9.1.0" },
 ]
 
 [[package]]
@@ -1710,6 +1745,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "api" },
+    { name = "macrostrat-app-frame" },
     { name = "macrostrat-cli" },
     { name = "macrostrat-core" },
     { name = "macrostrat-map-utils" },
@@ -1717,6 +1753,7 @@ dependencies = [
     { name = "macrostrat-raster-index", extra = ["footprints", "s3"] },
     { name = "macrostrat-raster-layers" },
     { name = "macrostrat-schema" },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-task-runner" },
     { name = "macrostrat-tileserver-utils" },
     { name = "macrostrat-worker", extra = ["maps"] },
@@ -1739,6 +1776,7 @@ gis = [
 [package.metadata]
 requires-dist = [
     { name = "api", editable = "services/api-v3" },
+    { name = "macrostrat-app-frame", editable = "../python-libraries/app-frame" },
     { name = "macrostrat-cli", editable = "py-modules/cli" },
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
@@ -1746,6 +1784,7 @@ requires-dist = [
     { name = "macrostrat-raster-index", extras = ["s3", "footprints"], specifier = ">=0.3.1,<1" },
     { name = "macrostrat-raster-layers", specifier = ">=0.3.2,<1" },
     { name = "macrostrat-schema", editable = "py-modules/schema" },
+    { name = "macrostrat-schema-management", editable = "../python-libraries/schema-management" },
     { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "macrostrat-tileserver-utils", editable = "py-modules/tileserver-utils" },
     { name = "macrostrat-worker", extras = ["maps"], editable = "services/worker" },
@@ -1857,14 +1896,16 @@ dev = [{ name = "black", specifier = ">=24.8.0,<25" }]
 [[package]]
 name = "macrostrat-utils"
 version = "1.3.3"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../python-libraries/utils" }
 dependencies = [
     { name = "colorlog" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/3d/2b217734378124f4204c51b635e36879ea0c4cd3be96f5131a2ac7a95534/macrostrat_utils-1.3.3.tar.gz", hash = "sha256:e922d9df8f7c317993169789064b86ec8dce6c0787c432a8415759ef9325e556", size = 3262, upload-time = "2026-04-29T15:32:29.472Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/72/d02baf7073bd92332943c990249b4a3a372cbd117fec2ab69bce26b7ad4e/macrostrat_utils-1.3.3-py3-none-any.whl", hash = "sha256:c8533ac2850e7beaa7d3630b567c9acf99d8d5de75afd9be780b8aa5b5900396", size = 5009, upload-time = "2026-04-29T15:32:28.689Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "colorlog", specifier = ">=6.5.0,<7" },
+    { name = "pydantic", specifier = ">=1.10.4,<3.0.0" },
 ]
 
 [[package]]
@@ -2018,20 +2059,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
-]
-
-[[package]]
-name = "migra"
-version = "3.0.1663481299"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "schemainspect" },
-    { name = "six" },
-    { name = "sqlbag" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/fb/4761e69d6028909f4b68f175f53ac69c521b75b11e977087b6ce6ec3b006/migra-3.0.1663481299.tar.gz", hash = "sha256:0cf0c125d553008d9ff5402663a51703ccc474bb65b5a4f4727906dbf58e217f", size = 10083, upload-time = "2022-09-18T06:08:24.5Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/66/79bf13b29c2c3a3e72d8dead21fde7ae15f84e78038c92a35e62b3e9c229/migra-3.0.1663481299-py3-none-any.whl", hash = "sha256:061643e9af63488e085d729f267ed4af4249789979732b703ddeb2c478ec9a93", size = 10537, upload-time = "2022-09-18T06:08:22.982Z" },
 ]
 
 [[package]]
@@ -3316,18 +3343,6 @@ wheels = [
 ]
 
 [[package]]
-name = "schemainspect"
-version = "3.1.1663587362"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "sqlalchemy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/00/41/c2ea77a94a7dcbde0d5b9cce70018a730e4ab5504628c14ced657c87217a/schemainspect-3.1.1663587362.tar.gz", hash = "sha256:a295ad56f7a19c09e5e1ef9f16dadbf6392e26196cb5f05b5afe613c99ce7468", size = 28520, upload-time = "2022-09-19T11:36:06.373Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/e2/eea82cd82c91c840f1f32cfc874db831ac3a742fbd9dfe713cae851441f1/schemainspect-3.1.1663587362-py3-none-any.whl", hash = "sha256:3071265712863c4d4e742940a4b44ac685135af3c93416872ec1bb6c822c4aca", size = 37373, upload-time = "2022-09-19T11:36:05.069Z" },
-]
-
-[[package]]
 name = "scipy"
 version = "1.18.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3458,20 +3473,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0f/7d/eb9565b6a49426552a5bf5c57e7c239c506dc0e4e5315aec6d1e8241dc7c/sqlalchemy_utils-0.42.1.tar.gz", hash = "sha256:881f9cd9e5044dc8f827bccb0425ce2e55490ce44fc0bb848c55cc8ee44cc02e", size = 130789, upload-time = "2025-12-13T03:14:13.591Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7c/25/7400c18c3ee97914cc99c90007795c00a4ec5b60c853b49db7ba24d11179/sqlalchemy_utils-0.42.1-py3-none-any.whl", hash = "sha256:243cfe1b3a1dae3c74118ae633f1d1e0ed8c787387bc33e556e37c990594ac80", size = 91761, upload-time = "2025-12-13T03:14:15.014Z" },
-]
-
-[[package]]
-name = "sqlbag"
-version = "0.1.1617247075"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-    { name = "six" },
-    { name = "sqlalchemy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/07/6f/46171ef9ef6d177b94dff96e6403c7fb7466de5c9ee767b0218a21945fdb/sqlbag-0.1.1617247075.tar.gz", hash = "sha256:b9d7862c3b2030356d796ca872907962fd54704066978d7ae89383f5123366ed", size = 11652, upload-time = "2021-04-01T03:22:24.096Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/c8/1d4bd038d4b34f3810fd8ab70a48cc6f3d2373666f2797f0298a97b088c9/sqlbag-0.1.1617247075-py2.py3-none-any.whl", hash = "sha256:ecdef26d661f8640711030ac6ee618deb92b91f9f0fc2efbf8a3b133af13092d", size = 14971, upload-time = "2021-04-01T03:22:22.654Z" },
 ]
 
 [[package]]

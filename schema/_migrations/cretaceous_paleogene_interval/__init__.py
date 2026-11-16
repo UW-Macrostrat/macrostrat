@@ -1,5 +1,5 @@
 from macrostrat.database import Database
-from macrostrat.schema import Migration, exists
+from macrostrat.schema_management import Migration, exists
 
 
 def _named(name: str, top: str, bottom: str):

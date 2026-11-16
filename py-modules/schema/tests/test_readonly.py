@@ -4,7 +4,7 @@ from pytest import fixture, mark, raises
 from sqlalchemy.exc import DBAPIError
 
 from macrostrat.database import Database
-from macrostrat.schema.defs import temporary_database_cluster
+from macrostrat.schema.app import temporary_database_cluster
 from macrostrat.schema.readonly import (
     as_role,
     assert_read_only,

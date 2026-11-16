@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.database.utils import temporary_database
-from macrostrat.schema.defs import temporary_database_cluster
+from macrostrat.schema.app import temporary_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
 truststore.inject_into_ssl()

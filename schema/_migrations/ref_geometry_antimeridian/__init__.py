@@ -1,5 +1,5 @@
 from macrostrat.database import Database
-from macrostrat.schema import Migration, exists
+from macrostrat.schema_management import Migration, exists
 
 # Invalid only because some vertices sit on the far side of the antimeridian.
 _MISWRAPPED = """

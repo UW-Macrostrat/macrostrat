@@ -3,7 +3,7 @@
 See `Feature areas/Authentication and authorization.md` in the workbench.
 """
 
-from macrostrat.schema import Migration, column_type_is, exists, has_columns
+from macrostrat.schema_management import Migration, column_type_is, exists, has_columns
 
 
 class AuthRoleIdentifiersMigration(Migration):

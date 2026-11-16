@@ -1,7 +1,7 @@
 """Move stratigraphic-name matches onto legend grain."""
 
 from macrostrat.database import Database
-from macrostrat.schema import ApplicationStatus, Migration
+from macrostrat.schema_management import ApplicationStatus, Migration
 
 
 def _relkind(db: Database, schema: str, name: str) -> str | None:

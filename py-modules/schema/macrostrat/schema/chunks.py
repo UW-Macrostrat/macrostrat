@@ -18,6 +18,7 @@ pulled out; the dependency chain preserves today's exact application order.
 from pathlib import Path
 from typing import Optional, Union
 
+from macrostrat.core import APP_OWNER
 from macrostrat.core.config import settings
 from macrostrat.core.environment import (
     EnvironmentClass,
@@ -25,11 +26,9 @@ from macrostrat.core.environment import (
     declared_policy_for,
 )
 from macrostrat.map_topology.config import TopologySchema
+from macrostrat.schema_management import SchemaDefinition, discover_chunks
 from macrostrat.usage_stats import build_schema_config
 from macrostrat.utils import get_logger
-
-from .composer import APP_OWNER, SchemaDefinition
-from .discovery import discover_chunks
 
 log = get_logger(__name__)
 

@@ -1,5 +1,5 @@
 from macrostrat.database import Database
-from macrostrat.schema import Migration
+from macrostrat.schema_management import Migration
 
 # Columns the SQL retypes to the `macrostrat` enum named like the column
 _UNCONVERTED = """

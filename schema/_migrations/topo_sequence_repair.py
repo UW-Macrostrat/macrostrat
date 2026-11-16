@@ -3,7 +3,7 @@
 from psycopg.sql import Identifier, Literal
 
 from macrostrat.database import Database
-from macrostrat.schema.migrations import ApplicationStatus, Migration
+from macrostrat.schema_management import ApplicationStatus, Migration
 
 
 class TopoSequenceRepair(Migration):

@@ -1,20 +1,18 @@
 """Mocked (no-database) tests for the schema composer.
 
-These use a fake ``Database`` that just records which fixture paths would be
-applied, so chunk ordering and target-closure selection can be verified quickly
-without Docker. This complements the docker-backed parity/harness tests.
+Macrostrat's own chunk graph, checked with a fake ``Database`` that records
+which fixture paths would be applied. The composer itself is tested in
+``macrostrat.schema_management``.
 """
 
 from dataclasses import replace
 from pathlib import Path
 
-from pytest import raises
 from sqlalchemy import create_engine
 
-from macrostrat.core import SchemaDefinition
-from macrostrat.core.database import _role_pins
 from macrostrat.schema.chunks import chunks_for_environment
-from macrostrat.schema.composer import build_schema, dependency_closure
+from macrostrat.schema_management import SchemaDefinition
+from macrostrat.schema_management.composer import build_schema, dependency_closure
 
 _ENV = "development"
 
@@ -56,9 +54,18 @@ def _names(db: FakeDB) -> list[str]:
     return [p.name for p in db.applied]
 
 
+def test_full_build_applies_all_core_and_dev():
+    db = FakeDB()
+    build_schema(db, _sql_only_chunks())
+    names = _names(db)
+
+    assert "0002-storage.sql" in names
+    assert "0047-tile_layers.fossils.sql" in names
+
+
 def test_target_closure_builds_only_subsystem_and_deps():
     db = FakeDB()
-    build_schema(db, _ENV, _sql_only_chunks(), target="macrostrat")
+    build_schema(db, _sql_only_chunks(), target="macrostrat")
     names = _names(db)
 
     # public + macrostrat are built...
@@ -70,18 +77,9 @@ def test_target_closure_builds_only_subsystem_and_deps():
     assert "01-maps.sql" not in names  # `maps` subsystem
 
 
-def test_full_build_applies_all_core_and_dev():
-    db = FakeDB()
-    build_schema(db, _ENV, _sql_only_chunks())
-    names = _names(db)
-
-    assert "0002-storage.sql" in names
-    assert "0047-tile_layers.fossils.sql" in names
-
-
 def test_application_order_follows_dependency_chain():
     db = FakeDB()
-    build_schema(db, _ENV, _sql_only_chunks())
+    build_schema(db, _sql_only_chunks())
     names = _names(db)
 
     # public -> macrostrat -> core remainder
@@ -89,56 +87,6 @@ def test_application_order_follows_dependency_chain():
     assert names.index("01-main.sql") < names.index("0002-storage.sql")
 
 
-def test_build_schema_sets_role_per_chunk():
-    """Each chunk applies under its owner (SET ROLE); a foundational chunk applies
-    as the connector (RESET ROLE); and the session is always reset at the end."""
-    chunks = [
-        SchemaDefinition(name="public", owner=None),
-        SchemaDefinition(name="app", depends_on=["public"], owner="macrostrat"),
-    ]
-    db = FakeDB()
-    build_schema(db, _ENV, chunks)
-    # public (owner=None) → RESET, app (owner=macrostrat) → SET ROLE, final RESET.
-    assert db.roles == ["RESET ROLE", "SET ROLE {role}", "RESET ROLE"]
-
-
-def test_build_schema_pins_the_role_to_the_engine_while_a_chunk_applies():
-    """Every pooled connection takes the chunk's role, not just the one in hand,
-    and no pin outlives the build."""
-    seen = []
-    chunks = [
-        SchemaDefinition(
-            name="app",
-            owner="macrostrat",
-            provides=[lambda db: seen.append(_role_pins[db.engine].role)],
-        )
-    ]
-    db = FakeDB()
-    build_schema(db, _ENV, chunks)
-    assert seen == ["macrostrat"]
-    assert db.engine not in _role_pins
-
-
-def test_build_schema_resets_role_even_when_a_chunk_fails():
-    """A mid-build failure still resets the session (the finally clause)."""
-
-    def boom(_db):
-        raise RuntimeError("chunk exploded")
-
-    chunks = [SchemaDefinition(name="app", owner="macrostrat", provides=[boom])]
-    db = FakeDB()
-    with raises(RuntimeError, match="exploded"):
-        build_schema(db, _ENV, chunks)
-    assert db.roles == ["SET ROLE {role}", "RESET ROLE"]
-    assert db.engine not in _role_pins
-
-
 def test_dependency_closure_of_macrostrat():
     chunks = chunks_for_environment(_ENV)
     assert dependency_closure(chunks, "macrostrat") == {"public", "macrostrat"}
-
-
-def test_dependency_closure_unknown_target_raises():
-    chunks = chunks_for_environment(_ENV)
-    with raises(ValueError):
-        dependency_closure(chunks, "does-not-exist")

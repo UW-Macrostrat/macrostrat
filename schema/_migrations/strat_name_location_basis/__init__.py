@@ -1,7 +1,7 @@
 """Record how the ground corroborates a name match, not just whether."""
 
 from macrostrat.database import Database
-from macrostrat.schema import ApplicationStatus, Migration
+from macrostrat.schema_management import ApplicationStatus, Migration
 
 
 def _has_column(db: Database, table: str, column: str) -> bool:
