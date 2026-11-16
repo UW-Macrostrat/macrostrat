@@ -8,7 +8,9 @@ that consumes the resulting `role` claim is covered by
 
 import os
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
+import httpx2
 import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -345,3 +347,90 @@ def test_me_on_a_plain_session(client):
 
 def test_me_without_a_session(client):
     assert client.get("/security/me").status_code == 401
+
+
+# --------------------------------------------------------------------------- #
+# Sign-in, with ORCID stubbed
+# --------------------------------------------------------------------------- #
+
+
+def orcid(request: httpx2.Request) -> httpx2.Response:
+    if request.url.path.endswith("/token"):
+        return httpx2.Response(200, json={"access_token": "provider-token"})
+    return httpx2.Response(
+        200,
+        json={
+            "sub": "0000-0002-1825-0097",
+            "given_name": "Josiah",
+            "family_name": "Carberry",
+        },
+    )
+
+
+@pytest.fixture
+def sign_in_client(monkeypatch):
+    users = {}
+
+    async def get_user(sub, async_session):
+        return users.get(sub)
+
+    async def create_user(sub, name, email, async_session):
+        users[sub] = fake_user("user", sub=sub)
+        return users[sub]
+
+    monkeypatch.setattr(security, "get_user", get_user)
+    monkeypatch.setattr(security, "create_user", create_user)
+    settings = security.auth_settings().model_copy(
+        update={"allowed_return_origins": ["https://dev.macrostrat.local"]}
+    )
+    routes = security.session_router(
+        settings, security.Accounts(), transport=httpx2.MockTransport(orcid)
+    )
+    app = FastAPI()
+    app.include_router(routes, prefix="/security")
+    app.include_router(security.router)
+    app.dependency_overrides[get_database] = lambda: SimpleNamespace(
+        async_sessionmaker=None, async_engine=None
+    )
+    with TestClient(app, follow_redirects=False) as c:
+        c.users = users
+        yield c
+
+
+def sign_in(client, return_url):
+    res = client.get("/security/login", params={"return_url": return_url})
+    assert res.status_code == 307
+    state = parse_qs(urlparse(res.headers["location"]).query)["state"][0]
+    return client.get("/security/callback", params={"code": "x", "state": state})
+
+
+def test_sign_in_creates_a_user_session(sign_in_client):
+    res = sign_in(sign_in_client, "https://dev.macrostrat.local/maps")
+    assert res.headers["location"] == "https://dev.macrostrat.local/maps"
+    claims = decode_cookie(issued_cookie(res))
+    assert claims["sub"] == "0000-0002-1825-0097"
+    assert claims["role"] == "web_user"
+    assert "0000-0002-1825-0097" in sign_in_client.users
+
+    me = sign_in_client.get("/security/me", headers=issued_cookie(res))
+    assert me.json()["app_role"] == "user"
+
+
+def test_sign_in_discards_a_foreign_return_url(sign_in_client):
+    res = sign_in(sign_in_client, "https://evil.example.com/")
+    assert res.headers["location"] == "/"
+
+
+def test_refresh_token_is_not_a_session(sign_in_client):
+    res = sign_in(sign_in_client, "/")
+    refresh = res.cookies.get("refresh_token")
+    headers = {"Cookie": f"access_token=Bearer {refresh}"}
+    assert sign_in_client.get("/security/me", headers=headers).status_code == 401
+
+
+def test_only_sign_in_routes_come_from_the_library():
+    paths = [r.path for r in security.router.routes]
+    for path in ("/security/login", "/security/callback", "/security/refresh"):
+        assert paths.count(path) == 1
+    assert paths.count("/security/me") == 1
+    assert paths.count("/security/logout") == 1
