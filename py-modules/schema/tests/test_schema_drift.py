@@ -27,9 +27,9 @@ from results.dbdiff import Migration as DiffMigration
 
 from macrostrat.database import Database
 from macrostrat.database.utils import template_database
-from macrostrat.schema_management import _get_results_db, get_all_schemas, get_inspector
-from macrostrat.schema_management.composer import build_schema
-from macrostrat.schema_management.defs import temporary_database_cluster
+from macrostrat.schema import _get_results_db, get_all_schemas, get_inspector
+from macrostrat.schema.composer import build_schema
+from macrostrat.schema.defs import temporary_database_cluster
 
 _EXCLUDED_SCHEMAS = ["sources", "tiger", "tiger_data"]
 _ENV = "development"

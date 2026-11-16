@@ -1,4 +1,4 @@
-from macrostrat.schema_management import Migration, exists
+from macrostrat.schema import Migration, exists
 
 
 class BaselineMigration(Migration):

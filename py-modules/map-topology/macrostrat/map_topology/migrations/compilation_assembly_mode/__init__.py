@@ -4,7 +4,7 @@ from psycopg.errors import UndefinedTable
 from sqlalchemy.exc import ProgrammingError
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, exists
+from macrostrat.schema import Migration, exists
 
 _OLD_ROWS = """
 SELECT EXISTS (

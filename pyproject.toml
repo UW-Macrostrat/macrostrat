@@ -10,7 +10,7 @@ dependencies = [
     "macrostrat.cli",
     "macrostrat.match-utils",
     "macrostrat.core",
-    "macrostrat.schema-management",
+    "macrostrat.schema",
     "api",
     "macrostrat.map_utils",
     "macrostrat.task-runner",
@@ -47,7 +47,7 @@ default-groups = [
 "macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
 "macrostrat.column-utils" = { editable = true, path = "py-modules/column-utils" }
 "macrostrat.core" = { editable = true, path = "py-modules/core" }
-"macrostrat.schema-management" = { editable = true, path = "py-modules/schema-management" }
+"macrostrat.schema" = { editable = true, path = "py-modules/schema" }
 "api" = { editable = true, path = "services/api-v3" }
 "macrostrat.map_utils" = { editable = true, path = "py-modules/map-utils" }
 "macrostrat.task-runner" = { editable = true, path = "py-modules/task-runner" }

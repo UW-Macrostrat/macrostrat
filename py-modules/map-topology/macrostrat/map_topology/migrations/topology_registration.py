@@ -3,7 +3,7 @@
 from psycopg2.sql import Identifier
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, exists
+from macrostrat.schema import Migration, exists
 
 TOPOLOGY = "map_bounds_topology"
 _SCHEMAS = ("map_bounds", TOPOLOGY)

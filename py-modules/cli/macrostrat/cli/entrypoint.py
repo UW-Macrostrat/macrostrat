@@ -24,7 +24,7 @@ from macrostrat.core.utils import (
     remembered_environment,
     set_active_env,
 )
-from macrostrat.schema_management import schema_app
+from macrostrat.schema import schema_app
 from macrostrat.usage_stats import app as usage_stats_app
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run

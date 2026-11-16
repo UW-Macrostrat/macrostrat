@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from pytest import mark
 
-from macrostrat.schema_management.defs import (
+from macrostrat.schema.defs import (
     SCHEMA_FILTERED_QUERIES,
     SYSTEM_SCHEMAS,
     TYPES_QUERY_FIXES,

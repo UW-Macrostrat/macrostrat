@@ -3,7 +3,7 @@
 from psycopg.sql import Identifier
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, _any, _not, has_columns
+from macrostrat.schema import Migration, _any, _not, has_columns
 
 RENAMED = [("source_id", "map_id"), ("via", "member_id")]
 

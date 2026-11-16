@@ -1,4 +1,4 @@
-from macrostrat.schema_management import Migration, has_columns
+from macrostrat.schema import Migration, has_columns
 
 
 class MapsFeatureUrlTemplateMigration(Migration):

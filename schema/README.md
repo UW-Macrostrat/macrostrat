@@ -34,7 +34,7 @@ be performed with manually created migration files. To create a manual migration
 # Building the schema
 
 The declarative schema is composed from chunks in dependency order (see the
-`schema-management` module). To build a subset, name a subsystem as the *target* —
+`macrostrat.schema` module). To build a subset, name a subsystem as the *target* —
 its dependency closure is built:
 
 ```
@@ -51,7 +51,7 @@ macrostrat schema sync --target maps --no-dependents   # just one subsystem's
 # Subsystems
 
 Schema is organized into **subsystems**, discovered from the filesystem by a
-frontmatter header (see `schema_management/discovery.py`). A subsystem is either:
+frontmatter header (see `macrostrat/schema/discovery.py`). A subsystem is either:
 
 - a directory containing an `_index.sql` **lead file**, whose header carries the
   metadata and whose SQL is applied first, then the rest of the directory in

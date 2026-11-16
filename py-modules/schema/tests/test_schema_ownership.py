@@ -18,9 +18,9 @@ import importlib.util
 from pytest import fixture, mark
 
 from macrostrat.core.config import settings
-from macrostrat.schema_management.composer import build_schema
-from macrostrat.schema_management.defs import temporary_database_cluster
-from macrostrat.schema_management.migrations import ApplicationStatus
+from macrostrat.schema.composer import build_schema
+from macrostrat.schema.defs import temporary_database_cluster
+from macrostrat.schema.migrations import ApplicationStatus
 
 
 def _load_ownership_migration():

@@ -1,7 +1,7 @@
 """Repair topology metadata that a dump/restore renumbered."""
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration
+from macrostrat.schema import Migration
 
 TOPOLOGY = "map_bounds_topology"
 

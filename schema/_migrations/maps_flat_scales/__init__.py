@@ -4,7 +4,7 @@ ordinary column on each."""
 from pathlib import Path
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration
+from macrostrat.schema import Migration
 
 __dir__ = Path(__file__).parent
 

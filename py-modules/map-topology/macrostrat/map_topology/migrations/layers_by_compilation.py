@@ -1,7 +1,7 @@
 """One layer per solved compilation; multiscale compilations draw their members'."""
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, has_columns
+from macrostrat.schema import Migration, has_columns
 
 #: The compilations that exist to build others: the carto tree, the `-v1`
 #: snapshot's tiers, and the NGS products other than `ngs-bedrock`. Each is still

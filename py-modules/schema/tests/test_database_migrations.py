@@ -1,8 +1,8 @@
 from psycopg.sql import Identifier
 from pytest import mark
 
-from macrostrat.schema_management import ReadinessState
-from macrostrat.schema_management.migrations import _run_migrations_in_database
+from macrostrat.schema import ReadinessState
+from macrostrat.schema.migrations import _run_migrations_in_database
 
 
 @mark.docker

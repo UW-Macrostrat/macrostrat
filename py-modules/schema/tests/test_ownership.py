@@ -9,7 +9,7 @@ than trying to classify statements in advance.
 from sqlalchemy import create_engine
 
 from macrostrat.core.database import _role_pins
-from macrostrat.schema_management.ownership import applied_as_app_owner
+from macrostrat.schema.ownership import applied_as_app_owner
 
 
 class FakeError(Exception):
@@ -87,7 +87,7 @@ def test_falls_back_to_the_connector_when_the_role_is_unavailable():
 def test_migrations_apply_as_their_owner():
     """A migration is applied as `macrostrat` by default, with the hook that
     retries refused statements; `owner = None` applies it as the connector."""
-    from macrostrat.schema_management.migrations import Migration, _apply_as_owner
+    from macrostrat.schema.migrations import Migration, _apply_as_owner
 
     seen = []
 
@@ -114,7 +114,7 @@ def test_migrations_apply_as_their_owner():
 def test_apply_skips_the_plans_own_role_statements():
     """A plan names the role it applies as, for applying it by hand; `apply`
     manages the role itself, so those lines are neither run nor counted."""
-    from macrostrat.schema_management.defs import StatementCounter
+    from macrostrat.schema.defs import StatementCounter
 
     counter = StatementCounter()
     kept = [

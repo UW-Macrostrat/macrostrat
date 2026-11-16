@@ -13,8 +13,8 @@ from sqlalchemy import create_engine
 
 from macrostrat.core import SchemaDefinition
 from macrostrat.core.database import _role_pins
-from macrostrat.schema_management.chunks import chunks_for_environment
-from macrostrat.schema_management.composer import build_schema, dependency_closure
+from macrostrat.schema.chunks import chunks_for_environment
+from macrostrat.schema.composer import build_schema, dependency_closure
 
 _ENV = "development"
 

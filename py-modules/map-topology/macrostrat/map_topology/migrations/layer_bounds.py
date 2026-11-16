@@ -1,7 +1,7 @@
 """Open and build the registered compilations' bounds."""
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration
+from macrostrat.schema import Migration
 
 from ..bounds.compile import compile_bounds
 from ..bounds.layers import SCALE_COMPILATIONS, layer_bounds, seed_layer_openings

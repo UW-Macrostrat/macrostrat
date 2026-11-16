@@ -1,4 +1,4 @@
-from macrostrat.schema_management import Migration, has_schema, view_exists
+from macrostrat.schema import Migration, has_schema, view_exists
 
 
 class UsageStatsConsolidationMigration(Migration):

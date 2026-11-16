@@ -8,8 +8,8 @@ grants name.
 from psycopg.errors import DuplicateObject, InsufficientPrivilege
 from sqlalchemy.exc import ProgrammingError
 
-from macrostrat.schema_management.composer import SchemaDefinition
-from macrostrat.schema_management.grants import (
+from macrostrat.schema.composer import SchemaDefinition
+from macrostrat.schema.grants import (
     grant_statements_in,
     object_already_exists,
     rebuild_grants,

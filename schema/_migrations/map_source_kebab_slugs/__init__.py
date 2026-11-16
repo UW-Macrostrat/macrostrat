@@ -11,7 +11,7 @@ from macrostrat.map_utils.slugs import (
     slugify,
     table_prefix,
 )
-from macrostrat.schema_management import Migration, _not, has_columns
+from macrostrat.schema import Migration, _not, has_columns
 
 CONSTRAINT = "sources_slug_kebab"
 

@@ -1,7 +1,7 @@
 """Adopt the topogeometries an earlier code path built, instead of re-noding."""
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration
+from macrostrat.schema import Migration
 
 #: Maps whose topogeometry was built from their current bounds, by the stamp the
 #: library set. The hash is computed once per row, in a materialized CTE: inline

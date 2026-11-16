@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from pytest import mark, raises
 
-from macrostrat.schema_management.views import (
+from macrostrat.schema.views import (
     _as_create_or_replace,
     _is_replace_conflict,
     _view_name,

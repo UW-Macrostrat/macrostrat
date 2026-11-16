@@ -40,7 +40,7 @@ from time import sleep
 from sqlalchemy.exc import DBAPIError
 
 from macrostrat.database import Database
-from macrostrat.schema_management.migrations import ApplicationStatus, Migration
+from macrostrat.schema.migrations import ApplicationStatus, Migration
 
 # Roles whose ownership is collapsed into `macrostrat`. Each appears twice: the
 # PG Operator only creates hyphenated roles, so every legacy role has an

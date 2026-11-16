@@ -10,12 +10,12 @@ end up owned by it — which is what `ownership-unification` then has to undo.
 from sqlalchemy import create_engine
 
 from macrostrat.core import SchemaDefinition
-from macrostrat.schema_management.rebuild import (
+from macrostrat.schema.rebuild import (
     ChunkStatement,
     apply_statements,
     iter_chunk_statements,
 )
-from macrostrat.schema_management.views import rebuild_views
+from macrostrat.schema.views import rebuild_views
 
 
 class FakeDB:

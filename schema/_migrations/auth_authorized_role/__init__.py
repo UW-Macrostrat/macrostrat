@@ -4,7 +4,7 @@ See `Feature areas/Authentication and authorization.md` in the workbench.
 """
 
 from macrostrat.database import Database
-from macrostrat.schema_management import Migration, exists
+from macrostrat.schema import Migration, exists
 
 
 def _role_row_exists(role_id: str):

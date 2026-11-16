@@ -3,11 +3,11 @@
 from pytest import fixture, mark
 
 from macrostrat.core import SchemaDefinition
-from macrostrat.schema_management.grants import grant_objects
-from macrostrat.schema_management.procedures import procedure_objects
-from macrostrat.schema_management.seed_data import data_objects
-from macrostrat.schema_management.selection import ObjectName, ObjectSelector
-from macrostrat.schema_management.views import rebuild_views, view_objects
+from macrostrat.schema.grants import grant_objects
+from macrostrat.schema.procedures import procedure_objects
+from macrostrat.schema.seed_data import data_objects
+from macrostrat.schema.selection import ObjectName, ObjectSelector
+from macrostrat.schema.views import rebuild_views, view_objects
 
 
 @mark.parametrize(

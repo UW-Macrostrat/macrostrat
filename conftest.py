@@ -13,7 +13,7 @@ from typer.testing import CliRunner
 from macrostrat.database import Database
 from macrostrat.database.query import StatementContext, StatementDirective
 from macrostrat.database.utils import temporary_database
-from macrostrat.schema_management.defs import temporary_database_cluster
+from macrostrat.schema.defs import temporary_database_cluster
 from macrostrat.utils import get_logger, override_environment
 
 truststore.inject_into_ssl()
@@ -119,11 +119,11 @@ def env_db(env_config):
     Read-only is *enforced*, not advisory: a throwaway login role (owning no write
     privileges) is minted for the session and verified before use, so tests
     against a live environment cannot mutate it. See
-    ``macrostrat.schema_management.readonly``.
+    ``macrostrat.schema.readonly``.
     """
     from sqlalchemy.exc import DBAPIError, OperationalError
 
-    from macrostrat.schema_management.readonly import assert_read_only, readonly_login
+    from macrostrat.schema.readonly import assert_read_only, readonly_login
 
     if env_config is None or env_config.pg_database is None:
         skip("No environment database configured")
@@ -193,7 +193,7 @@ def schema_harness(request, empty_db: Database):
     The ``optimize`` transform (skipping indexes/grants/ownership) is applied by
     default for a faster build; disable with ``--no-optimize-database``.
     """
-    from macrostrat.schema_management.test_harness import DatabaseTestHarness
+    from macrostrat.schema.test_harness import DatabaseTestHarness
 
     optimize = request.config.getoption("--optimize-database")
     # Use "development" as the default test environment so that

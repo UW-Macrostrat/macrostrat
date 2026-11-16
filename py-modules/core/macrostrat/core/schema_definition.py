@@ -56,7 +56,7 @@ class SchemaDefinition:
         """Whether this chunk applies in an environment of *env_class*.
 
         Takes a class, or a class name. Callers holding an environment *name*
-        resolve its class first (``schema_management.chunks.environment_class``);
+        resolve its class first (``macrostrat.schema.chunks.environment_class``);
         a name like ``local-ingestion`` says nothing about where it sits.
         """
         if self.environments is None:

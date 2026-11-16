@@ -3,7 +3,7 @@
 from pytest import fixture, mark
 
 from macrostrat.core import SchemaDefinition
-from macrostrat.schema_management.procedures import (
+from macrostrat.schema.procedures import (
     _as_create_or_replace,
     procedure_statements_in,
     rebuild_procedures,

@@ -13,8 +13,8 @@ import re
 from pytest import fixture, mark
 
 from macrostrat.core.config import settings
-from macrostrat.schema_management.chunks import all_chunks
-from macrostrat.schema_management.composer import order_chunks
+from macrostrat.schema.chunks import all_chunks
+from macrostrat.schema.composer import order_chunks
 
 _ROSTER_FILE = settings.srcroot / "schema" / "_definitions" / "audit" / "20-enable.sql"
 _ENABLE_RE = re.compile(r"audit\.enable\(\s*'([^']+)'\s*\)", re.IGNORECASE)
