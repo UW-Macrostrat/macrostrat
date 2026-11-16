@@ -14,6 +14,7 @@ from pytest import fixture, mark
 
 from macrostrat.core.config import settings
 from macrostrat.schema.chunks import all_chunks
+from macrostrat.schema_management import set_applying_role
 from macrostrat.schema_management.composer import order_chunks
 
 _ROSTER_FILE = settings.srcroot / "schema" / "_definitions" / "audit" / "20-enable.sql"
@@ -37,6 +38,9 @@ def audited_tables() -> list[str]:
     return tables
 
 
+_PROBE_TABLES = ("audit_smoke", "audit_jwt", "suppress_probe")
+
+
 @fixture(scope="module")
 def audit_schema(schema_harness):
     """Audit subsystem and its dependencies, built on the session's shared cluster."""
@@ -45,10 +49,21 @@ def audit_schema(schema_harness):
 
 @fixture
 def audit_db(audit_schema):
-    """`audit_schema` in a transaction rolled back after each test, so probe tables
-    and history rows don't leak into a database other modules share."""
-    with audit_schema.transaction(rollback=True):
-        yield audit_schema
+    """`audit_schema`, with each test's probe tables and history rows removed.
+
+    The transaction does not contain `run_sql` writes, so they are dropped by
+    name: left behind, they are connector-owned tables in a shared database.
+    """
+    try:
+        with audit_schema.transaction(rollback=True):
+            yield audit_schema
+    finally:
+        for table in _PROBE_TABLES:
+            audit_schema.run_sql(f"DROP TABLE IF EXISTS macrostrat.{table}")
+        audit_schema.run_sql(
+            "DELETE FROM audit.record_history WHERE table_name = ANY(:tables)",
+            {"tables": list(_PROBE_TABLES)},
+        )
 
 
 def test_roster_is_not_empty():
@@ -157,9 +172,13 @@ def test_actor_falls_back_to_the_postgrest_jwt(audit_db):
 def test_history_is_append_only_for_api_roles(audit_db, schema_harness):
     """API roles read the trail but cannot rewrite it."""
     # The harness skips GRANT statements for speed, so re-apply the chunk
-    # unoptimized. Rolled back with the rest of the test.
+    # unoptimized: as its owner, since what it recreates is not rolled back.
     audit_chunk = next(c for c in schema_harness.chunks() if c.name == "audit")
-    audit_chunk.apply(audit_db, transform_statement=None)
+    set_applying_role(audit_db, audit_chunk.owner)
+    try:
+        audit_chunk.apply(audit_db, transform_statement=None)
+    finally:
+        set_applying_role(audit_db, None)
 
     for role in _READONLY_ROLES:
         privs = audit_db.run_query(
