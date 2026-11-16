@@ -42,6 +42,7 @@ class Sources(Base):
     ref_source: Mapped[str] = mapped_column(VARCHAR(255))
     isbn_doi: Mapped[str] = mapped_column(VARCHAR(100))
     scale: Mapped[str] = mapped_column(VARCHAR(20))
+    scale_denominator: Mapped[int] = mapped_column(INTEGER)
     primary_line_table: Mapped[str] = mapped_column(VARCHAR(50))
     license: Mapped[str] = mapped_column(VARCHAR(100))
     features: Mapped[int] = mapped_column(INTEGER)

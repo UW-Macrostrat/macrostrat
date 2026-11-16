@@ -31,6 +31,7 @@ VALUES
   ('init',             'Open the boundary with a hand-supplied geometry.'),
   ('compile',          'Open a compilation''s boundary with the faces of every noded source below it, merged from the topology. Recomputed by `topo update` when those sources or their noding change; cached in geometry.'),
   ('world',            'Open the boundary as the whole world. For global compilations, whose extent is not worth computing and which a client never zooms to.'),
+  ('follow',           'Open the boundary with another source''s current boundary, named by slug in parameters. Cached in geometry and refreshed by `bounds build` when the followed boundary changes.'),
   ('add',              'Union an operand polygon into the boundary'),
   ('subtract',         'Difference an operand polygon out of the boundary'),
   ('buffer',           'Dilate then erode by a given distance to close small gaps'),
@@ -77,12 +78,12 @@ CREATE TABLE IF NOT EXISTS map_bounds.boundary_op (
   /** Position 0 _must_ hold an opening operation, and opening operations must appear
       nowhere else. */
   CONSTRAINT boundary_op_opening_position
-    CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world')) = (position = 0))
+    CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world', 'follow')) = (position = 0))
 );
 
-/* The opening vocabulary grew (`compile`, `world`); restate the constraint so an
+/* The opening vocabulary grew (`compile`, `world`, `follow`); restate the constraint so an
    existing database picks it up. */
 ALTER TABLE map_bounds.boundary_op DROP CONSTRAINT IF EXISTS boundary_op_opening_position;
 ALTER TABLE map_bounds.boundary_op ADD CONSTRAINT boundary_op_opening_position
-  CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world')) = (position = 0));
+  CHECK ((operation IN ('union', 'adopt', 'init', 'compile', 'world', 'follow')) = (position = 0));
 
