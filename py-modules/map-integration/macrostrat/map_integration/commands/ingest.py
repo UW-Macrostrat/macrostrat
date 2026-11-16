@@ -31,6 +31,11 @@ from .geodatabase import apply_domains_to_fields, get_layer_info, get_layer_name
 
 console = Console()
 
+#: What `--pipeline` accepts with a metadata path: `gems` reads the GeMS legend
+#: from a .gdb or .gpkg, `.tsv`/`.csv`/`.xls`/`.xlsx` read a legend table,
+#: `.gpkg` maps epoch/period columns to intervals, and `none` merges nothing.
+PIPELINES = ("gems", ".tsv", ".csv", ".xls", ".xlsx", ".gpkg", "none")
+
 
 def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
     # merge df (polygon df) and legend_df (created df from file)
@@ -90,7 +95,7 @@ def preprocess_dataframe(
         else:
             return poly_line_pt_df, ingest_pipeline, comments, state
 
-    elif pipeline == ".gdb":
+    elif pipeline == "gems":
         if feature_suffix == "polygons":
             join_col = "mapunit"
             if join_col not in poly_line_pt_df.columns:
@@ -190,7 +195,12 @@ def ingest_map(
     ] = None,
     embed: bool = False,
     crs: str = None,
-    pipeline: str = "",
+    pipeline: Annotated[
+        str,
+        Option(
+            help="Metadata pipeline, required with --meta-path: " + ", ".join(PIPELINES)
+        ),
+    ] = "",
     if_exists: str = "replace",
     meta_path: str = None,
     # TODO add default key column to the first column in the file
@@ -245,6 +255,12 @@ def ingest_map(
         )
     if not files:
         raise IngestError("No files to ingest")
+    # The pipeline is the one asked for, never inferred from meta_path's extension.
+    if meta_path and pipeline not in PIPELINES:
+        raise IngestError(
+            f"With a metadata path, --pipeline must be one of {', '.join(PIPELINES)}"
+            f" (got {pipeline!r})"
+        )
 
     db = get_database()
 
@@ -346,11 +362,9 @@ def ingest_map(
         if feature_suffix == "linestrings":
             feature_suffix = "lines"
         # preprocess dataframe will take the concatenated polygons, lines, or points df and see if there are any metadata
-        # formatted_filenames to append and map based on whatever integration pipeline is needed (inferred from the meta_path's ext)
+        # formatted_filenames to append and map based on the pipeline the user chose
         if meta_path:
             df.columns = df.columns.str.lower()
-            if pipeline == "":
-                pipeline = meta_path.suffix.lower()
             df, ingest_pipeline, comments, state = preprocess_dataframe(
                 db,
                 df,

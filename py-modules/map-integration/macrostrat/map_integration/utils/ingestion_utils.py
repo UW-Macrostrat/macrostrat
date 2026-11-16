@@ -233,6 +233,8 @@ def process_sources_metadata(
     Expected columns in metadata.csv:
       filename_prefix,url,ref_title,authors,ref_year,ref_source,
       isbn_doi,license,keywords,language,description
+
+    and optionally `name`, which replaces the one derived from the path.
     """
     filename_prefix = region_path.stem
     if parent is None:
@@ -275,6 +277,7 @@ def process_sources_metadata(
     return {
         "slug": slug,
         "filename_prefix": filename_prefix,
+        "name": _safe("name"),
         "url": _safe("url") or "",
         "ref_title": _safe("ref_title") or "",
         "authors": _safe("authors") or "",
@@ -321,7 +324,7 @@ def insert_sources_metadata(db, data_path, slug: str):
             WHERE source_id = :source_id
             """,
             dict(
-                name=name,
+                name=sources_mapping["name"] or name,
                 scale="large",
                 ingested_by="macrostrat-admin",
                 source_id=source_id,

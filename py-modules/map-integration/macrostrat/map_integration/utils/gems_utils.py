@@ -60,6 +60,19 @@ def extract_gdb_layer(
     return meta_df, ingest_pipeline, comments
 
 
+def copy_columns(df: G.GeoDataFrame, column_map: dict[str, str]) -> G.GeoDataFrame:
+    """Copy each source column into its Macrostrat field, keeping the original
+    beside it so a map's source columns can be checked. Source names match
+    case-insensitively; the first source found fills a field, and a field the
+    data already has is left alone."""
+    actual = {col.lower(): col for col in df.columns}
+    for src, dst in column_map.items():
+        col = actual.get(src.lower())
+        if col is not None and dst not in df.columns:
+            df[dst] = df[col]
+    return df
+
+
 def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     """Map column names to Macrostrat standard and concatenate lithology‑related fields.
     Parameters:
@@ -93,9 +106,7 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         "rgb": "color",
     }
     meta_df.columns = meta_df.columns.str.lower()
-    meta_df = meta_df.rename(
-        columns={src: dst for src, dst in rename_map.items() if src in meta_df.columns}
-    )
+    meta_df = copy_columns(meta_df, rename_map)
     missing_canonical = required_canonical - set(meta_df.columns)
     if missing_canonical:
         # which dmu keys would have supplied those canonical fields?
@@ -107,7 +118,7 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     def col_empty(df, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     lithology_candidates = ("generallithology", "geomaterial")
@@ -120,7 +131,6 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
             .str.strip("; ")
             .replace("", pd.NA)
         )
-        meta_df = meta_df.drop(columns=lith_cols)
     else:
         comments += f"Missing lithology columns: {lithology_candidates}."
     preferred = ["age", "name", "descrip", "comments", "orig_id", "strat_symbol"]
@@ -415,19 +425,12 @@ def map_points_to_preferred_fields(
         "Type": "point_type",
         "IdentityConfidence": "certainty",
     }
-    col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
-    actual_rename = {}
-    for src, dst in rename_map.items():
-        src_lower = src.lower()
-        if src_lower in col_lower_to_actual:
-            actual_rename[col_lower_to_actual[src_lower]] = dst
-
-    meta_df = meta_df.rename(columns=actual_rename)
+    meta_df = copy_columns(meta_df, rename_map)
 
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     preferred = [
@@ -483,18 +486,12 @@ def map_lines_to_preferred_fields(
         if series_has_values(meta_df[actual_name_col]):
             rename_map.pop("Label", None)
 
-    actual_rename = {}
-    for src, dst in rename_map.items():
-        src_lower = src.lower()
-        if src_lower in col_lower_to_actual:
-            actual_rename[col_lower_to_actual[src_lower]] = dst
-
-    meta_df = meta_df.rename(columns=actual_rename)
+    meta_df = copy_columns(meta_df, rename_map)
 
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     preferred = ["name", "type", "descrip", "orig_id", "direction"]
