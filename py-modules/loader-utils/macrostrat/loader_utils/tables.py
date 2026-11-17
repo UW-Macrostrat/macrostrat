@@ -1,18 +1,15 @@
-"""Shared machinery for the [cyan]load-csv[/] and [cyan]load-geo[/] commands.
+"""Table machinery shared by every loader: tabular (`load-csv`) and geospatial.
 
-Both commands work the same way: infer a table structure from a file, create it
-(by default in the [cyan]temp[/] schema, named after the file), and stream the
-data in with [cyan]COPY[/]. Everything they have in common lives here so the two
-cannot drift apart.
+Each loader works the same way: infer a table structure from a file, create it
+(by default in the `temp` schema), and stream the data in with `COPY`.
+Everything they have in common lives here so they cannot drift apart.
 """
 
 import re
 from typing import Optional
 
 import polars as pl
-import typer
 from psycopg.sql import SQL, Composed, Identifier, Literal
-from rich import print
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
 
@@ -22,6 +19,11 @@ from macrostrat.utils import get_logger
 log = get_logger(__name__)
 
 COPY_BATCH_SIZE = 10_000
+
+
+class LoadError(ValueError):
+    """A load that cannot proceed as asked; the message says why."""
+
 
 # Polars dtype -> PostgreSQL column type. Order matters: the first matching
 # entry wins, so more specific types come first.
@@ -139,13 +141,10 @@ def check_target(
     """Fail early and legibly when the destination is not what the caller expects"""
     exists = table_exists(engine, schema, table)
     if append and not exists:
-        raise typer.BadParameter(
-            f"Table {schema}.{table} does not exist; drop --append to create it"
-        )
+        raise LoadError(f"Table {schema}.{table} does not exist; cannot append to it")
     if exists and not (append or replace):
-        raise typer.BadParameter(
-            f"Table {schema}.{table} already exists; "
-            "pass --replace to overwrite it or --append to add to it"
+        raise LoadError(
+            f"Table {schema}.{table} already exists; replace it or append to it"
         )
 
 
