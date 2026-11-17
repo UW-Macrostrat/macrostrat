@@ -21,9 +21,6 @@ def extract_gdb_layer(
     Returns
     GeoDataFrame or None: The requested layer, or None when no matching layer is found or an error occurs.
     """
-    # Only the geodatabase ingestion reads with fiona; it is in the `gis` extra.
-    import fiona
-
     dmu_layer = None
     ingest_pipeline = ""
     comments = ""
