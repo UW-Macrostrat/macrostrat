@@ -585,7 +585,7 @@ db_app.command(name="load-csv", rich_help_panel="Helpers")(
     writes(AccessScope.Data, action="CSV load")(load_csv)
 )
 db_app.command(name="load-geo", rich_help_panel="Helpers")(
-    writes(WriteScope.Data, action="GIS load")(load_geo)
+    writes(AccessScope.Data, action="GIS load")(load_geo)
 )
 
 

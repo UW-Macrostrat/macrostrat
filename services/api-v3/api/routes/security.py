@@ -431,9 +431,10 @@ def parse_redirect_uri():
 def auth_settings() -> AuthSettings:
     """Session settings, read from the environment on each call."""
     return AuthSettings.from_env(
-        redirect_uri=redirect_uri(),
-        oauth_scope=os.environ.get("OAUTH_SCOPE", "openid profile email"),
         # Left blank rather than failing at import; sign-in then fails at ORCID.
+        redirect_uri=os.environ.get("REDIRECT_URI")
+        or os.environ.get("REDIRECT_URI_ENV", ""),
+        oauth_scope=os.environ.get("OAUTH_SCOPE", "openid profile email"),
         oauth_client_id=os.environ.get("OAUTH_CLIENT_ID", ""),
         oauth_client_secret=os.environ.get("OAUTH_CLIENT_SECRET", ""),
         access_token_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
