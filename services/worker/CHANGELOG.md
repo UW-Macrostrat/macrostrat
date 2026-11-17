@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Updated Dockerfiles for quicker cached rebuilds
+
 ## [1.1.3] - 2026-10-28
 
 - `topology.update` no longer holds its first connection idle in a transaction for the whole run

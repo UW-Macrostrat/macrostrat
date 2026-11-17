@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Regions (the `geologic_boundaries` tables): `/regions`, `/regions/sources`
+  and `/regions/{region_id}` in the API, and `/regions/tiles/{z}/{x}/{y}` tiles
+- Updated Dockerfiles for quicker cached rebuilds
+- Staged-map tiles take polygon colors only from global timescales, so Martian and regional intervals no longer color Earth maps
+- Compilation tiles no longer weed small polygons or simplify twice, which left holes at the low end of a scale band
+
 ## [3.3.0] - 2026-11-03
 
 - Bounds tiles (`/maps/bounds`, `/ingestion/bounds`) draw `map_bounds.map_area` footprints instead of `maps.sources.rgeom`, leaving out compilations
