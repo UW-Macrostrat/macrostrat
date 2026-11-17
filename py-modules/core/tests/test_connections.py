@@ -2,6 +2,13 @@
 
 from pytest import fixture, mark, raises
 
+from macrostrat.app_frame.secrets import (
+    RESOLVERS,
+    Secret,
+    SecretResolutionError,
+    forget_all_secrets,
+    register_resolver,
+)
 from macrostrat.core.connections import (
     DatabaseConnection,
     DatabaseRole,
@@ -10,13 +17,6 @@ from macrostrat.core.connections import (
     connection_for,
     connections_for,
     merge_tables,
-)
-from macrostrat.core.secrets import (
-    RESOLVERS,
-    Secret,
-    SecretResolutionError,
-    forget_all_secrets,
-    register_resolver,
 )
 
 LEGACY = "postgresql://macrostrat-admin:my-cool-password@localhost:5432/macrostrat"

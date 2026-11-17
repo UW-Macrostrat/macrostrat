@@ -85,6 +85,8 @@ services:
       - OAUTH_CLIENT_SECRET
       - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-https://orcid.org/oauth/userinfo}
       - OAUTH_AUTHORIZATION_URL=${OAUTH_AUTHORIZATION_URL:-https://orcid.org/oauth/authorize}
+      # Sign-in returns only to the API's own origin unless another is listed.
+      - AUTH_RETURN_ORIGINS=${AUTH_RETURN_ORIGINS:-https://dev.macrostrat.local,http://localhost:3000}
       # Tile-cache management (admin-only, api/routes/cache.py). Both are
       # in-network addresses: the BAN goes straight to Varnish, and L2 expiry is
       # forwarded to the tileserver, which owns the tile-geometry SQL.

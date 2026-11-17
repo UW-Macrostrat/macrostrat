@@ -125,7 +125,7 @@ def patch_command(
     """
     from rich.prompt import Confirm
 
-    from macrostrat.core.environment import WriteScope
+    from macrostrat.app_frame.environments import AccessScope
     from macrostrat.core.safety import require_write_access
 
     from ..database import get_database
@@ -140,7 +140,7 @@ def patch_command(
         return plan
 
     require_write_access(
-        WriteScope.Data, assume_yes=yes, action=f"patch from {package.name}"
+        AccessScope.Data, assume_yes=yes, action=f"patch from {package.name}"
     )
     if not yes:
         if not stdin.isatty():
@@ -248,7 +248,7 @@ def ingest_packages(
     yes: bool = False,
 ):
     """The `macrostrat maps ingest` branch for Macrostrat map packages."""
-    from macrostrat.core.environment import WriteScope
+    from macrostrat.app_frame.environments import AccessScope
     from macrostrat.core.safety import require_write_access
 
     from ..database import get_database
@@ -256,7 +256,7 @@ def ingest_packages(
 
     on_conflict = ConflictAction(on_conflict or ConflictAction.ask)
     require_write_access(
-        WriteScope.Data,
+        AccessScope.Data,
         assume_yes=yes,
         action=f"import of map package {', '.join(p.name for p in packages)}",
     )

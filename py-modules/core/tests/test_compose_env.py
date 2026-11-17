@@ -2,6 +2,12 @@
 
 from pytest import fixture
 
+from macrostrat.app_frame.secrets import (
+    RESOLVERS,
+    SecretResolutionError,
+    forget_all_secrets,
+    register_resolver,
+)
 from macrostrat.core.compose_env import (
     COMPOSE_COMMANDS,
     DATABASE_VARIABLES,
@@ -9,12 +15,6 @@ from macrostrat.core.compose_env import (
     export_compose_environment,
 )
 from macrostrat.core.connections import DatabaseRole, connections_for
-from macrostrat.core.secrets import (
-    RESOLVERS,
-    SecretResolutionError,
-    forget_all_secrets,
-    register_resolver,
-)
 from macrostrat.core.storage import StorageEndpoint
 
 LOCAL = "postgresql://admin:local-pw@localhost:5433/macrostrat"
@@ -50,7 +50,7 @@ class _Settings(dict):
         return connections_for(self).get(name)
 
     def resolve_token_signing_key(self):
-        from macrostrat.core.secrets import as_secret, reveal
+        from macrostrat.app_frame.secrets import as_secret, reveal
 
         return reveal(as_secret(self.get("token_signing_key")))
 

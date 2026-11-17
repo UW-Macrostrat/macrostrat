@@ -3,8 +3,8 @@ import time
 from rich import print
 from typer import Argument, Option, Typer
 
+from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core.database import get_database
-from macrostrat.core.environment import WriteScope
 from macrostrat.core.safety import require_write_access, writes
 
 from .check import MAX_VALIDATE_SPAN
@@ -58,7 +58,7 @@ def _remove(
     # class-aware and states the count, which the caller may not know when
     # `maps` is empty and every map is selected.
     require_write_access(
-        WriteScope.Data,
+        AccessScope.Data,
         assume_yes=yes,
         action=f"removal of topogeometries for {len(all_maps)} map(s)",
     )
@@ -69,7 +69,7 @@ def _remove(
 
 
 @cli.command("clean", rich_help_panel="Utils")
-@writes(WriteScope.Data, action="topology clean")
+@writes(AccessScope.Data, action="topology clean")
 def _clean(
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
@@ -88,7 +88,7 @@ def _clean(
 
 
 @cli.command("grid", rich_help_panel="Utils")
-@writes(WriteScope.Data, action="topology grid")
+@writes(AccessScope.Data, action="topology grid")
 def _grid(
     extent: str = Option(
         None,
@@ -157,7 +157,7 @@ def _grid(
 
 
 @cli.command("rebuild", rich_help_panel="Utils")
-@writes(WriteScope.Data, action="topology rebuild")
+@writes(AccessScope.Data, action="topology rebuild")
 def rebuild(
     maps: list[str] = Argument(None),
     yes: bool = Option(
@@ -273,7 +273,9 @@ def _update(
     if reset:
         if maps:
             raise ValueError("--reset rebuilds the whole topology; it takes no maps")
-        require_write_access(WriteScope.Schema, assume_yes=yes, action="topology reset")
+        require_write_access(
+            AccessScope.Schema, assume_yes=yes, action="topology reset"
+        )
     mgr = get_topo_manager()
     db = mgr.database
     if reset:

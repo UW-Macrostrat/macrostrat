@@ -477,7 +477,7 @@ def reset_command(
 def build_schema_config():
     """Schema chunks for the usage_stats schema, whose migrations are in
     `migrations/` beside it."""
-    from macrostrat.schema_management.composer import SchemaDefinition
+    from macrostrat.schema_management import SchemaDefinition
 
     main_def = SchemaDefinition(
         name="usage-stats",
@@ -497,5 +497,5 @@ def build_schema_config():
     return [main_def, legacy]
 
 
-# Registers the migrations; last, as `schema_management` imports this module
+# Registers the migrations; last, as `macrostrat.schema` imports this module
 from . import migrations  # noqa: E402,F401

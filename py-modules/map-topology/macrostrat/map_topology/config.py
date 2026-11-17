@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from macrostrat.core import APP_OWNER, SchemaDefinition, get_database
-from macrostrat.core.database import pin_role
+from macrostrat.core import APP_OWNER, get_database
 from macrostrat.database import Database
+from macrostrat.schema_management import SchemaDefinition, pin_role
 
 from .manager import MacrostratTopologyManager
 from .topology import IDENTITY_STRATEGY, create_topo_context  # noqa: F401

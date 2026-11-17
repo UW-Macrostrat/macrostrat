@@ -37,6 +37,7 @@ async def setup_engine(app: FastAPI, url: str | None = None):
     connections are returned to Postgres rather than leaked.
     """
     app.state.db = AppDatabase(url or get_db_url())
+    api.routes.security.accounts.sessionmaker = app.state.db.async_sessionmaker
     yield
     await app.state.db.dispose()
 

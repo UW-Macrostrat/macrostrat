@@ -26,7 +26,8 @@ from macrostrat.core import app as app_
 from macrostrat.core.database import engine_for_db_name
 from macrostrat.database import Database
 from macrostrat.database.transfer import pg_dump_to_file, pg_restore_from_file
-from macrostrat.schema_management.migrations import _run_migrations
+from macrostrat.schema.chunks import environment_class
+from macrostrat.schema_management import MigrationRunner, concrete_migrations
 
 from ..storage import s3_bucket_migration
 
@@ -192,7 +193,7 @@ def migrations(
     """
     List or apply Rockd migrations.
     """
-    importlib.import_module(".migrations", __package__)
+    module = importlib.import_module(".migrations", __package__)
     db = get_rockd_db()
 
     with db.engine.connect() as conn:
@@ -215,14 +216,13 @@ def migrations(
         print(
             f"Preflight -> db={row['db']} user={row['usr']} server={row['host']}:{row['port']} people={row['ppl']} checkins={row['chk']}"
         )
-    _run_migrations(
+    # Rockd's own set, applied as the connecting role: no `macrostrat` there.
+    runner = MigrationRunner(
         db,
-        apply=apply,
-        name=name,
-        force=force,
-        data_changes=data_changes,
-        subsystem="rockd",
+        migrations=concrete_migrations(module.RockdMigration),
+        env_class=environment_class(None),
     )
+    runner.run(apply=apply, name=name, force=force, data_changes=data_changes)
 
 
 @cli.command()

@@ -51,11 +51,11 @@ from typing import Any, Dict, Mapping, Optional, Union
 
 from pydantic import BaseModel, ConfigDict
 
+from macrostrat.app_frame.environments import DEFAULT_ENV
+from macrostrat.app_frame.secrets import Secret, as_secret, is_secret_ref, reveal
 from macrostrat.utils import get_logger
 
 from .connections import merge_tables
-from .environment import DEFAULT_ENV
-from .secrets import Secret, as_secret, is_secret_ref, reveal
 
 log = get_logger(__name__)
 
