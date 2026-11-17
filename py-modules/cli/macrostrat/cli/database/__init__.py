@@ -579,12 +579,14 @@ def update_permissions():
 
 db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions)
 
-# Gated at registration rather than at the definition, so `load_csv` stays
-# importable and callable as a library function without a policy check.
+# Gated at registration rather than at the definition, so the commands stay
+# importable and callable without a policy check.
 db_app.command(name="load-csv", rich_help_panel="Helpers")(
     writes(WriteScope.Data, action="CSV load")(load_csv)
 )
-db_app.command(name="load-geo", rich_help_panel="Helpers")(load_geo)
+db_app.command(name="load-geo", rich_help_panel="Helpers")(
+    writes(WriteScope.Data, action="GIS load")(load_geo)
+)
 
 
 ### Helpers

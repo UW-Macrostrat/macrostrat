@@ -178,12 +178,23 @@ macrostrat db load-geo units.gpkg --multi     # Polygon + MultiPolygon -> MultiP
 
 Null geometries are loaded as `NULL` rather than being dropped.
 
+**Feature IDs and attribute-only layers.** Formats such as GeoPackage hold the
+feature ID apart from the attributes, so it is not loaded unless
+`--fid-column <name>` asks for it. Integer fields keep their declared type even
+when they contain nulls. A layer with no geometry (a lookup table in a
+GeoPackage) loads as a plain table.
+
 ## Notes for maintainers
 
-The commands live in `py-modules/cli/macrostrat/cli/database/`:
-`load_csv.py`, `load_geo.py`, and `load_utils.py` for everything they share —
-identifier sanitization, type mapping, table creation, and the `COPY` itself.
-Changes to shared behaviour belong in `load_utils.py` so the two cannot drift.
+The work is done by the `macrostrat.loader_utils` package
+(`py-modules/loader-utils`), so that pipelines and notebooks can call it as well
+as the CLI: `tables.py` holds everything tabular and geospatial loads share —
+identifier sanitization, type mapping, table creation, and the `COPY` itself —
+and `layers.py` holds `load_layer`. The commands in
+`py-modules/cli/macrostrat/cli/database/` (`load_csv.py`, `load_geo.py`) only
+parse options and print. Changes to shared behaviour belong in `tables.py` so
+the loaders cannot drift. Library functions raise `LoadError`, which the
+commands turn into usage errors.
 
 A few decisions worth knowing before changing this code:
 
@@ -195,10 +206,14 @@ A few decisions worth knowing before changing this code:
 - **Attribute types are inferred by Polars** for both commands. `load-geo` reads
   through geopandas and converts, because `pl.from_pandas` needs pyarrow for
   anything that is not a plain numpy column — a heavy dependency for a handoff.
-  The converter in `load_utils.polars_from_pandas` also normalizes two
+  The converter in `tables.polars_from_pandas` also normalizes two
   pandas-isms: extension dtypes carry `pd.NA` (which Polars rejects), and missing
   numbers arrive as `NaN`, which Postgres would otherwise store as a literal
-  `NaN` instead of `NULL`.
+  `NaN` instead of `NULL`. Integer fields that pandas widened to float to hold
+  nulls are cast back to the type OGR declares for them.
+- **`load_layer` commits as it goes**, each statement on its own connection. A
+  caller whose open transaction has read the target table must commit before a
+  replace, or the `DROP` waits on it indefinitely.
 - **Geometry travels as hex WKB** in the same `COPY` stream; PostGIS parses it on
   input. Hex WKB carries no SRID, so the geometry column is created untyped and
   then constrained with a single
@@ -215,14 +230,16 @@ column is rejected by Postgres rather than silently reprojected.
 
 ### Possible future direction
 
-The machinery in `load_utils.py` — identifier sanitization, Polars-to-PostgreSQL
-type mapping, table creation and the `COPY` itself — is generic, and not really
-specific to Macrostrat. Once these commands have been validated in practice, it
-is worth **migrating them to a shared library**, most naturally
-`macrostrat.database` in the `python-libraries` repo, leaving thin CLI wrappers
-here. Keeping shared behaviour consolidated in `load_utils.py` rather than
-duplicated across the two commands is what keeps that extraction cheap; please
-preserve that split.
+The machinery in `loader_utils/tables.py` — identifier sanitization,
+Polars-to-PostgreSQL type mapping, table creation and the `COPY` itself — is
+generic, and not really specific to Macrostrat. Once its interface has settled,
+it is worth **moving it to `macrostrat.database`** in the `python-libraries`
+repo, probably as an optional extra since that package carries no Polars.
+`layers.py` should stay out of it: it brings geopandas, pyogrio and pyproj with
+it.
+
+`identifier()` can return an SQL reserved word (`GROUP_` becomes `group`), which
+SQL reading the table must quote.
 
 Also unresolved: `load-geo` reads through geopandas only because reprojection
 needs pyproj. `pyogrio.raw.read` is a pandas-free path that returns numpy arrays
