@@ -1006,6 +1006,16 @@ def staging_bulk(
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
+    # Annotated, so that a caller passing none gets None rather than the Option
+    # itself (`macrostrat run arizona ingest` calls this directly).
+    start_after: Annotated[
+        Optional[str],
+        Option(
+            "--start-after",
+            help="Resume: skip the map folders up to and including this one, "
+            "named by folder (MountFagan.gdb) or slug (arizona-mountfagan).",
+        ),
+    ] = None,
 ):
     """
     Ingest all maps from subdirectories within a parent folder.
@@ -1019,6 +1029,13 @@ def staging_bulk(
         raise ValueError(f"Unknown --pipeline {pipeline!r}; the only one is `gems`.")
 
     region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
+    if start_after is not None:
+        names = [(p.name, resolve_slug_from_path(prefix, p)[0]) for p in region_dirs]
+        found = [i for i, n in enumerate(names) if start_after in n]
+        if not found:
+            raise ValueError(f"No map folder or slug '{start_after}' in {data_path}")
+        region_dirs = region_dirs[found[0] + 1 :]
+        print(f"Resuming after {start_after}: {len(region_dirs)} map(s) left")
 
     for region_path in region_dirs:
         slug, name, ext = resolve_slug_from_path(prefix, Path(region_path))
