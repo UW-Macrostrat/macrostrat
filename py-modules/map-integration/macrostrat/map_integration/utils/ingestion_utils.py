@@ -153,17 +153,6 @@ def get_age_interval_df(db) -> pd.DataFrame:
     return df
 
 
-def get_strat_names_df(db) -> pd.DataFrame:
-    """Query and store interval names from the database into a DataFrame for lookups.
-    Returns:
-    pd.DataFrame. A pandas series with interval_name strings.
-    """
-    query = "select rank_name from macrostrat.lookup_strat_names"
-    with db.engine.connect() as conn:
-        df = pd.read_sql(query, conn)
-    return df
-
-
 # standard map age function. User gets to input their column 1 and a column 2 data to map to our ages.
 def map_t_b_standard(
     db, meta_df: G.GeoDataFrame, col_one: str, col_two: str

@@ -1,5 +1,7 @@
 import json
+import re
 from collections import defaultdict
+from functools import cache
 from pathlib import Path
 from typing import Annotated, Iterable, List, Optional, Tuple
 
@@ -17,7 +19,6 @@ from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
-    map_strat_name,
     map_t_b_intervals,
     transform_gdb_layer,
 )
@@ -47,6 +48,35 @@ def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
         meta_df, on=join_col, how="left", suffixes=("", "_meta")
     )
     # Drop duplicate columns (after merge)
+    return merged_df
+
+
+#: A legend column kept beside the polygons' own under a name other than
+#: `<column>_from_dmu`: the legend's `label` is the map's `unit_label`.
+DMU_DUPLICATE_NAMES = {"label": "unit_label"}
+
+
+def name_dmu_columns(polygon_df, merged_df) -> G.GeoDataFrame:
+    """Name the GeMS legend (DescriptionOfMapUnits) columns the merge suffixed
+    `_meta` because the polygons had a column of the same name.
+
+    Where the polygons' column is empty, the legend's takes its name: `age`.
+    Where it has values, the legend's is kept beside it as `<column>_from_dmu`
+    (`age_from_dmu`), except `label`, which is `unit_label`. `transform_gdb_layer`
+    has already copied the legend's label there, so the suffixed copy is dropped.
+    """
+    for column in [c for c in merged_df.columns if c.endswith("_meta")]:
+        base = column.removesuffix("_meta")
+        if base not in polygon_df:
+            continue
+        if _blank(polygon_df[base]).all():
+            merged_df[base] = merged_df.pop(column)
+        else:
+            dmu = DMU_DUPLICATE_NAMES.get(base, f"{base}_from_dmu")
+            if dmu in merged_df:
+                merged_df = merged_df.drop(columns=column)
+            else:
+                merged_df = merged_df.rename(columns={column: dmu})
     return merged_df
 
 
@@ -124,9 +154,6 @@ def preprocess_dataframe(
                 comments += "Both b_interval and t_interval are NA. "
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
-            meta_df = map_strat_name(db, meta_df)
-            if meta_df["strat_name"].isna().all():
-                comments += "No strat_names found."
         elif feature_suffix == "lines":
             meta_df, comments, state = map_lines_to_preferred_fields(
                 poly_line_pt_df, comments, state
@@ -165,11 +192,78 @@ def preprocess_dataframe(
     # merge polygons and metadata dataframes before inserting into the db
 
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
+    if pipeline == "gems":
+        merged_df = name_dmu_columns(poly_line_pt_df, merged_df)
     print("Polygon df merge successful")
 
     comments += "Polygons metadata merged and ingested"
     state = "ingested"
     return merged_df, ingest_pipeline, comments, state
+
+
+@cache
+def _strat_name_vocabulary(db):
+    """Loaded once per process: `calculate-strat-name` runs this map by map."""
+    from ..match.strat_names import prepare_ingest
+
+    return prepare_ingest(db)
+
+
+def _blank(series: P.Series) -> P.Series:
+    return series.isna() | (series.astype(str).str.strip() == "")
+
+
+def map_strat_name_ingest(db, df: P.DataFrame) -> P.DataFrame:
+    """Fill `strat_name` with a best guess at the stratigraphic names each
+    polygon's `name` gives, or its `descrip` (then `description`) where `name`
+    gives none. Run on every ingested polygon layer, whatever `--pipeline`, and
+    by `macrostrat maps staging normalize calculate-strat-name` once those
+    fields have been curated.
+
+    Names Macrostrat's lexicon carries come first, written as the lexicon writes
+    them (`named_units`); failing those, names by their form alone
+    (`formal_names`), such as `Belmont Granite`. A polygon whose text gives
+    neither is left null rather than given its raw text, and a `strat_name` the
+    data already has is kept.
+    """
+    from ..match.strat_names import formal_names, named_units
+
+    columns = {c.lower(): c for c in df.columns}
+    sources = [columns[c] for c in ("name", "descrip", "description") if c in columns]
+    if not sources:
+        return df
+
+    lexicon, lexicon_names, vocabulary = _strat_name_vocabulary(db)
+    common = {
+        word.lower()
+        for column in sources
+        for text in df[column].dropna().astype(str)
+        for word in re.findall(r"[A-Za-z]+", text)
+        if word[0].islower()
+    }
+    guesses = {}
+
+    def guess(text: str):
+        if text not in guesses:
+            names = named_units(text, lexicon, lexicon_names) or formal_names(
+                text, vocabulary, common
+            )
+            guesses[text] = "; ".join(names) or None
+        return guesses[text]
+
+    # Each source in turn, for the rows the ones before it gave nothing.
+    guessed = P.Series(None, index=df.index, dtype=object)
+    for column in sources:
+        texts = df[column].mask(_blank(df[column]))
+        todo = guessed.isna() & texts.notna()
+        guessed[todo] = texts[todo].astype(str).map(guess)
+
+    target = columns.get("strat_name", "strat_name")
+    if target in df:
+        df[target] = df[target].mask(_blank(df[target]), guessed)
+    else:
+        df[target] = guessed
+    return df
 
 
 def strip_z(g: BaseGeometry | None):
@@ -355,7 +449,11 @@ def ingest_map(
         if feature_types is not None and feature_type not in feature_types:
             console.print(f"[dim]Skipping {feature_type}s (not requested)[/dim]")
             continue
-        # Concatenate all dataframes
+        # Concatenate the layers that have features of this type. An empty slice
+        # still carries its layer's columns: GeMS's empty GeochronPoints put an
+        # `age` on every polygon frame, which sent the legend's age to `age_meta`.
+        # With no features at all, one empty frame keeps the flow below as it was.
+        df_list = [d for d in df_list if len(d)] or df_list[:1]
         df = G.GeoDataFrame(P.concat(df_list, ignore_index=True))
         df = df.loc[:, ~df.columns.duplicated()]
         feature_suffix = feature_type.lower() + "s"
@@ -421,6 +519,12 @@ def ingest_map(
             if removed:
                 console.print(
                     f"[yellow]Dropped duplicate columns after merge: {removed}"
+                )
+        if feature_suffix == "polygons":
+            df = map_strat_name_ingest(db, df)
+            if "strat_name" not in df or _blank(df["strat_name"]).all():
+                ingest_results["comments"] = "; ".join(
+                    filter(None, [ingest_results["comments"], "No strat_names found."])
                 )
         console.print(f"[bold]{feature_type}s[/bold] [dim]- {len(df)} features[/dim]")
         console.print("Columns:")

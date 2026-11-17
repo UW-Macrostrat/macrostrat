@@ -22,9 +22,31 @@ class Confidence(enum.Enum):
 
 _ignore_list: ContextVar[list[str] | None] = ContextVar("_ignore_list", default=None)
 
+#: Each lithology's plural, mapped to the lithology: `volcanics` -> `volcanic`.
+_lith_plurals: ContextVar[dict[str, str] | None] = ContextVar(
+    "_lith_plurals", default=None
+)
+
+
+def lith_plurals(lith_names: list[str]) -> dict[str, str]:
+    """`-s` and `-es` plurals of each lithology, mapped back to it.
+
+    `macrostrat.liths` has `volcanic`, `schist` and `gneiss`; maps and the
+    lexicon write `Demetrie Volcanics`, `Pinal Schists`, `Vishnu Gneisses`. A
+    plural that is itself a lithology is left as that lithology.
+    """
+    liths = {lith.lower() for lith in lith_names if lith}
+    return {
+        lith + end: lith
+        for lith in liths
+        for end in ("s", "es")
+        if lith + end not in liths
+    }
+
 
 def create_ignore_list(lith_names: list[str], force: bool = False):
     """Create the ignore list for stratigraphic name cleaning."""
+    _lith_plurals.set(lith_plurals(lith_names))
     _ignore_list.set(build_ignore_list(lith_names))
 
 
@@ -119,6 +141,7 @@ def _clean_name(
     share matching a lexicon entry from 30.2% to 48.8%.
     """
     _ignore_list = get_ignore_list()
+    plurals = _lith_plurals.get() or {}
 
     # Remove punctuation. A hyphen that survived `_split_names` is inside a word,
     # and becomes a token break so each part meets the ignore list on its own --
@@ -160,7 +183,9 @@ def _clean_name(
             # If token should be ignored
             if token in _ignore_list:
                 if token not in non_lith_ignores:
-                    liths.append(token)
+                    # Recorded as the lithology, so a plural and its singular
+                    # are the same rock: "Pinal Schists" is the `Pinal Schist`.
+                    liths.append(plurals.get(token, token))
                 continue
 
         should_reset = False
@@ -356,7 +381,7 @@ ranks = [
 
 # DESIGNATIONS OF STRATIGRAPHIC RANK (SEDIMENTARY LITHOLOGIES)
 def build_ignore_list(lith_names: list[str]) -> list[str]:
-    ignore = lith_names
+    ignore = list(lith_names) + list(lith_plurals(lith_names))
 
     ignore += ["ls", "dol", "dolo", "ss", "cong", "congl", "sh"]
 

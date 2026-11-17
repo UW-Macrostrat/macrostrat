@@ -1,20 +1,20 @@
 import csv
-import json
+import inspect
 import math
 import re
 from collections import Counter
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import pandas as pd
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
 from rich.prompt import Prompt
-from typer import Argument, Option
+from typer import Argument, Context, Exit, Option
 
-from macrostrat.core.exc import MacrostratError
 from macrostrat.map_integration.commands.prepare_fields.utils import (
     LineworkTableUpdater,
     PointsTableUpdater,
@@ -22,13 +22,7 @@ from macrostrat.map_integration.commands.prepare_fields.utils import (
 )
 from macrostrat.map_integration.database import get_database
 from macrostrat.map_integration.utils import IngestionCLI
-from macrostrat.map_integration.utils.map_info import (
-    MapExclude,
-    MapSelector,
-    get_map_info,
-    resolve_maps,
-)
-from macrostrat.map_utils.slugs import staging_table, table_prefix
+from macrostrat.map_utils.slugs import slug_forms, staging_table
 
 console = Console()
 
@@ -40,21 +34,6 @@ trim-whitespace
 lowercase-column
 coalesce-columns
 """
-
-CONTEXT_FILE = Path("macrostrat_staging_context.json")
-DEFAULT_MAP_CONTEXT = {
-    "schema": "sources",
-    "slug": None,
-    "table": None,
-}
-STRAT_NAME_SUFFIXES = [
-    "formation",
-    "fm",
-    "group",
-    "gp",
-    "member",
-    "mbr",
-]
 
 AGE_TERM_REMAP = {
     "pre-jurassic": "triassic",
@@ -97,28 +76,6 @@ NON_LITHS = {
 }
 
 
-def load_map_context() -> dict:
-    """Load persisted map context from disk."""
-    if not CONTEXT_FILE.exists():
-        return DEFAULT_MAP_CONTEXT.copy()
-
-    try:
-        data = json.loads(CONTEXT_FILE.read_text())
-    except Exception:
-        return DEFAULT_MAP_CONTEXT.copy()
-
-    return {
-        "schema": data.get("schema", "sources"),
-        "slug": data.get("slug"),
-        "table": data.get("table"),
-    }
-
-
-def save_map_context(context: dict):
-    """Persist map context to disk."""
-    CONTEXT_FILE.write_text(json.dumps(context, indent=2))
-
-
 @dataclass(frozen=True)
 class TableTarget:
     """Immutable dataclass representing a fully-qualified database table target,
@@ -132,119 +89,10 @@ class TableTarget:
         """Returns an Identifier composed of (schema, table), suitable for safe interpolation into SQL queries."""
         return Identifier(self.schema, self.table)
 
-
-MY_MAP = {
-    "schema": "sources",
-    "slug": None,
-    "table": None,
-}
-
-
-def get_current_target() -> TableTarget:
-    """Return the current table target from persisted context."""
-    context = load_map_context()
-    schema = context.get("schema")
-    table = context.get("table")
-
-    if not schema or not table:
-        raise ValueError(
-            "No current map/layer is set. Run 'set-map' and then 'set-layer' first."
-        )
-
-    return TableTarget(schema=schema, table=table)
-
-
-def resolve_target(
-    slug: Optional[str] = None, layer: Optional[str] = None
-) -> TableTarget:
-    """Return the table to operate on.
-
-    Falls back to the persisted set-map/set-layer context, but either half can be
-    overridden per invocation so a command can target one table in a single line
-    without mutating the context file.
-    """
-    if slug is None and layer is None:
-        return get_current_target()
-
-    context = load_map_context()
-    slug = (slug or context.get("slug") or "").strip()
-    if slug == "":
-        raise ValueError("No slug given and none set. Pass --slug or run 'set-map'.")
-
-    if layer is None:
-        table = (context.get("table") or "").strip()
-        if table == "":
-            raise ValueError(
-                "No layer given and none set. Pass --layer or run 'set-layer'."
-            )
-        # Context table belongs to a different slug; re-derive its layer suffix.
-        for suffix in ("_polygons", "_lines", "_points"):
-            if table.endswith(suffix):
-                return TableTarget(schema="sources", table=table_prefix(slug) + suffix)
-        raise ValueError(
-            f"Cannot infer a layer from context table '{table}'. Pass --layer."
-        )
-
-    layer = layer.strip().strip("_").lower()
-    if layer not in ("polygons", "lines", "points"):
-        raise ValueError("--layer must be one of: polygons, lines, points")
-
-    return TableTarget(schema="sources", table=staging_table(slug, layer))
-
-
-# Options appended to every context-driven command by the --slug/--layer override.
-SLUG_OPTION = Option(
-    None, "--slug", help="Target this slug instead of the set-map context."
-)
-LAYER_OPTION = Option(
-    None, "--layer", help="Target this layer: polygons, lines, or points."
-)
-
-
-def strip_strat_name_suffixes(value: str) -> str:
-    """Strip common stratigraphic rank suffixes from the end of a value."""
-    text = re.sub(r"\s+", " ", str(value)).strip()
-    if text == "":
-        return text
-
-    suffix_pattern = r"(?:\s+|,)+(formation|fm|group|gp|member|mbr)\.?\s*$"
-    while True:
-        updated = re.sub(suffix_pattern, "", text, flags=re.IGNORECASE).strip(" ,;:-")
-        if updated == text:
-            break
-        text = updated
-
-    return text
-
-
-def set_current_map(slug: str):
-    """Set the current map slug and default base table."""
-    slug = validate_identifier(slug, "slug")
-    try:
-        # Recorded as `maps.sources` has it, for the lookups that match it exactly
-        slug = get_map_info(get_database(), slug).slug
-    except MacrostratError:
-        pass
-    context = load_map_context()
-    context["schema"] = "sources"
-    context["slug"] = slug
-    context["table"] = table_prefix(slug)
-    save_map_context(context)
-
-
-def set_current_layer(layer: str):
-    """Set the current layer table from the stored slug."""
-    layer = layer.strip().lower()
-    if layer not in {"points", "lines", "polygons"}:
-        raise ValueError("layer must be one of: points, lines, polygons")
-
-    context = load_map_context()
-    slug = context.get("slug")
-    if not slug:
-        raise ValueError("No slug is set. Run 'set-map <slug>' first.")
-
-    context["table"] = staging_table(slug, layer)
-    save_map_context(context)
+    @property
+    def layer(self) -> str:
+        """polygons, lines or points, from the table's suffix."""
+        return self.table.rsplit("_", 1)[-1]
 
 
 def get_column_sql_type(target: TableTarget, column: str) -> str:
@@ -270,18 +118,16 @@ def get_column_sql_type(target: TableTarget, column: str) -> str:
     return (row.udt_name or row.data_type or "").lower()
 
 
-def append_ingest_comment_for_current_slug(
+def append_ingest_comment(
+    slug: str,
     comment: str,
     dry_run: bool = False,
 ):
-    """Append a comment fragment to maps_metadata.ingest_process.comments for the
-    current CONTEXT_FILE slug, avoiding duplicate appends.
+    """Append a comment fragment to maps_metadata.ingest_process.comments for a
+    slug, avoiding duplicate appends.
     """
     db = get_database()
-    slug = (load_map_context().get("slug") or "").strip()
     comment = comment.strip()
-    if slug == "":
-        raise ValueError("No slug is set in context. Run 'set-map <slug>' first.")
     if comment == "":
         raise ValueError("comment cannot be empty")
     if dry_run:
@@ -1720,20 +1566,13 @@ def copy_first_available_column(
 
 
 def update_ingest_status(
+    slug: str,
     state: str,
     dry_run: bool = False,
 ):
-    """Update maps_metadata.ingest_process.state for a given slug.
-    If slug is not provided, use the current MY_MAP slug.
-    """
+    """Update maps_metadata.ingest_process.state for a slug."""
     db = get_database()
     state = state.strip()
-    slug = load_map_context().get("slug").strip()
-
-    if slug == "":
-        raise ValueError(
-            "slug cannot be empty. Run 'set-map <slug>' first or pass --slug."
-        )
     if state == "":
         raise ValueError("state cannot be empty")
 
@@ -1869,26 +1708,6 @@ METADATA_FIELDS = [
     "language",
     "description",
 ]
-
-
-def get_source_row_for_table(table_name: str):
-    """Looks up the maps.sources row whose primary_table matches the given table name. Raises a ValueError if no
-    matching row is found. Returns the full database row including source_id and slug.
-    """
-    db = get_database()
-    row = db.run_query(
-        """
-        SELECT source_id, primary_table, slug
-        FROM maps.sources
-        WHERE primary_table = :table_name
-        """,
-        dict(table_name=table_name),
-    ).fetchone()
-    if row is None:
-        raise ValueError(
-            f"Could not find a row in maps.sources with primary_table = '{table_name}'"
-        )
-    return row
 
 
 def parse_metadata_value(field: str, raw_value: str):
@@ -2103,9 +1922,8 @@ def _has_ingest_process_tag(db, slug: str, tag: str) -> bool:
 def add_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
     """Add a maps_metadata.ingest_process_tag row for a slug, ignoring duplicates.
 
-    Takes the slug explicitly rather than reading CONTEXT_FILE, so it works inside
-    batch loops that never call set-map. The insert joins through ingest_process to
-    resolve the id, and pk_tag makes the ON CONFLICT a no-op on re-runs.
+    The insert joins through ingest_process to resolve the id, and pk_tag makes
+    the ON CONFLICT a no-op on re-runs.
     """
     db = get_database()
     slug = (slug or "").strip()
@@ -2190,114 +2008,18 @@ def remove_ingest_process_tag(slug: str, tag: str, dry_run: bool = False):
     )
 
 
-def get_process_tag_from_current_table() -> str:
-    """
-    Infer the ingest_process_tag value from the current staging table name.
-
-    Examples:
-    - sources.japan_yobuko_polygons -> polygons processed
-    - sources.japan_yobuko_lines    -> lines processed
-    - sources.japan_yobuko_points   -> points processed
-    """
-    context = load_map_context()
-    table = (context.get("table") or "").strip()
-    if table.endswith("_polygons"):
-        return "polygons processed"
-    if table.endswith("_lines"):
-        return "lines processed"
-    if table.endswith("_points"):
-        return "points processed"
-    raise ValueError(
-        f"Could not infer process tag from table '{table}'. "
-        "Expected table to end with _polygons, _lines, or _points."
-    )
-
-
-def update_process_flag_for_current_context(dry_run: bool = False):
-    """
-    Insert a process tag for the current slug based on the current table/layer.
-
-    Uses:
-    - slug from load_map_context()
-    - table from load_map_context()
-    - tag inferred from table suffix
-    """
-    db = get_database()
-    context = load_map_context()
-
-    slug = (context.get("slug") or "").strip()
-    table = (context.get("table") or "").strip()
-    tag = get_process_tag_from_current_table()
-
-    if slug == "":
-        raise ValueError("No slug is set. Run 'set-map <slug>' first.")
-
-    if table == "":
-        raise ValueError("No table is set. Run 'set-layer <layer>' first.")
-
-    match_count = db.run_query(
-        """
-        SELECT count(*)
-        FROM maps_metadata.ingest_process
-        WHERE source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
-        """,
-        dict(slug=slug),
-    ).scalar()
-
-    console.print(
-        f"[blue]Preparing to add process flag[/blue] "
-        f"[yellow]{tag}[/yellow] for slug [yellow]{slug}[/yellow] "
-        f"from table [yellow]{table}[/yellow] "
-        f"across {match_count} ingest_process row(s)"
-    )
-
-    if dry_run:
-        console.print("[green]Dry run only; no changes applied[/green]")
-        return
-
-    db.run_sql(
-        """
-        INSERT INTO maps_metadata.ingest_process_tag (source_id, tag)
-        SELECT
-            i.source_id,
-            :tag
-        FROM maps_metadata.ingest_process i
-        WHERE i.source_id = (SELECT source_id FROM maps.sources WHERE slug = :slug)
-          AND NOT EXISTS (
-              SELECT 1
-              FROM maps_metadata.ingest_process_tag t
-              WHERE t.source_id = i.source_id
-                AND t.tag = :tag
-          )
-        """,
-        dict(
-            slug=slug,
-            tag=tag,
-        ),
-    )
-
-    console.print(
-        f"[green]Done:[/green] added process flag "
-        f"[yellow]{tag}[/yellow] for slug [yellow]{slug}[/yellow]"
-    )
-
-
 def add_metadata_interactive(
-    table_name: str,
+    slug: str,
     dry_run: bool = False,
 ):
     """Interactively prompts the user to enter values for each metadata field in METADATA_FIELDS, then applies
-    them as an UPDATE to the matching maps.sources row. When dry_run is True, the prepared updates are printed
+    them as an UPDATE to the slug's maps.sources row. When dry_run is True, the prepared updates are printed
     but not written to the database."""
     db = get_database()
-    source_row = get_source_row_for_table(table_name)
+    source_row = get_source_row_for_slug(slug)
     console.print(
-        f"[blue]Editing metadata for[/blue] "
-        f"[bold]maps.sources[/bold] row with "
-        f"[yellow]primary_table = {table_name}[/yellow]"
-    )
-    console.print(
-        f"[dim]Matched source_id={source_row.source_id}, slug={source_row.slug}[/dim]"
+        f"[blue]Editing metadata for[/blue] [bold]maps.sources[/bold] "
+        f"[yellow]{slug}[/yellow] (source_id={source_row.source_id})"
     )
     updates = {}
     for field in METADATA_FIELDS:
@@ -3236,196 +2958,211 @@ def copy_age_columns(
 
 normalize_cli = IngestionCLI(
     no_args_is_help=True,
-    help="Normalize or bulk-fix staged table data.",
+    help="Normalize or bulk-fix staged table data. Selection options go before "
+    "the command: normalize --slug 'arizona-%' --layer polygons copy-column ...",
 )
 
-
-# ___________________________________MAP STRAT_NAMES______________________________________________
-def extract_capitalized_phrase_candidates(value: str) -> list[str]:
-    s = str(value).strip()
-    if s == "":
-        return []
-
-    candidates: list[str] = []
-    seen = set()
-
-    def add_candidate(text: str, allow_single_word: bool = False):
-        text = re.sub(r"\s+", " ", text).strip(" ,;:-")
-        if not text:
-            return
-        if not allow_single_word and len(text.split()) < 2:
-            return
-        key = text.lower()
-        if key not in seen:
-            seen.add(key)
-            candidates.append(text)
-
-    # keep full original phrase, even if one word
-    add_candidate(s, allow_single_word=True)
-
-    simplified = re.sub(r"\([^)]*\)", "", s)
-    simplified = re.sub(r"\s*-\s*\d+\s*$", "", simplified).strip()
-    add_candidate(simplified, allow_single_word=True)
-
-    m = re.search(r"\bof\s+(.+)$", simplified, flags=re.IGNORECASE)
-    if m:
-        tail = m.group(1).strip()
-        add_candidate(tail)
-        tail_tokens = tail.split()
-        if len(tail_tokens) >= 2:
-            add_candidate(" ".join(tail_tokens[:2]))
-    tokens = simplified.split()
-    capitalized = [t for t in tokens if re.match(r"^[A-Z][A-Za-z0-9'.-]*$", t)]
-    if len(capitalized) >= 2:
-        add_candidate(" ".join(capitalized))
-        add_candidate(" ".join(capitalized[:2]))
-    return candidates
+ALL_LAYERS = ("polygons", "lines", "points")
 
 
-def find_lookup_strat_name(value: str) -> Optional[str]:
-    """Resolve a source string to a canonical stratigraphic name from
-    macrostrat.lookup_strat_names using progressive fallback candidates.
-    Returns the matched strat_name, or None if no match is found.
-    """
-    db = get_database()
-    normalized_value = strip_strat_name_suffixes(value)
-    candidates = extract_capitalized_phrase_candidates(normalized_value)
-
-    for candidate in candidates:
-        row = db.run_query(
-            """
-            SELECT strat_name
-            FROM macrostrat.lookup_strat_names
-            WHERE strat_name ILIKE :pattern
-               OR rank_name ILIKE :pattern
-            ORDER BY
-                CASE
-                    WHEN strat_name ILIKE :exact THEN 0
-                    WHEN rank_name ILIKE :exact THEN 1
-                    ELSE 2
-                END,
-                length(coalesce(rank_name, strat_name)),
-                strat_name_id
-            LIMIT 1
-            """,
-            dict(
-                pattern=f"%{candidate}%",
-                exact=candidate,
-            ),
-        ).fetchone()
-
-        if row is not None and row.strat_name is not None:
-            return row.strat_name
-
-    return None
+class Layer(str, Enum):
+    polygons = "polygons"
+    lines = "lines"
+    points = "points"
 
 
-def calculate_strat_name_from_column(
-    target: TableTarget,
-    src_col: str,
-    dry_run: bool = False,
-) -> int:
-    """Populate strat_name from a source text column by progressively matching
-    candidate substrings against macrostrat.lookup_strat_names.strat_name and
-    rank_name after stripping common suffixes like Formation/Fm/Group/Gp/Member/Mbr.
-    Only fills rows where strat_name is null. Leaves unmatched rows null.
-    Returns the count of remaining null strat_name rows.
-    """
-    db = get_database()
-    src_col = validate_identifier(src_col, "source column")
-    existing_cols = get_existing_columns(target)
+@dataclass(frozen=True)
+class Selection:
+    """Which maps a command runs over, from `maps.sources` and `ingest_process`."""
 
-    if src_col not in existing_cols:
-        raise ValueError(
-            f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
+    slug: tuple[str, ...] = ()
+    exclude: tuple[str, ...] = ()
+    tag: tuple[str, ...] = ()
+    state: tuple[str, ...] = ()
+    start_after: Optional[str] = None
+    layer: tuple[str, ...] = ()
+
+    def layers_in(self, handled: tuple[str, ...]) -> list[str]:
+        """The `--layer` tables a command should process, in its own order."""
+        if not self.layer:
+            return list(handled)
+        unhandled = [layer for layer in self.layer if layer not in handled]
+        if unhandled:
+            console.print(
+                f"[red]This command handles {', '.join(handled)}, "
+                f"not {', '.join(unhandled)}.[/red]"
+            )
+            raise Exit(1)
+        return [layer for layer in handled if layer in self.layer]
+
+    def slugs(self, db) -> list[str]:
+        if not self.slug:
+            console.print(
+                "[red]Pass --slug before the command, e.g. "
+                "normalize --slug 'arizona-%' <command>[/red]"
+            )
+            raise Exit(1)
+        where = ["s.slug ILIKE ANY(CAST(:slug AS text[]))"]
+        params = dict(slug=list(self.slug))
+        if self.exclude:
+            where.append("NOT (s.slug ILIKE ANY(CAST(:exclude AS text[])))")
+            params.update(exclude=list(self.exclude))
+        if self.state:
+            where.append("p.state = ANY(CAST(:state AS text[]))")
+            params.update(state=list(self.state))
+        if self.tag:
+            # Every requested tag, not any of them.
+            where.append(
+                """
+                (SELECT count(DISTINCT t.tag) FROM maps_metadata.ingest_process_tag t
+                 WHERE t.source_id = s.source_id
+                   AND t.tag = ANY(CAST(:tag AS text[]))) = :n_tags
+                """
+            )
+            params.update(tag=list(self.tag), n_tags=len(set(self.tag)))
+        slugs = list(
+            db.run_query(
+                f"""
+                SELECT s.slug
+                FROM maps.sources s
+                JOIN maps_metadata.ingest_process p USING (source_id)
+                WHERE {" AND ".join(where)}
+                ORDER BY s.slug
+                """,
+                params,
+            ).scalars()
         )
-    if "strat_name" not in existing_cols:
-        raise ValueError(
-            f"Destination column 'strat_name' does not exist in {target.schema}.{target.table}"
-        )
+        if self.start_after is not None:
+            after = next((s for s in slug_forms(self.start_after) if s in slugs), None)
+            if after is None:
+                console.print(
+                    f"[red]--start-after {self.start_after} is not selected[/red]"
+                )
+                raise Exit(1)
+            slugs = slugs[slugs.index(after) + 1 :]
+        return slugs
 
-    rows = db.run_query(
-        """
-        SELECT _pkid, {src_col} AS src_value
-        FROM {table}
-        WHERE strat_name IS NULL
-          AND {src_col} IS NOT NULL
-          AND trim({src_col}::text) <> ''
-          AND coalesce(omit, false) = false
-        """,
-        dict(
-            table=target.fq_identifier,
-            src_col=Identifier(src_col),
+
+@normalize_cli.callback()
+def select(
+    ctx: Context,
+    slug: Annotated[
+        Optional[list[str]],
+        Option(
+            "--slug", "-s", help="ILIKE pattern on the slug. Repeat for any of several."
         ),
-    ).fetchall()
-
-    console.print(
-        f"[blue]Calculating strat_name for[/blue] "
-        f"[bold]{target.schema}.{target.table}[/bold] "
-        f"from [yellow]{src_col}[/yellow] across {len(rows)} candidate rows"
+    ] = None,
+    exclude: Annotated[
+        Optional[list[str]],
+        Option(
+            "--exclude",
+            "-x",
+            help="ILIKE pattern on the slug to leave out. Repeatable.",
+        ),
+    ] = None,
+    tag: Annotated[
+        Optional[list[str]],
+        Option(
+            "--tag",
+            "-t",
+            help="Ingest-process tag the map must carry. Repeat to require all.",
+        ),
+    ] = None,
+    state: Annotated[
+        Optional[list[str]],
+        Option(
+            "--state",
+            help="Ingest-process state, e.g. ingested. Repeat for any of several.",
+        ),
+    ] = None,
+    start_after: Annotated[
+        Optional[str],
+        Option(
+            "--start-after",
+            help="Resume: skip selected maps up to and including this slug.",
+        ),
+    ] = None,
+    layer: Annotated[
+        Optional[list[Layer]],
+        Option(
+            "--layer",
+            "-l",
+            help="The sources.{slug}_{layer} table to process. Repeatable. "
+            "Default: every layer the command handles.",
+        ),
+    ] = None,
+):
+    """Select maps by slug, ingest-process tag and state, and their layers."""
+    ctx.obj = Selection(
+        slug=tuple(slug or ()),
+        exclude=tuple(exclude or ()),
+        tag=tuple(tag or ()),
+        state=tuple(state or ()),
+        start_after=start_after,
+        layer=tuple(layer.value for layer in layer or ()),
     )
 
-    if dry_run:
-        remaining_nulls = db.run_query(
-            """
-            SELECT count(*)
-            FROM {table}
-            WHERE strat_name IS NULL
-              AND coalesce(omit, false) = false
-            """,
-            dict(table=target.fq_identifier),
-        ).scalar()
-        console.print("[green]Dry run only; no changes applied[/green]")
-        return remaining_nulls
 
-    mappings: list[tuple[int, str]] = []
-    for row in rows:
-        src_value = re.sub(r"\s+", " ", str(row.src_value)).strip()
-        if src_value == "":
-            continue
+def for_each(*handled: str):
+    """Run a command once per selected map, and per layer when it names the
+    layers it handles. The command's `slug` and `target` (the map's
+    `sources.{slug}_{layer}` table) come from the selection, not its own options.
+    A map that fails is reported and the rest still run."""
 
-        resolved = find_lookup_strat_name(src_value)
-        if resolved is not None:
-            mappings.append((row._pkid, resolved))
+    def decorate(fn):
+        signature = inspect.signature(fn)
+        injected = {"slug", "target"} & set(signature.parameters)
+        params = [p for p in signature.parameters.values() if p.name not in injected]
 
-    if mappings:
-        values_sql = ", ".join(
-            [f"(:pkid_{i}, :strat_name_{i})" for i in range(len(mappings))]
+        def command(ctx: Context, **kwargs):
+            selection: Selection = ctx.obj
+            layers = selection.layers_in(handled) if handled else [None]
+            db = get_database()
+            slugs = selection.slugs(db)
+            if not slugs:
+                console.print("[yellow]No maps match the selection.[/yellow]")
+                return
+
+            failed: list[tuple[str, str]] = []
+            for position, slug in enumerate(slugs, start=1):
+                for layer in layers:
+                    label = slug if layer is None else f"{slug} {layer}"
+                    console.print(
+                        f"\n[bold cyan]({position}/{len(slugs)}) {label}[/bold cyan]"
+                    )
+                    given = dict(kwargs)
+                    if "slug" in injected:
+                        given["slug"] = slug
+                    if "target" in injected:
+                        given["target"] = TableTarget(
+                            schema="sources", table=staging_table(slug, layer)
+                        )
+                    try:
+                        fn(**given)
+                    except Exception as e:
+                        db.session.rollback()
+                        failed.append((label, f"{type(e).__name__}: {e}"))
+                        console.print(f"[red]Failed[/red] [bold]{label}[/bold]: {e}")
+
+            done = len(slugs) * len(layers) - len(failed)
+            console.print(f"\n[green]Finished:[/green] {done}/{done + len(failed)}")
+            for label, message in failed:
+                console.print(f"  [red]{label}[/red]: {message}")
+            if failed:
+                raise Exit(1)
+
+        ctx_param = inspect.Parameter(
+            "ctx", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=Context
         )
-        params = {"table": target.fq_identifier}
-        for i, (pkid, strat_name) in enumerate(mappings):
-            params[f"pkid_{i}"] = pkid
-            params[f"strat_name_{i}"] = strat_name
+        command.__name__ = fn.__name__
+        command.__doc__ = fn.__doc__
+        command.__signature__ = signature.replace(parameters=[ctx_param, *params])
+        command.__annotations__ = {"ctx": Context} | {
+            p.name: p.annotation for p in params
+        }
+        return command
 
-        db.run_sql(
-            f"""
-            UPDATE {{table}} AS t
-            SET strat_name = v.strat_name
-            FROM (
-                VALUES {values_sql}
-            ) AS v(_pkid, strat_name)
-            WHERE t._pkid = v._pkid
-              AND t.strat_name IS NULL
-            """,
-            params,
-        )
-
-    remaining_nulls = db.run_query(
-        """
-        SELECT count(*)
-        FROM {table}
-        WHERE strat_name IS NULL
-          AND coalesce(omit, false) = false
-        """,
-        dict(table=target.fq_identifier),
-    ).scalar()
-
-    console.print(
-        f"[green]Done:[/green] populated strat_name from {src_col}. "
-        f"Updated rows: {len(mappings)}. "
-        f"Remaining null strat_name rows: {remaining_nulls}"
-    )
-    return remaining_nulls
+    return decorate
 
 
 # _____________________________________CALCULATE AZIMUTH/DIP DIRECTION____________________________
@@ -3828,7 +3565,9 @@ def review_orientation_values(target: TableTarget, dry_run: bool = False):
 
 
 @normalize_cli.command("copy-column")
+@for_each("polygons", "lines", "points")
 def normalize_copy_column(
+    target: TableTarget,
     src_cols: list[str] = Option(
         ...,
         "--src",
@@ -3840,8 +3579,6 @@ def normalize_copy_column(
         "--no-prompt",
         help="Do not prompt interactively for more source columns; use only the provided --src values.",
     ),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Copy values from one or more source columns into a destination column,
@@ -3852,7 +3589,6 @@ def normalize_copy_column(
     - skips invalid source columns and continues
     - optionally falls back to interactive prompting unless --no-prompt is used
     """
-    target = resolve_target(slug, layer)
     db = get_database()
     dst = dst.strip()
     cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
@@ -3945,16 +3681,15 @@ def normalize_copy_column(
 
 
 @normalize_cli.command("copy-preferred-fields")
+@for_each("polygons", "lines", "points")
 def normalize_copy_preferred_columns(
+    target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Interactively map source columns into the preferred destination columns for
     points, lines, or polygons tables. Press Enter to skip a destination field.
     """
-    target = resolve_target(slug, layer)
     copy_preferred_column_values_interactive(
         target=target,
         dry_run=dry_run,
@@ -3962,29 +3697,28 @@ def normalize_copy_preferred_columns(
 
 
 @normalize_cli.command("add-preferred-columns")
+@for_each("polygons", "lines", "points")
 def normalize_add_preferred_columns(
+    target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Add any missing preferred standard columns for a points, lines, or polygons
     staging table. Existing columns are skipped.
     """
-    target = resolve_target(slug, layer)
     add_preferred_columns(target=target, dry_run=dry_run)
 
 
 @normalize_cli.command("add-metadata")
+@for_each()
 def normalize_add_metadata(
-    table: str = Argument(..., help="Primary table name in maps.sources"),
+    slug: str,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Interactively update metadata fields in maps.sources for the row whose
-    primary_table matches the provided table name.
+    Interactively update metadata fields in maps.sources for each selected map.
     """
-    add_metadata_interactive(table_name=table, dry_run=dry_run)
+    add_metadata_interactive(slug, dry_run=dry_run)
 
 
 @normalize_cli.command("add-metadata-csv")
@@ -4003,18 +3737,17 @@ def normalize_add_metadata_csv(
 
 
 @normalize_cli.command("calculate-age")
+@for_each("polygons")
 def normalize_calculate_age(
+    target: TableTarget,
     col_one: str = Option(..., "--col-one", help="Primary age source column"),
     col_two: str = Option(..., "--col-two", help="Secondary age source column"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Populate b_interval and t_interval using two user-provided columns,
     falling back to era when present.
     """
-    target = resolve_target(slug, layer)
     calculate_age_intervals(
         target=target,
         col_one=col_one,
@@ -4024,7 +3757,10 @@ def normalize_calculate_age(
 
 
 @normalize_cli.command("copy-age")
+@for_each("polygons")
 def normalize_copy_ages(
+    target: TableTarget,
+    slug: str,
     older_cols: list[str] = Option(
         ...,
         "--older",
@@ -4041,8 +3777,6 @@ def normalize_copy_ages(
         help="Do not prompt interactively for more columns; use only the provided pairs.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Copy older/newer age columns into b_interval and t_interval.
@@ -4054,7 +3788,6 @@ def normalize_copy_ages(
     - appends 'some ages null;' to maps_metadata.ingest_process.comments if nulls remain
       after all provided/prompted pairs are exhausted
     """
-    target = resolve_target(slug, layer)
     db = get_database()
     cleaned_older = [col.strip() for col in older_cols if col.strip() != ""]
     cleaned_newer = [col.strip() for col in newer_cols if col.strip() != ""]
@@ -4184,15 +3917,11 @@ def normalize_copy_ages(
             """,
             dict(table=target.fq_identifier),
         ).scalar()
-    context_slug = load_map_context().get("slug") or ""
     if remaining_nulls > 0:
-        append_ingest_comment_for_current_slug(
-            comment="some ages null;",
-            dry_run=dry_run,
-        )
-        add_ingest_process_tag(slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run)
+        append_ingest_comment(slug, comment="some ages null;", dry_run=dry_run)
+        add_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG, dry_run=dry_run)
     else:
-        remove_ingest_process_tag(slug=context_slug, tag=AGES_NULL_TAG, dry_run=dry_run)
+        remove_ingest_process_tag(slug=slug, tag=AGES_NULL_TAG, dry_run=dry_run)
 
     console.print("[green]Finished copy-age[/green]")
 
@@ -4201,15 +3930,15 @@ def normalize_copy_ages(
 
 
 @normalize_cli.command("copy-orig-id")
+@for_each("polygons", "lines", "points")
 def normalize_copy_orig_id(
+    target: TableTarget,
     src_cols: list[str] = Option(
         ...,
         "--src",
         help="One or more source columns to try for orig_id. The first valid column is copied.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Try one or more source columns for orig_id.
@@ -4223,25 +3952,24 @@ def normalize_copy_orig_id(
         dict.fromkeys(validate_identifier(src, "source column") for src in src_cols)
     )
     copy_orig_id_from_candidates(
-        target=resolve_target(slug, layer),
+        target=target,
         candidates=candidates,
         dry_run=dry_run,
     )
 
 
 @normalize_cli.command("copy-line-type")
+@for_each("lines")
 def normalize_copy_line_type(
+    target: TableTarget,
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Map a source column into the linework type column using values from maps.lines.
     If nulls remain in type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = resolve_target(slug, layer)
     table = target.table
     if not table.endswith("_lines"):
         raise ValueError("copy-line-type is intended for _lines tables")
@@ -4270,18 +3998,17 @@ def normalize_copy_line_type(
 
 
 @normalize_cli.command("copy-point-type")
+@for_each("points")
 def normalize_copy_point_type(
+    target: TableTarget,
     src: str = Option(..., "--src", help="Initial source column to map from"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Map a source column into the point_type column using values from maps.points.
     If nulls remain in point_type after a pass, the user is prompted to map another column.
     Press Enter to stop.
     """
-    target = resolve_target(slug, layer)
     table = target.table
     if not table.endswith("_points"):
         raise ValueError("copy-point-type is intended for _points tables")
@@ -4309,31 +4036,29 @@ def normalize_copy_point_type(
 
 
 @normalize_cli.command("null-column")
+@for_each("polygons", "lines", "points")
 def normalize_null_column(
+    target: TableTarget,
     column: str = Argument(..., help="Column to set to NULL"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Set all values in a specified column to NULL.
     """
-    target = resolve_target(slug, layer)
     null_column_values(target=target, column=column, dry_run=dry_run)
 
 
 @normalize_cli.command("null-value")
+@for_each("polygons", "lines", "points")
 def normalize_null_value(
+    target: TableTarget,
     column: str = Option(..., "--column", help="Column to check"),
     value: str = Option(..., "--value", help="String value to replace with NULL"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Set a cell to NULL when the specified column exactly matches a given string.
     """
-    target = resolve_target(slug, layer)
     null_matching_value(
         target=target,
         column=column,
@@ -4343,125 +4068,206 @@ def normalize_null_value(
 
 
 @normalize_cli.command("calculate-strat-name")
+@for_each("polygons")
 def normalize_calculate_strat_name(
-    src_cols: list[str] = Option(
-        ...,
-        "--src",
-        help="Source column to map from. Repeat --src for multiple columns.",
-    ),
-    no_prompt: bool = Option(
-        False,
-        "--no-prompt",
-        help="Do not prompt interactively for more source columns; use only the provided --src values.",
-    ),
+    target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
-    Populate strat_name from one or more source text columns by matching
-    progressively smaller substrings against macrostrat.lookup_strat_names.
-    Common suffixes like Formation/Fm/Group/Gp/Member/Mbr are stripped before matching.
-    Unmatched rows are left as NULL.
+    Fill strat_name from each polygon's name, or its descrip where name gives
+    no strat name, exactly as ingest does (map_strat_name_ingest): names in Macrostrat's
+    lexicon first, then a best guess from a name's form (Belmont Granite).
+
+    Rows that already have a strat_name are left alone; run
+    `null-column strat_name` first to recompute every row.
     """
-    target = resolve_target(slug, layer)
+    from .ingest import _blank, map_strat_name_ingest
+
     db = get_database()
-    cleaned_srcs = [col.strip() for col in src_cols if col.strip() != ""]
-    remaining_nulls: Optional[int] = None
+    existing = get_existing_columns(target)
+    if "strat_name" not in existing:
+        raise ValueError("No strat_name column; run add-preferred-columns first")
+    columns = [c for c in ("_pkid", "name", "descrip", "strat_name") if c in existing]
+    rows = db.run_query(
+        f"SELECT {', '.join(columns)} FROM {{table}}",
+        dict(table=target.fq_identifier),
+    ).all()
+    df = pd.DataFrame(rows, columns=columns)
+    before = df["strat_name"].copy()
+    df = map_strat_name_ingest(db, df)
+    filled = df[_blank(before) & ~_blank(df["strat_name"])]
 
-    for src in cleaned_srcs:
-        try:
-            remaining_nulls = calculate_strat_name_from_column(
-                target=target,
-                src_col=src,
-                dry_run=dry_run,
-            )
-        except ValueError as e:
-            console.print(
-                f"[yellow]Skipping source column[/yellow] [bold]{src}[/bold]: {e}"
-            )
-            continue
+    console.print(
+        f"[green]{len(filled)}[/green] of {len(df)} rows get a strat_name; "
+        f"{int(_blank(df['strat_name']).sum())} stay null"
+    )
+    text = filled["name"] if "name" in filled else filled["descrip"]
+    for source, strat_name in list(zip(text, filled["strat_name"]))[:10]:
+        console.print(f"  {str(source)[:60]} [dim]->[/dim] {strat_name}")
+    if dry_run or filled.empty:
+        if dry_run:
+            console.print("[green]Dry run only; no changes applied[/green]")
+        return
 
-        if remaining_nulls == 0:
-            console.print("[green]All null strat_name rows have been filled[/green]")
-            return
-
-        console.print(
-            f"[yellow]{remaining_nulls} rows still have null strat_name values.[/yellow]"
-        )
-
-    if not no_prompt:
-        next_src = Prompt.ask(
-            "Map values from another column into [bold]strat_name[/bold]? "
-            "Enter a column name or press Enter to exit",
-            default="",
-            show_default=False,
-        ).strip()
-
-        while next_src != "":
-            try:
-                remaining_nulls = calculate_strat_name_from_column(
-                    target=target,
-                    src_col=next_src,
-                    dry_run=dry_run,
-                )
-            except ValueError as e:
-                console.print(
-                    f"[yellow]Skipping source column[/yellow] "
-                    f"[bold]{next_src}[/bold]: {e}"
-                )
-                next_src = Prompt.ask(
-                    "Map values from another column into [bold]strat_name[/bold]? "
-                    "Enter a column name or press Enter to exit",
-                    default="",
-                    show_default=False,
-                ).strip()
-                continue
-
-            if remaining_nulls == 0:
-                console.print(
-                    "[green]All null strat_name rows have been filled[/green]"
-                )
-                return
-
-            console.print(
-                f"[yellow]{remaining_nulls} rows still have null strat_name values.[/yellow]"
-            )
-
-            next_src = Prompt.ask(
-                "Map values from another column into [bold]strat_name[/bold]? "
-                "Enter a column name or press Enter to exit",
-                default="",
-                show_default=False,
-            ).strip()
-
-    if remaining_nulls is None:
-        remaining_nulls = db.run_query(
-            """
-            SELECT count(*)
-            FROM {table}
-            WHERE strat_name IS NULL
-              AND coalesce(omit, false) = false
-            """,
-            dict(table=target.fq_identifier),
-        ).scalar()
-
+    db.run_query(
+        """
+        UPDATE {table} t SET strat_name = v.strat_name
+        FROM unnest(CAST(:ids AS bigint[]), CAST(:names AS text[]))
+            AS v(_pkid, strat_name)
+        WHERE t._pkid = v._pkid
+        """,
+        dict(
+            table=target.fq_identifier,
+            ids=[int(i) for i in filled["_pkid"]],
+            names=list(filled["strat_name"]),
+        ),
+    )
+    db.session.commit()
     console.print("[green]Finished calculate-strat-name[/green]")
 
 
+@normalize_cli.command("strat-name-report")
+def normalize_strat_name_report(
+    ctx: Context,
+    out: Optional[Path] = Option(
+        None,
+        "--out",
+        help="Markdown note to append the report to, e.g. one in the workbench's "
+        "Investigations folder. Created if it does not exist.",
+    ),
+):
+    """
+    Count, for each selected map's polygons, the strat_name values Macrostrat's
+    lexicon has (macrostrat.lookup_strat_names, by strat_name or rank_name) and
+    those it does not. After ingest or calculate-strat-name, the first are the
+    lexicon matches and the second the best guesses from a name's form, such as
+    Belmont Granite. Writes nothing to the database.
+    """
+    from datetime import date
+
+    selection: Selection = ctx.obj
+    selection.layers_in(("polygons",))
+    db = get_database()
+    slugs = selection.slugs(db)
+    if not slugs:
+        console.print("[yellow]No maps match the selection.[/yellow]")
+        return
+
+    lexicon = set()
+    for row in db.run_query(
+        "SELECT strat_name, rank_name FROM macrostrat.lookup_strat_names"
+    ):
+        lexicon.update(n.strip().lower() for n in (row.strat_name, row.rank_name) if n)
+
+    rows = []
+    for slug in slugs:
+        target = TableTarget(schema="sources", table=staging_table(slug, "polygons"))
+        try:
+            columns = get_existing_columns(target)
+        except ValueError:
+            rows.append(dict(slug=slug, note="no polygons table"))
+            continue
+        if "strat_name" not in columns:
+            rows.append(dict(slug=slug, note="no strat_name column"))
+            continue
+        values = (
+            db.run_query(
+                "SELECT strat_name FROM {table}", dict(table=target.fq_identifier)
+            )
+            .scalars()
+            .all()
+        )
+        row = dict(slug=slug, polygons=len(values), named=0, lexicon=0, guess=0)
+        row.update(mixed=0, lexicon_names=set(), guess_names=set(), note="")
+        for value in values:
+            names = [n.strip() for n in str(value or "").split(";") if n.strip()]
+            if not names:
+                continue
+            row["named"] += 1
+            known = [n.lower() in lexicon for n in names]
+            for name, is_known in zip(names, known):
+                row["lexicon_names" if is_known else "guess_names"].add(name)
+            row[
+                "lexicon" if all(known) else "guess" if not any(known) else "mixed"
+            ] += 1
+        rows.append(row)
+
+    counted = [r for r in rows if not r["note"]]
+    keys = ("polygons", "named", "lexicon", "guess", "mixed")
+    totals = {k: sum(r[k] for r in counted) for k in keys}
+    header = (
+        "| Map | Polygons | With strat_name | Lexicon | Best guess | Both "
+        "| Lexicon names | Best-guess names |"
+    )
+    lines = [header, "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
+    for r in rows:
+        if r["note"]:
+            lines.append(f"| {r['slug']} | {r['note']} | | | | | | |")
+            continue
+        lines.append(
+            f"| {r['slug']} | {r['polygons']} | {r['named']} | {r['lexicon']} "
+            f"| {r['guess']} | {r['mixed']} | {len(r['lexicon_names'])} "
+            f"| {len(r['guess_names'])} |"
+        )
+    lines.append(
+        f"| **Total ({len(counted)} maps)** | {totals['polygons']} | {totals['named']} "
+        f"| {totals['lexicon']} | {totals['guess']} | {totals['mixed']} | | |"
+    )
+
+    guesses = [r for r in counted if r["guess_names"]]
+    for line in lines:
+        console.print(line, markup=False, highlight=False)
+    for r in guesses:
+        console.print(
+            f"[dim]{r['slug']} best guesses:[/dim] {', '.join(sorted(r['guess_names']))}"
+        )
+    if out is None:
+        return
+
+    chosen = [
+        f"--{flag.replace('_', '-')} {value}"
+        for flag, values in vars(selection).items()
+        for value in (
+            values if isinstance(values, tuple) else [values] if values else []
+        )
+    ]
+    section = [
+        f"## [[{date.today().isoformat()}]] - strat_name sources, {len(counted)} maps",
+        "",
+        f"`macrostrat maps staging normalize {' '.join(chosen)} strat-name-report`.",
+        "Polygons count once each: *Lexicon* when every name in their strat_name is "
+        "in `macrostrat.lookup_strat_names`, *Best guess* when none is, *Both* "
+        "otherwise.",
+        "",
+        *lines,
+        "",
+    ]
+    if guesses:
+        section += ["Best-guess names:", ""]
+        section += [
+            f"- **{r['slug']}**: {', '.join(sorted(r['guess_names']))}" for r in guesses
+        ]
+        section.append("")
+    out = Path(out)
+    existing = (
+        out.read_text() if out.exists() else '---\nrepos:\n  - "[[macrostrat]]"\n---\n'
+    )
+    out.write_text(existing.rstrip("\n") + "\n\n" + "\n".join(section))
+    console.print(f"[green]Appended to[/green] {out}")
+
+
 @normalize_cli.command("replace-value")
+@for_each("polygons", "lines", "points")
 def normalize_replace_value(
+    target: TableTarget,
     column: str = Option(..., "--col", help="Column to update"),
     old_value: str = Option(..., "--old", help="Value to replace"),
     new_value: str = Option(..., "--new", help="Replacement value"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Replace a specific value in a column with a new value.
     """
-    target = resolve_target(slug, layer)
     replace_column_value(
         target=target,
         column=column,
@@ -4472,7 +4278,9 @@ def normalize_replace_value(
 
 
 @normalize_cli.command("replace-value-with-column")
+@for_each("polygons", "lines", "points")
 def normalize_replace_value_with_column(
+    target: TableTarget,
     src: str = Option(..., "--src", help="Source column to copy values from"),
     dst: str = Option(..., "--dst", help="Destination column to update"),
     dst_val: str = Option(
@@ -4481,13 +4289,10 @@ def normalize_replace_value_with_column(
         help="Value in dst to replace with the row-wise src value",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Replace a specific value in dst with the value from src in the same row.
     """
-    target = resolve_target(slug, layer)
     replace_value_with_column(
         target=target,
         src=src,
@@ -4498,17 +4303,16 @@ def normalize_replace_value_with_column(
 
 
 @normalize_cli.command("remove-word-in-string")
+@for_each("polygons", "lines", "points")
 def normalize_remove_word_in_string(
+    target: TableTarget,
     src: str = Option(..., "--src", help="Column to clean in place"),
     word: str = Option(..., "--word", help="String fragment to remove"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Remove all occurrences of a word/string fragment from a column.
     """
-    target = resolve_target(slug, layer)
     remove_word_in_string(
         target=target,
         src=src,
@@ -4518,18 +4322,17 @@ def normalize_remove_word_in_string(
 
 
 @normalize_cli.command("merge-column")
+@for_each("polygons", "lines", "points")
 def normalize_merge_column(
+    target: TableTarget,
     col_one: str = Option(..., "--dst", help="Destination column"),
     col_two: str = Option(..., "--src", help="Column to merge into dst column"),
     separator: str = Option(..., "--separator", help="Separator between values"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Merge values from col-two into col-one using a user-provided separator.
     """
-    target = resolve_target(slug, layer)
     merge_column_values(
         target=target,
         col_one=col_one,
@@ -4540,7 +4343,9 @@ def normalize_merge_column(
 
 
 @normalize_cli.command("calculate-dip-dir")
+@for_each("points")
 def normalize_calculate_dip_dir(
+    target: TableTarget,
     strike_col: str = Option(..., "--str", help="Numeric strike column"),
     strike_cardinal_col: str = Option(
         ..., "--str-cardinal", help="Cardinal strike column"
@@ -4550,14 +4355,11 @@ def normalize_calculate_dip_dir(
         ..., "--dip-cardinal", help="Cardinal dip-direction column"
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Calculate dip_dir from strike and dip-direction information.
     Defaults to right-hand rule when dip-cardinal is missing.
     """
-    target = resolve_target(slug, layer)
     calculate_dip_dir_from_columns(
         target=target,
         strike_col=strike_col,
@@ -4569,19 +4371,18 @@ def normalize_calculate_dip_dir(
 
 
 @normalize_cli.command("points-review-orientation")
+@for_each("points")
 def normalize_points_review_orientation(
-    maps: MapSelector,
-    exclude: MapExclude = None,
+    target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Interactively resolve strike/dip values that would violate a
     `maps.points` check constraint (e.g. strike=555, dip=410), across the
-    `_points` table of every selected map. The layer is always `_points`; this
-    command does not use the set-map/set-layer context.
+    `_points` table of every selected map.
 
-        macrostrat maps staging normalize points-review-orientation 'arizona_*' \\
-            --exclude 'arizona_adgm_*'
+        macrostrat maps staging normalize --slug 'arizona-%' \\
+            --exclude 'arizona-adgm-%' points-review-orientation
 
     dip_dir is shown for context but is out of scope for this pass -- it needs
     a compass-direction judgment call this command doesn't make.
@@ -4592,69 +4393,26 @@ def normalize_points_review_orientation(
     - omit: set omit=true so the row is not inserted at all
     - skip: leave the row unchanged for now
     """
-    db = get_database()
-    selected = resolve_maps(db, maps, exclude=exclude)
-
-    for i, m in enumerate(selected, start=1):
-        target = TableTarget(schema="sources", table=staging_table(m.slug, "points"))
-        console.print(f"\n[bold cyan]({i}/{len(selected)}) {m.slug}[/bold cyan]")
-        try:
-            review_orientation_values(target=target, dry_run=dry_run)
-        except ValueError as e:
-            console.print(
-                f"[yellow]Skipping[/yellow] [bold]{target.schema}.{target.table}[/bold]: {e}"
-            )
-
-
-@normalize_cli.command("set-map")
-def normalize_set_map(
-    slug: str = Argument(..., help="Map slug, e.g. california_cosorange"),
-):
-    set_current_map(slug)
-    context = load_map_context()
-    console.print(
-        f"[green]Set current map:[/green] "
-        f"schema={context['schema']}, slug={context['slug']}, table={context['table']}"
-    )
-
-
-@normalize_cli.command("set-layer")
-def normalize_set_layer(
-    layer: str = Argument(..., help="Layer: points, lines, or polygons"),
-):
-    set_current_layer(layer)
-    context = load_map_context()
-    console.print(
-        f"[green]Set current layer:[/green] "
-        f"schema={context['schema']}, table={context['table']}"
-    )
-
-
-@normalize_cli.command("get-map")
-def normalize_show_map():
-    """
-    Show the current persisted map context.
-    """
-    console.print(f"[blue]Current MY_MAP:[/blue] {load_map_context()}")
+    review_orientation_values(target=target, dry_run=dry_run)
 
 
 @normalize_cli.command("update-state")
+@for_each()
 def normalize_update_status(
+    slug: str,
     state: str = Option(..., "--state", help="New ingest state"),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Update maps_metadata.ingest_process.state for the current map slug
-    or an explicitly provided slug.
+    Update maps_metadata.ingest_process.state for each selected map.
     """
-    update_ingest_status(
-        state=state,
-        dry_run=dry_run,
-    )
+    update_ingest_status(slug, state=state, dry_run=dry_run)
 
 
 @normalize_cli.command("fuzzy-match-lith")
+@for_each("polygons")
 def normalize_fuzzy_match_lith(
+    target: TableTarget,
     src: Optional[str] = Option(
         None,
         "--src",
@@ -4676,8 +4434,6 @@ def normalize_fuzzy_match_lith(
         help="Optional limit on number of rows to inspect.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Compute per-row fuzzy match percentages for a lithology text column against
@@ -4688,7 +4444,6 @@ def normalize_fuzzy_match_lith(
     - if a row's match percentage is > --row-copy-threshold, write the matched
       lith strings directly into lith for that same row/_pkid
     """
-    target = resolve_target(slug, layer)
 
     if src is not None and src.strip() != "":
         src_col = validate_identifier(src, "source column")
@@ -4713,7 +4468,9 @@ def normalize_fuzzy_match_lith(
 
 
 @normalize_cli.command("match-remaining-cols")
+@for_each("polygons", "lines")
 def match_remaining_cols(
+    target: TableTarget,
     non_age_col: str = Argument(
         ...,
         help="Column identified as not an age column.",
@@ -4724,8 +4481,6 @@ def match_remaining_cols(
         help="Number of distinct preview values to print for each candidate column.",
     ),
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
-    slug: Optional[str] = SLUG_OPTION,
-    layer: Optional[str] = LAYER_OPTION,
 ):
     """
     Interactively merge legend columns into name, starting from non_age_col and
@@ -4735,7 +4490,6 @@ def match_remaining_cols(
     into another user-specified destination column.
     """
     db = get_database()
-    target = resolve_target(slug, layer)
     existing_cols = get_existing_columns(target)
 
     non_age_col, columns_between, second_last_col = (
@@ -4921,24 +4675,24 @@ def match_remaining_cols(
 
 
 @normalize_cli.command("update-process-tag")
+@for_each(*ALL_LAYERS)
 def normalize_update_process_flag(
+    slug: str,
+    target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Add a maps_metadata.ingest_process_tag row for the current slug.
-
-    The tag is inferred from the current table/layer:
-    - *_polygons -> polygons processed
-    - *_lines    -> lines processed
-    - *_points   -> points processed
+    Tag each selected map '<layer> processed' (polygons processed, lines
+    processed, points processed) for each selected layer.
     """
-    update_process_flag_for_current_context(dry_run=dry_run)
+    add_ingest_process_tag(slug, f"{target.layer} processed", dry_run=dry_run)
 
 
 @normalize_cli.command("add-tag")
+@for_each()
 def normalize_add_tag(
+    slug: str,
     tag: str = Argument(..., help="Tag text, e.g. 'some ages null'"),
-    slug: Optional[str] = SLUG_OPTION,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
@@ -4947,24 +4701,17 @@ def normalize_add_tag(
     Unlike update-process-tag, the text is given rather than inferred from the
     layer. Adding a tag the map already has is a no-op.
     """
-    add_ingest_process_tag(
-        slug=slug or (load_map_context().get("slug") or ""),
-        tag=tag,
-        dry_run=dry_run,
-    )
+    add_ingest_process_tag(slug, tag, dry_run=dry_run)
 
 
 @normalize_cli.command("remove-tag")
+@for_each()
 def normalize_remove_tag(
+    slug: str,
     tag: str = Argument(..., help="Tag text to remove"),
-    slug: Optional[str] = SLUG_OPTION,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
     Remove a maps_metadata.ingest_process_tag row. Silent if the tag is absent.
     """
-    remove_ingest_process_tag(
-        slug=slug or (load_map_context().get("slug") or ""),
-        tag=tag,
-        dry_run=dry_run,
-    )
+    remove_ingest_process_tag(slug, tag, dry_run=dry_run)

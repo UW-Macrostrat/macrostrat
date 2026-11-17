@@ -41,6 +41,7 @@ wrong denominator: it cannot see a row acquiring forty spurious names. Precision
 is counted in pairs and in concepts.
 """
 
+import re
 import time
 from collections import defaultdict
 from contextvars import ContextVar
@@ -55,6 +56,9 @@ from macrostrat.match_utils.strat_names import (
     StratRank,
     clean_strat_name,
     create_ignore_list,
+    get_ignore_list,
+    get_rank_signifier,
+    non_lith_ignores,
 )
 
 from ..utils import MapInfo
@@ -544,6 +548,144 @@ def _rank_carries(p, cand) -> bool:
     if p.rank not in WEAK_RANKS:
         return True
     return p.rank in cand.ranks
+
+
+# --- Guessing strat_name at ingest ------------------------------------------------
+#
+# Used by `commands.ingest.map_strat_name_ingest` (at ingest, and by `normalize
+# calculate-strat-name`) before a map has a legend
+# or a location, so nothing here consults geography; `match_strat_names` above
+# does not use any of it.
+
+
+def prepare_ingest(db: Database) -> tuple[dict, dict, frozenset]:
+    """What guessing a legend's strat_name at ingest needs: the lexicon, each
+    lexicon entry's name as Macrostrat writes it, and the words for describing a
+    rock or its age."""
+    create_ignore_list(
+        db.run_query("SELECT lith FROM macrostrat.liths").scalars().all()
+    )
+    names = {
+        r.strat_name_id: r.rank_name or r.strat_name
+        for r in db.run_query(
+            "SELECT strat_name_id, strat_name, rank_name"
+            " FROM macrostrat.lookup_strat_names"
+        )
+    }
+    words: set[str] = set()
+    for query in (
+        "SELECT lith FROM macrostrat.liths",
+        "SELECT lith_att FROM macrostrat.lith_atts",
+        "SELECT mineral FROM macrostrat.minerals",
+        "SELECT interval_name FROM macrostrat.intervals",
+    ):
+        # One-word entries only: splitting `well sorted` or `cross-bedded` would
+        # make `well` and `cross` ordinary, and lose "Barnett Well Granite".
+        for value in db.run_query(query).scalars():
+            if value and " " not in value.strip():
+                words.add(value.strip().lower())
+    return build_lexicon(db), names, frozenset(words) | POSITIONAL | NOT_PROPER_NOUNS
+
+
+def named_units(text: str, lexicon, names: dict) -> list[str]:
+    """The stratigraphic names `text` gives, as Macrostrat's lexicon writes them:
+    "Demetrie volcanic" is the `Demetrie Volcanics`, "Verde Fm" the `Verde
+    Formation`.
+
+    Held to the prose test (`_names_a_unit`) even when the text is a unit's
+    name, for legends whose `name` is a description ("Young alluvium") as often
+    as a formal name. Where one parse reaches several entries, those whose rank
+    the text gave are kept, then those whose rock type it gave, as
+    `prefer_rank_agreement` and `prefer_exact_name` do for the whole map.
+    """
+    parses: dict = {}
+    for p, cand in _candidates(text, lexicon, prose=True):
+        # `Older Member` is in the lexicon; "terraces, older member" is not it.
+        if set(p.name.split()) <= POSITIONAL:
+            continue
+        parses.setdefault((p.name, p.rank), (p, []))[1].append(cand)
+
+    found = []
+    for p, cands in parses.values():
+        cands = [c for c in cands if p.rank in c.ranks] or cands
+        liths = frozenset(p.lith_signifiers)
+        cands = [c for c in cands if c.liths == liths] or cands
+        for cand in cands:
+            name = names.get(cand.strat_name_id)
+            if name and name not in found:
+                found.append(name)
+    return found
+
+
+#: Words for where a unit sits or how old it is relative to its neighbours,
+#: which a legend capitalizes at the start of a name: "Older andesite".
+POSITIONAL = frozenset(
+    {"lower", "upper", "middle", "basal", "the"}
+    | {"young", "younger", "youngest", "old", "older", "oldest", "intermediate"}
+    | {"latest", "earliest"}
+)
+
+#: Ordinary words that `formal_names` took for proper nouns, because a legend
+#: capitalized them at the start of a sentence: "Individual dikes and zones of
+#: quartz veins" is not the `Individual Dikes`. Add each one as it turns up, and
+#: once the list shows a pattern, fix the rule that let them through instead.
+NOT_PROPER_NOUNS = frozenset({"individual"})
+
+#: Endings of the adjectives a legend opens a description with -- "Intrusive
+#: andesite", "Silicified conglomerate", "Granitic dikes", "Heterogeneous
+#: gneiss" -- and that place names almost never have.
+ADJECTIVE_ENDINGS = ("ic", "ous", "ive", "ed")
+
+#: A word, possessive included ("John's Dam gneiss"), or a mark of punctuation,
+#: which ends a name: "Unit of North Canyon (Miocene Gila Group)" names the Gila
+#: Group, not "North Canyon Miocene Gila Group". A full stop does not, being
+#: an abbreviation's ("St. David Formation"), and neither does a query, which
+#: `formal_names` drops first ("Glance(?) Conglomerate").
+_TOKEN = re.compile(r"[A-Za-z][A-Za-z'\u2019]*|[^\sA-Za-z.]")
+
+
+def formal_names(text: str, vocabulary: frozenset, common: set) -> list[str]:
+    """Names `text` gives by their form alone, whether or not Macrostrat has them:
+    capitalized proper nouns directly before a rock type or a rank word --
+    `Belmont Granite`, `Helvetia Granite`, `Sherrer Formation`, `Madera Canyon
+    Pluton`. The proper nouns are kept as the map wrote them.
+
+    `vocabulary` is the rock, age and position words (`prepare_ingest`), none of
+    which is part of a name: "Mylonitic Johnny Lyon granodiorite", "Upper
+    Ferguson Wash Tuff". `common` is every word the map writes in lower case
+    somewhere. A legend capitalizes its first word whatever it is, so "Younger
+    tuff" and "Helmet Conglomerate" have the same shape, and only the map
+    writing `younger` elsewhere tells them apart. That test, and the adjective
+    endings, are applied to one-word names alone: two capitalized words in a row
+    are a name even if one is ordinary ("Confidence Peak Tuff").
+    """
+    rocks = {w for w in get_ignore_list() if w not in non_lith_ignores}
+
+    def is_rank_or_rock(word):
+        return word in rocks or get_rank_signifier(word) is not None
+
+    tokens = _TOKEN.findall(text.replace("(?)", "").replace("?", ""))
+    names = []
+    for i, token in enumerate(tokens):
+        if not is_rank_or_rock(token.lower()):
+            continue
+        start = i
+        while start > 0 and tokens[start - 1][0].isupper():
+            before = tokens[start - 1].lower()
+            if is_rank_or_rock(before) or before in vocabulary:
+                break
+            start -= 1
+        run = tokens[start:i]
+        if len(run) == 1:
+            word = run[0].lower()
+            if word in common or word.endswith(ADJECTIVE_ENDINGS):
+                continue
+        if not run:
+            continue
+        name = " ".join([*run, token.capitalize()])
+        if name not in names:
+            names.append(name)
+    return names
 
 
 def _candidates(text: str, lexicon, *, prose: bool = False):
