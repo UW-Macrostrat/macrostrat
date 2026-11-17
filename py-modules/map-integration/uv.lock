@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -580,7 +580,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "3.1.0"
+version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-utils" },
@@ -590,9 +590,9 @@ dependencies = [
     { name = "toposort" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/cf/36f040d6f6af77c00be5f04067fc47f8fe338eb6be391bff38145e2c5e94/macrostrat_app_frame-3.1.0.tar.gz", hash = "sha256:ff0824a5f66793454c1bb76eb13f0fe4a110dfbbecdb1bd58eaf2cf4cdc16fba", size = 9364, upload-time = "2026-06-12T06:51:24.545Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/49/ea3194ac6c98d15f29732d74f3b85fb5cc92a84824e7ed174bd856e7ea0a/macrostrat_app_frame-3.2.0.tar.gz", hash = "sha256:c6bc30a37b39114830436928a5eb4dc3e663c6aa225ddab3734e063c2a48cafe", size = 46179, upload-time = "2026-11-17T10:32:46.479Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/f0/46e12ffdb42f09e4b44d91dba816fd1c682efe2d5e7bc0330d283c06b191/macrostrat_app_frame-3.1.0-py3-none-any.whl", hash = "sha256:8608cceab3487bc194771c223b354b0f185aba625a98d88d89952e47c789cd1e", size = 14982, upload-time = "2026-06-12T06:51:25.219Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/e4/b838b10fa83881a2b255c2ff9f122cf2fbb482c28eb718036891d63993df/macrostrat_app_frame-3.2.0-py3-none-any.whl", hash = "sha256:5340737d62c57ec6e10bc70bb02e8dd77d9711fcee80b1a0d985efa5380260e5", size = 57367, upload-time = "2026-11-17T10:32:45.426Z" },
 ]
 
 [[package]]
@@ -614,7 +614,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
-    { name = "macrostrat-app-frame", specifier = ">=3.1.0,<4" },
+    { name = "macrostrat-app-frame", specifier = ">=3.2.0,<4" },
     { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
     { name = "pydantic", specifier = ">=2.5,<3" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },

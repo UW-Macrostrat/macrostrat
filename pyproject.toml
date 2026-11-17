@@ -11,8 +11,6 @@ dependencies = [
     "macrostrat.match-utils",
     "macrostrat.core",
     "macrostrat.schema",
-    "macrostrat.schema_management>=2.0.0,<3",
-    "macrostrat.app_frame>=3.2.0,<4",
     "api",
     "macrostrat.map_utils",
     "macrostrat.task-runner",
@@ -45,9 +43,6 @@ default-groups = [
 ]
 
 [tool.uv.sources]
-# Until python-libraries#59 is merged and published; remove with it.
-"macrostrat.schema_management" = { editable = true, path = "../python-libraries/schema-management" }
-"macrostrat.app_frame" = { editable = true, path = "../python-libraries/app-frame" }
 "macrostrat.cli" = { editable = true, path = "py-modules/cli" }
 "macrostrat.match-utils" = { editable = true, path = "py-modules/match-utils" }
 "macrostrat.column-utils" = { editable = true, path = "py-modules/column-utils" }

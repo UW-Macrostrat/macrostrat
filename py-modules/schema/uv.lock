@@ -452,7 +452,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-app-frame"
-version = "3.1.0"
+version = "3.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-utils" },
@@ -462,9 +462,9 @@ dependencies = [
     { name = "toposort" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/cf/36f040d6f6af77c00be5f04067fc47f8fe338eb6be391bff38145e2c5e94/macrostrat_app_frame-3.1.0.tar.gz", hash = "sha256:ff0824a5f66793454c1bb76eb13f0fe4a110dfbbecdb1bd58eaf2cf4cdc16fba", size = 9364, upload-time = "2026-06-12T06:51:24.545Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/49/ea3194ac6c98d15f29732d74f3b85fb5cc92a84824e7ed174bd856e7ea0a/macrostrat_app_frame-3.2.0.tar.gz", hash = "sha256:c6bc30a37b39114830436928a5eb4dc3e663c6aa225ddab3734e063c2a48cafe", size = 46179, upload-time = "2026-11-17T10:32:46.479Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/f0/46e12ffdb42f09e4b44d91dba816fd1c682efe2d5e7bc0330d283c06b191/macrostrat_app_frame-3.1.0-py3-none-any.whl", hash = "sha256:8608cceab3487bc194771c223b354b0f185aba625a98d88d89952e47c789cd1e", size = 14982, upload-time = "2026-06-12T06:51:25.219Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/e4/b838b10fa83881a2b255c2ff9f122cf2fbb482c28eb718036891d63993df/macrostrat_app_frame-3.2.0-py3-none-any.whl", hash = "sha256:5340737d62c57ec6e10bc70bb02e8dd77d9711fcee80b1a0d985efa5380260e5", size = 57367, upload-time = "2026-11-17T10:32:45.426Z" },
 ]
 
 [[package]]
@@ -486,7 +486,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
     { name = "dynaconf", specifier = ">=3.1.12,<4" },
-    { name = "macrostrat-app-frame", specifier = ">=3.1.0,<4" },
+    { name = "macrostrat-app-frame", specifier = ">=3.2.0,<4" },
     { name = "macrostrat-database", specifier = ">=4.6.1,<5" },
     { name = "pydantic", specifier = ">=2.5,<3" },
     { name = "python-dotenv", specifier = ">=1.0.0,<2" },
@@ -516,30 +516,12 @@ wheels = [
 ]
 
 [[package]]
-name = "macrostrat-dinosaur"
-version = "4.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "docker" },
-    { name = "macrostrat-database" },
-    { name = "macrostrat-utils" },
-    { name = "migra" },
-    { name = "schemainspect" },
-    { name = "setuptools" },
-    { name = "sqlalchemy" },
-    { name = "testcontainers" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/49/15d2e1821a1e238cc1557e7eeed3d23c3a99bfed40b858b64d891a08c9cb/macrostrat_dinosaur-4.0.0.tar.gz", hash = "sha256:6ef8bab8d2149f51f2bbe12e16d4af4284b25ab0bf9dd015a9c03582a33ada4f", size = 8790, upload-time = "2026-04-29T15:32:27.832Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/07/f5d62e1357ddfaade460abbb04db6f8849e91ee1ea0d9cf202026c851882/macrostrat_dinosaur-4.0.0-py3-none-any.whl", hash = "sha256:39c6c15799318a99b4a166497e936c13fa990bfa04640dc778d8679c8dfee2fe", size = 11946, upload-time = "2026-04-29T15:32:26.78Z" },
-]
-
-[[package]]
 name = "macrostrat-map-topology"
 version = "0.1.0"
 source = { editable = "../map-topology" }
 dependencies = [
     { name = "macrostrat-database" },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-task-runner" },
     { name = "pydantic" },
 ]
@@ -557,6 +539,7 @@ requires-dist = [
     { name = "macrostrat-core", marker = "extra == 'topology'", editable = "../core" },
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "../map-utils" },
+    { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
     { name = "macrostrat-task-runner", editable = "../task-runner" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "../../submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
@@ -587,37 +570,54 @@ version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
-    { name = "docker" },
     { name = "httpx" },
     { name = "macrostrat-app-frame" },
     { name = "macrostrat-core" },
     { name = "macrostrat-database" },
-    { name = "macrostrat-dinosaur" },
     { name = "macrostrat-map-topology", extra = ["topology"] },
+    { name = "macrostrat-schema-management" },
     { name = "macrostrat-utils" },
     { name = "pytest" },
-    { name = "results" },
     { name = "rich" },
-    { name = "testcontainers" },
     { name = "typer" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.0,<10" },
-    { name = "docker", specifier = ">=7,<8" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "macrostrat-app-frame", specifier = ">=3.0.0,<4" },
+    { name = "macrostrat-app-frame", specifier = ">=3.2.0,<4" },
     { name = "macrostrat-core", editable = "../core" },
     { name = "macrostrat-database", specifier = ">=4.6.0,<5" },
-    { name = "macrostrat-dinosaur", specifier = ">=4.0.0,<5" },
     { name = "macrostrat-map-topology", extras = ["topology"], editable = "../map-topology" },
+    { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
     { name = "macrostrat-utils", specifier = ">=1.3.3,<2" },
     { name = "pytest", specifier = ">=8.3.4,<9" },
-    { name = "results", specifier = ">=2.0.0,<2.1.0" },
     { name = "rich", specifier = ">=13,<16" },
-    { name = "testcontainers", specifier = ">=4.14.2" },
     { name = "typer", specifier = ">=0.22,<0.27" },
+]
+
+[[package]]
+name = "macrostrat-schema-management"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "docker" },
+    { name = "macrostrat-database" },
+    { name = "macrostrat-utils" },
+    { name = "psycopg" },
+    { name = "pydantic" },
+    { name = "results" },
+    { name = "rich" },
+    { name = "sqlalchemy" },
+    { name = "sqlparse" },
+    { name = "testcontainers" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/28/715a93c0f564b6ceefbedad68081179f84b4da49a799a8d2a61b198cc866/macrostrat_schema_management-2.0.0.tar.gz", hash = "sha256:16797171797c956543d523c85a050dfd9f2dad1fff9804a7d920a8a7d3eedf4f", size = 45209, upload-time = "2026-11-17T10:43:02.168Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/d5/d4d88b2f6b93cce50c6f7cdc401bee46f135a0bdae5c0fea296af55968ce/macrostrat_schema_management-2.0.0-py3-none-any.whl", hash = "sha256:040e8aecdee2c51f62f0b0a0b79e2e70009f18f25e9d7f051b4eba06fc346b94", size = 59513, upload-time = "2026-11-17T10:43:00.924Z" },
 ]
 
 [[package]]
@@ -709,20 +709,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
-]
-
-[[package]]
-name = "migra"
-version = "3.0.1663481299"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "schemainspect" },
-    { name = "six" },
-    { name = "sqlbag" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/fb/4761e69d6028909f4b68f175f53ac69c521b75b11e977087b6ce6ec3b006/migra-3.0.1663481299.tar.gz", hash = "sha256:0cf0c125d553008d9ff5402663a51703ccc474bb65b5a4f4727906dbf58e217f", size = 10083, upload-time = "2022-09-18T06:08:24.5Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/66/79bf13b29c2c3a3e72d8dead21fde7ae15f84e78038c92a35e62b3e9c229/migra-3.0.1663481299-py3-none-any.whl", hash = "sha256:061643e9af63488e085d729f267ed4af4249789979732b703ddeb2c478ec9a93", size = 10537, upload-time = "2022-09-18T06:08:22.982Z" },
 ]
 
 [[package]]
@@ -1185,27 +1171,6 @@ wheels = [
 ]
 
 [[package]]
-name = "schemainspect"
-version = "3.1.1663587362"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "sqlalchemy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/00/41/c2ea77a94a7dcbde0d5b9cce70018a730e4ab5504628c14ced657c87217a/schemainspect-3.1.1663587362.tar.gz", hash = "sha256:a295ad56f7a19c09e5e1ef9f16dadbf6392e26196cb5f05b5afe613c99ce7468", size = 28520, upload-time = "2022-09-19T11:36:06.373Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/e2/eea82cd82c91c840f1f32cfc874db831ac3a742fbd9dfe713cae851441f1/schemainspect-3.1.1663587362-py3-none-any.whl", hash = "sha256:3071265712863c4d4e742940a4b44ac685135af3c93416872ec1bb6c822c4aca", size = 37373, upload-time = "2022-09-19T11:36:05.069Z" },
-]
-
-[[package]]
-name = "setuptools"
-version = "78.1.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/81/9c/42314ee079a3e9c24b27515f9fbc7a3c1d29992c33451779011c74488375/setuptools-78.1.1.tar.gz", hash = "sha256:fcc17fd9cd898242f6b4adfaca46137a9edef687f43e6f78469692a5e70d851d", size = 1368163, upload-time = "2025-04-19T18:23:36.68Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/99/158ad0609729111163fc1f674a5a42f2605371a4cf036d0441070e2f7455/setuptools-78.1.1-py3-none-any.whl", hash = "sha256:c3a9c4211ff4c309edb8b8c4f1cbfa7ae324c4ba9f91ff254e3d305b9fd54561", size = 1256462, upload-time = "2025-04-19T18:23:34.525Z" },
-]
-
-[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1279,20 +1244,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/bf/abfd5474cdd89ddd36dbbde9c6efba16bfa7f5448913eba946fed14729da/SQLAlchemy-Utils-0.41.2.tar.gz", hash = "sha256:bc599c8c3b3319e53ce6c5c3c471120bd325d0071fb6f38a10e924e3d07b9990", size = 138017, upload-time = "2024-03-24T15:17:28.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/f0/dc4757b83ac1ab853cf222df8535ed73973e0c203d983982ba7b8bc60508/SQLAlchemy_Utils-0.41.2-py3-none-any.whl", hash = "sha256:85cf3842da2bf060760f955f8467b87983fb2e30f1764fd0e24a48307dc8ec6e", size = 93083, upload-time = "2024-03-24T15:17:24.533Z" },
-]
-
-[[package]]
-name = "sqlbag"
-version = "0.1.1617247075"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-    { name = "six" },
-    { name = "sqlalchemy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/07/6f/46171ef9ef6d177b94dff96e6403c7fb7466de5c9ee767b0218a21945fdb/sqlbag-0.1.1617247075.tar.gz", hash = "sha256:b9d7862c3b2030356d796ca872907962fd54704066978d7ae89383f5123366ed", size = 11652, upload-time = "2021-04-01T03:22:24.096Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/c8/1d4bd038d4b34f3810fd8ab70a48cc6f3d2373666f2797f0298a97b088c9/sqlbag-0.1.1617247075-py2.py3-none-any.whl", hash = "sha256:ecdef26d661f8640711030ac6ee618deb92b91f9f0fc2efbf8a3b133af13092d", size = 14971, upload-time = "2021-04-01T03:22:22.654Z" },
 ]
 
 [[package]]
