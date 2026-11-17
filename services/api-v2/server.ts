@@ -52,4 +52,6 @@ async function runServer() {
 
 runServer().catch((error) => {
   console.error("Failed to start server:", error);
+  // Exit so the orchestrator restarts the process instead of leaving it idle
+  process.exit(1);
 });
