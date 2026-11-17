@@ -1,5 +1,6 @@
 import os
-from typing import Required
+from datetime import datetime
+from typing import Annotated, Optional, Required
 
 os.environ["USE_PYGEOS"] = "0"
 
@@ -202,17 +203,48 @@ def normalize_sources(
 @sources.command(name="delete")
 def delete_sources(
     slug: list[str] = Argument(
-        ...,
-        help="Slugs or source ids; or a file listing one per line; or - for stdin",
+        None,
+        help="Slugs or source ids; or a file listing one per line; or - for stdin. "
+        "Optional with --ilike or --since.",
     ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
+    # Annotated, so that a caller passing no --since gets None rather than the
+    # Option itself (`macrostrat run arizona delete` calls this directly).
+    since: Annotated[
+        Optional[datetime],
+        Option(
+            "--since",
+            formats=["%Y-%m-%d"],
+            help="Only maps first ingested on or after this date "
+            "(maps_metadata.ingest_process.created_on). With no slugs, every "
+            "such map.",
+        ),
+    ] = None,
+    ilike: Annotated[
+        Optional[list[str]],
+        Option(
+            "--ilike",
+            help="Every map whose slug matches this ILIKE pattern, e.g. "
+            "'arizona_adgm%'. Repeat for any of several.",
+        ),
+    ] = None,
 ):
-    """Delete sources from the map ingestion database."""
+    """Delete sources from the map ingestion database.
+
+    Name the maps, match their slugs with --ilike, or both. --since then keeps
+    only those first ingested on or after a date; on its own, it takes every
+    such map. A map's date is its earliest ingest-process row, so a map first
+    ingested earlier and re-ingested since is kept.
+    """
     db = get_database()
+    slug = list(slug or [])
+    ilike = list(ilike or [])
+    if not slug and not ilike and since is None:
+        raise MacrostratError("Name the maps to delete, or pass --ilike or --since")
 
     if not stdin.isatty() and len(slug) == 1 and slug[0] == "-":
         slug = [line.strip() for line in stdin]
@@ -233,6 +265,49 @@ def delete_sources(
             f"No map found for {len(missing)} of {len(slug)} names",
             details="\n".join(missing),
         )
+
+    if ilike:
+        matched = (
+            db.run_query(
+                "SELECT source_id FROM maps.sources"
+                " WHERE slug ILIKE ANY(CAST(:patterns AS text[])) ORDER BY source_id",
+                dict(patterns=ilike),
+            )
+            .scalars()
+            .all()
+        )
+        print(f"{len(matched)} map(s) with a slug ILIKE {' or '.join(ilike)}")
+        named = {m.id for m in maps}
+        maps += [get_map_info(db, i) for i in matched if i not in named]
+
+    if since is not None:
+        ingested = {
+            row.source_id: row.created_on
+            for row in db.run_query(
+                """
+                SELECT source_id, min(p.created_on) AS created_on
+                FROM maps_metadata.ingest_process p
+                JOIN maps.sources USING (source_id)
+                GROUP BY source_id
+                HAVING min(created_on) >= CAST(:since AS date)
+                """,
+                dict(since=since.date()),
+            )
+        }
+        if slug or ilike:
+            for m in maps:
+                if m.id not in ingested:
+                    print(
+                        f"Keeping {m.slug} ({m.id}): not ingested since {since.date()}"
+                    )
+            maps = [m for m in maps if m.id in ingested]
+        else:
+            maps = [get_map_info(db, source_id) for source_id in sorted(ingested)]
+        print(f"{len(maps)} map(s) first ingested on or after {since.date()}")
+
+    if not maps:
+        print("No maps to delete.")
+        return
 
     if dry_run:
         print("Deleting maps:")
