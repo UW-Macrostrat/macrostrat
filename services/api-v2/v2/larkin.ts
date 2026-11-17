@@ -699,13 +699,57 @@ enum APICapability {
     exports.cacheRefreshKey found in ./credentials.js
   */
 
+  const PROBE_ATTEMPTS = 5;
+  const PROBE_RETRY_DELAY_MS = 2000;
+
+  /** Only a missing table, column, function or schema means the database lacks
+   * a capability. SQLSTATE class 42 covers the first three, 3F000 the last. */
+  function isMissingSchema(err: any): boolean {
+    const code = err?.code;
+    if (typeof code !== "string") return false;
+    return code.startsWith("42") || code === "3F000";
+  }
+
+  // A refused connection arrives as an AggregateError with an empty message
+  function describeError(err: any): string {
+    return err?.message || err?.code || String(err);
+  }
+
+  /** Enable a capability if its probe succeeds. A replica that silently drops
+   * one after a transient failure serves different data from its siblings. */
+  async function probeCapability(
+    capability: APICapability,
+    probe: () => Promise<any>,
+  ) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await probe();
+        larkin.capabilities.add(capability);
+        return;
+      } catch (err) {
+        if (isMissingSchema(err)) {
+          console.log(`Capability ${capability} not supported: ${describeError(err)}`);
+          return;
+        }
+        if (attempt >= PROBE_ATTEMPTS) {
+          throw new Error(
+            `Could not check capability ${capability}: ${describeError(err)}`,
+          );
+        }
+        larkin.log(
+          "warning",
+          `Checking capability ${capability} failed (attempt ${attempt}), retrying: ${describeError(err)}`,
+        );
+        await new Promise((r) => setTimeout(r, PROBE_RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+
   larkin.checkCapabilities = async function (): Promise<Set<APICapability>> {
     console.log("Checking API capabilities...");
-    // COMPOSITE PROJECTS
-    // Enable enhanced support for projects
-    // Check if composite projects are supported
-    try {
-      await Promise.all([
+
+    await probeCapability(APICapability.COMPOSITE_PROJECTS, () =>
+      Promise.all([
         larkin.queryPgAsync(
           "macrostrat",
           `SELECT COUNT(*)::integer FROM macrostrat.projects_tree`,
@@ -718,39 +762,27 @@ enum APICapability {
           "macrostrat",
           `SELECT macrostrat.core_project_ids()`,
         ),
-      ]);
+      ]),
+    );
 
-      larkin.capabilities.add(APICapability.COMPOSITE_PROJECTS);
-    } catch (e) {
-      console.log("Composite projects not supported");
-    }
-
-    // MAP REFERENCES
     // `refs` on map polygons, combined across levels by the database
-    try {
-      await larkin.queryPgAsync(
+    await probeCapability(APICapability.MAP_REFS, () =>
+      larkin.queryPgAsync(
         "burwell",
         `SELECT * FROM map_bounds.polygon_refs_for(0)`,
-      );
-      larkin.capabilities.add(APICapability.MAP_REFS);
-    } catch (e) {
-      console.log("Map references not supported");
-    }
+      ),
+    );
 
-    // COLUMN REFERENCE TYPES
     // Verbs and locators on `col_refs`, for `refs_expanded` on columns
-    try {
-      await larkin.queryPgAsync(
+    await probeCapability(APICapability.COLUMN_REF_TYPES, () =>
+      larkin.queryPgAsync(
         "burwell",
         `SELECT cr.locator, cr.locator_url, t.label
          FROM macrostrat.col_refs cr
          JOIN macrostrat.ref_type t ON t.id = cr.ref_type
          LIMIT 0`,
-      );
-      larkin.capabilities.add(APICapability.COLUMN_REF_TYPES);
-    } catch (e) {
-      console.log("Column reference types not supported");
-    }
+      ),
+    );
 
     if (larkin.capabilities.size > 0) {
       let msg = "Progressive enhancements enabled:\n";

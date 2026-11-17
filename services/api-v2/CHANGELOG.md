@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Capability checks retry transient database errors, and startup fails rather than dropping a capability
+- `/mobile/map_query` returns a polygon's `refs` list, as `map_query_v2` does
+
 ## [2.6.0] - 2026-11-03
 
 - `mobile/map_query` and `mobile/map_query_v2` answer from `carto` when no `source` is given and `CARTO_BUILD=compilation`; `mobile/map_query` accepts `source`

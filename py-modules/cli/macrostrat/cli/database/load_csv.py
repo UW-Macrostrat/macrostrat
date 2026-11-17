@@ -16,9 +16,8 @@ from rich import print
 from sqlalchemy.engine import Engine
 from typer import Argument, Option
 
-from macrostrat.utils import get_logger
-
-from .load_utils import (
+from macrostrat.loader_utils import (
+    LoadError,
     check_target,
     comment_original_names,
     copy_dataframe,
@@ -28,6 +27,8 @@ from .load_utils import (
     pg_type,
     render_ddl,
 )
+from macrostrat.utils import get_logger
+
 from .utils import engine_for_db_name
 
 log = get_logger(__name__)
@@ -158,7 +159,10 @@ def _load_one(
         file=stderr,
     )
 
-    check_target(engine, schema, table, replace=replace, append=append)
+    try:
+        check_target(engine, schema, table, replace=replace, append=append)
+    except LoadError as err:
+        raise typer.BadParameter(str(err)) from err
 
     if not append:
         create_table(engine, schema, table, columns, types, replace=replace)
