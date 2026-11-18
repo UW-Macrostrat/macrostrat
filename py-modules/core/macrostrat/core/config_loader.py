@@ -571,15 +571,6 @@ def load_settings_v2(
     )
     _resolve_paths(settings)
 
-    unknown = settings.unknown_keys()
-    if unknown:
-        log.warning(
-            "macrostrat.toml: %s has keys the schema does not know: %s. "
-            "Check the spelling; `macrostrat config schema` lists the keys.",
-            f"environment '{env}'" if env else "the configuration",
-            ", ".join(unknown),
-        )
-
     configure_onepassword(settings.get("op_account"))
     settings.policy = policy_from_settings(settings)
     return settings

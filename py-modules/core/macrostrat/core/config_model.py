@@ -517,7 +517,7 @@ class EnvironmentSettings(BaseModel):
         return data
 
     def unknown_keys(self) -> List[str]:
-        """Top-level keys the schema does not know. The loader warns about them."""
+        """Top-level keys the schema does not know. CLI help lists them."""
         return sorted(self.model_extra or {})
 
 
