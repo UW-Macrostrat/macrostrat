@@ -584,10 +584,27 @@ def _rank_carries(p, cand) -> bool:
 # does not use any of it.
 
 
-def prepare_ingest(db: Database) -> tuple[dict, dict, frozenset]:
+#: Words Macrostrat's legends write in lower case at least half as often as
+#: capitalized: ordinary English, capitalized only where it opens a sentence or a
+#: legend. "Underlying soil", "Hypabyssal dacite", "Karst(?) breccia" and "No
+#: carbonate" open a description; `underlying` is written in lower case 3,768
+#: times to 103, `no` 1,629 to 2,000. Place names almost never are: `Pinal`
+#: 0 to 83, `Verde` 36 to 138, `Star` 6 to 137.
+_ORDINARY_WORDS = r"""
+SELECT lower(w) FROM maps.legend,
+    regexp_split_to_table(coalesce(name, '') || ' ' || coalesce(descrip, ''),
+        '[^A-Za-z]+') w
+WHERE length(w) > 1
+GROUP BY 1
+HAVING count(*) FILTER (WHERE w ~ '^[a-z]') * 2
+    >= count(*) FILTER (WHERE w ~ '^[A-Z]')
+"""
+
+
+def prepare_ingest(db: Database) -> tuple[dict, dict, frozenset, frozenset]:
     """What guessing a legend's strat_name at ingest needs: the lexicon, each
-    lexicon entry's name as Macrostrat writes it, and the words for describing a
-    rock or its age."""
+    lexicon entry's name as Macrostrat writes it, the words for describing a
+    rock or its age, and the ordinary words (`_ORDINARY_WORDS`)."""
     create_ignore_list(
         db.run_query("SELECT lith FROM macrostrat.liths").scalars().all()
     )
@@ -610,7 +627,9 @@ def prepare_ingest(db: Database) -> tuple[dict, dict, frozenset]:
         for value in db.run_query(query).scalars():
             if value and " " not in value.strip():
                 words.add(value.strip().lower())
-    return build_lexicon(db), names, frozenset(words) | POSITIONAL | NOT_PROPER_NOUNS
+    vocabulary = frozenset(words) | POSITIONAL | NOT_PROPER_NOUNS
+    ordinary = frozenset(db.run_query(_ORDINARY_WORDS).scalars())
+    return build_lexicon(db), names, vocabulary, ordinary
 
 
 def named_units(text: str, lexicon, names: dict) -> list[str]:
@@ -649,12 +668,14 @@ POSITIONAL = frozenset(
     {"lower", "upper", "middle", "basal", "the"}
     | {"young", "younger", "youngest", "old", "older", "oldest", "intermediate"}
     | {"latest", "earliest"}
+    # "Main member of the Tuff of Sharp Peak" is not the `Main Limestone Member`.
+    | {"main"}
 )
 
 #: Ordinary words that `formal_names` took for proper nouns, because a legend
 #: capitalized them at the start of a sentence: "Individual dikes and zones of
-#: quartz veins" is not the `Individual Dikes`. Add each one as it turns up, and
-#: once the list shows a pattern, fix the rule that let them through instead.
+#: quartz veins" is not the `Individual Dikes`. `_ORDINARY_WORDS` now catches
+#: these in a one-word name; a word here also ends a longer one.
 NOT_PROPER_NOUNS = frozenset({"individual"})
 
 #: Endings of the adjectives a legend opens a description with -- "Intrusive
@@ -669,8 +690,16 @@ ADJECTIVE_ENDINGS = ("ic", "ous", "ive", "ed")
 #: `formal_names` drops first ("Glance(?) Conglomerate").
 _TOKEN = re.compile(r"[A-Za-z][A-Za-z'\u2019]*|[^\sA-Za-z.]")
 
+#: A map unit code, or an abbreviation, which a description writes before a rock
+#: word as it would a name: "well-preserved Qo alluvium", "Ql soils", "YXg
+#: granitoids", "QFL sandstone", "~25 Ma tuff". Two letters or fewer, or a
+#: capital after the first.
+_UNIT_CODE = re.compile(r"[A-Za-z]{1,2}|[A-Z][A-Z].*")
 
-def formal_names(text: str, vocabulary: frozenset, common: set) -> list[str]:
+
+def formal_names(
+    text: str, vocabulary: frozenset, common: set, ordinary: frozenset = frozenset()
+) -> list[str]:
     """Names `text` gives by their form alone, whether or not Macrostrat has them:
     capitalized proper nouns directly before a rock type or a rank word --
     `Belmont Granite`, `Helvetia Granite`, `Sherrer Formation`, `Madera Canyon
@@ -681,9 +710,12 @@ def formal_names(text: str, vocabulary: frozenset, common: set) -> list[str]:
     Ferguson Wash Tuff". `common` is every word the map writes in lower case
     somewhere. A legend capitalizes its first word whatever it is, so "Younger
     tuff" and "Helmet Conglomerate" have the same shape, and only the map
-    writing `younger` elsewhere tells them apart. That test, and the adjective
-    endings, are applied to one-word names alone: two capitalized words in a row
-    are a name even if one is ordinary ("Confidence Peak Tuff").
+    writing `younger` elsewhere tells them apart. `ordinary` is the words every
+    map writes in lower case (`prepare_ingest`): "Hypabyssal dacite", but not
+    "Roadside Formation" or "Continental Granodiorite", whose capitalized rock
+    word makes them names. Those tests, the adjective endings and unit codes
+    ("Qo alluvium") are applied to one-word names alone: two capitalized words
+    in a row are a name even if one is ordinary ("Confidence Peak Tuff").
     """
     rocks = {w for w in get_ignore_list() if w not in non_lith_ignores}
 
@@ -704,7 +736,12 @@ def formal_names(text: str, vocabulary: frozenset, common: set) -> list[str]:
         run = tokens[start:i]
         if len(run) == 1:
             word = run[0].lower()
-            if word in common or word.endswith(ADJECTIVE_ENDINGS):
+            if (
+                word in common
+                or (word in ordinary and token.islower())
+                or word.endswith(ADJECTIVE_ENDINGS)
+                or _UNIT_CODE.fullmatch(run[0])
+            ):
                 continue
         if not run:
             continue
