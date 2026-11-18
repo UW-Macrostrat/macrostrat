@@ -1,5 +1,6 @@
 import os
-from typing import Required
+from datetime import datetime
+from typing import Annotated, Optional, Required
 
 os.environ["USE_PYGEOS"] = "0"
 
@@ -202,17 +203,48 @@ def normalize_sources(
 @sources.command(name="delete")
 def delete_sources(
     slug: list[str] = Argument(
-        ...,
-        help="Slugs or source ids; or a file listing one per line; or - for stdin",
+        None,
+        help="Slugs or source ids; or a file listing one per line; or - for stdin. "
+        "Optional with --ilike or --since.",
     ),
     dry_run: bool = Option(False, "--dry-run"),
     all_data: bool = Option(False, "--all-data"),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
+    # Annotated, so that a caller passing no --since gets None rather than the
+    # Option itself (`macrostrat run arizona delete` calls this directly).
+    since: Annotated[
+        Optional[datetime],
+        Option(
+            "--since",
+            formats=["%Y-%m-%d"],
+            help="Only maps first ingested on or after this date "
+            "(maps_metadata.ingest_process.created_on). With no slugs, every "
+            "such map.",
+        ),
+    ] = None,
+    ilike: Annotated[
+        Optional[list[str]],
+        Option(
+            "--ilike",
+            help="Every map whose slug matches this ILIKE pattern, e.g. "
+            "'arizona_adgm%'. Repeat for any of several.",
+        ),
+    ] = None,
 ):
-    """Delete sources from the map ingestion database."""
+    """Delete sources from the map ingestion database.
+
+    Name the maps, match their slugs with --ilike, or both. --since then keeps
+    only those first ingested on or after a date; on its own, it takes every
+    such map. A map's date is its earliest ingest-process row, so a map first
+    ingested earlier and re-ingested since is kept.
+    """
     db = get_database()
+    slug = list(slug or [])
+    ilike = list(ilike or [])
+    if not slug and not ilike and since is None:
+        raise MacrostratError("Name the maps to delete, or pass --ilike or --since")
 
     if not stdin.isatty() and len(slug) == 1 and slug[0] == "-":
         slug = [line.strip() for line in stdin]
@@ -233,6 +265,49 @@ def delete_sources(
             f"No map found for {len(missing)} of {len(slug)} names",
             details="\n".join(missing),
         )
+
+    if ilike:
+        matched = (
+            db.run_query(
+                "SELECT source_id FROM maps.sources"
+                " WHERE slug ILIKE ANY(CAST(:patterns AS text[])) ORDER BY source_id",
+                dict(patterns=ilike),
+            )
+            .scalars()
+            .all()
+        )
+        print(f"{len(matched)} map(s) with a slug ILIKE {' or '.join(ilike)}")
+        named = {m.id for m in maps}
+        maps += [get_map_info(db, i) for i in matched if i not in named]
+
+    if since is not None:
+        ingested = {
+            row.source_id: row.created_on
+            for row in db.run_query(
+                """
+                SELECT source_id, min(p.created_on) AS created_on
+                FROM maps_metadata.ingest_process p
+                JOIN maps.sources USING (source_id)
+                GROUP BY source_id
+                HAVING min(created_on) >= CAST(:since AS date)
+                """,
+                dict(since=since.date()),
+            )
+        }
+        if slug or ilike:
+            for m in maps:
+                if m.id not in ingested:
+                    print(
+                        f"Keeping {m.slug} ({m.id}): not ingested since {since.date()}"
+                    )
+            maps = [m for m in maps if m.id in ingested]
+        else:
+            maps = [get_map_info(db, source_id) for source_id in sorted(ingested)]
+        print(f"{len(maps)} map(s) first ingested on or after {since.date()}")
+
+    if not maps:
+        print("No maps to delete.")
+        return
 
     if dry_run:
         print("Deleting maps:")
@@ -389,10 +464,32 @@ staging_cli = IngestionCLI(no_args_is_help=True, help="Staging pipeline & storag
 cli.add_typer(staging_cli, name="staging")
 
 
+PIPELINE_HELP = (
+    "`gems` merges the map's DescriptionOfMapUnits legend, from its .gdb or its "
+    "single .gpkg. Without it, no legend is merged."
+)
+
+
+def legend_source(map_path: Path, gis_files: list[Path], pipeline: str | None):
+    """The metadata path and ingest pipeline for a map, from the pipeline asked
+    for; never inferred from the extension. GeMS reads the legend from the map's
+    database: the .gdb itself, or its one GeoPackage."""
+    if pipeline not in (None, "gems"):
+        raise ValueError(f"Unknown --pipeline {pipeline!r}; the only one is `gems`.")
+    if pipeline is None:
+        return map_path, "none"
+    if map_path.suffix.lower() == ".gdb":
+        return map_path, "gems"
+    gpkgs = [f for f in gis_files if f.suffix.lower() == ".gpkg"]
+    if len(gpkgs) != 1:
+        raise ValueError(f"--pipeline gems needs a .gdb or a single .gpkg: {map_path}")
+    return gpkgs[0], "gems"
+
+
 def staging(
     data_path: str,
     prefix: str = Option(..., help="Slug region prefix to avoid collisions"),
-    pipeline: str = Option("", help="Specify a pipeline to run"),
+    pipeline: str = Option(None, help=PIPELINE_HELP),
     merge_key: str = Option(
         "mapunit",
         help="primary key to left join the metadata into the sources polygons/lines/points table",
@@ -427,12 +524,13 @@ def staging(
         for path in excluded_files:
             print(f"{path}")
 
+    meta_path, ingest_pipeline = legend_source(Path(data_path), gis_files, pipeline)
     ingest_results = ingest_map(
         slug,
         gis_files,
-        pipeline=pipeline,
+        pipeline=ingest_pipeline,
         if_exists="replace",
-        meta_path=data_path,
+        meta_path=meta_path,
         merge_key=merge_key,
         meta_table=meta_table,
         crs=crs,
@@ -469,7 +567,7 @@ def staging(
             WHERE source_id = :source_id
             """,
             dict(
-                name=name,
+                name=sources_mapping["name"] or name,
                 scale="large",
                 ingested_by="macrostrat-admin",
                 source_id=source_id,
@@ -541,6 +639,7 @@ def cmd_reingest_points(
     data_path: str = ...,
     prefix: str = Option(..., help="Slug region prefix, same value used at ingest"),
     crs: str = Option(None, help="Force CRS for layers missing projection"),
+    pipeline: str = Option(None, help=PIPELINE_HELP),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
@@ -554,19 +653,25 @@ def cmd_reingest_points(
     existing ingest record and uploaded archive stay as they are.
 
     Any manual or normalize-* work already done on the points table is lost --
-    re-run 'macrostrat run normalize --layer points normalize-az' (in
+    re-run 'macrostrat run arizona --layer points normalize-az' (in
     data-integration) afterward.
     """
-    slug = _reingest_points_for_path(Path(data_path), prefix, crs=crs, filter=filter)
+    slug = _reingest_points_for_path(
+        Path(data_path), prefix, crs=crs, filter=filter, pipeline=pipeline
+    )
     console.print(
         f"[green]Done:[/green] re-ingested sources.{staging_table(slug, 'points')}. "
-        "Now run: [bold]macrostrat run normalize "
+        "Now run: [bold]macrostrat run arizona "
         f"--slug {slug} --layer points normalize-az --apply[/bold]"
     )
 
 
 def _reingest_points_for_path(
-    data_path: Path, prefix: str, crs: str = None, filter: str = None
+    data_path: Path,
+    prefix: str,
+    crs: str = None,
+    filter: str = None,
+    pipeline: str = None,
 ) -> str:
     """Re-ingest the points layer for one map directory. Returns the slug."""
     db = get_database()
@@ -590,12 +695,13 @@ def _reingest_points_for_path(
         f"(source_id={source_id}) from {len(gis_files)} file(s)"
     )
 
+    meta_path, ingest_pipeline = legend_source(data_path, gis_files, pipeline)
     ingest_map(
         slug,
         gis_files,
-        pipeline="",
+        pipeline=ingest_pipeline,
         if_exists="replace",
-        meta_path=data_path,
+        meta_path=meta_path,
         merge_key="mapunit",
         meta_table="points",
         crs=crs,
@@ -617,6 +723,7 @@ def cmd_bulk_reingest_points(
         None, help="Resume: skip subdirectories up to and including this name."
     ),
     crs: str = Option(None, help="Force CRS for layers missing projection"),
+    pipeline: str = Option(None, help=PIPELINE_HELP),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
@@ -653,7 +760,9 @@ def cmd_bulk_reingest_points(
         )
         try:
             done.append(
-                _reingest_points_for_path(region_path, prefix, crs=crs, filter=filter)
+                _reingest_points_for_path(
+                    region_path, prefix, crs=crs, filter=filter, pipeline=pipeline
+                )
             )
         except Exception as e:
             failed.append((region_path.name, f"{type(e).__name__}: {e}"))
@@ -666,7 +775,7 @@ def cmd_bulk_reingest_points(
         console.print(f"  [red]{name}[/red]: {message}")
     if done:
         console.print(
-            "\nNow run: [bold]macrostrat run normalize --layer points "
+            "\nNow run: [bold]macrostrat run arizona --layer points "
             "normalize-az --apply[/bold]"
         )
 
@@ -892,10 +1001,21 @@ def staging_bulk(
         "polygons",
         help="Options: polygons, lines, or points. specifies the table in which the metadata is merged into. It defaults to sources polygons",
     ),
+    pipeline: str = Option(None, help=PIPELINE_HELP),
     filter: str = Option(None, help="Filter applied to GIS file selection"),
     yes: bool = Option(
         False, "--yes", "-y", help="Skip the confirmation prompt where one is allowed"
     ),
+    # Annotated, so that a caller passing none gets None rather than the Option
+    # itself (`macrostrat run arizona ingest` calls this directly).
+    start_after: Annotated[
+        Optional[str],
+        Option(
+            "--start-after",
+            help="Resume: skip the map folders up to and including this one, "
+            "named by folder (MountFagan.gdb) or slug (arizona-mountfagan).",
+        ),
+    ] = None,
 ):
     """
     Ingest all maps from subdirectories within a parent folder.
@@ -905,8 +1025,17 @@ def staging_bulk(
     staged_slugs = []
     if not parent.exists() or not parent.is_dir():
         raise ValueError(f"{data_path} is not a valid directory.")
+    if pipeline not in (None, "gems"):  # before any map is ingested
+        raise ValueError(f"Unknown --pipeline {pipeline!r}; the only one is `gems`.")
 
     region_dirs = sorted([p for p in parent.iterdir() if p.is_dir()])
+    if start_after is not None:
+        names = [(p.name, resolve_slug_from_path(prefix, p)[0]) for p in region_dirs]
+        found = [i for i, n in enumerate(names) if start_after in n]
+        if not found:
+            raise ValueError(f"No map folder or slug '{start_after}' in {data_path}")
+        region_dirs = region_dirs[found[0] + 1 :]
+        print(f"Resuming after {start_after}: {len(region_dirs)} map(s) left")
 
     for region_path in region_dirs:
         slug, name, ext = resolve_slug_from_path(prefix, Path(region_path))
@@ -924,11 +1053,13 @@ def staging_bulk(
             for path in excluded_files:
                 print(f"{path}")
 
+        meta_path, ingest_pipeline = legend_source(region_path, gis_files, pipeline)
         ingest_results = ingest_map(
             slug,
             gis_files,
+            pipeline=ingest_pipeline,
             if_exists="replace",
-            meta_path=region_path,
+            meta_path=meta_path,
             merge_key=merge_key,
             meta_table=meta_table,
         )
@@ -964,7 +1095,7 @@ def staging_bulk(
                 WHERE source_id = :source_id
                 """,
                 dict(
-                    name=name,
+                    name=sources_mapping["name"] or name,
                     scale="large",
                     ingested_by="macrostrat-admin",
                     source_id=source_id,

@@ -5,10 +5,7 @@ import geopandas as G
 import pandas as pd
 import pyogrio
 
-from macrostrat.map_integration.utils.ingestion_utils import (
-    get_age_interval_df,
-    get_strat_names_df,
-)
+from macrostrat.map_integration.utils.ingestion_utils import get_age_interval_df
 
 
 def extract_gdb_layer(
@@ -24,9 +21,6 @@ def extract_gdb_layer(
     Returns
     GeoDataFrame or None: The requested layer, or None when no matching layer is found or an error occurs.
     """
-    # Only the geodatabase ingestion reads with fiona; it is in the `gis` extra.
-    import fiona
-
     dmu_layer = None
     ingest_pipeline = ""
     comments = ""
@@ -60,6 +54,19 @@ def extract_gdb_layer(
     return meta_df, ingest_pipeline, comments
 
 
+def copy_columns(df: G.GeoDataFrame, column_map: dict[str, str]) -> G.GeoDataFrame:
+    """Copy each source column into its Macrostrat field, keeping the original
+    beside it so a map's source columns can be checked. Source names match
+    case-insensitively; the first source found fills a field, and a field the
+    data already has is left alone."""
+    actual = {col.lower(): col for col in df.columns}
+    for src, dst in column_map.items():
+        col = actual.get(src.lower())
+        if col is not None and dst not in df.columns:
+            df[dst] = df[col]
+    return df
+
+
 def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     """Map column names to Macrostrat standard and concatenate lithology‑related fields.
     Parameters:
@@ -73,29 +80,26 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     comments = ""
     required_canonical = {
         "name",
-        "strat_name",
         "age",
         "descrip",
         "color",
-        "strat_symbol",
+        "unit_label",
     }
     rename_map = {
         "name": "name",
-        "fullname": "strat_name",
         "age": "age",
         "age_meta": "age",
         "hierarchykey": "orig_id",
         "notes": "comments",
-        "label": "strat_symbol",
+        "label": "unit_label",
         "description": "descrip",
         "descr": "descrip",
         "areafillrgb": "color",
         "rgb": "color",
+        "areafillpatterndescription": "fill_pattern",
     }
     meta_df.columns = meta_df.columns.str.lower()
-    meta_df = meta_df.rename(
-        columns={src: dst for src, dst in rename_map.items() if src in meta_df.columns}
-    )
+    meta_df = copy_columns(meta_df, rename_map)
     missing_canonical = required_canonical - set(meta_df.columns)
     if missing_canonical:
         # which dmu keys would have supplied those canonical fields?
@@ -107,7 +111,7 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     def col_empty(df, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     lithology_candidates = ("generallithology", "geomaterial")
@@ -120,10 +124,9 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
             .str.strip("; ")
             .replace("", pd.NA)
         )
-        meta_df = meta_df.drop(columns=lith_cols)
     else:
         comments += f"Missing lithology columns: {lithology_candidates}."
-    preferred = ["age", "name", "descrip", "comments", "orig_id", "strat_symbol"]
+    preferred = ["age", "name", "descrip", "comments", "orig_id", "unit_label"]
     if all(col_empty(meta_df, c) for c in preferred):
         comments += "All preferred polygon fields are missing. Possible empty df or incorrect pipeline processing."
     elif col_empty(meta_df, "age") or col_empty(meta_df, "name"):
@@ -132,130 +135,12 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
     return meta_df, comments
 
 
-STRAT_NAME_LOOKUP = {"formation", "fm", "bed", "member", "mbr", "group"}
-IRRELEVANT_WORDS = {
-    "active",
-    "percent",
-    "relief",
-    "part",
-    "area",
-    "m",
-    "above",
-    "cm",
-    "fine",
-    "in",
-    "dacite",
-    "conglomerate",
-    "top",
-    "an",
-    "map",
-    "tcg",
-    "quadrangle",
-    "to",
-    "part",
-    "late",
-    "middle",
-    "lack",
-    "any",
-    "evidence",
-    "sand",
-    "gravel",
-    "silt",
-    "composed",
-    "well",
-    "sorted",
-    "and",
-    "a",
-    "is",
-    "or",
-    "for",
-    "trachyte",
-    "unit",
-    "of",
-    "the",
-}
-VALID_WORDS = {"plomosa", "suizo", "coronado", "complex", "units", "sasco"}
-
-
-def lookup_and_validate_strat_name(
-    name_descrip: str | float, rank_name_set: set[str]
-) -> Optional[str]:
-    """
-    Return the full stratigraphic name found in the tokenized input string.
-    Looks for STRAT_NAME_LOOKUP terms and matches the preceding token + current token against known strat names.
-    """
-    tokens = re.findall(r"\b\w+\b", str(name_descrip).lower())
-    for i, qualifier in enumerate(tokens):
-        candidate_indices = [i - 3, i - 2, i - 1, i]
-        phrase_array = []
-        phrase_array_dropped = []
-        of_indices = [i - 1, i, i + 1, i + 2, i + 3]
-        if qualifier in STRAT_NAME_LOOKUP:
-            for j in candidate_indices:
-                if 0 <= j < len(tokens):
-                    phrase_array.append(tokens[j])
-            phrase_array_dropped = [
-                word for word in phrase_array if word not in IRRELEVANT_WORDS
-            ]
-        elif qualifier == "of" and i + 1 < len(tokens) and tokens[i + 1] != "the":
-            for j in of_indices:
-                if 0 <= j < len(tokens):
-                    phrase_array.append(tokens[j])
-            phrase_array_dropped = [
-                word for word in phrase_array if word not in IRRELEVANT_WORDS
-            ]
-        if len(phrase_array_dropped) > 0:
-            strat_name = " ".join(phrase_array).title()
-            for word in phrase_array_dropped:
-                if word in VALID_WORDS:
-                    return strat_name
-            for rank_name in rank_name_set:
-                rank_name = rank_name.lower()
-                match_count = sum(
-                    1 for word in phrase_array_dropped if word in rank_name
-                )
-                match_ratio = match_count / len(phrase_array_dropped)
-                # if match_ratio == 1:
-                # return rank_name
-                if match_ratio >= 0.6:
-                    return strat_name
-    return pd.NA
-
-
-def map_strat_name(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
-    """
-    Update legend_df with a new column 'ranked_strat_name' based on matched strat names.
-    Looks for rank words and matches against known stratigraphic names.
-
-    Parameters:
-    - legend_df: GeoDataFrame containing a column of unit names.
-    - name_col: The name of the column in legend_df to search.
-
-    Returns:
-    - GeoDataFrame with an additional 'ranked_strat_name' column.
-    """
-    rank_name_df = get_strat_names_df(db)
-    rank_name_set = set(rank_name_df["rank_name"].dropna().unique())
-    # check name for matched strat_name
-    meta_df["strat_name"] = (
-        meta_df["name"]
-        .str.lower()
-        .apply(lambda n: lookup_and_validate_strat_name(n, rank_name_set))
-    )
-
-    # fallback to 'descrip' for missing values
-    needs_fill = meta_df["strat_name"].isna()
-    meta_df.loc[needs_fill, "strat_name"] = (
-        meta_df.loc[needs_fill, "descrip"]
-        .str.lower()
-        .apply(lambda d: lookup_and_validate_strat_name(d, rank_name_set))
-    )
-
-    return meta_df
-
-
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
 QUALIFIER_ORDER = {"early": 0, "middle": 1, "late": 2}
+
+#: Age words legends use that are not interval names, and the interval each
+#: stands for. `macrostrat.intervals` has no `Modern`.
+AGE_ALIASES = {"modern": "holocene"}
 
 
 def _order_by_age(ids, interval_ages) -> tuple[Optional[int], Optional[int]]:
@@ -367,6 +252,9 @@ def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
     interval_lookup = {
         row["interval_name"].lower(): row["id"] for _, row in interval_df.iterrows()
     }
+    for alias, interval in AGE_ALIASES.items():
+        if interval in interval_lookup:
+            interval_lookup.setdefault(alias, interval_lookup[interval])
     interval_ages = {
         row["id"]: (row["age_bottom"], row["age_top"])
         for _, row in interval_df.iterrows()
@@ -415,19 +303,12 @@ def map_points_to_preferred_fields(
         "Type": "point_type",
         "IdentityConfidence": "certainty",
     }
-    col_lower_to_actual = {col.lower(): col for col in meta_df.columns}
-    actual_rename = {}
-    for src, dst in rename_map.items():
-        src_lower = src.lower()
-        if src_lower in col_lower_to_actual:
-            actual_rename[col_lower_to_actual[src_lower]] = dst
-
-    meta_df = meta_df.rename(columns=actual_rename)
+    meta_df = copy_columns(meta_df, rename_map)
 
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     preferred = [
@@ -483,18 +364,12 @@ def map_lines_to_preferred_fields(
         if series_has_values(meta_df[actual_name_col]):
             rename_map.pop("Label", None)
 
-    actual_rename = {}
-    for src, dst in rename_map.items():
-        src_lower = src.lower()
-        if src_lower in col_lower_to_actual:
-            actual_rename[col_lower_to_actual[src_lower]] = dst
-
-    meta_df = meta_df.rename(columns=actual_rename)
+    meta_df = copy_columns(meta_df, rename_map)
 
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
             return True
-        s = df[col].astype(str).str.strip()
+        s = df[col].dropna().astype(str).str.strip()
         return s.eq("").all()
 
     preferred = ["name", "type", "descrip", "orig_id", "direction"]
