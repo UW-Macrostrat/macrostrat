@@ -125,6 +125,7 @@ localhost, macrostrat.local {
     # TODO: strip cookies from non-auth requests to improve cache performance
     import schema-proxy /api/v3/macrostrat/pg macrostrat_api
     import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
+    import schema-proxy /api/v3/rasters/pg raster_api
 
     # Legacy API for development
     import schema-proxy /api/pg macrostrat_api
@@ -164,6 +165,7 @@ dev.macrostrat.local {
 
     import schema-proxy /api/v3/macrostrat/pg macrostrat_api
     import schema-proxy /api/v3/map-ingestion/pg map_ingestion_api
+    import schema-proxy /api/v3/rasters/pg raster_api
     import schema-proxy /api/pg macrostrat_api
 
     handle {

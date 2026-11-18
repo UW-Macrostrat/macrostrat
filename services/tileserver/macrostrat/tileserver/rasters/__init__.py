@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from os import environ
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, Path, Query
 from typing_extensions import Annotated
 
 from macrostrat.utils import get_logger
@@ -35,6 +35,13 @@ __all__ = ["register_raster_routes", "RASTER_LAYERS", "RASTER_PREFIX"]
 # and the factory has to be *told* that prefix as well as mounted at it — see
 # `_layer_router`.
 RASTER_PREFIX = "/rasters"
+
+# Any indexed layer, by name: how a layer made in the admin interface is looked
+# at before (or without) being given a configured mount below. `layer` is
+# therefore not usable as a configured slug.
+NAMED_LAYER_PREFIX = RASTER_PREFIX + "/layer/{layer}"
+# One scope for every layer by name; configured mounts keep a scope each.
+NAMED_LAYER_SCOPE = "rasters:admin"
 
 
 def raster_layer_configs():
@@ -215,6 +222,34 @@ def _layer_router(config, index, prefix: str):
     return factory.router
 
 
+def _named_layer(
+    layer: Annotated[str, Path(description="Slug of a layer in the raster index")],
+) -> list[str]:
+    return [layer]
+
+
+def _named_layer_router(index, prefix: str):
+    """The mosaic routes for whichever layer the path names.
+
+    Rendered from the layer's row alone — its colormap and class vocabulary —
+    with none of the per-layer curation a configured mount carries. `nearest`
+    because it is the only resampling that is safe without knowing whether the
+    layer is categorical; `?resampling=` overrides it.
+    """
+    from macrostrat.raster_layers import RasterMosaicFactory
+
+    factory = RasterMosaicFactory(
+        index=index,
+        path_dependency=_named_layer,
+        dataset_dependency=_dataset_params("nearest"),
+        router_prefix=prefix,
+        supported_tms=_supported_tms(),
+        class_filtering=False,
+        process_dependency=_class_filter_dependency(),
+    )
+    return factory.router
+
+
 def _dataset_params(resampling: str):
     """titiler's dataset parameters with this layer's resampling default.
 
@@ -276,6 +311,13 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
             # inheriting this one.
             dependencies=[Depends(require_scope(f"rasters:{config.slug}"))],
         )
+
+    app.include_router(
+        _named_layer_router(index, NAMED_LAYER_PREFIX),
+        prefix=NAMED_LAYER_PREFIX,
+        tags=["Rasters"],
+        dependencies=[Depends(require_scope(NAMED_LAYER_SCOPE))],
+    )
 
     # Register cache invalidation routes for the raster layers.
     # TODO: we might move this, either into the layer config

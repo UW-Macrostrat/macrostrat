@@ -28,6 +28,8 @@ COPY --from=py-modules core /py-modules/core
 COPY --from=py-modules column-utils /py-modules/column-utils
 COPY --from=py-modules column-ingestion /py-modules/column-ingestion
 COPY --from=py-modules task-runner /py-modules/task-runner
+# Raster index tasks; rasterio ships as a wheel, so still no system GDAL.
+COPY --from=py-modules raster-tasks /py-modules/raster-tasks
 COPY --from=py-modules map-topology /py-modules/map-topology
 COPY --from=submodules topology-manager /submodules/topology-manager
 # The map-processing pipeline. Its GIS libraries ship as wheels, so no system
