@@ -5,22 +5,31 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-import aiohttp
 import dotenv
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+import httpx2
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
     OAuth2AuthorizationCodeBearer,
 )
 from fastapi.security.utils import get_authorization_scheme_param
-from jose import JWTError, jwt
+from jose import jwt
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+from macrostrat.auth_system.session import (
+    AuthSettings,
+    CookieParams,
+    OAuthIdentity,
+    SessionUser,
+    create_auth_router,
+    decode_token,
+)
+from macrostrat.auth_system.session import cookies as session_cookies
+from macrostrat.auth_system.session import create_access_token as create_session_token
 from macrostrat.utils import get_logger
 
 dotenv.load_dotenv()
@@ -419,79 +428,32 @@ def parse_redirect_uri():
     return parsed, hostname, cookie_domain, secure
 
 
-class CookieParams(BaseModel):
-    """The attributes every auth cookie is issued with.
-
-    One derivation, used by the login callback, the refresh, the role switch and
-    the logout alike: a cookie set under one domain and re-issued under another
-    leaves the browser holding two, and whichever it sends first wins.
-    """
-
-    domain: str | None
-    samesite: str | None
-    secure: bool
+def auth_settings() -> AuthSettings:
+    """Session settings, read from the environment on each call."""
+    return AuthSettings.from_env(
+        # Left blank rather than failing at import; sign-in then fails at ORCID.
+        redirect_uri=os.environ.get("REDIRECT_URI")
+        or os.environ.get("REDIRECT_URI_ENV", ""),
+        oauth_scope=os.environ.get("OAUTH_SCOPE", "openid profile email"),
+        oauth_client_id=os.environ.get("OAUTH_CLIENT_ID", ""),
+        oauth_client_secret=os.environ.get("OAUTH_CLIENT_SECRET", ""),
+        access_token_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
+        refresh_token_days=REFRESH_TOKEN_EXPIRE_DAYS,
+    )
 
 
 def auth_cookie_params() -> CookieParams:
     """Where and how the session cookies are scoped.
 
-    Deployed: host-only (no `Domain` attribute, which would also cover every
-    subdomain), `SameSite=Lax`, `Secure` under https.
-
-    Local development reaches the API at a `.local` subdomain (e.g.
-    `api.macrostrat.local`) from a site served elsewhere (`https://macrostrat.local`
-    or `http://localhost:3000`), so the cookie is scoped to the parent domain and
-    sent cross-site: `SameSite=None`, which must be the string "none" rather than
-    Python None (that drops the attribute and defaults to Lax) and requires
-    `Secure`, so it falls back to Lax over plain http.
+    Deployed: host-only, `SameSite=Lax`, `Secure` under https. Under a `.local`
+    subdomain the cookie is scoped to the parent domain and sent cross-site.
     """
-    parsed, hostname, cookie_domain, secure = parse_redirect_uri()
-    samesite: str | None = "lax"
-    if (
-        cookie_domain
-        and cookie_domain.endswith(".local")
-        and cookie_domain.count(".") > 1
-    ):
-        cookie_domain = ".".join(cookie_domain.split(".")[-2:])
-        samesite = "none" if secure else "lax"
-    elif cookie_domain is not None and not cookie_domain.endswith(".local"):
-        # Otherwise macrostrat.org's session also reaches dev.macrostrat.org.
-        cookie_domain = None
-    return CookieParams(domain=cookie_domain, samesite=samesite, secure=secure)
+    return session_cookies.cookie_params(auth_settings())
 
 
 def set_access_cookie(response: Response, access_token: str):
-    """Issue (or re-issue) the access cookie.
-
-    Its lifetime tracks the token's `exp`, so a browser stops auto-sending it
-    the moment it expires. Caddy then adds no Authorization header and
-    PostgREST falls back to web_anon instead of 401ing on a stale token.
-    """
-    params = auth_cookie_params()
-    response.set_cookie(
-        access_token_key,
-        f"Bearer {access_token}",
-        domain=params.domain,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True,
-        samesite=params.samesite,
-        secure=params.secure,
-    )
-
-
-def set_refresh_cookie(response: Response, refresh_jwt: str):
-    """Issue the refresh cookie. It outlives the access cookie (7d vs 24h); once
-    it too expires the browser drops it and the user is fully anonymous."""
-    params = auth_cookie_params()
-    response.set_cookie(
-        refresh_token_key,
-        refresh_jwt,
-        domain=params.domain,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
-        httponly=True,
-        samesite=params.samesite,
-        secure=params.secure,
-    )
+    """Issue (or re-issue) the access cookie; its lifetime tracks the token's."""
+    session_cookies.set_access_cookie(auth_settings(), response, access_token)
 
 
 def clear_auth_cookies(response: Response):
@@ -570,20 +532,16 @@ async def get_user_token_from_cookie(
     if token is None:
         return None
 
-    try:
-        payload = jwt.decode(
-            token,
-            os.environ["SECRET_KEY"],
-            algorithms=[os.environ["JWT_ENCRYPTION_ALGORITHM"]],
-        )
-        sub: str = payload.get("sub")
-        role: str | None = payload.get("role")
-        actual_role: str | None = payload.get("actual_role")
-        token_data = TokenData(sub=sub, role=role, actual_role=actual_role)
-    except JWTError as e:
+    payload = decode_token(auth_settings(), token)
+    # A refresh or delegated token is not a session.
+    if payload is None or payload.get("type") is not None or not payload.get("sub"):
         return None
 
-    return token_data
+    return TokenData(
+        sub=payload["sub"],
+        role=payload.get("role"),
+        actual_role=payload.get("actual_role"),
+    )
 
 
 async def has_access(
@@ -624,149 +582,60 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     )
 
 
-@router.get("/login")
-async def redirect_authorization(return_url: str = None):
-    """Redirect to the authorization URL with the appropriate parameters"""
-
-    params = {
-        "scope": "openid profile email",
-        "client_id": os.environ["OAUTH_CLIENT_ID"],
-        "response_type": "code",
-        "redirect_uri": redirect_uri(),
-    }
-
-    if return_url is not None:
-        params["state"] = return_url
-
-    return RedirectResponse(
-        os.environ["OAUTH_AUTHORIZATION_URL"] + "?" + urllib.parse.urlencode(params)
+def session_user(user: schemas.User, role: str | None = None) -> SessionUser:
+    """`session_claims`, in the form the session library signs."""
+    claims = session_claims(user, role=role)
+    extra = {k: v for k, v in claims.items() if k not in ("sub", "role", "name")}
+    return SessionUser(
+        sub=claims["sub"],
+        name=claims["name"] or "",
+        role=claims["role"],
+        claims=extra,
     )
 
 
-@router.get("/callback")
-async def redirect_callback(
-    code: str, database: DatabaseDep, state: Optional[str] = None
-):
-    """Exchange the code for a token and redirect to the state URL"""
+class Accounts:
+    """`macrostrat_auth.user`, as the session routes' `UserStore`.
 
-    uri = redirect_uri()
-    data = {
-        "grant_type": "authorization_code",
-        "client_id": os.environ["OAUTH_CLIENT_ID"],
-        "client_secret": os.environ["OAUTH_CLIENT_SECRET"],
-        "code": code,
-        "redirect_uri": uri,
-    }
+    The store is handed no request, so the app lifespan sets `sessionmaker`.
+    """
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            os.environ["OAUTH_TOKEN_URL"], data=data
-        ) as token_response:
-            if token_response.status != 200:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid code: {await token_response.text()} ",
-                )
+    sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
-            response_data = await token_response.json()
-
-        log.info("Obtained token response: %s", response_data)
-
-        async with session.post(
-            os.environ["OAUTH_USERINFO_URL"], data=response_data
-        ) as user_response:
-            log.info("Obtained user response: %s", await user_response.text())
-
-            if user_response.status != 200:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Couldn't get user information: {await user_response.text()} ",
-                )
-
-            user_data = await user_response.json()
-            # look up the user by their OIDC subject to compute their role
-            user = await get_user(user_data["sub"], database.async_sessionmaker)
-
-            if user is None:
-                given_name = (
-                    user_data.get("given_name") if user_data.get("given_name") else ""
-                )
-                family_name = (
-                    user_data.get("family_name") if user_data.get("family_name") else ""
-                )
-
-                user = await create_user(
-                    user_data["sub"],
-                    f"{given_name} {family_name}".strip(),
-                    user_data.get("email", ""),
-                    database.async_sessionmaker,
-                )
-
-            # The `role` claim is for PostgREST; inspect a session at /dashboard
-            access_token = create_access_token(data=session_claims(user))
-
-            log.info("Created access token: %s", access_token)
-
-            response = RedirectResponse(state if state else "/")
-            set_access_cookie(response, access_token)
-
-            # TODO remove the token type
-            refresh_jwt = jwt.encode(
-                {
-                    "sub": user.sub,
-                    "type": "refresh",
-                    "name": user.display_name,
-                    "exp": datetime.utcnow()
-                    + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-                },
-                os.environ["SECRET_KEY"],
-                algorithm=os.environ["JWT_ENCRYPTION_ALGORITHM"],
+    async def resolve_user(self, identity: OAuthIdentity) -> SessionUser:
+        user = await get_user(identity.sub, self.sessionmaker)
+        if user is None:
+            user = await create_user(
+                identity.sub, identity.name, identity.email or "", self.sessionmaker
             )
-            set_refresh_cookie(response, refresh_jwt)
+        return session_user(user)
 
-            return response
+    async def get_user(self, sub: str) -> SessionUser | None:
+        # A refresh restores the stored role, as logging in again would.
+        user = await get_user(sub, self.sessionmaker)
+        if user is None:
+            return None
+        return session_user(user)
 
 
-@router.post("/refresh")
-async def refresh_token(
-    request: Request,
-    response: Response,
-    database: DatabaseDep,
-    refresh_token: str | None = Cookie(default=None, alias=refresh_token_key),
-):
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+accounts = Accounts()
 
-    # verify the jwt is valid/not expired and signature
-    try:
-        payload = jwt.decode(
-            refresh_token,
-            os.environ["SECRET_KEY"],
-            algorithms=[os.environ["JWT_ENCRYPTION_ALGORITHM"]],
-        )
-    except JWTError:
-        clear_auth_cookies(response)
-        raise HTTPException(status_code=401, detail="Refresh token invalid")
+# `logout` and `me` stay ours: legacy cookie domains, and the stored record.
+SESSION_ROUTES = ("/login", "/callback", "/refresh")
 
-    if payload.get("type") != "refresh":
-        clear_auth_cookies(response)
-        raise HTTPException(status_code=401, detail="Refresh token invalid")
 
-    sub = payload.get("sub")
-    if not sub:
-        clear_auth_cookies(response)
-        raise HTTPException(status_code=401, detail="Refresh token invalid")
+def session_router(
+    settings: AuthSettings,
+    store: Accounts,
+    transport: httpx2.AsyncBaseTransport | None = None,
+) -> APIRouter:
+    """ORCID sign-in, callback and refresh from `macrostrat.auth_system`."""
+    routes = create_auth_router(settings, store, prefix="", transport=transport)
+    routes.routes[:] = [r for r in routes.routes if r.path in SESSION_ROUTES]
+    return routes
 
-    # verifying the user via the subject claim
-    user = await get_user(sub, database.async_sessionmaker)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
 
-    # A refresh always restores the stored role: a degraded admin session that
-    # lapses comes back as a full one, the same as logging in again would.
-    set_access_cookie(response, create_access_token(data=session_claims(user)))
-
-    return {"status": "refreshed"}
+router.include_router(session_router(auth_settings(), accounts))
 
 
 @router.post("/role", response_model=SessionRole)
@@ -798,9 +667,8 @@ async def assume_role(
     actual = role_claim(user)
     effective = resolve_assumed_role(actual, body.role)
 
-    set_access_cookie(
-        response, create_access_token(data=session_claims(user, role=effective))
-    )
+    token = create_session_token(auth_settings(), session_user(user, role=effective))
+    set_access_cookie(response, token)
     return SessionRole(role=effective, actual_role=actual, degraded=effective != actual)
 
 

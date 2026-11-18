@@ -35,7 +35,7 @@ wrapping it in an external transaction does not roll it back.
   inert.
 - Some py-modules contribute their own chunks via `build_schema_config()` — see
   `py-modules/usage-stats` — collected in
-  `py-modules/schema-management/.../chunks.py`.
+  `py-modules/schema/.../chunks.py`.
 
 **Seed data needs a file-backed provider.** `macrostrat schema sync` re-applies
 the content a schema diff cannot manage — views, procedures, `INSERT`/`UPDATE`

@@ -65,6 +65,11 @@ def legacy_db(test_db_base):
             "ALTER TABLE maps_metadata.ingest_process DROP COLUMN IF EXISTS slug",
             raise_errors=True,
         )
+        # The migration re-grants a write that `web-write-lockdown` takes away
+        db.run_sql(
+            "REVOKE UPDATE ON macrostrat_api.map_ingest FROM web_user",
+            raise_errors=True,
+        )
         module = _module()
         if not module._has_constraint(db):
             db.run_sql(

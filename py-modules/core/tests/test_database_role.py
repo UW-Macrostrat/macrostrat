@@ -2,12 +2,16 @@
 
 from pytest import fixture, mark, raises
 
+from macrostrat.app_frame.environments import AccessScope, EnvironmentPolicy
+from macrostrat.app_frame.secrets import (
+    RESOLVERS,
+    forget_all_secrets,
+    register_resolver,
+)
 from macrostrat.core import database as db_module
 from macrostrat.core import safety
 from macrostrat.core.connections import DatabaseConnection, DatabaseRole
-from macrostrat.core.environment import EnvironmentPolicy, WriteScope
 from macrostrat.core.safety import WriteRefused, require_write_access
-from macrostrat.core.secrets import RESOLVERS, forget_all_secrets, register_resolver
 
 LITERAL = "postgresql://admin:admin-pw@localhost:5432/macrostrat"
 
@@ -191,13 +195,13 @@ class TestTheGateGrantsWriteCapability:
     def test_an_ungated_local_write_escalates(self, no_tty):
         """`local` is ungated but still writing — it must get a writer."""
         require_write_access(
-            WriteScope.Data, settings=policy_settings("local", "local")
+            AccessScope.Data, settings=policy_settings("local", "local")
         )
         assert db_module.current_database_role() == DatabaseRole.Writer
 
     def test_confirm_with_yes_escalates(self, no_tty):
         require_write_access(
-            WriteScope.Data,
+            AccessScope.Data,
             settings=policy_settings("development", "development"),
             assume_yes=True,
         )
@@ -208,14 +212,14 @@ class TestTheGateGrantsWriteCapability:
         """The property that matters: refusal must not grant write capability."""
         with raises(WriteRefused):
             require_write_access(
-                WriteScope.Data, settings=policy_settings("env", env_class)
+                AccessScope.Data, settings=policy_settings("env", env_class)
             )
         assert db_module.current_database_role() == DatabaseRole.Reader
 
     def test_escalation_can_be_declined_by_the_caller(self, no_tty):
         """A storage-only write should not acquire database write capability."""
         require_write_access(
-            WriteScope.Data,
+            AccessScope.Data,
             settings=policy_settings("local", "local"),
             escalate_connection=False,
         )
@@ -226,7 +230,7 @@ class TestReadConfirmation:
     """`confirm = { read = … }` asks before the first reader connection."""
 
     def _settings(self, monkeypatch, level, stub_resolver):
-        from macrostrat.core.environment import EnvironmentPolicy
+        from macrostrat.app_frame.environments import EnvironmentPolicy
 
         policy = EnvironmentPolicy.resolve(
             "production", env_class="production", confirm={"read": level}

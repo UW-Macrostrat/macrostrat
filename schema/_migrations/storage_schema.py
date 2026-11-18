@@ -1,5 +1,5 @@
 from macrostrat.database import Database
-from macrostrat.schema_management.migrations import ApplicationStatus, Migration
+from macrostrat.schema_management import ApplicationStatus, Migration
 
 
 class StorageSchemeMigration(Migration):

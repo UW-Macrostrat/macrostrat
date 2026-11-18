@@ -195,25 +195,41 @@ def unplaced_allowed(db: Database, slug: str) -> set[int]:
     a name is admitted if the paper that contributed it covers this source (247
     of them for SGMC), or if the reference has no geometry either (425), since
     then nothing has been said about where it is.
+
+    The geometry test runs once per reference, not once per name. The GNS
+    reference holds 5,119 of these names, and its geometry crosses the
+    antimeridian, so its bounding box covers the globe and `&&` matches every
+    map area. Tested per name, that was ~7.8 million intersections and more
+    than ten minutes for one map; per reference it is 11, in 58 ms.
     """
     return set(
         db.run_query(
             """
+            WITH area AS MATERIALIZED (
+              SELECT a.geometry
+              FROM maps.sources s
+              JOIN map_bounds.map_area a ON a.id = s.source_id
+              WHERE s.slug = :slug
+            ),
+            placed_refs AS MATERIALIZED (
+              SELECT rf.id
+              FROM macrostrat.refs rf
+              WHERE rf.rgeom IS NULL
+                 OR EXISTS (
+                   SELECT 1 FROM area WHERE ST_Intersects(rf.rgeom, area.geometry)
+                 )
+            )
             SELECT lsn.strat_name_id
             FROM macrostrat.lookup_strat_names lsn
             JOIN macrostrat.strat_names sn ON sn.id = lsn.strat_name_id
-            LEFT JOIN macrostrat.refs rf ON rf.id = sn.ref_id
             WHERE NOT EXISTS (
               SELECT 1 FROM macrostrat.strat_name_footprints f
               WHERE f.strat_name_id = lsn.strat_name_id
             )
             AND (
-              rf.rgeom IS NULL
-              OR EXISTS (
-                SELECT 1 FROM maps.sources s
-                JOIN map_bounds.map_area a ON a.id = s.source_id
-                WHERE s.slug = :slug AND ST_Intersects(rf.rgeom, a.geometry)
-              )
+              sn.ref_id IS NULL
+              OR NOT EXISTS (SELECT 1 FROM macrostrat.refs r WHERE r.id = sn.ref_id)
+              OR sn.ref_id IN (SELECT id FROM placed_refs)
             )
             """,
             dict(slug=slug),
@@ -326,16 +342,26 @@ def _column_evidence(db, scale, source_id, legend_ids, strat_name_ids, tolerance
 
 
 def _footprint_evidence(db, scale, source_id, legend_ids, strat_name_ids, buffer):
-    """Pairs whose footprint reaches the legend entry's envelope."""
+    """Pairs whose footprint reaches the legend entry's envelope.
+
+    Each pair looks up its own footprint by `strat_name_id`. Joined freely, the
+    planner underestimated the envelopes (12 for 459) and tested every envelope
+    against every nearby footprint before narrowing to the pairs: 115 s for
+    `ngs-vermont`, against 0.16 s this way.
+    """
+    envelopes = _ENVELOPES.replace("env AS (", "env AS MATERIALIZED (", 1)
     return db.run_query(
         f"""
-        WITH {_ENVELOPES},
+        WITH {envelopes},
         {_PAIRS}
-        SELECT DISTINCT pair.legend_id, pair.strat_name_id
+        SELECT pair.legend_id, pair.strat_name_id
         FROM pair
         JOIN env USING (legend_id)
-        JOIN macrostrat.strat_name_footprints f USING (strat_name_id)
-        WHERE ST_DWithin(f.geom, env.envelope, :buffer)
+        WHERE EXISTS (
+          SELECT 1 FROM macrostrat.strat_name_footprints f
+          WHERE f.strat_name_id = pair.strat_name_id
+            AND ST_DWithin(f.geom, env.envelope, :buffer)
+        )
         """,
         {
             "scale_table": Identifier("maps", scale),

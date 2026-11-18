@@ -39,8 +39,8 @@ from rich import print
 from rich.table import Table
 from typer import Argument, Option, Typer
 
+from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core.database import get_database, set_audit_context
-from macrostrat.core.environment import WriteScope
 from macrostrat.core.exc import MacrostratError
 from macrostrat.core.safety import writes
 
@@ -144,7 +144,7 @@ def _user_id_for(db, sub: str) -> int:
 
 
 @cli.command(name="create-token")
-@writes(WriteScope.Data, action="token creation")
+@writes(AccessScope.Data, action="token creation")
 def create_token(
     label: str = Option(
         ...,
@@ -322,7 +322,7 @@ _TOKEN_EXISTS = "SELECT id FROM macrostrat_auth.token WHERE id = :token_id"
 
 
 @cli.command(name="revoke-token")
-@writes(WriteScope.Data, action="token revocation")
+@writes(AccessScope.Data, action="token revocation")
 def revoke_token(
     token_id: int = Argument(..., help="Token id, from `macrostrat auth list-tokens`"),
     yes: bool = Option(

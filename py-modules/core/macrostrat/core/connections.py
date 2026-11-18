@@ -79,10 +79,15 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 from sqlalchemy.exc import ArgumentError
 
+from macrostrat.app_frame.environments import DEFAULT_ENV
+from macrostrat.app_frame.secrets import (
+    Secret,
+    SecretResolutionError,
+    as_secret,
+    is_secret_ref,
+    reveal,
+)
 from macrostrat.utils import get_logger
-
-from .environment import DEFAULT_ENV
-from .secrets import Secret, SecretResolutionError, as_secret, is_secret_ref, reveal
 
 log = get_logger(__name__)
 

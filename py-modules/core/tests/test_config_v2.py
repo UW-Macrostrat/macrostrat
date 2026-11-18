@@ -4,7 +4,13 @@ from pathlib import Path
 
 from pytest import fixture, mark, raises
 
-from macrostrat.core import secrets
+from macrostrat.app_frame import secrets
+from macrostrat.app_frame.environments import EnvironmentClass
+from macrostrat.app_frame.secrets import (
+    RESOLVERS,
+    forget_all_secrets,
+    register_resolver,
+)
 from macrostrat.core.config_loader import (
     CONFIG_VERSION_VAR,
     MacrostratSettings,
@@ -17,9 +23,7 @@ from macrostrat.core.config_loader import (
 )
 from macrostrat.core.config_model import BackendType, EnvironmentSettings
 from macrostrat.core.connections import DatabaseRole, DeferredUrlConnection
-from macrostrat.core.environment import EnvironmentClass
 from macrostrat.core.exc import ConfigError, UnknownEnvironment
-from macrostrat.core.secrets import RESOLVERS, forget_all_secrets, register_resolver
 
 CONFIG = """
 config_version = 2

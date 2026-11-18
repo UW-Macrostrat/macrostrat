@@ -63,7 +63,12 @@ from pydantic import (
     model_validator,
 )
 
-from .environment import EnvironmentClass, WriteGate, WriteScope, parse_gate
+from macrostrat.app_frame.environments import (
+    AccessScope,
+    EnvironmentClass,
+    WriteGate,
+    parse_gate,
+)
 
 #: Config keys this CLI no longer reads, each with what replaces it. The loader
 #: raises for any of these rather than ignoring them: a key that silently stops
@@ -472,11 +477,11 @@ class EnvironmentSettings(BaseModel):
         if hasattr(value, "items"):
             for scope, level in value.items():
                 try:
-                    WriteScope(str(scope))
+                    AccessScope(str(scope))
                 except ValueError:
                     raise ValueError(
                         f"confirm.{scope}: not a kind of access; use "
-                        + ", ".join(s.value for s in WriteScope)
+                        + ", ".join(s.value for s in AccessScope)
                     ) from None
                 try:
                     parse_gate(level)

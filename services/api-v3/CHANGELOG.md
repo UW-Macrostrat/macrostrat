@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- `/refs` and `/refs/{id}` return references with geometry diagnostics; `/refs.geojson` returns them with their geometries
+- Regions (the `geologic_boundaries` tables): `/regions`, `/regions/sources`
+  and `/regions/{region_id}` in the API, and `/regions/tiles/{z}/{x}/{y}` tiles
+- Updated Dockerfiles for quicker cached rebuilds
+
 ## [3.1.2] - 2026-11-03
 
 - `Sources` drops `rgeom`; `/sources?include_geom=true` no longer returns it

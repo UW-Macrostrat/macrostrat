@@ -1,0 +1,60 @@
+"""Tests for enforced read-only environment access (PostgreSQL)."""
+
+from pytest import fixture, mark, raises
+from sqlalchemy.exc import DBAPIError
+
+from macrostrat.database import Database
+from macrostrat.schema.app import temporary_database_cluster
+from macrostrat.schema.readonly import (
+    as_role,
+    assert_read_only,
+    readonly_login,
+)
+
+
+@fixture(scope="module")
+def admin_cluster():
+    """A bare cluster shared by this module — these tests need no schema at all.
+
+    Deliberately not conftest's ``empty_db``: the first test creates
+    ``public.thing``, and ``empty_db`` is the session's shared schema build,
+    where a stray table would leak into every later test.
+    """
+    with temporary_database_cluster(username="macrostrat_admin") as db:
+        yield db
+
+
+@mark.docker
+@mark.slow
+def test_readonly_login_reads_but_cannot_write(admin_cluster):
+    admin = admin_cluster
+    admin.run_sql("CREATE TABLE public.thing (id int)", raise_errors=True)
+    admin.run_sql("INSERT INTO public.thing (id) VALUES (1)", raise_errors=True)
+
+    # No `web_anon` in a bare cluster; borrow only pg_read_all_data.
+    with readonly_login(admin.engine.url, impersonate=()) as ro_url:
+        ro = Database(ro_url)
+
+        # Reads work.
+        assert ro.run_query("SELECT count(*) FROM public.thing").scalar() == 1
+
+        # Writes are refused by role privilege.
+        with raises(DBAPIError):
+            ro.run_sql("INSERT INTO public.thing (id) VALUES (2)", raise_errors=True)
+
+        # And the fail-closed probe agrees (write blocked even after RESET ROLE).
+        assert_read_only(ro)
+
+        # SET ROLE within the membership closure works (for grant/RLS testing).
+        with as_role(ro, "pg_read_all_data"):
+            assert ro.run_query("SELECT count(*) FROM public.thing").scalar() == 1
+
+        ro.engine.dispose()
+
+
+@mark.docker
+@mark.slow
+def test_assert_read_only_fails_closed_on_writable_connection(admin_cluster):
+    """A writable (superuser) connection must be rejected, not silently trusted."""
+    with raises(RuntimeError):
+        assert_read_only(admin_cluster)  # RESET ROLE → superuser → probe write succeeds

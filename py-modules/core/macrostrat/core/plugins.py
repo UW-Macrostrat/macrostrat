@@ -74,12 +74,13 @@ class HostContext:
     def require_write(
         self, scope: str, env: str, *, action: str, assume_yes: bool = False
     ) -> None:
-        from .environment import WriteScope
+        from macrostrat.app_frame.environments import AccessScope
+
         from .safety import require_write_access
 
         # Never escalate: a plugin does not use this invocation's connection.
         require_write_access(
-            WriteScope(scope),
+            AccessScope(scope),
             settings=_settings(env),
             assume_yes=assume_yes,
             action=action,

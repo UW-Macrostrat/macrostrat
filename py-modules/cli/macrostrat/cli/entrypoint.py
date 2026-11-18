@@ -8,14 +8,11 @@ from rich.traceback import install
 from typer import Argument, Option, Typer
 
 from macrostrat.app_frame import CommandBase, SubsystemManager
+from macrostrat.app_frame.environments import AccessScope, format_duration
+from macrostrat.app_frame.secrets import redact_mapping, refuse_non_interactive_reveal
 from macrostrat.core import app
-from macrostrat.core.environment import (
-    WriteScope,
-    declared_policy_for,
-    format_duration,
-)
+from macrostrat.core.environment import declared_policy_for
 from macrostrat.core.exc import MacrostratError
-from macrostrat.core.secrets import redact_mapping, refuse_non_interactive_reveal
 from macrostrat.core.utils import (
     ENV_EXPIRES_VAR,
     ENV_VAR,
@@ -24,7 +21,7 @@ from macrostrat.core.utils import (
     remembered_environment,
     set_active_env,
 )
-from macrostrat.schema_management import schema_app
+from macrostrat.schema import schema_app
 from macrostrat.usage_stats import app as usage_stats_app
 from macrostrat.utils import get_logger
 from macrostrat.utils.shell import run
@@ -346,9 +343,9 @@ def environments():
         table.add_row(
             label,
             klass,
-            policy.gate_for(WriteScope.Read).value,
-            policy.gate_for(WriteScope.Data).value,
-            policy.gate_for(WriteScope.Schema).value,
+            policy.gate_for(AccessScope.Read).value,
+            policy.gate_for(AccessScope.Data).value,
+            policy.gate_for(AccessScope.Schema).value,
             format_duration(policy.ttl),
         )
     app.console.print(table)

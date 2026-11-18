@@ -20,10 +20,10 @@ from hashlib import sha256
 from os import environ
 from typing import Callable, Dict, Optional
 
+from macrostrat.app_frame.secrets import SecretResolutionError
 from macrostrat.utils import get_logger
 
 from .connections import DEFAULT_DATABASE, DatabaseRole, MissingCredential
-from .secrets import SecretResolutionError
 
 log = get_logger(__name__)
 

@@ -8,6 +8,8 @@ from dynaconf import Dynaconf, Validator
 from sqlalchemy.engine import make_url
 from sqlalchemy.engine.url import URL
 
+from macrostrat.app_frame.secrets import as_secret, is_secret_ref, reveal
+from macrostrat.core.environment import policy_from_settings
 from macrostrat.utils import get_logger
 
 from .config_loader import config_version, load_settings_v2
@@ -18,10 +20,8 @@ from .connections import (
     connection_for,
     connections_for,
 )
-from .environment import policy_from_settings
 from .exc import ConfigError, UnknownEnvironment
 from .resolvers import cast_sources, setup_source_roots_environment
-from .secrets import as_secret, is_secret_ref, reveal
 from .storage import (
     DEFAULT_ENDPOINT,
     buckets_for,

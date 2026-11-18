@@ -13,12 +13,15 @@ any context without a fully-provisioned config.
 The lazy hooks below keep every existing call site working unchanged
 (`from macrostrat.core import app` behaves exactly as before, and still loads
 config before `get_database` / `SchemaDefinition` are resolved) while letting
-`macrostrat.core.environment`, `macrostrat.core.secrets` and friends be imported
+`macrostrat.core.environment`, `macrostrat.app_frame.secrets` and friends be imported
 on their own.
 """
 
 from .main import Macrostrat  # noqa: F401
-from .schema_definition import APP_OWNER  # noqa: F401
+
+# Role that owns application schema objects: chunks and migrations are applied
+# as it, so the SQL carries no `ALTER … OWNER TO`.
+APP_OWNER = "macrostrat"
 
 # Deliberately *not* published into this module's globals once built: the CLI
 # test suite calls importlib.reload() on this module and expects the next `app`
@@ -27,7 +30,7 @@ from .schema_definition import APP_OWNER  # noqa: F401
 # clearing it) and hand back a stale app bound to the previous config.
 _app = None
 
-__all__ = ["APP_OWNER", "Macrostrat", "app", "get_database", "SchemaDefinition"]
+__all__ = ["APP_OWNER", "Macrostrat", "app", "get_database"]
 
 
 def _get_app() -> Macrostrat:
@@ -42,17 +45,12 @@ def __getattr__(name):
     if name == "app":
         return _get_app()
 
-    if name in ("get_database", "SchemaDefinition"):
-        # These must not be imported before the application's config has been
-        # loaded — the original module body enforced that by ordering.
+    if name == "get_database":
+        # Must not be imported before the application's config has been loaded.
         _get_app()
-        if name == "get_database":
-            from .database import get_database
+        from .database import get_database
 
-            return get_database
-        from .schema_definition import SchemaDefinition
-
-        return SchemaDefinition
+        return get_database
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

@@ -2,10 +2,10 @@
 
 from pytest import fixture, raises
 
+from macrostrat.app_frame.environments import EnvironmentPolicy
 from macrostrat.core import app, safety
 from macrostrat.core import database as db_module
 from macrostrat.core.connections import DatabaseConnection, DatabaseRole
-from macrostrat.core.environment import EnvironmentPolicy
 from macrostrat.core.safety import WriteRefused, resolve_database_url
 
 
