@@ -604,26 +604,10 @@ def create_dataframe_for_layer(file: Path, layer: str) -> G.GeoDataFrame:
 
 def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
     single_file = len(files) == 1
-    # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
-    ignore_cs_prefix = (
-        "CSA",
-        "CSB",
-        "CSC",
-        "CSD",
-        "CSE",
-        "CSF",
-        "CSG",
-        "CSH",
-        "CSI",
-        "CMU",
-    )
-    ignore_cs_suffix = ("ContactsAndFaults", "MapUnitPolys", "OrientationPoints")
-    ignore_misc = (
-        "T_1_DirtyAreas",
-        "T_1_LineErrors",
-        "T_1_PointErrors",
-        "T_1_PolyErrors",
-    )
+    # Every spatial layer is read. A dataset's own exclusions (cross sections,
+    # topology errors, annotation) belong to its pipeline, which can narrow the
+    # list `get_layer_names` returns; see `Maps/Arizona/ingest.py` in
+    # data-integration.
     for file in files:
         console.print(file, style="bold cyan")
 
@@ -634,16 +618,6 @@ def get_dataframes(files) -> Iterable[Tuple[str, G.GeoDataFrame]]:
             console.print(f"{n_layers} layers.")
 
         for layer in layers:
-            # ignore cross section polygons/lines/faults in Arizona CSAMapUnitPolys formatted_filenames.
-            # skip if it's a misc layer
-            if layer.startswith(ignore_misc):
-                console.print(f"Skipping misc {layer}.")
-                continue
-            # skip if it's BOTH a cross section filename_prefix AND ends with a cross section suffix
-            if layer.startswith(ignore_cs_prefix) and layer.endswith(ignore_cs_suffix):
-                console.print(f"Skipping cross section {layer}.")
-                continue
-
             name = get_layer_name(
                 file, layer, single_file=single_file, single_layer=n_layers == 1
             )
