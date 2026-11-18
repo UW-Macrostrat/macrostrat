@@ -4,14 +4,17 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
+from datetime import datetime
 from difflib import SequenceMatcher
 from enum import Enum
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Optional
 
 import pandas as pd
 from psycopg2.sql import SQL, Identifier
 from rich.console import Console
+from rich.markup import escape
 from rich.prompt import Prompt
 from typer import Argument, Context, Exit, Option
 
@@ -392,36 +395,104 @@ def get_lith_reference_terms() -> tuple[set[str], set[str]]:
                 out.add(term)
         return out
 
-    return normalize_terms(lith_rows), normalize_terms(att_rows)
+    return frozenset(normalize_terms(lith_rows)), frozenset(normalize_terms(att_rows))
 
 
 def best_fuzzy_match(
-    token: str, reference_terms: set[str]
+    token: str, reference_terms: set[str], min_ratio: float = 0.0
 ) -> tuple[Optional[str], float]:
-    """Return the best matching reference term and its similarity ratio."""
+    """Return the best matching reference term and its similarity ratio, or
+    (None, 0.0) when none reaches `min_ratio`.
+
+    Terms that cannot beat the best so far, or reach `min_ratio`, are skipped on
+    the cheap upper bounds of their ratio (length alone, then `quick_ratio`)
+    before the full comparison, which picks the same term as comparing all.
+    """
     token = token.strip().lower()
     if token == "":
         return None, 0.0
+    if token in reference_terms:
+        return token, 1.0
 
     best_term = None
     best_ratio = 0.0
-
+    n = len(token)
     for ref in reference_terms:
-        ratio = SequenceMatcher(None, token, ref).ratio()
-        if ratio > best_ratio:
+        floor = max(best_ratio, min_ratio)
+        bound = 2.0 * min(n, len(ref)) / (n + len(ref))
+        if bound < floor or (best_term is not None and bound <= best_ratio):
+            continue
+        matcher = SequenceMatcher(None, token, ref)
+        quick = matcher.quick_ratio()
+        if quick < floor or (best_term is not None and quick <= best_ratio):
+            continue
+        ratio = matcher.ratio()
+        if ratio > best_ratio and ratio >= min_ratio:
             best_ratio = ratio
             best_term = ref
-            if best_ratio == 1.0:
-                break
 
     return best_term, best_ratio
+
+
+def lith_phrases(
+    lith_terms: frozenset, att_terms: frozenset
+) -> dict[tuple[str, ...], tuple[Optional[str], Optional[str]]]:
+    """The terms of more than one word, keyed by their words as
+    `tokenize_lith_text` splits text: ("reddish", "brown") -> ("reddish brown",
+    None), ("quartz", "monzonite") -> (None, "quartz monzonite"). Matched
+    exactly, not fuzzily. An att wins a tie, as in `match_lith_token`."""
+    phrases = {}
+    for terms, as_att in ((att_terms, True), (lith_terms, False)):
+        for term in sorted(terms):
+            words = tuple(tokenize_lith_text(term))
+            if len(words) > 1:
+                phrases.setdefault(words, (term, None) if as_att else (None, term))
+    return phrases
+
+
+@lru_cache(maxsize=None)
+def match_lith_token(
+    token: str, lith_terms: frozenset, att_terms: frozenset, threshold: float
+) -> tuple[Optional[str], Optional[str]]:
+    """(lith_att, None), (None, lith) or (None, None) for one word. A word
+    recurs across a map's descriptions, and across maps, so each is matched
+    once.
+
+    A word of four letters or fewer matches only as written or as a plural
+    (`dune` -> `dunes`). Fuzzily, nearly every one is wrong: `than` -> `tan`,
+    `wash` -> `ash`, `tank` -> `tan`, `lack` -> `black`.
+    """
+    if len(token) <= 4:
+        forms = [token, token + "s"] + ([token[:-1]] if token.endswith("s") else [])
+        best_att = next((f for f in forms if f in att_terms), None)
+        best_lith = next((f for f in forms if f in lith_terms), None)
+        att_score = 1.0 if best_att else 0.0
+        lith_score = 1.0 if best_lith else 0.0
+    else:
+        best_att, att_score = best_fuzzy_match(token, att_terms, threshold)
+        best_lith, lith_score = best_fuzzy_match(token, lith_terms, threshold)
+    # The better match, keeping whether it came from lith_atts or liths.
+    if best_att is not None and att_score >= threshold and att_score >= lith_score:
+        return best_att, None
+    if best_lith is not None and lith_score >= threshold:
+        return None, best_lith
+    return None, None
+
+
+def format_liths(lith_atts: dict[str, list[str]]) -> str:
+    """Liths as the lexicon's lithology matcher shows them, each after its
+    atts, which are separated by commas, and the liths by semicolons:
+    "cross-bedded, fine sandstone; siltstone". The matcher reads this back to
+    the same liths and atts."""
+    return "; ".join(
+        " ".join(filter(None, [", ".join(a), lith])) for lith, a in lith_atts.items()
+    )
 
 
 def calculate_lith_fuzzy_match_percentages(
     target: TableTarget,
     src_col: str | list[str],
     threshold: float = 0.9,
-    row_copy_threshold_percent: float = 10.0,
     limit: Optional[int] = None,
     dry_run: bool = False,
     verbose: bool = False,
@@ -437,9 +508,8 @@ def calculate_lith_fuzzy_match_percentages(
     once per column would not work, because each call overwrites lith rather than
     adding to it.
 
-    If a row's fuzzy match percentage is greater than row_copy_threshold_percent,
-    write the matched canonical lith strings directly into the lith column for
-    that same row/_pkid.
+    Every row with a match gets the matched liths and atts in its lith column;
+    a row with none keeps its lith.
     """
     db = get_database()
     src_cols = [src_col] if isinstance(src_col, str) else list(src_col)
@@ -500,6 +570,8 @@ def calculate_lith_fuzzy_match_percentages(
     # Descriptions repeat heavily across polygons, so the distinct set of matched
     # strings is a far shorter -- and more reviewable -- digest than one line per row.
     matched_counts = Counter()
+    phrases = lith_phrases(lith_terms, lith_att_terms)
+    longest = max(map(len, phrases), default=1)
     for row in rows:
         tokens = tokenize_lith_text(row.src_value)
         word_count = len(tokens)
@@ -510,44 +582,50 @@ def calculate_lith_fuzzy_match_percentages(
             matched_counts[""] += 1
             continue
         matched_count = 0
-        matched_lith_atts: list[str] = []
-        matched_liths: list[str] = []
-        seen_lith_atts = set()
-        seen_liths = set()
-        for token in tokens:
-            if len(token) <= 3:
-                if token in lith_att_terms:
-                    best_att, att_score = token, 1.0
-                else:
-                    best_att, att_score = None, 0.0
-
-                if token in lith_terms:
-                    best_lith, lith_score = token, 1.0
-                else:
-                    best_lith, lith_score = None, 0.0
+        # Each lith with its atts, in the order the text gives them. Text reads
+        # `<att> <lith>`, as the column importer parses it, so atts belong to
+        # the lith directly after them ("light, dark gray sandstone"), or with
+        # none, directly before them ("sandstone, fine"). Atts next to no lith
+        # describe a word Macrostrat lacks ("light orange") and are dropped,
+        # not carried to a lith further on.
+        lith_atts: dict[str, list[str]] = {}
+        pending: list[str] = []
+        before = None  # the lith directly before `pending`
+        i = 0
+        while i < len(tokens):
+            # A term of several words ("reddish brown", "quartz monzonite",
+            # "cross-bedded") as written, longest first; then the word alone.
+            for n in range(min(longest, len(tokens) - i), 1, -1):
+                if (phrase := phrases.get(tuple(tokens[i : i + n]))) is not None:
+                    best_att, best_lith = phrase
+                    break
             else:
-                best_att, att_score = best_fuzzy_match(token, lith_att_terms)
-                best_lith, lith_score = best_fuzzy_match(token, lith_terms)
-            # choose the better match, but preserve whether it came from lith_atts or liths.
-            if (
-                best_att is not None
-                and att_score >= threshold
-                and att_score >= lith_score
-            ):
-                matched_count += 1
-                if best_att not in seen_lith_atts:
-                    seen_lith_atts.add(best_att)
-                    matched_lith_atts.append(best_att)
-            elif best_lith is not None and lith_score >= threshold:
-                matched_count += 1
-                if best_lith not in seen_liths:
-                    seen_liths.add(best_lith)
-                    matched_liths.append(best_lith)
+                n = 1
+                best_att, best_lith = match_lith_token(
+                    tokens[i], lith_terms, lith_att_terms, threshold
+                )
+            i += n
+            if best_att is not None:
+                matched_count += n
+                if best_att not in pending:
+                    pending.append(best_att)
+            elif best_lith is not None:
+                matched_count += n
+                atts = lith_atts.setdefault(best_lith, [])
+                atts.extend(a for a in pending if a not in atts)
+                pending, before = [], best_lith
+            else:
+                if before is not None:
+                    lith_atts[before].extend(
+                        a for a in pending if a not in lith_atts[before]
+                    )
+                pending, before = [], None
+        if before is not None:
+            lith_atts[before].extend(a for a in pending if a not in lith_atts[before])
 
         percent = 100.0 * matched_count / word_count
         total_match_percent += percent
-        matched_terms = matched_lith_atts + matched_liths
-        matched_string = " ".join(matched_terms)
+        matched_string = format_liths(lith_atts)
         matched_counts[matched_string] += 1
         if verbose:
             value = re.sub(r"\s+", " ", str(row.src_value))[:70]
@@ -556,40 +634,35 @@ def calculate_lith_fuzzy_match_percentages(
                 f"matched={matched_string} | value={value}"
             )
 
-        if percent > row_copy_threshold_percent and matched_string != "":
+        if matched_string != "":
             updates.append((row._pkid, matched_string))
 
     if updates and not dry_run:
-        values_sql = ", ".join([f"(:pkid_{i}, :lith_{i})" for i in range(len(updates))])
-        update_params = {
-            "table": target.fq_identifier,
-            "lith_col": Identifier("lith"),
-        }
-
-        for i, (pkid, lith_string) in enumerate(updates):
-            update_params[f"pkid_{i}"] = pkid
-            update_params[f"lith_{i}"] = lith_string
-
-        db.run_sql(
-            f"""
-            UPDATE {{table}} AS t
-            SET {{lith_col}} = v.lith_string
-            FROM (
-                VALUES {values_sql}
-            ) AS v(_pkid, lith_string)
+        # Two arrays, not a VALUES row per update: Postgres takes at most 65,535
+        # bind parameters, which a large map's rows would pass.
+        db.run_query(
+            """
+            UPDATE {table} AS t SET lith = v.lith
+            FROM unnest(CAST(:ids AS bigint[]), CAST(:liths AS text[])) AS v(_pkid, lith)
             WHERE t._pkid = v._pkid
             """,
-            update_params,
+            dict(
+                table=target.fq_identifier,
+                ids=[pkid for pkid, _ in updates],
+                liths=[lith for _, lith in updates],
+            ),
         )
+        db.session.commit()
 
         console.print(
             f"[green]Done:[/green] wrote matched lith strings into "
-            f"[bold]lith[/bold] for {len(updates)} row(s) with match > "
-            f"{row_copy_threshold_percent:.1f}%"
+            f"[bold]lith[/bold] for {len(updates)} row(s)"
         )
 
     elif dry_run:
-        console.print("[green]Dry run only; no changes applied[/green]")
+        console.print(
+            f"[green]Dry run only; would write lith for {len(updates)} row(s)[/green]"
+        )
 
     avg_words = (total_word_count / total_rows) if total_rows > 0 else 0.0
     avg_match_percent = (total_match_percent / total_rows) if total_rows > 0 else 0.0
@@ -2067,90 +2140,197 @@ def add_metadata_interactive(
 
 
 # ________________CALCULATE AGES/LINE TYPES/POINT TYPES FUNCTIONS___________________________________________
-def calculate_age_intervals(
-    target: TableTarget,
-    col_one: str,
-    col_two: str,
-    dry_run: bool = False,
-):
-    """Populates b_interval and t_interval on the target table by matching values from two user-supplied
-    text columns against macrostrat.intervals, with a fallback to the era column. Both destination columns are
-    set to the same resolved interval ID. Raises a ValueError if required columns are missing.
+#: How much of a description `review_ages` shows.
+AGE_REVIEW_DESCRIPTION_CHARS = 600
+
+
+def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
+    """Ask for the age of each map unit whose polygons lack b_interval or
+    t_interval, and set both from the answer, and `age` to the answer as typed.
+
+    Polygons are asked about once per distinct name, descrip and age, most
+    polygons first. An answer is read as the GeMS ingest reads an age
+    (`lookup_and_validate_age`): "Late Pleistocene", "Miocene to Pliocene",
+    "middle to late Pleistocene"; or interval ids, "23" or "23 to 40", whose
+    names go into `age` ("Cenomanian to Rupelian"). `omit` sets omit = true on
+    the unit's polygons instead, for unmapped or unnamed ones. Each unit is
+    shown as its first polygon's whole row, and written and committed once
+    confirmed, so stopping keeps what is done.
     """
-    db = get_database()
-    col_one = validate_identifier(col_one, "first age column")
-    col_two = validate_identifier(col_two, "second age column")
-    existing_cols = get_existing_columns(target)
-    if col_one not in existing_cols:
+    from ..utils.gems_utils import AGE_ALIASES, lookup_and_validate_age
+    from ..utils.ingestion_utils import get_age_interval_df
+
+    existing = get_existing_columns(target)
+    missing = {"_pkid", "b_interval", "t_interval"} - existing
+    if missing:
         raise ValueError(
-            f"Column '{col_one}' does not exist in {target.schema}.{target.table}"
+            f"No {', '.join(sorted(missing))} in {target.schema}.{target.table}; "
+            "run add-preferred-columns first"
         )
-    if col_two not in existing_cols:
-        raise ValueError(
-            f"Column '{col_two}' does not exist in {target.schema}.{target.table}"
-        )
-    missing_required = {"b_interval", "t_interval"} - existing_cols
-    if missing_required:
-        raise ValueError(
-            f"Missing required destination columns in {target.schema}.{target.table}: "
-            f"{', '.join(sorted(missing_required))}. "
-            f"Run add-preferred-columns first."
-        )
-    row_count = db.run_query(
-        "SELECT count(*) FROM {table}",
-        dict(table=target.fq_identifier),
-    ).scalar()
+    shown = {
+        c: Identifier(c) if c in existing else SQL("NULL")
+        for c in ("name", "descrip", "age", "omit")
+    }
+    units = db.run_query(
+        """
+        SELECT {name}::text AS name, {descrip}::text AS descrip, {age}::text AS age,
+            b_interval::text AS b_interval, t_interval::text AS t_interval,
+            array_agg(_pkid ORDER BY _pkid) AS ids
+        FROM {table}
+        WHERE (b_interval IS NULL OR t_interval IS NULL)
+          AND {omit} IS NOT TRUE
+        GROUP BY 1, 2, 3, 4, 5
+        ORDER BY count(*) DESC, 1, 2
+        """,
+        dict(table=target.fq_identifier, **shown),
+    ).all()
+    n_polygons = sum(len(u.ids) for u in units)
     console.print(
-        f"[blue]Calculating ages for[/blue] "
-        f"[bold]{target.schema}.{target.table}[/bold] "
-        f"using [yellow]{col_one}[/yellow], then [yellow]{col_two}[/yellow], "
-        f"then fallback [yellow]era[/yellow] across {row_count} rows"
+        f"[blue]{n_polygons} polygon(s) in {len(units)} unit(s) lack an interval[/blue]"
     )
-    if dry_run:
-        console.print("[green]Dry run only; no changes applied[/green]")
+    if not units:
         return
-    sql = """
-        WITH interval_lookup AS (
-            SELECT lower(trim(interval_name)) AS interval_name, min(id) AS id
-            FROM macrostrat.intervals
-            GROUP BY 1
+
+    intervals = get_age_interval_df(db)
+    by_id = {
+        int(r.id): (r.interval_name, r.age_bottom, r.age_top)
+        for r in intervals.itertuples()
+    }
+    lookup = {str(r.interval_name).lower(): int(r.id) for r in intervals.itertuples()}
+    for alias, name in AGE_ALIASES.items():
+        if name in lookup:
+            lookup.setdefault(alias, lookup[name])
+    ages = {i: (bottom, top) for i, (_, bottom, top) in by_id.items()}
+
+    def label(interval) -> str:
+        if interval in (None, ""):
+            return "[dim]-[/dim]"
+        name, bottom, top = by_id.get(int(interval), ("?", None, None))
+        return f"{name} [dim]({interval}; {bottom}-{top} Ma)[/dim]"
+
+    def resolve(answer: str):
+        ids = re.fullmatch(r"\s*(\d+)\s*(?:(?:to|-)\s*(\d+)\s*)?", answer)
+        if ids:
+            found = [int(i) for i in ids.groups() if i is not None]
+            if any(i not in by_id for i in found):
+                return None
+            # The older interval is the bottom one.
+            found.sort(key=lambda i: -by_id[i][1])
+            return found[0], found[-1]
+        # "middle to late Pleistocene": each qualifier takes the shared epoch.
+        shared = re.fullmatch(
+            r"\s*(early|middle|late|lower|upper)\s*(?:to|-)\s*"
+            r"(early|middle|late|lower|upper)\s+(.+?)\s*",
+            answer,
+            re.I,
         )
-        UPDATE {table} AS t
-        SET
-            b_interval = COALESCE(
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif({col_one}::text, '')))),
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif({col_two}::text, '')))),
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif(era::text, ''))))
-            ),
-            t_interval = COALESCE(
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif({col_one}::text, '')))),
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif({col_two}::text, '')))),
-                (SELECT il.id
-                 FROM interval_lookup il
-                 WHERE il.interval_name = lower(trim(nullif(era::text, ''))))
-            )
-    """
-    db.run_sql(
-        sql,
-        dict(
-            table=target.fq_identifier,
-            col_one=Identifier(col_one),
-            col_two=Identifier(col_two),
-        ),
-    )
+        if shared:
+            first, second, epoch = shared.groups()
+            answer = f"{first} {epoch} to {second} {epoch}"
+        b, t = lookup_and_validate_age(answer, lookup, ages)
+        if pd.isna(b) or pd.isna(t):
+            return None
+        return int(b), int(t)
+
+    # Every column but the geometry, as text, for showing a polygon's row.
+    shown_columns = [
+        c
+        for c, udt in get_column_types(target).items()
+        if udt not in ("geometry", "geography")
+    ]
+    row_sql = ", ".join(f"{{c{i}}}::text" for i in range(len(shown_columns)))
+    row_params = {f"c{i}": Identifier(c) for i, c in enumerate(shown_columns)}
+    width = max(map(len, shown_columns))
+
+    def show_row(pkid: int) -> None:
+        values = db.run_query(
+            f"SELECT {row_sql} FROM {{table}} WHERE _pkid = :pkid",
+            dict(table=target.fq_identifier, pkid=pkid, **row_params),
+        ).one()
+        for column, value in zip(shown_columns, values):
+            if column in ("b_interval", "t_interval"):
+                value = label(value)
+            elif value is None or value.strip() == "":
+                value = "[dim]-[/dim]"
+            else:
+                value = re.sub(r"\s+", " ", value).strip()
+                if len(value) > AGE_REVIEW_DESCRIPTION_CHARS:
+                    value = value[:AGE_REVIEW_DESCRIPTION_CHARS] + "..."
+                value = escape(value)
+            console.print(f"  [cyan]{column:<{width}}[/cyan]  {value}")
+
     console.print(
-        f"[green]Done:[/green] populated b_interval and t_interval in "
-        f"{target.schema}.{target.table}"
+        "Type each unit's age, or interval ids (23, 23 to 40), or omit. "
+        "[dim]Enter skips a unit, q ends this map, Ctrl-C stops.[/dim]"
+    )
+    applied = omitted = 0
+    for position, unit in enumerate(units, start=1):
+        more = ", first shown" if len(unit.ids) > 1 else ""
+        console.print(
+            f"\n[bold]({position}/{len(units)})[/bold] {len(unit.ids)} polygon(s){more}"
+        )
+        show_row(unit.ids[0])
+        while True:
+            answer = Prompt.ask("  Age", default="", show_default=False).strip()
+            if answer == "" or answer.lower() == "q":
+                break
+            if answer.lower() == "omit":
+                if "omit" not in existing:
+                    console.print(
+                        "  [red]No omit column; run add-preferred-columns[/red]"
+                    )
+                    continue
+                prompt = f"  Omit these {len(unit.ids)} polygon(s)?"
+                if Prompt.ask(prompt, choices=["y", "n"], default="y") == "y":
+                    break
+                continue
+            found = resolve(answer)
+            if found is None:
+                console.print(f"  [red]No interval matches '{answer}'[/red]")
+                continue
+            b, t = found
+            age = answer
+            if re.fullmatch(r"[\d\s-]+|\s*\d+\s*to\s*\d+\s*", answer):
+                age = by_id[b][0] if b == t else f"{by_id[b][0]} to {by_id[t][0]}"
+            console.print(f"  b_interval -> {label(b)}\n  t_interval -> {label(t)}")
+            if "age" in existing:
+                console.print(f"  age        -> {age}")
+            if Prompt.ask("  Apply?", choices=["y", "n"], default="y") == "y":
+                break
+        if answer.lower() == "q":
+            break
+        if answer == "":
+            continue
+        if dry_run:
+            console.print("  [yellow]Dry run; not written[/yellow]")
+            continue
+        if answer.lower() == "omit":
+            db.run_query(
+                "UPDATE {table} SET omit = true WHERE _pkid = ANY(CAST(:ids AS bigint[]))",
+                dict(table=target.fq_identifier, ids=list(unit.ids)),
+            )
+            db.session.commit()
+            omitted += len(unit.ids)
+            continue
+        db.run_query(
+            """
+            UPDATE {table} SET b_interval = :b, t_interval = :t {set_age}
+            WHERE _pkid = ANY(CAST(:ids AS bigint[]))
+            """,
+            dict(
+                table=target.fq_identifier,
+                set_age=SQL(", age = :age" if "age" in existing else ""),
+                b=b,
+                t=t,
+                age=age,
+                ids=list(unit.ids),
+            ),
+        )
+        db.session.commit()
+        applied += len(unit.ids)
+    console.print(
+        f"\n[green]{applied} polygon(s) given an age and intervals, "
+        f"{omitted} omitted[/green]"
     )
 
 
@@ -2701,6 +2881,83 @@ def copy_orig_id_from_candidates(
     return col
 
 
+#: Column names `calculate_orig_id` takes for an id: `objectid`, `fid`,
+#: `mapunitpolys_id`, a coverage's `tsn_geo-id` and `tsn_geo#`. A column must
+#: be named as one, since `symbol` or `label` can be unique by chance.
+ORIG_ID_NAME = re.compile(r".*(id|#)$")
+
+#: Id-named columns that do not identify a feature: an ArcGIS representation's
+#: symbol rule.
+ORIG_ID_NOT_IDS = {"ruleid"}
+
+
+def calculate_orig_id(db, target: TableTarget, dry_run: bool = False) -> None:
+    """Give every feature of a table an orig_id: the map's own id where a column
+    has one per feature, and otherwise 1, 2, 3, ... in `_pkid` order.
+
+    An id column must be named as one (`ORIG_ID_NAME`) and, like `copy-orig-id`
+    requires, hold a unique integer on every row not omitted;
+    `ORIG_ID_CANDIDATES`, then `objectid`, are preferred. An orig_id that
+    already meets that test is kept. Numbering covers omitted rows too, so
+    un-omitting one leaves no gap.
+    """
+    try:
+        column_types = get_column_types(target)
+    except ValueError:
+        console.print("[dim]No table[/dim]")
+        return
+    missing = {"_pkid", "orig_id"} - column_types.keys()
+    if missing:
+        raise ValueError(
+            f"No {', '.join(sorted(missing))} in {target.schema}.{target.table}; "
+            "run add-preferred-columns first"
+        )
+    if find_orig_id_candidates(target, columns=["orig_id"]):
+        console.print("[dim]orig_id is already a unique id; kept[/dim]")
+        return
+
+    named = [
+        col
+        for col, udt in column_types.items()
+        if udt in ORIG_ID_SCANNABLE_TYPES
+        and col not in ORIG_ID_MANAGED_COLUMNS | ORIG_ID_NOT_IDS
+        and ORIG_ID_NAME.fullmatch(col)
+    ]
+    valid = find_orig_id_candidates(target, columns=named) if named else []
+    if valid:
+        col = min(
+            valid,
+            key=lambda c: (orig_id_preference(c), c != "objectid", valid.index(c)),
+        )
+        others = [c for c in valid if c != col]
+        console.print(
+            f"Copying [yellow]{col}[/yellow] -> orig_id"
+            + (f" [dim](also unique: {', '.join(others)})[/dim]" if others else "")
+        )
+        if dry_run:
+            console.print("[green]Dry run only; no changes applied[/green]")
+            return
+        copy_orig_id_from_candidates(target, candidates=[col])
+        return
+
+    n = db.run_query(
+        "SELECT count(*) FROM {table}", dict(table=target.fq_identifier)
+    ).scalar()
+    console.print(f"No unique id column; numbering {n} feature(s) 1-{n} by _pkid")
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+    db.run_query(
+        """
+        UPDATE {table} t SET orig_id = n.id
+        FROM (SELECT _pkid, row_number() OVER (ORDER BY _pkid) AS id FROM {table}) n
+        WHERE t._pkid = n._pkid
+        """,
+        dict(table=target.fq_identifier),
+    )
+    db.session.commit()
+
+
 def copy_age_columns(
     target: TableTarget,
     older_col: str,
@@ -2981,6 +3238,7 @@ class Selection:
     state: tuple[str, ...] = ()
     start_after: Optional[str] = None
     layer: tuple[str, ...] = ()
+    since: Optional[datetime] = None
 
     def layers_in(self, handled: tuple[str, ...]) -> list[str]:
         """The `--layer` tables a command should process, in its own order."""
@@ -2996,14 +3254,20 @@ class Selection:
         return [layer for layer in handled if layer in self.layer]
 
     def slugs(self, db) -> list[str]:
-        if not self.slug:
+        if not self.slug and self.since is None:
             console.print(
-                "[red]Pass --slug before the command, e.g. "
+                "[red]Pass --slug or --since before the command, e.g. "
                 "normalize --slug 'arizona-%' <command>[/red]"
             )
             raise Exit(1)
-        where = ["s.slug ILIKE ANY(CAST(:slug AS text[]))"]
-        params = dict(slug=list(self.slug))
+        where, params = ["true"], {}
+        if self.slug:
+            where.append("s.slug ILIKE ANY(CAST(:slug AS text[]))")
+            params.update(slug=list(self.slug))
+        if self.since is not None:
+            where.append("p.created_on >= CAST(:since AS timestamptz)")
+            # A date without a zone is local time, not the database server's.
+            params.update(since=self.since.astimezone())
         if self.exclude:
             where.append("NOT (s.slug ILIKE ANY(CAST(:exclude AS text[])))")
             params.update(exclude=list(self.exclude))
@@ -3091,8 +3355,17 @@ def select(
             "Default: every layer the command handles.",
         ),
     ] = None,
+    since: Annotated[
+        Optional[datetime],
+        Option(
+            "--since",
+            help="Maps whose ingest process was created on or after this date "
+            "(2026-11-17) or time (2026-11-17T14:00:00), local time.",
+        ),
+    ] = None,
 ):
-    """Select maps by slug, ingest-process tag and state, and their layers."""
+    """Select maps by slug, ingest-process creation date, tag and state, and
+    their layers."""
     ctx.obj = Selection(
         slug=tuple(slug or ()),
         exclude=tuple(exclude or ()),
@@ -3100,6 +3373,7 @@ def select(
         state=tuple(state or ()),
         start_after=start_after,
         layer=tuple(layer.value for layer in layer or ()),
+        since=since,
     )
 
 
@@ -3740,20 +4014,16 @@ def normalize_add_metadata_csv(
 @for_each("polygons")
 def normalize_calculate_age(
     target: TableTarget,
-    col_one: str = Option(..., "--col-one", help="Primary age source column"),
-    col_two: str = Option(..., "--col-two", help="Secondary age source column"),
-    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+    dry_run: bool = Option(False, "--dry-run", help="Ask, but write nothing"),
 ):
     """
-    Populate b_interval and t_interval using two user-provided columns,
-    falling back to era when present.
+    Review the polygons with no b_interval or t_interval, one map unit at a
+    time: shows its name, descrip, age and intervals, asks for its age ("Late
+    Pleistocene", "Miocene to Pliocene", or interval ids) and sets b_interval
+    and t_interval from the answer, and age to it. Select maps before the command:
+    normalize --slug 'arizona-%' --since 2026-11-17 calculate-age
     """
-    calculate_age_intervals(
-        target=target,
-        col_one=col_one,
-        col_two=col_two,
-        dry_run=dry_run,
-    )
+    review_ages(get_database(), target, dry_run=dry_run)
 
 
 @normalize_cli.command("copy-age")
@@ -3956,6 +4226,22 @@ def normalize_copy_orig_id(
         candidates=candidates,
         dry_run=dry_run,
     )
+
+
+@normalize_cli.command("calculate-orig-id")
+@for_each("polygons", "lines", "points")
+def normalize_calculate_orig_id(
+    target: TableTarget,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Give every polygon, line and point an orig_id, layer by layer: the map's
+    own id where an id-named column (objectid, *_id, *-id, *#) holds a unique
+    integer per feature, otherwise 1, 2, 3, ... An orig_id that is already
+    unique is kept. Select maps before the command:
+    normalize --slug 'arizona-%' --since 2026-11-17 calculate-orig-id
+    """
+    calculate_orig_id(get_database(), target, dry_run=dry_run)
 
 
 @normalize_cli.command("copy-line-type")
@@ -4416,17 +4702,12 @@ def normalize_fuzzy_match_lith(
     src: Optional[str] = Option(
         None,
         "--src",
-        help="Optional source column to use instead of auto-detecting the last non-empty column ending with 'e'.",
+        help="Source column to read instead of name and descrip.",
     ),
     threshold: float = Option(
         0.85,
         "--threshold",
         help="Per-token fuzzy-match threshold between 0 and 1.",
-    ),
-    row_copy_threshold_percent: float = Option(
-        10.0,
-        "--row-copy-threshold",
-        help="If a row's match percentage is greater than this value, copy matched lith strings directly into lith.",
     ),
     limit: Optional[int] = Option(
         None,
@@ -4440,9 +4721,9 @@ def normalize_fuzzy_match_lith(
     macrostrat.liths and macrostrat.lith_atts vocabularies.
 
     - if --src is provided, use that column
-    - otherwise auto-detect the last non-empty column whose name ends with 'e'
-    - if a row's match percentage is > --row-copy-threshold, write the matched
-      lith strings directly into lith for that same row/_pkid
+    - otherwise read name and descrip together, whichever the table has
+    - with neither, the last non-empty legend...e column
+    - every row with a match gets the matched liths and atts in lith
     """
 
     if src is not None and src.strip() != "":
@@ -4453,15 +4734,15 @@ def normalize_fuzzy_match_lith(
                 f"Column '{src_col}' does not exist in {target.schema}.{target.table}"
             )
     else:
-        src_col = find_last_nonempty_column_ending_with_e(target)
-
-    console.print(f"[green]Using source column:[/green] [bold]{src_col}[/bold]")
+        existing_cols = get_existing_columns(target)
+        src_col = [c for c in ("name", "descrip") if c in existing_cols]
+        if not src_col:
+            src_col = find_last_nonempty_column_ending_with_e(target)
 
     calculate_lith_fuzzy_match_percentages(
         target=target,
         src_col=src_col,
         threshold=threshold,
-        row_copy_threshold_percent=row_copy_threshold_percent,
         limit=limit,
         dry_run=dry_run,
     )
@@ -4702,6 +4983,95 @@ def normalize_add_tag(
     layer. Adding a tag the map already has is a no-op.
     """
     add_ingest_process_tag(slug, tag, dry_run=dry_run)
+
+
+#: The tag for a map whose staged features of a kind come from more than one
+#: source layer, set at ingest (data-integration's Arizona `ingest`).
+EXTRA_LAYERS_TAGS = {
+    "polygons": "extra-poly-layers",
+    "lines": "extra-line-layers",
+    "points": "extra-point-layers",
+}
+
+
+def omit_source_layers(
+    db, slug: str, target: TableTarget, patterns: list[str], dry_run: bool = False
+) -> None:
+    """Set omit = true on a table's features whose source_layer matches one of
+    `patterns` (ILIKE), then drop the map's extra-*-layers tag for the table's
+    kind if one source layer or none is left not omitted."""
+    columns = get_existing_columns(target)
+    if not {"source_layer", "omit"} <= columns:
+        console.print("[dim]No table with source_layer and omit[/dim]")
+        return
+    params = dict(table=target.fq_identifier, patterns=list(patterns))
+    matched = db.run_query(
+        """
+        SELECT source_layer, count(*) FILTER (WHERE omit IS NOT TRUE) AS n
+        FROM {table}
+        WHERE source_layer ILIKE ANY(CAST(:patterns AS text[]))
+        GROUP BY 1 ORDER BY 1
+        """,
+        params,
+    ).all()
+    if not matched:
+        console.print("[dim]No matching source layer[/dim]")
+        return
+    for layer, n in matched:
+        console.print(
+            f"  omit {n:>7,}  {layer}"
+            if n
+            else f"  [dim]already omitted  {layer}[/dim]"
+        )
+    if not dry_run and any(n for _, n in matched):
+        db.run_query(
+            """
+            UPDATE {table} SET omit = true
+            WHERE source_layer ILIKE ANY(CAST(:patterns AS text[]))
+              AND omit IS NOT TRUE
+            """,
+            params,
+        )
+        db.session.commit()
+
+    kept = db.run_query(
+        """
+        SELECT coalesce(array_agg(DISTINCT source_layer ORDER BY source_layer), '{{}}')
+        FROM {table}
+        WHERE omit IS NOT TRUE
+          AND NOT source_layer ILIKE ANY(CAST(:patterns AS text[]))
+        """,
+        params,
+    ).scalar()
+    tag = EXTRA_LAYERS_TAGS[target.layer]
+    if len(kept) > 1:
+        console.print(f"  [yellow]{tag} kept:[/yellow] still {', '.join(kept)}")
+    elif _has_ingest_process_tag(db, slug, tag):
+        remove_ingest_process_tag(slug, tag, dry_run=dry_run)
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+
+
+@normalize_cli.command("omit-source-layer")
+@for_each(*ALL_LAYERS)
+def normalize_omit_source_layer(
+    slug: str,
+    target: TableTarget,
+    patterns: list[str] = Option(
+        ...,
+        "--source-layer",
+        help="source_layer to omit, an ILIKE pattern ('%DataSourcePolys%'). "
+        "Repeatable.",
+    ),
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Set omit = true on the features of a source layer, such as the
+    DataSourcePolys staged beside MapUnitPolys. Then removes the map's
+    extra-poly-layers (extra-line-layers, extra-point-layers) tag if one source
+    layer is left. Never clears an omit.
+    """
+    omit_source_layers(get_database(), slug, target, patterns, dry_run=dry_run)
 
 
 @normalize_cli.command("remove-tag")

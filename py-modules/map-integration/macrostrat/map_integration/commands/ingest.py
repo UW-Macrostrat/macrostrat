@@ -233,7 +233,7 @@ def map_strat_name_ingest(db, df: P.DataFrame) -> P.DataFrame:
     if not sources:
         return df
 
-    lexicon, lexicon_names, vocabulary = _strat_name_vocabulary(db)
+    lexicon, lexicon_names, vocabulary, ordinary = _strat_name_vocabulary(db)
     common = {
         word.lower()
         for column in sources
@@ -246,7 +246,7 @@ def map_strat_name_ingest(db, df: P.DataFrame) -> P.DataFrame:
     def guess(text: str):
         if text not in guesses:
             names = named_units(text, lexicon, lexicon_names) or formal_names(
-                text, vocabulary, common
+                text, vocabulary, common, ordinary
             )
             guesses[text] = "; ".join(names) or None
         return guesses[text]
