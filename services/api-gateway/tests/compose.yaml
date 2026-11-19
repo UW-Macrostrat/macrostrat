@@ -38,6 +38,8 @@ services:
   tile_cache:
     <<: *gateway
     command: varnish
+    # Varnish resolves backend hostnames when it compiles the VCL
+    depends_on: [tileserver_core, tileserver_legacy]
     environment:
       GATEWAY_VCL: tiles
       TILESERVER_HOST: tileserver_core

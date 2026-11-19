@@ -6,14 +6,14 @@ on:
       - services/api-gateway/**
       - scripts/service-release
       - .github/workflows/build-service.yaml
-      - .github/workflows/build-gateway.yaml
+      - .github/workflows/build-api-gateway.yaml
   pull_request:
     branches: ["main"]
     paths:
       - services/api-gateway/**
       - scripts/service-release
       - .github/workflows/build-service.yaml
-      - .github/workflows/build-gateway.yaml
+      - .github/workflows/build-api-gateway.yaml
 jobs:
   test:
     runs-on: ubuntu-latest
