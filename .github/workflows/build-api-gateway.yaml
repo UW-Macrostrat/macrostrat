@@ -1,16 +1,16 @@
-name: Build gateway
+name: Build API gateway
 on:
   push:
     branches: ["main"]
     paths:
-      - services/gateway/**
+      - services/api-gateway/**
       - scripts/service-release
       - .github/workflows/build-service.yaml
       - .github/workflows/build-gateway.yaml
   pull_request:
     branches: ["main"]
     paths:
-      - services/gateway/**
+      - services/api-gateway/**
       - scripts/service-release
       - .github/workflows/build-service.yaml
       - .github/workflows/build-gateway.yaml
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/gateway
+        working-directory: services/api-gateway
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -43,7 +43,7 @@ jobs:
       contents: write
     uses: ./.github/workflows/build-service.yaml
     with:
-      service: gateway
-      image: gateway
-      context: services/gateway
+      service: api-gateway
+      image: api-gateway
+      context: services/api-gateway
     secrets: inherit

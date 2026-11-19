@@ -1,0 +1,136 @@
+# Local stack. /api passes Caddy → Varnish (gateway_cache) → Caddy :8080, as in
+# the cluster pod. Set GATEWAY_API_CACHE=localhost:8080 to skip the cache.
+import routes.caddy
+
+(local-api) {
+	import api-edge {$GATEWAY_API_CACHE:localhost:8000}
+}
+
+# Handler for requests post-Varnish.
+:8080 {
+	import api-routes
+}
+
+# Macrostrat.local domain is served by orbstack
+localhost, macrostrat.local {
+	tls internal
+
+	# If request is from dev.macrostrat.local or macrostrat.local, allow credentials and set the origin
+	@local_origin {
+		header Origin https://macrostrat.local
+		header Origin https://dev.macrostrat.local
+		header Origin http://localhost:3000
+	}
+
+	@external_origin {
+		not header Origin https://macrostrat.local
+		not header Origin https://dev.macrostrat.local
+		not header Origin http://localhost:3000
+	}
+
+	@api_v3_preflight {
+		method OPTIONS
+		path /api/v3/*
+	}
+
+	# Deferred, so these replace whatever CORS headers an upstream sent
+	header {
+		defer
+		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	}
+
+	header @external_origin {
+		defer
+		Access-Control-Allow-Origin *
+		-Access-Control-Allow-Credentials
+	}
+
+	header @local_origin {
+		defer
+		Access-Control-Allow-Origin "{http.request.header.Origin}"
+		Access-Control-Allow-Credentials true
+	}
+
+	# Handle CORS preflight requests from here
+	handle @api_v3_preflight {
+		header Access-Control-Allow-Headers "Authorization, Content-Type"
+		header Access-Control-Max-Age "86400"
+		respond "" 204
+	}
+
+	import local-api
+
+	# The legacy tileserver is served at a different domain in production
+	# but we keep it here to be straightforward for local development
+	handle_path /tiles/legacy/* {
+		reverse_proxy tileserver_legacy:8000
+	}
+
+	handle_path /tiles/* {
+		reverse_proxy tileserver_cache:8000
+	}
+
+	handle_path /cache/* {
+		reverse_proxy map-cache:8000
+	}
+
+	handle_path /* {
+		reverse_proxy web:3000
+	}
+}
+
+dev.macrostrat.local {
+	tls internal
+
+	import local-api
+
+	handle {
+		reverse_proxy host.docker.internal:3000
+	}
+}
+
+offline.macrostrat.local {
+	# An offline version of the frontend, if running
+}
+
+# Plain HTTP as well, for host-side clients: their Minio client verifies TLS
+# against certifi, which lacks OrbStack's CA. Containers use HTTPS.
+http://storage.macrostrat.local, https://storage.macrostrat.local {
+	tls internal
+	reverse_proxy storage:9000
+}
+
+storage-ui.macrostrat.local {
+	tls internal
+	reverse_proxy storage:9001
+}
+
+tiles.macrostrat.local {
+	tls internal
+	reverse_proxy tileserver_cache:8000 {
+		header_down -Access-Control-Allow-Origin
+		header_down -Access-Control-Allow-Credentials
+		header_down -Access-Control-Allow-Methods
+	}
+
+	# Local CORS headers
+
+	header {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	}
+}
+
+old.macrostrat.local {
+	tls internal
+
+	handle /api* {
+		# Proxy to same service but resetting domain
+		reverse_proxy localhost:80 {
+			header_up Host macrostrat.local
+		}
+	}
+	handle {
+		reverse_proxy web-legacy:80
+	}
+}

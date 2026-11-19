@@ -1,9 +1,9 @@
 services:
-  # Caddy and Varnish from one image (services/gateway), as in the cluster.
+  # Caddy and Varnish from one image (services/api-gateway), as in the cluster.
   gateway:
-    image: macrostrat.local/gateway:latest
+    image: macrostrat.local/api-gateway:latest
     build:
-      context: ../services/gateway
+      context: ../services/api-gateway
     command: caddy
     environment:
       - GATEWAY_ENV=local
@@ -19,20 +19,20 @@ services:
     volumes:
       # Mount the folder, not the file: a file mount pins the file's inode, so a
       # git checkout that replaces the Caddyfile leaves the container reading nothing.
-      - ../services/gateway/config:/etc/gateway
+      - ../services/api-gateway/config:/etc/gateway
     labels:
       - dev.orbstack.domains=macrostrat.local,storage.macrostrat.local,storage-ui.macrostrat.local,dev.macrostrat.local,tiles.macrostrat.local,old.macrostrat.local
   gateway_cache:
-    image: macrostrat.local/gateway:latest
+    image: macrostrat.local/api-gateway:latest
     build:
-      context: ../services/gateway
+      context: ../services/api-gateway
     command: varnish
     # Shares the gateway's network namespace, as the containers of the cluster pod do
     network_mode: service:gateway
     environment:
       - GATEWAY_VCL=api
     volumes:
-      - ../services/gateway/config:/etc/gateway
+      - ../services/api-gateway/config:/etc/gateway
   database:
     # PostgreSQL 13 is needed in order to allow force-dropping the database
     # (in testing mode)
@@ -186,9 +186,9 @@ services:
       - PGRST_DB_AGGREGATES_ENABLED=true
   # Tileserver
   tileserver_cache:
-    image: macrostrat.local/gateway:latest
+    image: macrostrat.local/api-gateway:latest
     build:
-      context: ../services/gateway
+      context: ../services/api-gateway
     command: varnish
     environment:
       - GATEWAY_VCL=tiles
@@ -200,7 +200,7 @@ services:
       # `macrostrat up` reloads the VCL (see restart_commands in macrostrat.core.main),
       # which picks up edits here and re-resolves the backend hostnames. A folder
       # mount, for the same reason as the gateway's.
-      - ../services/gateway/config:/etc/gateway
+      - ../services/api-gateway/config:/etc/gateway
   tileserver_core:
     image: hub.opensciencegrid.org/macrostrat/tileserver:main
     build:

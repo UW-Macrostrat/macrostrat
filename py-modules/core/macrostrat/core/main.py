@@ -159,7 +159,7 @@ class Macrostrat(Application):
                 # dialing a stale container IP, and every core-backed tile route
                 # 503s until varnish itself is restarted. Reloading the VCL
                 # re-resolves the backends (and picks up edits to
-                # services/gateway/config/varnish) without dropping cached objects.
+                # services/api-gateway/config/varnish) without dropping cached objects.
                 "tileserver_cache": "gateway reload-varnish",
                 "gateway_cache": "gateway reload-varnish",
             },

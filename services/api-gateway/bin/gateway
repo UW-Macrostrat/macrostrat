@@ -1,0 +1,73 @@
+#!/bin/sh
+# Entrypoint: one image runs as separate Caddy and Varnish containers.
+#
+#   gateway caddy            Caddy with config/caddy/Caddyfile.$GATEWAY_ENV (cluster | local)
+#   gateway varnish [args]   Varnish with config/varnish/$GATEWAY_VCL.vcl (api | tiles)
+#   gateway reload-caddy     reload Caddy's configuration in place
+#   gateway reload-varnish   re-render and reload the VCL, keeping cached objects
+#   gateway validate         check every Caddyfile and VCL
+#   gateway write-version F  write the build's version JSON to F
+set -eu
+
+CONFIG=${GATEWAY_CONFIG_DIR:-/etc/gateway}
+RENDERED=${GATEWAY_RENDER_DIR:-/tmp/gateway}
+
+caddyfile() {
+	echo "$CONFIG/caddy/Caddyfile.${GATEWAY_ENV:-cluster}"
+}
+
+# Varnish backends cannot read the environment, so ${VAR} and ${VAR:-default} are
+# substituted before loading; an unset variable without a default is an error.
+render_vcl() {
+	mkdir -p "$RENDERED"
+	perl -pe 's/\$\{(\w+)(?::-([^}]*))?\}/(defined $ENV{$1} && $ENV{$1} ne "") ? $ENV{$1} : defined $2 ? $2 : die "gateway: $1 is not set\n"/ge' \
+		"$CONFIG/varnish/$1.vcl" >"$RENDERED/$1.vcl.tmp"
+	mv "$RENDERED/$1.vcl.tmp" "$RENDERED/$1.vcl"
+	echo "$RENDERED/$1.vcl"
+}
+
+json_value() {
+	if [ -z "$1" ]; then echo null; else echo "\"$1\""; fi
+}
+
+command=${1:-caddy}
+[ $# -gt 0 ] && shift
+
+case "$command" in
+caddy)
+	exec caddy run --config "$(caddyfile)" --adapter caddyfile
+	;;
+varnish)
+	vcl=$(render_vcl "${GATEWAY_VCL:-api}")
+	exec varnishd -F -f "$vcl" -a ":${VARNISH_HTTP_PORT:-8000}" -s "malloc,${VARNISH_SIZE:-100M}" "$@"
+	;;
+reload-caddy)
+	exec caddy reload --config "$(caddyfile)" --adapter caddyfile
+	;;
+reload-varnish)
+	vcl=$(render_vcl "${GATEWAY_VCL:-api}")
+	exec varnishreload "$vcl"
+	;;
+validate)
+	for env in cluster local; do
+		GATEWAY_ENV=$env caddy validate --config "$(GATEWAY_ENV=$env caddyfile)" --adapter caddyfile
+	done
+	# Placeholder backends: varnishd -C only compiles, it never connects
+	export TILESERVER_HOST=${TILESERVER_HOST:-localhost} TILESERVER_LEGACY_HOST=${TILESERVER_LEGACY_HOST:-localhost}
+	for vcl in api tiles; do
+		if ! varnishd -C -f "$(render_vcl $vcl)" >/dev/null 2>"$RENDERED/vcc.log"; then
+			cat "$RENDERED/vcc.log" >&2
+			exit 1
+		fi
+		echo "$vcl.vcl compiles"
+	done
+	;;
+write-version)
+	cat >"$1" <<-EOF
+		{"service": "api-gateway", "version": $(json_value "${MACROSTRAT_VERSION:-}"), "release": $([ "${MACROSTRAT_RELEASE:-}" = true ] && echo true || echo false), "commit": $(json_value "${MACROSTRAT_COMMIT:-}"), "build_date": $(json_value "${MACROSTRAT_BUILD_DATE:-}"), "repository": $(json_value "${MACROSTRAT_REPOSITORY:-}")}
+	EOF
+	;;
+*)
+	exec "$command" "$@"
+	;;
+esac

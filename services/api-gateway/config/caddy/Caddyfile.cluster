@@ -1,0 +1,28 @@
+# Cluster gateway. Traefik terminates TLS and routes /api here; requests pass
+# Caddy :80 → Varnish :8000 → Caddy :8080, all in one pod.
+import routes.caddy
+
+:80 {
+	import api-edge localhost:8000
+
+	log {
+		output stdout
+		format console
+	}
+
+	# Don't set server header
+	header /* {
+		-Server
+		-X-Powered-By
+
+		# Set CORS headers if they are not already set
+		?Access-Control-Allow-Origin *
+		?Access-Control-Allow-Methods GET,POST,OPTIONS,PUT,PATCH,DELETE
+		?Access-Control-Allow-Headers X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Range-Unit,Content-Range
+	}
+}
+
+# Handler for requests post-Varnish.
+:8080 {
+	import api-routes
+}
