@@ -26,6 +26,8 @@ COLUMNS = [
     (6, 3, "active", "POINT(1.1 0.5)", None),
     (7, 3, "obsolete", "POINT(0.6 0.6)", None),
     (8, 3, "active", "POINT(5 5)", None),
+    # Another hole at the same site, ~330 m off
+    (9, 3, "active", "POINT(5.003 5)", None),
 ]
 
 
@@ -60,7 +62,10 @@ def database(test_db_macrostrat_schema_only):
                         " status_code, col_type, col_position, col, col_name, lat, lng,"
                         " col_area, created, coordinate, poly_geom)"
                         " SELECT :id, :p, :p, CAST(:status AS macrostrat.cols_status_code),"
-                        " 'column', '', :id, 'Column ' || :id, ST_Y(pt), ST_X(pt), 0,"
+                        # Regions stand for composites, points for measured sections
+                        " CASE WHEN CAST(:region AS text) IS NULL THEN 'section'"
+                        " ELSE 'column' END::macrostrat.cols_col_type, '', :id,"
+                        " 'Column ' || :id, ST_Y(pt), ST_X(pt), 0,"
                         " now(), pt, ST_GeomFromText(:region, 4326)"
                         " FROM ST_GeomFromText(:point, 4326) pt"
                     ),
@@ -85,24 +90,49 @@ def relations(result):
     }
 
 
-def test_other_projects_by_relation(client):
+def test_overlapping_and_adjacent(client):
     res = client.get(f"/columns/{SUBJECT}/nearby")
     assert res.status_code == 200, res.text
-    # A point inside and an overlapping region overlap; an edge-sharing region
-    # and a point ~11 km off are only nearby. Own project, obsolete and far
-    # columns are left out.
+    # Points inside and an overlapping region overlap, the own project's
+    # included; an edge-sharing region is nearby. A point ~11 km off is
+    # beyond the default kilometre; obsolete and far columns are left out.
     assert relations(res.json()) == {
+        2: "overlaps",
         3: "overlaps",
         4: "overlaps",
         5: "nearby",
-        6: "nearby",
     }
 
 
-def test_grouped_by_project_most_overlapping_first(client):
-    projects = client.get(f"/columns/{SUBJECT}/nearby").json()["projects"]
-    assert [p["project_id"] for p in projects] == [2, 3]
-    assert (projects[0]["n_columns"], projects[0]["n_overlapping"]) == (3, 2)
+def test_holes_at_one_site(client):
+    result = client.get("/columns/8/nearby").json()
+    assert relations(result) == {9: "nearby"}
+    (column,) = result["projects"][0]["columns"]
+    assert 0.3 < column["distance_km"] < 0.4
+    assert (result["col_type"], column["col_type"]) == ("section", "section")
+
+
+def test_column_types(client):
+    result = client.get(f"/columns/{SUBJECT}/nearby").json()
+    types = {
+        c["col_id"]: c["col_type"] for p in result["projects"] for c in p["columns"]
+    }
+    assert result["col_type"] == "column"
+    assert types == {2: "section", 3: "section", 4: "column", 5: "column"}
+
+
+def test_wider_radius(client):
+    result = client.get(f"/columns/{SUBJECT}/nearby", params={"radius_km": 25})
+    assert relations(result.json())[6] == "nearby"
+
+
+def test_own_project_then_most_overlapping(client):
+    projects = client.get(
+        f"/columns/{SUBJECT}/nearby", params={"radius_km": 25}
+    ).json()["projects"]
+    # Project 2 overlaps most, but the subject's own project leads
+    assert [p["project_id"] for p in projects] == [1, 2, 3]
+    assert (projects[1]["n_columns"], projects[1]["n_overlapping"]) == (3, 2)
 
 
 def test_overlap_fraction_for_regions_only(client):
@@ -114,18 +144,24 @@ def test_overlap_fraction_for_regions_only(client):
 
 def test_point_finds_the_region_around_it(client):
     result = client.get("/columns/3/nearby", params={"radius_km": 0}).json()
-    assert relations(result) == {SUBJECT: "overlaps"}
+    assert relations(result) == {SUBJECT: "overlaps", 4: "overlaps"}
 
 
-def test_per_project_cap_and_own_project(client):
+def test_per_project_cap(client):
     result = client.get(
-        f"/columns/{SUBJECT}/nearby",
-        params={"per_project": 1, "include_same_project": True},
+        f"/columns/{SUBJECT}/nearby", params={"per_project": 1, "radius_km": 25}
     ).json()
     by_project = {p["project_id"]: p for p in result["projects"]}
     assert set(by_project) == {1, 2, 3}
     assert [len(p["columns"]) for p in by_project.values()] == [1, 1, 1]
     assert by_project[2]["n_columns"] == 3
+
+
+def test_other_projects_only(client):
+    result = client.get(
+        f"/columns/{SUBJECT}/nearby", params={"include_same_project": False}
+    ).json()
+    assert [p["project_id"] for p in result["projects"]] == [2]
 
 
 def test_missing_column(client):

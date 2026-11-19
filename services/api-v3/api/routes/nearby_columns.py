@@ -1,14 +1,16 @@
 """
-`GET /columns/{col_id}/nearby`: columns of other projects covering the same ground.
+`GET /columns/{col_id}/nearby`: columns covering the same ground as this one.
 
 Projects compiled independently over one region (GBDB and ChinaLex, say) are not
-drawn together on any map, so this is how a column page links across to them.
+drawn together on any map, so this is how a column page links across to them. Within
+a project it links the holes of one drilling site, as in eODP.
 
 A column's footprint is its region where it has one, else its point. Two columns
 *overlap* when their footprints share interior — a point inside a region, or two
 regions overlapping — so Voronoi neighbours that only share an edge do not. Other
 columns within `radius_km` come back as *nearby*, which is the only way two
-point-only columns can meet.
+point-only columns can meet. The default kilometre takes in 97% of eODP holes
+at the same site, which lie a median 26 m apart.
 """
 
 from typing import Annotated, Literal, Optional
@@ -57,6 +59,7 @@ matched AS (
     c.col_group_id,
     c.project_id,
     c.status_code::text AS status_code,
+    c.col_type::text AS col_type,
     ST_Relate(k.footprint, s.footprint, 'T********') AS overlaps,
     ST_Distance(
       coalesce(k.point, ST_PointOnSurface(k.footprint))::geography,
@@ -98,16 +101,20 @@ SELECT
   p.project,
   p.slug AS project_slug,
   r.status_code,
+  r.col_type,
   CASE WHEN r.overlaps THEN 'overlaps' ELSE 'nearby' END AS relation,
   r.distance_km::float AS distance_km,
   r.overlap_fraction::float AS overlap_fraction,
   r.n_project,
   r.n_project_overlapping
 FROM ranked r
+CROSS JOIN subject s
 JOIN macrostrat.projects p ON p.id = r.project_id
 LEFT JOIN macrostrat.col_groups g ON g.id = r.col_group_id
-WHERE r.rank <= :per_project
-ORDER BY r.n_project_overlapping DESC, r.project_id, r.rank
+WHERE CAST(:per_project AS integer) IS NULL
+  OR r.rank <= CAST(:per_project AS integer)
+ORDER BY r.project_id = s.project_id DESC, r.n_project_overlapping DESC,
+  r.project_id, r.rank
 """)
 
 
@@ -117,6 +124,8 @@ class NearbyColumn(BaseModel):
     col_group_id: Optional[int] = None
     col_group: Optional[str] = None
     status_code: str
+    #: `section` for a measured section, `column` for a composite.
+    col_type: str
     #: `overlaps` when the footprints share interior; `nearby` within the radius.
     relation: Literal["overlaps", "nearby"]
     #: Between the two columns' points.
@@ -129,7 +138,7 @@ class NearbyProject(BaseModel):
     project_id: int
     project: str
     slug: Optional[str] = None
-    #: Every match in the project, of which `columns` holds the nearest.
+    #: Every match in the project; `columns` holds the nearest when capped.
     n_columns: int
     n_overlapping: int
     columns: list[NearbyColumn]
@@ -137,36 +146,41 @@ class NearbyProject(BaseModel):
 
 class NearbyColumnsResult(BaseModel):
     col_id: int
+    col_type: str
     radius_km: float
     projects: list[NearbyProject]
 
 
-@router.get("/{col_id}/nearby", summary="Columns of other projects at this place")
+@router.get("/{col_id}/nearby", summary="Columns at this place")
 async def get_nearby_columns(
     col_id: int,
     database: DatabaseDep,
     radius_km: Annotated[
         float,
         Query(ge=0, le=500, description="Reach beyond the footprint for 'nearby'"),
-    ] = 25,
+    ] = 1,
     per_project: Annotated[
-        int, Query(ge=1, le=500, description="Nearest columns to return per project")
-    ] = 25,
+        Optional[int],
+        Query(ge=1, description="Nearest columns to return per project; all if unset"),
+    ] = None,
     include_same_project: Annotated[
         bool, Query(description="Also return this column's own project")
-    ] = False,
+    ] = True,
 ) -> NearbyColumnsResult:
     """Columns overlapping or near this one, grouped by project.
 
-    Projects with the most overlapping columns come first; within a project,
-    overlapping columns precede nearby ones, nearest first.
+    The column's own project comes first, then those with the most overlapping
+    columns; within a project, overlapping columns precede nearby ones, nearest
+    first.
     """
     async with database.async_connection() as conn:
-        exists = await conn.execute(
-            text("SELECT 1 FROM macrostrat.cols WHERE id = :col_id"),
-            {"col_id": col_id},
-        )
-        if exists.first() is None:
+        col_type = (
+            await conn.execute(
+                text("SELECT col_type::text FROM macrostrat.cols WHERE id = :col_id"),
+                {"col_id": col_id},
+            )
+        ).scalar()
+        if col_type is None:
             raise HTTPException(404, f"No column {col_id}")
         res = await conn.execute(
             NEARBY_COLUMNS,
@@ -195,5 +209,8 @@ async def get_nearby_columns(
         project.columns.append(NearbyColumn(**row))
 
     return NearbyColumnsResult(
-        col_id=col_id, radius_km=radius_km, projects=list(projects.values())
+        col_id=col_id,
+        col_type=col_type,
+        radius_km=radius_km,
+        projects=list(projects.values()),
     )
