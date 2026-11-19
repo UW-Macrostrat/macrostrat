@@ -3,13 +3,15 @@
 Load working data into PostgreSQL: a table is created to match the file and the
 rows are streamed in with `COPY`. This is the library behind `macrostrat db
 load-csv` and `macrostrat db load-geo`, and what data-integration pipelines call
-to bring GIS layers into `temp`.
+to bring CSVs and GIS layers into `temp`.
 
 Functions take a SQLAlchemy `Engine` and raise `LoadError` when a load cannot
 proceed as asked, so they work the same from the CLI, a pipeline or a notebook.
 
 ```python
-from macrostrat.loader_utils import load_layer
+from macrostrat.loader_utils import load_csv, load_layer
+
+load_csv(db.engine, "units.csv", table="units_csv", replace=True)
 
 load_layer(
     db.engine,

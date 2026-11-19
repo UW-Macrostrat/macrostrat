@@ -10,23 +10,12 @@ from pathlib import Path
 from sys import stderr, stdin
 from typing import IO, Optional, Union
 
-import polars as pl
 import typer
 from rich import print
 from sqlalchemy.engine import Engine
 from typer import Argument, Option
 
-from macrostrat.loader_utils import (
-    LoadError,
-    check_target,
-    comment_original_names,
-    copy_dataframe,
-    create_table,
-    dedupe,
-    identifier,
-    pg_type,
-    render_ddl,
-)
+from macrostrat.loader_utils import LoadError, load_csv, render_ddl
 from macrostrat.utils import get_logger
 
 from .utils import engine_for_db_name
@@ -34,7 +23,7 @@ from .utils import engine_for_db_name
 log = get_logger(__name__)
 
 
-def load_csv(
+def load_csv_command(
     files: list[Path] = Argument(
         ..., help="CSV file(s) to load. Use [cyan]-[/] to read from stdin."
     ),
@@ -113,74 +102,39 @@ def _load_one(
     all_text: bool = False,
     dry_run: bool = False,
 ):
+    source: Union[Path, IO[bytes]] = file
+    label = str(file)
     if str(file) == "-":
         if table is None:
             raise typer.BadParameter("--table is required when reading from stdin")
-        source: Union[Path, IO[bytes]] = BytesIO(stdin.buffer.read())
+        source = BytesIO(stdin.buffer.read())
         label = "<stdin>"
-    else:
-        if not file.exists():
-            raise typer.BadParameter(f"File {file} does not exist")
-        source = file
-        label = str(file)
-        if table is None:
-            # Strip every suffix, so 'foo.csv.gz' becomes 'foo'
-            table = identifier(file.name.split(".")[0], fallback="table")
-
-    # Read the header ourselves and hand polars the sanitized names. Left to its
-    # own devices, polars renames duplicate headers to '<name>_duplicated_0',
-    # which would then leak into the column names we generate.
-    original_columns = _read_header(source, separator)
-    columns = dedupe([identifier(c) for c in original_columns])
-
-    df = pl.read_csv(
-        source,
-        separator=separator,
-        has_header=True,
-        new_columns=columns,
-        # None scans the entire file, which is what we want for working data: a
-        # partial scan silently mistypes columns whose surprises come late.
-        infer_schema_length=infer_rows or None,
-        infer_schema=not all_text,
-        null_values=null_values,
-        try_parse_dates=not all_text,
-    )
-
-    types = [pg_type(dtype) for dtype in df.schema.values()]
-
-    if dry_run:
-        print(render_ddl(engine, schema, table, columns, types))
-        return
-
-    print(
-        f"[dim]Loading[/] [bold cyan]{label}[/] [dim]→[/] "
-        f"[bold green]{schema}.{table}[/] "
-        f"[dim]({df.height} rows, {df.width} columns)[/]",
-        file=stderr,
-    )
 
     try:
-        check_target(engine, schema, table, replace=replace, append=append)
+        result = load_csv(
+            engine,
+            source,
+            schema=schema,
+            table=table,
+            replace=replace,
+            append=append,
+            separator=separator,
+            infer_rows=infer_rows,
+            null_values=null_values,
+            all_text=all_text,
+            dry_run=dry_run,
+        )
     except LoadError as err:
         raise typer.BadParameter(str(err)) from err
 
-    if not append:
-        create_table(engine, schema, table, columns, types, replace=replace)
-        comment_original_names(engine, schema, table, original_columns, columns)
+    if dry_run:
+        print(render_ddl(engine, schema, result.table, result.columns, result.types))
+        return
 
-    n = copy_dataframe(engine, df, schema, table, columns)
-    print(f"[dim]Copied[/] [bold green]{n}[/] [dim]rows[/]", file=stderr)
-
-
-def _read_header(source: Union[Path, IO[bytes]], separator: str) -> list[str]:
-    """Read just the header row of a CSV, leaving the source re-readable"""
-    frame = pl.read_csv(
-        source,
-        separator=separator,
-        has_header=False,
-        n_rows=1,
-        infer_schema=False,
+    print(
+        f"[dim]Loaded[/] [bold cyan]{label}[/] [dim]→[/] "
+        f"[bold green]{schema}.{result.table}[/] "
+        f"[dim]({result.rows} rows, {len(result.columns)} columns; "
+        f"copied {result.copied})[/]",
+        file=stderr,
     )
-    if isinstance(source, BytesIO):
-        source.seek(0)
-    return list(frame.row(0))

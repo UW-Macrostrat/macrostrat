@@ -534,7 +534,7 @@ except ImportError as err:
     pass
 
 try:
-    from macrostrat.column_ingestion import app as column_app
+    from macrostrat.column_ingestion.cli import app as column_app
 
     main.add_typer(
         column_app,

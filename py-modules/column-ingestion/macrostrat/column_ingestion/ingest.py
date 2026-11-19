@@ -502,6 +502,8 @@ def _write_chunk(db, columns: list[Column]):
     log.info("Ingesting %s columns, from %s", len(columns), columns[0].name)
     # Sections first, so every unit is written against a section that exists.
     reconcile_column_sections(db, {col.id: col.sections for col in columns})
+    for col in columns:
+        _thickness_from_positions(col)
     write_units(db, [section for col in columns for section in col.sections])
 
     boundaries = {}
@@ -516,6 +518,20 @@ def _write_chunk(db, columns: list[Column]):
                 )
         boundaries.update(built)
     reconcile_section_boundaries(db, boundaries)
+
+
+def _thickness_from_positions(col: Column) -> None:
+    """Give units without a thickness their span, on a height or depth axis only.
+
+    Age-axis positions only order the surfaces, so their span is no thickness.
+    """
+    if PositionAxisType.from_axis_type(col.axis_type) is PositionAxisType.ORDINAL:
+        return
+    for unit in col.units:
+        given = unit.min_thick is not None or unit.max_thick is not None
+        if given or unit.t_pos is None or unit.b_pos is None:
+            continue
+        unit.min_thick = unit.max_thick = abs(float(unit.t_pos) - float(unit.b_pos))
 
 
 def _describe(err: Exception) -> str:
