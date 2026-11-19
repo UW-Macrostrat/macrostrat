@@ -54,6 +54,8 @@ QUALIFIED_ALIASES = {
 #: Unit names whose age is known though the name gives none, matched whole.
 NAMED_AGES = {
     "historical river terrace deposits": "holocene",
+    "disturbed ground": "holocene",
+    "disturbed areas": "holocene",
 }
 
 CONNECTORS = {"to", "or", "and", "-", ","}
