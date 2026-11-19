@@ -30,6 +30,7 @@ dependencies = [
     "macrostrat.column-utils",
     "macrostrat.map_utils",
     "macrostrat.task-runner",
+    "macrostrat.raster-tasks",
     "morecantile>=7.0.2",
     "pydantic-settings>2",
     "celery[redis]>=5.3,<6"
@@ -56,3 +57,4 @@ build-backend = "hatchling.build"
 "macrostrat.column-utils" = { editable = true, path = "../../py-modules/column-utils" }
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
 "macrostrat.task-runner" = { path = "../../py-modules/task-runner", editable = true }
+"macrostrat.raster-tasks" = { path = "../../py-modules/raster-tasks", editable = true }

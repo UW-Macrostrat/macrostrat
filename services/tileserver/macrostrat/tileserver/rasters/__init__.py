@@ -17,50 +17,54 @@ mineral from a list instead of hand-editing a URL (see `_class_renders`).
 
 from dataclasses import dataclass
 from os import environ
-from typing import Optional
+from typing import Callable, Optional
 
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from typing_extensions import Annotated
 
 from macrostrat.utils import get_logger
 
-from ..auth import require_scope
+from ..auth import require_layer_scope, require_scope
 from ..sync_engine import sync_engine
 
 log = get_logger(__name__)
 
 __all__ = ["register_raster_routes", "RASTER_LAYERS", "RASTER_PREFIX"]
 
-# Where raster layers are mounted. Each layer lands at `<RASTER_PREFIX>/<slug>`,
-# and the factory has to be *told* that prefix as well as mounted at it — see
-# `_layer_router`.
+# Where raster layers are mounted. The factory has to be *told* its prefix as
+# well as mounted at it — see `_layer_router`.
 RASTER_PREFIX = "/rasters"
+
+# Any indexed layer, by name, rendered from its row in the index unless a
+# configured layer of the same slug overrides it.
+NAMED_LAYER_PREFIX = RASTER_PREFIX + "/layer/{layer}"
+# The website's own tile scope (`map_tiles.SCOPE`), so its one token covers these;
+# a delegated token scoped `rasters:<layer>` reads that layer alone.
+NAMED_LAYER_SCOPE = "tiles:map"
+
+# One indexed raster by id, in a layer or not: how a raster waiting in the inbox
+# is looked at before it is placed. `raster` is likewise not a configured slug.
+SINGLE_RASTER_PREFIX = RASTER_PREFIX + "/raster/{raster_id}"
 
 
 def raster_layer_configs():
-    """Macrostrat's canned raster layers."""
+    """Layers whose handling overrides the by-name defaults.
+
+    Each is served at the by-name address of its slug, so a layer needs one
+    only to change how it is read or drawn — resampling, compositing several
+    index layers, backend options — never to be served at all.
+    """
     from macrostrat.raster_layers import RasterLayerConfig
 
     from ..elevation import ELEVATION_LAYERS, supports_elevation
 
-    configs = [
-        # Mineral maps derived from EMIT hyperspectral data (Zaid Al-Attar and
-        # Thomas Monecke, Colorado School of Mines). Single-band Byte
-        # classifications with an embedded palette: `nearest` resampling is
-        # required — interpolating between class indices invents minerals — and
-        # the colormap comes from the layer definition in the index.
-        RasterLayerConfig(
-            slug="emit-minerals",
-            title="EMIT mineral maps",
-            resampling="nearest",
-        ),
-    ]
+    configs = []
 
     if supports_elevation():
         # Global elevation and bathymetry, as a mosaic: SRTM GL1 over SRTM15+
         # (see `..elevation` for the layers and the pipeline that registers
         # them). Continuous int16 / float32 data, so the opposite defaults to
-        # the EMIT case — bilinear, no class machinery — and scale-aware, so a
+        # a categorical layer — bilinear, no class machinery — and scale-aware, so a
         # coarse request is read from the coarse product rather than opening
         # every fine tile it touches. The elevation *service* (`/elevation`)
         # is separate; this is the raster view of the same layers.
@@ -149,7 +153,7 @@ def _supported_tms():
     return TileMatrixSets({"WebMercatorQuad": morecantile.tms.get("WebMercatorQuad")})
 
 
-def _class_renders(index, layer_slugs):
+def _class_renders(index):
     """One WMTS layer per class, so GIS clients can pick a mineral from a list.
 
     WMTS has no way to filter a layer by pixel value — no OGC standard does — and
@@ -159,11 +163,12 @@ def _class_renders(index, layer_slugs):
     all.
 
     Resolved per Capabilities request rather than at startup, so classes added to
-    the layer later show up without a restart.
+    the layer later show up without a restart. The slugs are the backend's input,
+    so a by-name layer advertises the vocabulary of whichever layer the path names.
     """
 
     def get_renders(src_dst):
-        for slug in layer_slugs:
+        for slug in src_dst.input:
             categories = index.get_categories(slug)
             if categories:
                 return {c.label: {"classes": c.label} for c in categories}
@@ -183,7 +188,7 @@ def _layer_router(config, index, prefix: str):
     not tell it where it lives, and titiler builds absolute URLs from
     `router_prefix`: leaving it empty makes every URL the layer advertises —
     TileJSON `tiles`, and the WMTS `ResourceURL` templates — point at
-    `/tiles/...` instead of `/rasters/<slug>/tiles/...`, which 404s. Nothing in
+    `/tiles/...` instead of `/rasters/layer/<slug>/tiles/...`, which 404s. Nothing in
     Macrostrat's own web client noticed, because it builds tile URLs itself.
     """
     from titiler.mosaic.extensions.wmts import wmtsExtension
@@ -207,10 +212,83 @@ def _layer_router(config, index, prefix: str):
         optional_headers=config.optional_headers,
         router_prefix=prefix,
         supported_tms=_supported_tms(),
-        extensions=[
-            wmtsExtension(get_renders=_class_renders(index, config.layer_slugs))
-        ],
+        extensions=[wmtsExtension(get_renders=_class_renders(index))],
         **overrides,
+    )
+    return factory.router
+
+
+def _named_layer(
+    layer: Annotated[str, Path(description="Slug of a layer in the raster index")],
+) -> list[str]:
+    return [layer]
+
+
+def _named_layer_router(index, prefix: str):
+    """The mosaic routes for whichever layer the path names.
+
+    Rendered from the layer's row alone — its colormap and class vocabulary —
+    with none of the per-layer curation a configured mount carries. `nearest`
+    because it is the only resampling that is safe without knowing whether the
+    layer is categorical; `?resampling=` overrides it.
+    """
+    from titiler.mosaic.extensions.wmts import wmtsExtension
+
+    from macrostrat.raster_layers import RasterMosaicFactory
+
+    factory = RasterMosaicFactory(
+        index=index,
+        path_dependency=_named_layer,
+        dataset_dependency=_dataset_params("nearest"),
+        router_prefix=prefix,
+        supported_tms=_supported_tms(),
+        class_filtering=False,
+        process_dependency=_class_filter_dependency(),
+        extensions=[wmtsExtension(get_renders=_class_renders(index))],
+    )
+    return factory.router
+
+
+def _href_lookup(index) -> Callable[[int], Optional[str]]:
+    """Where a raster lives, by its id in the index."""
+    from sqlalchemy import text
+
+    sql = text("SELECT href FROM raster_layers.raster WHERE id = :id")
+
+    def lookup(raster_id: int) -> Optional[str]:
+        with index.engine.connect() as conn:
+            return conn.execute(sql, dict(id=raster_id)).scalar()
+
+    return lookup
+
+
+def _single_raster_router(lookup: Callable[[int], Optional[str]], prefix: str):
+    """One raster's own routes, read straight from the file.
+
+    No layer is involved, so none of a layer's rendering applies: the picture
+    is the file's own colormap if it has one, else `?rescale=` and
+    `?colormap_name=`. The id is resolved here, so only an indexed raster can
+    be read — never an address the caller supplies.
+    """
+    from titiler.core.factory import TilerFactory
+
+    def raster_href(
+        raster_id: Annotated[int, Path(description="Id of a raster in the index")],
+    ) -> str:
+        href = lookup(raster_id)
+        if href is None:
+            raise HTTPException(status_code=404, detail=f"No raster {raster_id}")
+        return href
+
+    factory = TilerFactory(
+        path_dependency=raster_href,
+        dataset_dependency=_dataset_params("nearest"),
+        router_prefix=prefix,
+        supported_tms=_supported_tms(),
+        # Tiles, TileJSON, info, statistics and point are what a preview needs.
+        add_preview=False,
+        add_part=False,
+        add_viewer=False,
     )
     return factory.router
 
@@ -262,33 +340,34 @@ def register_raster_routes(app: FastAPI, database_url: Optional[str] = None) -> 
     # half of what that function does, and they are needed either way: without
     # them a tile past the edge of coverage is a 5xx.
     install_exception_handlers(app)
+
+    # Overrides first: Starlette takes the first matching route, so these win
+    # over the generic `{layer}` router below for their own slugs.
     for config in configs:
-        prefix = f"{RASTER_PREFIX}/{config.slug}"
+        prefix = NAMED_LAYER_PREFIX.format(layer=config.slug)
         app.include_router(
             _layer_router(config, index, prefix),
             prefix=prefix,
             tags=["Rasters"],
-            # Every route the layer exposes needs a delegated token scoped to
-            # it — not just the tiles. `/point` returns the underlying values
-            # and `/footprints` reveals where the datasets live, so gating the
-            # tiles alone would protect the picture and not the data. Applied
-            # per layer, so a layer added later gets its own scope rather than
-            # inheriting this one.
-            dependencies=[Depends(require_scope(f"rasters:{config.slug}"))],
+            # Router-wide, so `/point` and `/footprints` are guarded too, not
+            # just the picture. The same scopes the generic router accepts.
+            dependencies=[
+                Depends(require_scope(NAMED_LAYER_SCOPE, f"rasters:{config.slug}"))
+            ],
         )
 
-    # Register cache invalidation routes for the raster layers.
-    # TODO: we might move this, either into the layer config
-    # or out into the cache management cluster of routes...
-    for cfg in configs:
-        prefix = f"rasters/{cfg.slug}"
-        url = f"/{prefix}/refresh"
+    app.include_router(
+        _named_layer_router(index, NAMED_LAYER_PREFIX),
+        prefix=NAMED_LAYER_PREFIX,
+        tags=["Rasters"],
+        dependencies=[Depends(require_layer_scope(NAMED_LAYER_SCOPE))],
+    )
 
-        def _invalidate_cache():
-            from ..cache_management import _flush_l1_cache
-
-            _flush_l1_cache(prefix)
-
-        app.add_api_route(url, _invalidate_cache, methods=["POST"], tags=["Rasters"])
+    app.include_router(
+        _single_raster_router(_href_lookup(index), SINGLE_RASTER_PREFIX),
+        prefix=SINGLE_RASTER_PREFIX,
+        tags=["Rasters"],
+        dependencies=[Depends(require_scope(NAMED_LAYER_SCOPE))],
+    )
 
     return True

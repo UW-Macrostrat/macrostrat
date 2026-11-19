@@ -154,6 +154,7 @@ dependencies = [
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-raster-tasks" },
     { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "morecantile" },
@@ -195,6 +196,7 @@ requires-dist = [
     { name = "macrostrat-map-topology", editable = "../../py-modules/map-topology" },
     { name = "macrostrat-map-utils", editable = "../../py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "../../py-modules/match-utils" },
+    { name = "macrostrat-raster-tasks", editable = "../../py-modules/raster-tasks" },
     { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
@@ -1007,6 +1009,27 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pydantic", specifier = ">=2.12.4" },
 ]
+
+[[package]]
+name = "macrostrat-raster-tasks"
+version = "0.1.0"
+source = { editable = "../../py-modules/raster-tasks" }
+dependencies = [
+    { name = "macrostrat-task-runner" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.5.0,<1" },
+    { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "rich", marker = "extra == 'index'", specifier = ">=13" },
+]
+provides-extras = ["index"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "macrostrat-schema-management"

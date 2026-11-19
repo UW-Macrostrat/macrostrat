@@ -1,14 +1,15 @@
 vcl 4.1;
 
+# Hosts are filled in from the environment when the container starts (bin/gateway).
 backend backend-core {
-    .host = "tileserver_core";
-    .port = "8000";
+    .host = "${TILESERVER_HOST}";
+    .port = "${TILESERVER_PORT:-80}";
 }
 
 
 backend backend-legacy {
-    .host = "tileserver_legacy";
-    .port = "8000";
+    .host = "${TILESERVER_LEGACY_HOST}";
+    .port = "${TILESERVER_LEGACY_PORT:-80}";
     # Don't require the connection to be up at the start
 }
 
@@ -69,12 +70,18 @@ sub vcl_recv {
         # Raster mosaics are served as .png by the core tileserver, so they have
         # to be claimed before the extension-based rule below sends every .png
         # to the legacy one.
+        # https://github.com/UW-Macrostrat/macrostrat/pull/303
         set req.backend_hint = backend-core;
     } else if (req.url ~ "^/$" || req.url ~ "^/preview$") {
         set req.backend_hint = backend-legacy;
-    } else if (req.url ~ ".*\.(png|mvt)$") {
-        # Png and mvt tiles are served from the legacy tileserver
+    } else if (req.url ~ ".*\.png(\?.*)?$") {
+        # Png tiles are served from the legacy tileserver
         set req.backend_hint = backend-legacy;
+    } else if (req.url ~ ".*\.mvt(\?.*)?$") {
+        #.mvt ext is stripped from the request
+        set req.url = regsub(req.url, "\.mvt(\?.*)?$", "\1");
+        # Mvt tiles are served from the core tileserver
+        set req.backend_hint = backend-core;
     } else {
         # Everything else is served from the core tileserver
         set req.backend_hint = backend-core;

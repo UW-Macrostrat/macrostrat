@@ -163,6 +163,7 @@ dependencies = [
     { name = "macrostrat-map-topology" },
     { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
+    { name = "macrostrat-raster-tasks" },
     { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "morecantile" },
@@ -194,6 +195,7 @@ requires-dist = [
     { name = "macrostrat-map-topology", editable = "py-modules/map-topology" },
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
+    { name = "macrostrat-raster-tasks", editable = "py-modules/raster-tasks" },
     { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
@@ -1608,7 +1610,7 @@ dev = [
 
 [[package]]
 name = "macrostrat-raster-index"
-version = "0.3.1"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
@@ -1621,9 +1623,9 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/18/e58e18254995b4d5c0f1b8060c99a7408198a7e5606133d2fbcceb1d905e/macrostrat_raster_index-0.3.1.tar.gz", hash = "sha256:570a6e75cdb37963accbbc0aaaf2d36b66d0fbf52b382573844325bfa4da1720", size = 31316, upload-time = "2026-08-25T05:07:32.535Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/11/ef0362714b6ff679b296066cbe1892e65c4cf8e0a599e1718453ac336bff/macrostrat_raster_index-0.5.0.tar.gz", hash = "sha256:0abb9792513d5cdd546c5e0f6026deeb4cdd005b8c5018f84abeb1c34daf33f0", size = 45307, upload-time = "2026-11-18T17:51:21.029Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/33/edab60dd1db6463092d98cf16d63a8a7af239d05754cfc527ebc65ef32bb/macrostrat_raster_index-0.3.1-py3-none-any.whl", hash = "sha256:00a29f5ec7c72616030b65316036e528ffd2f4ccc6dec9f08625c72c7de0877e", size = 38207, upload-time = "2026-08-25T05:07:31.315Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/06/bac37992bd505174fcc08bab32e8fed8800674c630f7ff7dc59d573c4a49/macrostrat_raster_index-0.5.0-py3-none-any.whl", hash = "sha256:cc20d39cc26f25475b28a9eac6a007edaffa5e5a76f91051d3cccc670bee5a55", size = 52933, upload-time = "2026-11-18T17:51:20.084Z" },
 ]
 
 [package.optional-dependencies]
@@ -1652,6 +1654,27 @@ sdist = { url = "https://files.pythonhosted.org/packages/a7/12/a48d1603d4a5fa414
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/c6/129ba120b7fbf21a94f19c75f7ae2a84d774dc687e0cac53992e14b56b1c/macrostrat_raster_layers-0.3.2-py3-none-any.whl", hash = "sha256:107c66d2e2e4e7afea9edc0ee6fbe7278151c6c5779b91c54bf7f6d0f2e71719", size = 16935, upload-time = "2026-08-25T06:29:34.995Z" },
 ]
+
+[[package]]
+name = "macrostrat-raster-tasks"
+version = "0.1.0"
+source = { editable = "py-modules/raster-tasks" }
+dependencies = [
+    { name = "macrostrat-task-runner" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.5.0,<1" },
+    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "rich", marker = "extra == 'index'", specifier = ">=13" },
+]
+provides-extras = ["index"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "macrostrat-runtime-checks"
@@ -1743,6 +1766,7 @@ dependencies = [
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-raster-index", extra = ["footprints", "s3"] },
     { name = "macrostrat-raster-layers" },
+    { name = "macrostrat-raster-tasks" },
     { name = "macrostrat-schema" },
     { name = "macrostrat-task-runner" },
     { name = "macrostrat-tileserver-utils" },
@@ -1770,8 +1794,9 @@ requires-dist = [
     { name = "macrostrat-core", editable = "py-modules/core" },
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
-    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], specifier = ">=0.3.1,<1" },
+    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], specifier = ">=0.5.0,<1" },
     { name = "macrostrat-raster-layers", specifier = ">=0.3.2,<1" },
+    { name = "macrostrat-raster-tasks", editable = "py-modules/raster-tasks" },
     { name = "macrostrat-schema", editable = "py-modules/schema" },
     { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
     { name = "macrostrat-tileserver-utils", editable = "py-modules/tileserver-utils" },
@@ -1915,6 +1940,7 @@ requires-dist = [
     { name = "macrostrat-map-integration", marker = "extra == 'tasks'", editable = "py-modules/map-integration" },
     { name = "macrostrat-map-topology", extras = ["topology"], marker = "extra == 'tasks'", editable = "py-modules/map-topology" },
     { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
+    { name = "macrostrat-raster-tasks", extras = ["index"], marker = "extra == 'tasks'", editable = "py-modules/raster-tasks" },
     { name = "macrostrat-task-runner", marker = "extra == 'tasks'", editable = "py-modules/task-runner" },
     { name = "sqlalchemy", specifier = "<2.1" },
 ]

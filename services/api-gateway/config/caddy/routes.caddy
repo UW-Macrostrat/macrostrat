@@ -1,0 +1,114 @@
+# Routes shared by the cluster and the local stack, imported by each Caddyfile.
+# Upstreams come from MACROSTRAT_*_HOST environment variables.
+
+# Macro to define a schema-specific proxy for PostgREST
+# Usage: import schema-proxy /path schema_name
+# https://caddyserver.com/docs/caddyfile/directives/import
+(schema-proxy) {
+	# Relative, because this layer never sees the /api prefix stripped before the cache
+	handle {args[0]} {
+		redir {http.request.uri.path.file}/ 301
+	}
+
+	handle_path {args[0]}/* {
+		@auth_cookie {
+			# Match requests with an access_token cookie but not an Authorization header
+			header Cookie *access_token*
+			not {
+				header Authorization *
+			}
+		}
+
+		# Move access_token cookie to Authorization header.
+		# This is how PostgREST expects to receive JWTs.
+		request_header @auth_cookie Authorization {http.request.cookie.access_token}
+
+		reverse_proxy {$MACROSTRAT_API_POSTGREST_HOST} {
+			# Set the profile headers for the proper PostgREST schema
+			header_up Accept-Profile {args[1]}
+			header_up Content-Profile {args[1]}
+
+			# Remove cookie header to prevent leaking cookies to PostgREST and cache
+			header_up -Cookie
+
+			@has_content_range {
+				header Content-Range *
+			}
+
+			handle_response @has_content_range {
+				# Rename PostgREST content-range header to avoid conflicts with varnish
+				copy_response
+				header X-Data-Range {rp.header.Content-Range}
+				header >Content-Range (.*) "items $1"
+			}
+		}
+	}
+}
+
+# Requests for /api, before the cache. Usage: import api-edge <cache address>
+(api-edge) {
+	# Redirect legacy raster tiles to tile server
+	# /api/v2/maps/burwell/emphasized/12/986/1435/tile.png -> <tileserver>/carto/12/986/1435.png
+	handle /api/v2/maps/burwell/emphasized/* {
+		uri replace /api/v2/maps/burwell/emphasized/ /carto/
+		uri replace /tile.png .png
+
+		reverse_proxy {$MACROSTRAT_TILESERVER_HOST} {
+			header_up Host {$MACROSTRAT_TILESERVER_HOST}
+		}
+	}
+
+	# Strip /api, so the cache and the routes below see /v2, /v3, /pg…
+	handle_path /api* {
+		reverse_proxy {args[0]}
+	}
+}
+
+# Requests after the cache, with /api already stripped.
+(api-routes) {
+	encode gzip
+
+	# APIs for macrostrat and map-ingestion
+	# These use PostgREST as a proxy to the database and
+	# have headers set to default to a specific schema
+	import schema-proxy /v3/macrostrat/pg macrostrat_api
+	import schema-proxy /v3/map-ingestion/pg map_ingestion_api
+	# Raster index management; PostgREST refuses it where raster_api is not listed.
+	import schema-proxy /v3/rasters/pg raster_api
+	# Legacy router for development API
+	# TODO: remove this when we've migrated all routes...
+	import schema-proxy /pg macrostrat_api
+
+	# Knowledge graph API: deployed in development only, so 502s elsewhere.
+	# Its PostgREST views still live in macrostrat_api; a dedicated schema will replace it.
+	import schema-proxy /v3/knowledge-graph/pg macrostrat_api
+	handle_path /v3/knowledge-graph/* {
+		# Port 9 refuses connections: a 502 where no knowledge graph host is set
+		reverse_proxy {$MACROSTRAT_KG_API_HOST:localhost:9}
+	}
+
+	# Handle all other v3 routes (non-PostgREST)
+	handle_path /v3/* {
+		reverse_proxy {$MACROSTRAT_API_V3_HOST}
+	}
+
+	handle_path /v2/* {
+		reverse_proxy {$MACROSTRAT_API_V2_HOST}
+	}
+
+	handle /health {
+		respond "OK" 200
+	}
+
+	handle /gateway/version {
+		root * /usr/share/gateway
+		rewrite * /version.json
+		header Cache-Control no-store
+		file_server
+	}
+
+	# Fallback to v2 for all paths that don't match above
+	handle {
+		reverse_proxy {$MACROSTRAT_API_V2_HOST}
+	}
+}

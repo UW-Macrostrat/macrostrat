@@ -12,8 +12,18 @@ from typing import Annotated, Iterator, Literal, Type
 from dotenv import load_dotenv
 from fastapi import Depends, Request
 from pydantic import BaseModel
-from sqlalchemy import CursorResult, MetaData, Table, func, insert, select, text, update
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy import (
+    CursorResult,
+    MetaData,
+    Table,
+    delete,
+    func,
+    insert,
+    select,
+    text,
+    update,
+)
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncEngine,
@@ -383,22 +393,81 @@ async def list_roles(
         return list(await session.scalars(stmt))
 
 
-async def set_user_role(
-    engine: AsyncEngine, user_id: int, role: str, actor: str | None = None
+async def update_user(
+    engine: AsyncEngine, user_id: int, values: dict, actor: str | None = None
 ) -> bool:
-    """Move a user to another application role. False if there is no such user.
+    """Update a user's role, display name or email. False if there is no such user.
 
-    The role itself is validated by the foreign key, so an unknown name raises
-    rather than being stored. `actor` names who did it in the change-tracking
-    trail — the one record that matters when a permission is questioned later.
+    An unknown role is refused by the foreign key rather than stored. `actor`
+    names who did it in the change-tracking trail.
     """
     async with engine.begin() as conn:
         await set_audit_actor(conn, actor)
         stmt = (
             update(schemas.User)
             .where(schemas.User.id == user_id)
-            .values(role=role)
+            .values(**values)
             .returning(schemas.User.id)
+        )
+        return (await conn.execute(stmt)).scalar() is not None
+
+
+async def delete_user(
+    engine: AsyncEngine, user_id: int, actor: str | None = None
+) -> str:
+    """Delete a user. Returns `deleted`, `not_found` or `referenced`.
+
+    Tokens delegated to the user are expired and relabelled rather than
+    deleted, keeping the record of what was issued; tokens they issued lose
+    their issuer. Any other reference (a task they requested) refuses the
+    deletion as `referenced`.
+    """
+    try:
+        async with engine.begin() as conn:
+            await set_audit_actor(conn, actor)
+            sub = (
+                await conn.execute(
+                    select(schemas.User.sub).where(schemas.User.id == user_id)
+                )
+            ).scalar()
+            if sub is None:
+                return "not_found"
+
+            await conn.execute(
+                update(schemas.Token)
+                .where(schemas.Token.user_id == user_id)
+                .values(
+                    user_id=None,
+                    label=func.coalesce(schemas.Token.label, "deleted user " + sub),
+                    expires_on=func.least(schemas.Token.expires_on, func.now()),
+                )
+            )
+            await conn.execute(
+                update(schemas.Token)
+                .where(schemas.Token.created_by == user_id)
+                .values(created_by=None)
+            )
+            await conn.execute(delete(schemas.User).where(schemas.User.id == user_id))
+    except IntegrityError:
+        # The whole transaction rolls back, token changes included.
+        return "referenced"
+    return "deleted"
+
+
+async def set_token_scopes(
+    engine: AsyncEngine,
+    token_id: int,
+    scopes: list[str] | None,
+    actor: str | None = None,
+) -> bool:
+    """Replace a token's scopes. False if there is no such token."""
+    async with engine.begin() as conn:
+        await set_audit_actor(conn, actor)
+        stmt = (
+            update(schemas.Token)
+            .where(schemas.Token.id == token_id)
+            .values(scopes=scopes)
+            .returning(schemas.Token.id)
         )
         return (await conn.execute(stmt)).scalar() is not None
 

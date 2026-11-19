@@ -45,6 +45,7 @@ log = get_logger(__name__)
 
 __all__ = [
     "require_scope",
+    "require_layer_scope",
     "scopes_for_token",
     "hash_token",
     "clear_token_cache",
@@ -183,8 +184,8 @@ async def scopes_for_token(pool, raw_token: str) -> Optional[list[str]]:
     return await _scopes_for(pool, hash_token(raw_token))
 
 
-def require_scope(scope: str):
-    """Build a dependency requiring a delegated token that carries `scope`.
+def require_scope(*scopes: str):
+    """Build a dependency requiring a token that carries any of `scopes`.
 
     Applied to a whole router rather than to individual routes, so every route
     a layer exposes is covered — the rendered tiles, but also `/point`, which
@@ -197,25 +198,49 @@ def require_scope(scope: str):
         request: Request,
         credentials: HTTPAuthorizationCredentials = Depends(_bearer),
     ) -> None:
-        if credentials is None:
-            raise HTTPException(
-                status_code=401,
-                detail=f"{scope} requires a delegated token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        scopes = await scopes_for_token(request.app.state.pool, credentials.credentials)
-
-        if scopes is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Token is unknown or expired",
-                headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
-            )
-
-        if scope not in scopes:
-            raise HTTPException(
-                status_code=403, detail=f"Token is not scoped for {scope}"
-            )
+        await _require_any(request, credentials, list(scopes))
 
     return check
+
+
+def require_layer_scope(shared_scope: str, param: str = "layer"):
+    """Like `require_scope`, accepting `shared_scope` or `rasters:<layer>`.
+
+    The layer comes from the path, so one router serves every layer while a
+    delegated token can still be limited to one of them.
+    """
+
+    async def check(
+        request: Request,
+        credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    ) -> None:
+        layer = request.path_params[param]
+        await _require_any(request, credentials, [shared_scope, f"rasters:{layer}"])
+
+    return check
+
+
+async def _require_any(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials],
+    accepted: list[str],
+) -> None:
+    wanted = " or ".join(accepted)
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail=f"{wanted} requires a delegated token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    scopes = await scopes_for_token(request.app.state.pool, credentials.credentials)
+
+    if scopes is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Token is unknown or expired",
+            headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+        )
+
+    if not set(accepted) & set(scopes):
+        raise HTTPException(status_code=403, detail=f"Token is not scoped for {wanted}")

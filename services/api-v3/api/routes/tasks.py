@@ -94,6 +94,29 @@ def list_tasks(_admin: TokenData = Depends(require_admin)) -> list[TaskInfo]:
     ]
 
 
+@router.get("/{task}/recent/{param}", response_model=list[str])
+def recent_values(
+    task: str,
+    param: str,
+    database: DatabaseDep,
+    limit: int = 10,
+    _admin: TokenData = Depends(require_admin),
+) -> list[str]:
+    """The values a parameter took in the task's latest runs, newest first.
+
+    What a form offers as "recently used". Only parameters of the task's own
+    model are answered, and only their string values.
+    """
+    spec = registry().get(task)
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f"No task named {task!r}")
+    if param not in spec.params.model_fields:
+        raise HTTPException(status_code=404, detail=f"{task} has no {param!r}")
+    return ledger.recent_param_values(
+        database.sync, spec.name, param, limit=min(max(limit, 1), 50)
+    )
+
+
 @router.get("/runs", response_model=list[Run])
 def list_runs(
     database: DatabaseDep, limit: int = 50, _admin: TokenData = Depends(require_admin)

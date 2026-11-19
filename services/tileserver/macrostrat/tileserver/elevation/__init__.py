@@ -19,7 +19,7 @@ layers. `?backend=cog|legacy` forces one, which is how parity is checked: two
 answers from one server.
 
 Mounted at `/elevation`, not under `/rasters`: the mosaic routes at
-`/rasters/elevation` are titiler's, shaped for raster debugging, and stay
+`/rasters/layer/elevation` are titiler's, shaped for raster debugging, and stay
 exactly as titiler defines them. These are the *service* — a plain JSON shape a
 legacy pass-through reshapes trivially.
 

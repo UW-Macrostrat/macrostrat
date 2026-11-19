@@ -1,0 +1,72 @@
+# The cluster gateway pod and tile cache, in front of echoing stand-in upstreams.
+#   docker compose -f tests/compose.yaml up -d --build
+#   python3 -m unittest discover -s tests -v
+name: api-gateway-test
+
+x-gateway: &gateway
+  image: macrostrat-api-gateway:test
+  build: ..
+
+x-echo: &echo
+  image: python:3.12-alpine
+  command: python /echo.py
+  volumes:
+    - ./echo.py:/echo.py:ro
+
+services:
+  gateway:
+    <<: *gateway
+    command: caddy
+    environment:
+      GATEWAY_ENV: cluster
+      MACROSTRAT_API_V2_HOST: api_v2:8000
+      MACROSTRAT_API_V3_HOST: api_v3:8000
+      MACROSTRAT_API_POSTGREST_HOST: postgrest:8000
+      MACROSTRAT_KG_API_HOST: kg:8000
+      MACROSTRAT_TILESERVER_HOST: tilehost:8000
+    ports:
+      - "127.0.0.1:18080:80"
+
+  # Shares the gateway's network namespace, as the containers of a pod do
+  gateway_cache:
+    <<: *gateway
+    command: varnish
+    network_mode: service:gateway
+    environment:
+      GATEWAY_VCL: api
+
+  tile_cache:
+    <<: *gateway
+    command: varnish
+    # Varnish resolves backend hostnames when it compiles the VCL
+    depends_on: [tileserver_core, tileserver_legacy]
+    environment:
+      GATEWAY_VCL: tiles
+      TILESERVER_HOST: tileserver_core
+      TILESERVER_PORT: "8000"
+      TILESERVER_LEGACY_HOST: tileserver_legacy
+      TILESERVER_LEGACY_PORT: "8000"
+    ports:
+      - "127.0.0.1:18081:8000"
+
+  api_v2:
+    <<: *echo
+    environment: { NAME: api_v2 }
+  api_v3:
+    <<: *echo
+    environment: { NAME: api_v3 }
+  postgrest:
+    <<: *echo
+    environment: { NAME: postgrest }
+  kg:
+    <<: *echo
+    environment: { NAME: kg }
+  tilehost:
+    <<: *echo
+    environment: { NAME: tilehost }
+  tileserver_core:
+    <<: *echo
+    environment: { NAME: tileserver_core }
+  tileserver_legacy:
+    <<: *echo
+    environment: { NAME: tileserver_legacy }

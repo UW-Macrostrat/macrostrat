@@ -149,7 +149,14 @@ def _raster_layers_chunks() -> list[SchemaDefinition]:
             depends_on=["public"],
             provides=schema_files(),
             owner=APP_OWNER,
-        )
+        ),
+        # The admin interface's PostgREST views over the index.
+        SchemaDefinition(
+            name="raster-api",
+            depends_on=["raster-layers"],
+            provides=[settings.srcroot / "schema" / "raster-api"],
+            owner=APP_OWNER,
+        ),
     ]
 
 

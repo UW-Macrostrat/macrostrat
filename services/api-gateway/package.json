@@ -1,0 +1,6 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Caddy routing and Varnish caching for Macrostrat's API and tile hosts"
+}

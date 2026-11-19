@@ -9,9 +9,9 @@ the generic `?algorithm=` form.
 import pytest
 
 from macrostrat.tileserver.rasters import (
+    NAMED_LAYER_PREFIX,
     _class_filter_dependency,
-    _layer_router,
-    raster_layer_configs,
+    _named_layer_router,
 )
 
 pytest.importorskip("macrostrat.raster_layers")
@@ -79,13 +79,12 @@ class TestRoutes:
 
         # A lazy engine: building routes never touches the database.
         index = RasterIndex("postgresql://unused:unused@localhost:1/unused")
-        config = raster_layer_configs()[0]
 
         app = FastAPI()
-        prefix = "/rasters/test"
-        app.include_router(_layer_router(config, index, prefix), prefix=prefix)
+        prefix = NAMED_LAYER_PREFIX
+        app.include_router(_named_layer_router(index, prefix), prefix=prefix)
         paths = app.openapi()["paths"]
-        path = "/rasters/test/tiles/{tileMatrixSetId}/{z}/{x}/{y}@{scale}x.{format}"
+        path = f"{prefix}/tiles/{{tileMatrixSetId}}/{{z}}/{{x}}/{{y}}@{{scale}}x.{{format}}"
         return {p["name"] for p in paths[path]["get"]["parameters"]}
 
     def test_classes_is_documented(self, tile_params):
@@ -118,7 +117,7 @@ class TestTileMatrixSets:
         from fastapi.testclient import TestClient
 
         client = TestClient(app)
-        path = "/rasters/emit-minerals/tiles/{tms}/8/44/100@2x.png"
+        path = "/rasters/layer/emit-minerals/tiles/{tms}/8/44/100@2x.png"
         response = client.get(path.format(tms="EuropeanETRS89_LAEAQuad"))
         assert response.status_code == 422
 
@@ -135,6 +134,9 @@ class TestWMTS:
         def __init__(self, label):
             self.label = label
 
+    class FakeBackend:
+        input = ["emit-minerals"]
+
     class FakeIndex:
         def __init__(self, categories):
             self._categories = categories
@@ -150,7 +152,7 @@ class TestWMTS:
         index = self.FakeIndex(
             [self.FakeCategory("Alunite"), self.FakeCategory("Kaolin")]
         )
-        renders = _class_renders(index, ["emit-minerals"])(None)
+        renders = _class_renders(index)(self.FakeBackend)
         assert renders == {
             "Alunite": {"classes": "Alunite"},
             "Kaolin": {"classes": "Kaolin"},
@@ -160,21 +162,21 @@ class TestWMTS:
         """A layer without class names still gets WMTS, just the one layer."""
         from macrostrat.tileserver.rasters import _class_renders
 
-        assert _class_renders(self.FakeIndex([]), ["emit-minerals"])(None) == {}
+        assert _class_renders(self.FakeIndex([]))(self.FakeBackend) == {}
 
     def test_vocabulary_is_read_per_request(self):
         """So classes added later appear without restarting the tile server."""
         from macrostrat.tileserver.rasters import _class_renders
 
         index = self.FakeIndex([self.FakeCategory("Alunite")])
-        get_renders = _class_renders(index, ["emit-minerals"])
-        get_renders(None)
-        get_renders(None)
+        get_renders = _class_renders(index)
+        get_renders(self.FakeBackend)
+        get_renders(self.FakeBackend)
         assert index.asked == ["emit-minerals", "emit-minerals"]
 
     def test_capabilities_route_is_registered(self, app):
         paths = {getattr(r, "path", "") for r in app.routes}
-        assert "/rasters/emit-minerals/WMTSCapabilities.xml" in paths
+        assert "/rasters/layer/{layer}/WMTSCapabilities.xml" in paths
 
 
 class TestAdvertisedURLsResolve:
@@ -183,7 +185,7 @@ class TestAdvertisedURLsResolve:
     Mounting a router does not tell it where it lives, and titiler builds
     absolute URLs from `router_prefix`. Leaving that empty made TileJSON and the
     WMTS `ResourceURL` templates advertise `/tiles/...` rather than
-    `/rasters/<slug>/tiles/...` — so every one of them 404'd, and QGIS found
+    `/rasters/layer/<slug>/tiles/...` — so every one of them 404'd, and QGIS found
     nothing. Macrostrat's own web client never noticed because it builds tile
     URLs itself, which is precisely why this needs a test.
     """
@@ -208,10 +210,10 @@ class TestAdvertisedURLsResolve:
 
         client = TestClient(app)
         tilejson = client.get(
-            "/rasters/emit-minerals/WebMercatorQuad/tilejson.json"
+            "/rasters/layer/emit-minerals/WebMercatorQuad/tilejson.json"
         ).json()
         url = tilejson["tiles"][0]
-        assert "/rasters/emit-minerals/" in url
+        assert "/rasters/layer/emit-minerals/" in url
         assert client.get(self._concrete(url)).status_code == 200
 
     def test_wmts_templates_resolve(self, app):
@@ -220,9 +222,9 @@ class TestAdvertisedURLsResolve:
         from fastapi.testclient import TestClient
 
         client = TestClient(app)
-        xml = client.get("/rasters/emit-minerals/WMTSCapabilities.xml").text
+        xml = client.get("/rasters/layer/emit-minerals/WMTSCapabilities.xml").text
         templates = re.findall(r'template="([^"]+)"', xml)
         assert templates, "capabilities advertised no tile templates"
         for url in templates[:3]:
-            assert "/rasters/emit-minerals/" in url
+            assert "/rasters/layer/emit-minerals/" in url
             assert client.get(self._concrete(url)).status_code == 200

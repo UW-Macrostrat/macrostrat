@@ -82,6 +82,13 @@ app.info_messages.append(f"Active environment: [bold cyan]{_env_text}[/]")
 # `[<env>.database]` table and a vaulted URL both count as configured.
 if settings.database_connection() is None:
     app.warnings.append("No database configured for this environment")
+# Shown in help, not on every run: keys for other branches are routine.
+unknown_keys = getattr(settings, "unknown_keys", lambda: [])()
+if unknown_keys:
+    app.warnings.append(
+        f"macrostrat.toml has keys the schema does not know: {', '.join(unknown_keys)} "
+        "(see [bold cyan]macrostrat config schema[/])"
+    )
 reinstall_warning = environ.get("MACROSTRAT_SHOULD_REINSTALL")
 if reinstall_warning is not None:
     if len(reinstall_warning) < 2:
