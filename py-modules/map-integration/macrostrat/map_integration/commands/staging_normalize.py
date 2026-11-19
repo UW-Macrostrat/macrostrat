@@ -2153,7 +2153,8 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
     (`lookup_and_validate_age`): "Late Pleistocene", "Miocene to Pliocene",
     "middle to late Pleistocene"; or interval ids, "23" or "23 to 40", whose
     names go into `age` ("Cenomanian to Rupelian"). `omit` sets omit = true on
-    the unit's polygons instead, for unmapped or unnamed ones. Each unit is
+    the unit's polygons instead, for unmapped or unnamed ones; `skip` (or `q`)
+    moves on to the next map. Each unit is
     shown as its first polygon's whole row, and written and committed once
     confirmed, so stopping keeps what is done.
     """
@@ -2261,7 +2262,7 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
 
     console.print(
         "Type each unit's age, or interval ids (23, 23 to 40), or omit. "
-        "[dim]Enter skips a unit, q ends this map, Ctrl-C stops.[/dim]"
+        "[dim]Enter skips a unit, skip (or q) skips the rest of this map, Ctrl-C stops.[/dim]"
     )
     applied = omitted = 0
     for position, unit in enumerate(units, start=1):
@@ -2272,7 +2273,7 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
         show_row(unit.ids[0])
         while True:
             answer = Prompt.ask("  Age", default="", show_default=False).strip()
-            if answer == "" or answer.lower() == "q":
+            if answer == "" or answer.lower() in ("skip", "q"):
                 break
             if answer.lower() == "omit":
                 if "omit" not in existing:
@@ -2297,7 +2298,8 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
                 console.print(f"  age        -> {age}")
             if Prompt.ask("  Apply?", choices=["y", "n"], default="y") == "y":
                 break
-        if answer.lower() == "q":
+        if answer.lower() in ("skip", "q"):
+            console.print("  [yellow]Skipping the rest of this map[/yellow]")
             break
         if answer == "":
             continue
