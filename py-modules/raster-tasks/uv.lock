@@ -330,7 +330,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-raster-index"
-version = "0.4.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
@@ -345,9 +345,9 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/38/cef653c87d3d2cb0b370df6c7c8a1e5b321f9ab6e3f4f5ddddb875b6690e/macrostrat_raster_index-0.4.0.tar.gz", hash = "sha256:1e2d7b28e7fd8a2d38e82c9bb717b1601dd2090847b64402896674064b6c8317", size = 43186, upload-time = "2026-09-28T18:55:32.938Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/f0/c210222627ebafe670c1cc53aff173ad6b7ddf40ba6b59d1e0d9958e1281/macrostrat_raster_index-0.5.1.tar.gz", hash = "sha256:7fbeaeabb347f5a7bc9e5c082edb1c89c70bba0f91ccf304199b02b0411090d8", size = 45566, upload-time = "2026-11-18T21:03:29.178Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/b7/177fc14450c49fb29dfb453ea811cc3792c2f9a31aec0e2e952d4d02d93e/macrostrat_raster_index-0.4.0-py3-none-any.whl", hash = "sha256:ee17c89cca00832dc3b57e044ae2a9ea1482b84af9de2eeac55721bddf0c3427", size = 51944, upload-time = "2026-09-28T18:55:31.76Z" },
+    { url = "https://files.pythonhosted.org/packages/14/78/ea6868afcbf5a128ed3b51b8fdeb2000e0c574041b751adb4551f9fc6a62/macrostrat_raster_index-0.5.1-py3-none-any.whl", hash = "sha256:3731bfdfe5caa3367bc75c8ec308c859dc44976a09b51c42fcddb31dccf221ec", size = 53228, upload-time = "2026-11-18T21:03:28.239Z" },
 ]
 
 [package.optional-dependencies]
@@ -380,7 +380,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.4.0,<1" },
+    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.5.0,<1" },
     { name = "macrostrat-task-runner", editable = "../task-runner" },
     { name = "pydantic", specifier = ">=2" },
     { name = "rich", marker = "extra == 'index'", specifier = ">=13" },

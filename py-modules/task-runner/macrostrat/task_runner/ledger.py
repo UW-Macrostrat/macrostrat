@@ -63,6 +63,37 @@ def list_runs(db: Database, *, limit: int = 50):
     ).all()
 
 
+# How far back a recent-values lookup reads, so its cost never grows with the ledger.
+RECENT_RUNS_WINDOW = 200
+
+
+def recent_param_values(
+    db: Database, task: str, param: str, *, limit: int = 10
+) -> list[str]:
+    """Distinct string values `param` took in `task`'s latest runs, newest first."""
+    rows = db.run_query(
+        """
+        SELECT value
+        FROM (
+            SELECT r.params ->> :param AS value, max(r.created_on) AS last_used
+            FROM (
+                SELECT params, created_on
+                FROM macrostrat_meta.task_run
+                WHERE task = :task
+                ORDER BY created_on DESC
+                LIMIT :window
+            ) r
+            WHERE jsonb_typeof(r.params -> :param) = 'string'
+            GROUP BY 1
+        ) v
+        ORDER BY last_used DESC
+        LIMIT :limit
+        """,
+        dict(task=task, param=param, limit=limit, window=RECENT_RUNS_WINDOW),
+    ).all()
+    return [row.value for row in rows]
+
+
 def live_run(db: Database, task: str):
     """The queued or running run of `task`, if there is one."""
     return db.run_query(

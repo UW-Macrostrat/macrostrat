@@ -1,0 +1,49 @@
+name: Build gateway
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - services/gateway/**
+      - scripts/service-release
+      - .github/workflows/build-service.yaml
+      - .github/workflows/build-gateway.yaml
+  pull_request:
+    branches: ["main"]
+    paths:
+      - services/gateway/**
+      - scripts/service-release
+      - .github/workflows/build-service.yaml
+      - .github/workflows/build-gateway.yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Start the gateway against stand-in upstreams
+        run: docker compose -f tests/compose.yaml up -d --build
+
+      - name: Validate every Caddyfile and VCL
+        run: docker compose -f tests/compose.yaml run --rm --no-deps gateway validate
+
+      - name: Run route tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Show logs
+        if: failure()
+        run: docker compose -f tests/compose.yaml logs
+
+  build:
+    needs: test
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-service.yaml
+    with:
+      service: gateway
+      image: gateway
+      context: services/gateway
+    secrets: inherit

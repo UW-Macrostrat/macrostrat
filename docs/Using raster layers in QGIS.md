@@ -12,13 +12,17 @@ Throughout, `emit-minerals` is the layer name and
 `https://tiles.macrostrat.org` is the tileserver. For local development, swap in
 `https://tiles.macrostrat.local`.
 
+Every raster route needs a token; [Tokens](#tokens) covers which. Every layer in
+the raster index is served at `/rasters/layer/<layer>`, which the walkthrough
+below uses; [Routes for any layer](#routes-for-any-layer) lists what is there.
+
 ## The quick way: WMTS
 
 **Layer ▸ Add Layer ▸ Add WMS/WMTS Layer…**, then **New** to create a
 connection, and give it this URL:
 
 ```
-https://tiles.macrostrat.org/rasters/emit-minerals/WMTSCapabilities.xml
+https://tiles.macrostrat.org/rasters/layer/emit-minerals/WMTSCapabilities.xml
 ```
 
 Connect, and every mineral class appears as its own selectable layer. Pick one,
@@ -44,7 +48,7 @@ scroll past when you are looking for the whole mosaic.
 template. The whole mosaic:
 
 ```
-https://tiles.macrostrat.org/rasters/emit-minerals/tiles/WebMercatorQuad/{z}/{x}/{y}@2x.png
+https://tiles.macrostrat.org/rasters/layer/emit-minerals/tiles/WebMercatorQuad/{z}/{x}/{y}@2x.png
 ```
 
 Filter it by adding query parameters — one or more **classes**:
@@ -77,7 +81,7 @@ Both of these are plain JSON — open them in a browser.
 **Class names** come from the layer's vocabulary:
 
 ```
-https://tiles.macrostrat.org/rasters/emit-minerals/layer
+https://tiles.macrostrat.org/rasters/layer/emit-minerals/layer
 ```
 
 The `categories` list gives each class's `value`, its `label` (the name to pass
@@ -86,7 +90,7 @@ to `?classes=`), and the `color` it is drawn in.
 **Dataset names** come from the coverage footprints:
 
 ```
-https://tiles.macrostrat.org/rasters/emit-minerals/footprints
+https://tiles.macrostrat.org/rasters/layer/emit-minerals/footprints
 ```
 
 Each feature's `properties.slug` is the name to pass to `?datasets=`, and its
@@ -119,9 +123,70 @@ renderer lists the classes, you can show, hide and recolor them yourself, and
 Identify returns the class value. The trade-off is that this is one file at a
 time — no mosaicking, and you have to know which file covers your area.
 
-## Other layers
+## Routes for any layer
 
-The same URLs work for any indexed raster layer: substitute its name for
-`emit-minerals`. The `?classes=` filter and the per-class WMTS layers only apply
-to *classified* layers — ones whose pixels are class codes rather than continuous
-measurements — and only once a class vocabulary has been recorded for them.
+Every layer in the raster index is served at `/rasters/layer/<layer>`, where
+`<layer>` is its slug, rendered from the colormap and class vocabulary stored
+with the layer, with `nearest` resampling — unless the tileserver configures that
+layer differently (e.g. `elevation`, drawn with bilinear resampling). A layer
+created in the admin interface is reachable there as soon as it has rasters.
+
+Under that prefix:
+
+| Route | Returns |
+| --- | --- |
+| `/WMTSCapabilities.xml` | The WMTS service document: the whole mosaic as `…_default`, plus one layer per class |
+| `/tiles/WebMercatorQuad/{z}/{x}/{y}@2x.png` | A rendered tile; `@1x` for standard resolution |
+| `/WebMercatorQuad/tilejson.json` | TileJSON: the tile template, bounds and zoom range |
+| `/layer` | The layer's name, zoom range, colormap and class vocabulary |
+| `/footprints` | Each raster's outline, slug and file address, as GeoJSON |
+| `/point/{lon},{lat}` | The values under a point, per raster |
+
+So for a layer whose slug is `aviris-2024`, the WMTS connection URL is
+
+```
+https://tiles.macrostrat.org/rasters/layer/aviris-2024/WMTSCapabilities.xml
+```
+
+and the XYZ template is
+
+```
+https://tiles.macrostrat.org/rasters/layer/aviris-2024/tiles/WebMercatorQuad/{z}/{x}/{y}@2x.png
+```
+
+Web Mercator (`WebMercatorQuad`) is the only tile grid served.
+
+The `?classes=` filter and the per-class WMTS layers only apply to *classified*
+layers — ones whose pixels are class codes rather than continuous
+measurements — and only once a class vocabulary has been recorded for them. A
+layer without one advertises the whole mosaic alone. A continuous layer is
+stretched over a value range given as `?rescale=min,max` on the tile URL.
+
+## Tokens
+
+Every route under `/rasters/layer/<layer>` is refused without a bearer token
+carrying `rasters:<layer>` (that layer alone) or `tiles:map` (every layer): 401
+with no token or an unknown one, 403 with a token that has neither. That covers the WMTS document, the tiles, `/layer`,
+`/footprints` and `/point` alike.
+
+A token for use in QGIS is a delegated token, created by a Macrostrat
+administrator for a named holder:
+
+```
+macrostrat auth create-token --label "Who it is for" --scope rasters:emit-minerals
+```
+
+`--scope` repeats, so one token can carry several layers. The
+token is printed once and is valid for 365 days unless `--days` says otherwise.
+
+The tileserver reads the token from the `Authorization` header only, never from
+the URL, so it cannot be pasted into the connection address. In QGIS:
+
+1. **Settings ▸ Options ▸ Authentication**, add a configuration, and choose the
+   **API Header** method (QGIS 3.24 or later).
+2. Add one header named `Authorization` with the value `Bearer <token>`.
+3. In the WMTS or XYZ connection dialog, select that configuration under
+   **Authentication**.
+
+Opening a source file directly with `/vsicurl/` does not go through the
+tileserver and takes no token.

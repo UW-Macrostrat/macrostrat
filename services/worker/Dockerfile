@@ -2,8 +2,9 @@
 FROM python:3.12-slim
 
 # psycopg2 builds from source; uv caches the wheel it builds.
+# rasterio's wheel bundles GDAL but links the system's libexpat.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev \
+    && apt-get install -y --no-install-recommends gcc libc6-dev libpq-dev libexpat1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.3 /uv /uvx /bin/
@@ -28,7 +29,7 @@ COPY --from=py-modules core /py-modules/core
 COPY --from=py-modules column-utils /py-modules/column-utils
 COPY --from=py-modules column-ingestion /py-modules/column-ingestion
 COPY --from=py-modules task-runner /py-modules/task-runner
-# Raster index tasks; rasterio ships as a wheel, so still no system GDAL.
+# Raster index tasks; rasterio ships as a wheel, so still no system GDAL (libexpat aside).
 COPY --from=py-modules raster-tasks /py-modules/raster-tasks
 COPY --from=py-modules map-topology /py-modules/map-topology
 COPY --from=submodules topology-manager /submodules/topology-manager

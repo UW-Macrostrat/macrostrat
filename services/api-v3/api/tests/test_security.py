@@ -434,3 +434,106 @@ def test_only_sign_in_routes_come_from_the_library():
         assert paths.count(path) == 1
     assert paths.count("/security/me") == 1
     assert paths.count("/security/logout") == 1
+
+
+# --------------------------------------------------------------------------- #
+# User and token administration (database calls stubbed)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture
+def admin_client(client, monkeypatch):
+    """`client` signed in as an admin, with the admin database calls recorded."""
+    admin = fake_user("admin")
+    other = fake_user("user", sub="0000-0000-0000-0002")
+    other.id = 47
+    client.users[admin.sub] = admin
+    by_id = {46: admin, 47: other}
+    calls = []
+
+    async def get_user_by_id(async_session, user_id):
+        return by_id.get(user_id)
+
+    async def list_roles(async_session):
+        return [SimpleNamespace(id=r) for r in ("admin", "user", "test")]
+
+    async def update_user(engine, user_id, values, actor=None):
+        calls.append(("update", user_id, values))
+        return True
+
+    async def delete_user(engine, user_id, actor=None):
+        calls.append(("delete", user_id))
+        return client.delete_outcome
+
+    async def set_token_scopes(engine, token_id, scopes, actor=None):
+        calls.append(("scopes", token_id, scopes))
+        return True
+
+    for name, fn in [
+        ("get_user_by_id", get_user_by_id),
+        ("list_roles", list_roles),
+        ("update_user", update_user),
+        ("delete_user", delete_user),
+        ("set_token_scopes", set_token_scopes),
+    ]:
+        monkeypatch.setattr(security.db, name, fn)
+
+    client.calls = calls
+    client.delete_outcome = "deleted"
+    client.admin_cookies = cookie_for(security.session_claims(admin))
+    return client
+
+
+def test_admin_edits_own_name_with_unchanged_role(admin_client):
+    res = admin_client.patch(
+        "/security/users/46",
+        json={"role": "admin", "display_name": " New ", "email": ""},
+        headers=admin_client.admin_cookies,
+    )
+    assert res.status_code == 200, res.text
+    assert admin_client.calls == [
+        ("update", 46, {"role": "admin", "display_name": "New", "email": None})
+    ]
+
+
+def test_admin_cannot_change_own_role(admin_client):
+    res = admin_client.patch(
+        "/security/users/46", json={"role": "user"}, headers=admin_client.admin_cookies
+    )
+    assert res.status_code == 403
+    assert admin_client.calls == []
+
+
+def test_unknown_role_is_refused(admin_client):
+    res = admin_client.patch(
+        "/security/users/47", json={"role": "owner"}, headers=admin_client.admin_cookies
+    )
+    assert res.status_code == 422
+
+
+def test_admin_cannot_delete_self(admin_client):
+    res = admin_client.delete("/security/users/46", headers=admin_client.admin_cookies)
+    assert res.status_code == 403
+    assert admin_client.calls == []
+
+
+@pytest.mark.parametrize("outcome,status", [("deleted", 200), ("referenced", 409)])
+def test_delete_user(admin_client, outcome, status):
+    admin_client.delete_outcome = outcome
+    res = admin_client.delete("/security/users/47", headers=admin_client.admin_cookies)
+    assert res.status_code == status
+    assert admin_client.calls == [("delete", 47)]
+
+
+def test_token_scopes_are_validated(admin_client):
+    res = admin_client.patch(
+        "/security/tokens/3",
+        json={"scopes": ["Not A Scope"]},
+        headers=admin_client.admin_cookies,
+    )
+    assert res.status_code == 422
+    res = admin_client.patch(
+        "/security/tokens/3", json={"scopes": []}, headers=admin_client.admin_cookies
+    )
+    assert res.status_code == 200
+    assert admin_client.calls == [("scopes", 3, None)]

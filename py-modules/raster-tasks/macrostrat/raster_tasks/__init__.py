@@ -15,12 +15,20 @@ class ScanParams(BaseModel):
         title="Bucket prefix",
         description="An https:// or s3:// prefix, e.g. "
         "https://storage.example.org/bucket/prefix/",
+        # The form offers earlier values of a parameter marked this way.
+        json_schema_extra={"x-recent": True},
     )
     mask_footprints: bool = Field(
         False,
         title="Mask footprints",
         description="Trace each footprint from the raster's validity mask rather "
         "than its bounding box. Reads every mask, so a large prefix takes a while.",
+    )
+    refresh: bool = Field(
+        False,
+        title="Refresh",
+        description="Re-read rasters already in the index, in a layer or not. "
+        "Otherwise they are skipped and only new rasters are read.",
     )
     dry_run: bool = Field(
         False,
@@ -37,18 +45,30 @@ def run_scan(db, params: ScanParams, ctx: RunContext) -> dict:
     objects = list(scan_prefix(params.url))
     if not objects:
         print(f"[yellow]No rasters found under {params.url}")
-        return {"found": 0, "registered": 0, "failed": 0}
-
-    if params.dry_run:
-        for obj in objects:
-            print(f"{obj.href} [dim]({obj.size / 1e6:.1f} MB)")
-        print(f"[dim]{len(objects)} rasters (dry run: nothing registered)")
-        return {"found": len(objects), "registered": 0, "failed": 0}
+        return {"found": 0, "skipped": 0, "registered": 0, "failed": 0}
 
     index = RasterIndex(db.engine)
+    known: set[str] = set()
+    if not params.refresh:
+        known = index.indexed_hrefs(o.href for o in objects)
+    new = [o for o in objects if o.href not in known]
+    if known:
+        print(f"[dim]{len(known)} already indexed, skipped")
+
+    if params.dry_run:
+        for obj in new:
+            print(f"{obj.href} [dim]({obj.size / 1e6:.1f} MB)")
+        print(f"[dim]{len(new)} rasters (dry run: nothing registered)")
+        return {
+            "found": len(objects),
+            "skipped": len(known),
+            "registered": 0,
+            "failed": 0,
+        }
+
     registered, failed = 0, 0
     # One at a time rather than `add_rasters`, so each result reaches the output.
-    for obj in objects:
+    for obj in new:
         try:
             index.add_raster(obj.href, mask_footprint=params.mask_footprints)
         except Exception as err:
@@ -58,10 +78,15 @@ def run_scan(db, params: ScanParams, ctx: RunContext) -> dict:
             registered += 1
             print(obj.href)
 
-    print(f"[green]Registered {registered}/{len(objects)} rasters")
+    print(f"[green]Registered {registered}/{len(new)} rasters")
     if failed:
-        raise RuntimeError(f"{failed} of {len(objects)} rasters failed to register")
-    return {"found": len(objects), "registered": registered, "failed": failed}
+        raise RuntimeError(f"{failed} of {len(new)} rasters failed to register")
+    return {
+        "found": len(objects),
+        "skipped": len(known),
+        "registered": registered,
+        "failed": failed,
+    }
 
 
 TASKS = [
@@ -69,8 +94,8 @@ TASKS = [
         name="rasters.scan",
         title="Find rasters",
         description="Register every raster under a bucket prefix. New rasters "
-        "are unassigned until placed in a layer; ones already registered keep "
-        "their layer and have their metadata refreshed.",
+        "are unassigned until placed in a layer; ones already registered, in a "
+        "layer or not, are skipped unless Refresh is on.",
         params=ScanParams,
         run="macrostrat.raster_tasks:run_scan",
     ),

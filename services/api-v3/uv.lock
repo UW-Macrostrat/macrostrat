@@ -1021,7 +1021,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.4.0,<1" },
+    { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.5.0,<1" },
     { name = "macrostrat-task-runner", editable = "../../py-modules/task-runner" },
     { name = "pydantic", specifier = ">=2" },
     { name = "rich", marker = "extra == 'index'", specifier = ">=13" },

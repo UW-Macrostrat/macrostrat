@@ -29,6 +29,10 @@ class TestAccess:
         assert api_client.post(f"/tasks/runs/{run}/cancel").status_code == 401
         assert api_client.post(f"/tasks/runs/{run}/kill").status_code == 401
 
+    def test_recent_values_are_admin_only(self, api_client: TestClient):
+        response = api_client.get("/tasks/rasters.scan/recent/url")
+        assert response.status_code == 401
+
 
 class TestCatalog:
     def test_topology_update_is_registered(self):
@@ -47,6 +51,10 @@ class TestCatalog:
             assert "maps" in str(err)
         else:
             raise AssertionError("an empty selection must be refused")
+
+    def test_scan_prefix_offers_recent_values(self):
+        schema = load_registry()["rasters.scan"].schema()
+        assert schema["properties"]["url"]["x-recent"] is True
 
     def test_parameters_are_validated(self):
         spec = load_registry()["topology.update"]

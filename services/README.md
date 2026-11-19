@@ -3,7 +3,8 @@
 This directory contains application root directories for the various services
 that make up the Macrostrat platform: the APIs (`api-v3`, and the legacy
 TypeScript `api-v2`), the tile servers (`tileserver`, `legacy-tileserver`), the
-Celery `worker` and the `usage-stats` harvester. Each service is a separate application that can be run independently,
+Celery `worker`, the `usage-stats` harvester and the `gateway` (Caddy and Varnish
+in front of the APIs and tiles). Each service is a separate application that can be run independently,
 and each is built into its own image by `.github/workflows/build-<service>.yaml`.
 
 Services can call code from libraries, but should not call code from other
@@ -12,7 +13,7 @@ services. For now, this is not enforced, but it may be in the future.
 ## Releasing a service
 
 A service's version is the one in its `pyproject.toml` (`package.json` for
-`api-v2`, whose conventions are in its own `AGENTS.md`). Merging a new version
+`api-v2`, whose conventions are in its own `AGENTS.md`, and for `gateway`). Merging a new version
 into `main` releases it: the build tags the image `X.Y.Z` and creates the git tag
 `<service>-vX.Y.Z` on that commit. Do not create release tags by hand.
 

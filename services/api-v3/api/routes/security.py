@@ -181,8 +181,16 @@ class CurrentUser(BaseModel):
         )
 
 
-class SetUserRoleRequest(BaseModel):
-    role: str
+class UpdateUserRequest(BaseModel):
+    """Fields an admin may change on a user; omitted fields are left alone."""
+
+    role: str | None = None
+    display_name: str | None = None
+    email: str | None = None
+
+
+class UpdateTokenRequest(BaseModel):
+    scopes: list[str] | None = None
 
 
 class AuthChange(BaseModel):
@@ -246,9 +254,10 @@ class DelegateTokenInfo(BaseModel):
     token_type: str
     scopes: list[str] | None = None
     user_id: int | None = None
-    # The delegated user's ORCID iD, so a listing can name who a token stands
-    # for without a second lookup.
+    # The delegated user's ORCID iD and name, so a listing can name who a
+    # token stands for without a second lookup.
     user_sub: str | None = None
+    user_name: str | None = None
     created_by: int | None = None
     created_on: datetime
     expires_on: datetime
@@ -265,6 +274,7 @@ class DelegateTokenInfo(BaseModel):
             scopes=token.scopes,
             user_id=token.user_id,
             user_sub=user.sub if user is not None else None,
+            user_name=(user.name or user.display_name) if user is not None else None,
             created_by=token.created_by,
             created_on=token.created_on,
             expires_on=token.expires_on,
@@ -691,6 +701,23 @@ async def require_admin(
     return user_token
 
 
+def check_scopes(scopes: list[str] | None):
+    """Refuse malformed scopes.
+
+    Scopes are compared as exact strings by the guarded service, so a malformed
+    one would make a token that authenticates and then grants nothing.
+    """
+    malformed = [s for s in (scopes or []) if not SCOPE_PATTERN.match(s)]
+    if malformed:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Malformed scope: {', '.join(malformed)}. "
+                f"Scopes are `<namespace>:<resource>`, e.g. {SCOPE_EXAMPLE}"
+            ),
+        )
+
+
 @router.post("/tokens", response_model=DelegateToken)
 async def create_delegate_token(
     token_request: DelegateTokenRequest,
@@ -716,18 +743,7 @@ async def create_delegate_token(
     if expires_on <= datetime.now(timezone.utc):
         raise HTTPException(status_code=422, detail="Expiration is in the past")
 
-    # Scopes are compared as exact strings by the guarded service, so a
-    # malformed one would mint a token that authenticates and then grants
-    # nothing. Reject it here instead.
-    malformed = [s for s in (token_request.scopes or []) if not SCOPE_PATTERN.match(s)]
-    if malformed:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Malformed scope: {', '.join(malformed)}. "
-                f"Scopes are `<namespace>:<resource>`, e.g. {SCOPE_EXAMPLE}"
-            ),
-        )
+    check_scopes(token_request.scopes)
 
     issuer = await get_user(user_token.sub, database.async_sessionmaker)
 
@@ -796,6 +812,28 @@ async def revoke_delegate_token(
         raise HTTPException(status_code=404, detail=f"No token with id {token_id}")
 
     return {"id": token_id, "status": outcome}
+
+
+@router.patch("/tokens/{token_id}")
+async def update_delegate_token(
+    token_id: int,
+    body: UpdateTokenRequest,
+    database: DatabaseDep,
+    admin: TokenData = Depends(require_admin),
+):
+    """Replace a token's scopes. Admin only.
+
+    Like a revocation, a change can take up to a minute to reach services that
+    cache token lookups.
+    """
+    scopes = body.scopes or None
+    check_scopes(scopes)
+    found = await db.set_token_scopes(
+        database.async_engine, token_id, scopes, actor=audit_actor(admin)
+    )
+    if not found:
+        raise HTTPException(status_code=404, detail=f"No token with id {token_id}")
+    return {"id": token_id, "scopes": scopes}
 
 
 @router.post("/logout")
@@ -876,34 +914,75 @@ async def list_auth_history(
 
 
 @router.patch("/users/{user_id}", response_model=UserInfo)
-async def set_user_role(
+async def update_user(
     user_id: int,
-    body: SetUserRoleRequest,
+    body: UpdateUserRequest,
     database: DatabaseDep,
     admin: TokenData = Depends(require_admin),
 ):
-    """Move a user to another application role. Admin only.
+    """Change a user's role, display name or email. Admin only.
 
     An admin cannot change their own role: demoting yourself would leave the
     instance with one admin fewer and nobody at the keyboard to undo it. Have
     another admin do it, or use the database directly.
     """
-    roles = {r.id for r in await db.list_roles(database.async_sessionmaker)}
-    if body.role not in roles:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Unknown role {body.role!r}; expected one of "
-            + ", ".join(sorted(roles)),
-        )
+    values = body.model_dump(exclude_unset=True)
+    for key in ("display_name", "email"):
+        if key in values:
+            values[key] = (values[key] or "").strip() or None
 
     user = await db.get_user_by_id(database.async_sessionmaker, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail=f"No user with id {user_id}")
-    if user.sub == admin.sub:
-        raise HTTPException(status_code=403, detail="You cannot change your own role")
 
-    await db.set_user_role(
-        database.async_engine, user_id, body.role, actor=audit_actor(admin)
-    )
-    user = await db.get_user_by_id(database.async_sessionmaker, user_id)
+    role = values.get("role")
+    if role is None:
+        values.pop("role", None)
+    elif role != user.role:
+        roles = {r.id for r in await db.list_roles(database.async_sessionmaker)}
+        if role not in roles:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown role {role!r}; expected one of "
+                + ", ".join(sorted(roles)),
+            )
+        if user.sub == admin.sub:
+            raise HTTPException(
+                status_code=403, detail="You cannot change your own role"
+            )
+
+    if values:
+        await db.update_user(
+            database.async_engine, user_id, values, actor=audit_actor(admin)
+        )
+        user = await db.get_user_by_id(database.async_sessionmaker, user_id)
     return UserInfo.from_user(user)
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    database: DatabaseDep,
+    admin: TokenData = Depends(require_admin),
+):
+    """Delete a user. Admin only, and never yourself.
+
+    Tokens delegated to the user are expired and kept; see `db.delete_user`.
+    """
+    user = await db.get_user_by_id(database.async_sessionmaker, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"No user with id {user_id}")
+    if user.sub == admin.sub:
+        raise HTTPException(status_code=403, detail="You cannot delete yourself")
+
+    outcome = await db.delete_user(
+        database.async_engine, user_id, actor=audit_actor(admin)
+    )
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail=f"No user with id {user_id}")
+    if outcome == "referenced":
+        raise HTTPException(
+            status_code=409,
+            detail="This user is still referenced elsewhere (e.g. tasks they requested)",
+        )
+    return {"id": user_id, "status": outcome}

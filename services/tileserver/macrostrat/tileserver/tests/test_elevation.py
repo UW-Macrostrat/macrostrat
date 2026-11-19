@@ -98,7 +98,7 @@ class TestMounting:
         assert "/elevation/profile" in paths
 
     def test_the_raster_view_is_declared(self, elevation_app):
-        """The same layers are also a mosaic under `/rasters/elevation`."""
+        """The same layers are also a mosaic under `/rasters/layer/elevation`."""
         from macrostrat.tileserver.rasters import raster_layer_configs
 
         config = next(c for c in raster_layer_configs() if c.slug == "elevation")

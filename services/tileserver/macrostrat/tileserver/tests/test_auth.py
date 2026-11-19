@@ -15,6 +15,7 @@ from macrostrat.tileserver.auth import (
     POSITIVE_TTL,
     clear_token_cache,
     hash_token,
+    require_layer_scope,
     require_scope,
 )
 
@@ -122,6 +123,42 @@ class TestDecisions:
     def test_extra_scopes_are_fine(self):
         client, _ = client_for({hash_token(TOKEN): ["rasters:other", SCOPE]})
         assert get(client, TOKEN).status_code == 200
+
+
+class TestLayerScope:
+    """The by-name raster route: the shared tile scope, or one layer's own."""
+
+    @staticmethod
+    def client(rows):
+        app = FastAPI()
+        app.state.pool = FakePool(rows)
+
+        @app.get(
+            "/rasters/layer/{layer}/info",
+            dependencies=[Depends(require_layer_scope("tiles:map"))],
+        )
+        def info(layer: str):
+            return {"layer": layer}
+
+        return TestClient(app)
+
+    def get(self, rows, layer):
+        headers = {"Authorization": f"Bearer {TOKEN}"}
+        return self.client(rows).get(f"/rasters/layer/{layer}/info", headers=headers)
+
+    def test_shared_scope_reads_any_layer(self):
+        rows = {hash_token(TOKEN): ["tiles:map"]}
+        assert self.get(rows, "aviris").status_code == 200
+
+    def test_layer_scope_reads_its_layer(self):
+        rows = {hash_token(TOKEN): ["rasters:emit-minerals"]}
+        assert self.get(rows, "emit-minerals").status_code == 200
+
+    def test_layer_scope_reads_no_other_layer(self):
+        rows = {hash_token(TOKEN): ["rasters:emit-minerals"]}
+        response = self.get(rows, "aviris")
+        assert response.status_code == 403
+        assert "rasters:aviris" in response.json()["detail"]
 
 
 class TestStorage:

@@ -17,7 +17,7 @@ dependencies = [
     "macrostrat.raster-tasks",
     "macrostrat.tileserver-utils",
     "macrostrat.worker[maps]",
-    "macrostrat.raster_index[s3,footprints]>=0.4.0,<1",
+    "macrostrat.raster_index[s3,footprints]>=0.5.0,<1",
     "macrostrat.raster_layers>=0.3.2,<1",
     "testcontainers>=4.14.2",
     "psycopg[binary]>=3.3.3",
