@@ -19,7 +19,7 @@ from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
-    map_t_b_intervals,
+    map_legend_ages,
     transform_gdb_layer,
 )
 from macrostrat.map_utils.slugs import check_slug, staging_table, table_prefix
@@ -146,7 +146,7 @@ def preprocess_dataframe(
                 # TODO update to needs review. this status makes UI fail for some reason so kept it at pending.
                 state = "pending"
                 return poly_line_pt_df, ingest_pipeline, comments, state
-            meta_df = map_t_b_intervals(db, meta_df)
+            meta_df = map_legend_ages(db, meta_df)
             if (
                 meta_df["b_interval"].isna().all()
                 and meta_df["t_interval"].isna().all()

@@ -235,6 +235,43 @@ def lookup_and_validate_age(
     return pd.NA, pd.NA
 
 
+def map_legend_ages(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:
+    """b_interval, t_interval and age for each DescriptionOfMapUnits entry,
+    read as `normalize calculate-age` reads them (`AgeReader.legend`): the
+    entry's `age`, with misspelt intervals corrected ("Permain") and ages in
+    years read as epochs ("< 2 Ma"), else an age its `name` or `fullname`
+    starts with or gives in parentheses. An `age` that had to be corrected,
+    or was missing, becomes the intervals' names; one that reads as written
+    is kept.
+
+    The GeMS ingest's step; `map_t_b_intervals` stays as it was for
+    `fill-polygons` in data-integration.
+    """
+    from .age_reader import AgeReader
+
+    reader = AgeReader(db)
+    names = [c for c in ("name", "fullname") if c in meta_df.columns]
+    b_intervals, t_intervals, ages = [], [], []
+    for row in meta_df.to_dict("records"):
+        age = row.get("age")
+        age = None if pd.isna(age) else age
+        found = reader.legend(
+            age, *(None if pd.isna(row[c]) else row[c] for c in names)
+        )
+        if found is None:
+            b_intervals.append(pd.NA)
+            t_intervals.append(pd.NA)
+            ages.append(age)
+        else:
+            b_intervals.append(found[0])
+            t_intervals.append(found[1])
+            ages.append(found[2])
+    meta_df["b_interval"] = pd.array(b_intervals, dtype="Int64")
+    meta_df["t_interval"] = pd.array(t_intervals, dtype="Int64")
+    meta_df["age"] = ages
+    return meta_df
+
+
 # need to modify this logic and maybe need to reference another table besides intervals.
 # look in the name and age column to infer the age
 def map_t_b_intervals(db, meta_df: G.GeoDataFrame) -> G.GeoDataFrame:

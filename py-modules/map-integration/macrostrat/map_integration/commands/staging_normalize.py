@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from difflib import SequenceMatcher
 from enum import Enum
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -2144,23 +2144,35 @@ def add_metadata_interactive(
 AGE_REVIEW_DESCRIPTION_CHARS = 600
 
 
-def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
-    """Ask for the age of each map unit whose polygons lack b_interval or
-    t_interval, and set both from the answer, and `age` to the answer as typed.
+@cache
+def _age_reader(db):
+    """Loaded once per process: `calculate-age` runs map by map."""
+    from ..utils.age_reader import AgeReader
 
-    Polygons are asked about once per distinct name, descrip and age, most
-    polygons first. An answer is read as the GeMS ingest reads an age
-    (`lookup_and_validate_age`): "Late Pleistocene", "Miocene to Pliocene",
-    "middle to late Pleistocene"; or interval ids, "23" or "23 to 40", whose
-    names go into `age` ("Cenomanian to Rupelian"). `omit` sets omit = true on
+    return AgeReader(db)
+
+
+def review_ages(
+    db, target: TableTarget, dry_run: bool = False, auto: bool = True
+) -> None:
+    """Set b_interval, t_interval and `age` on each map unit whose polygons
+    lack an interval: by itself where the unit's own text gives its age, and
+    otherwise by asking.
+
+    Polygons are taken once per distinct name, descrip and age, most polygons
+    first. With `auto`, a unit is answered without asking from, in turn, its
+    `age` ("Permain", "Recent", "< 2 Ma") and its name or fullname ("Dacite
+    (Oligocene to Lower Miocene)", "Late Pleistocene alluvium", "Historical
+    river terrace deposits"), read by `AgeReader`, which also corrects a
+    misspelt interval; `age` is then written as the intervals' names. A typed
+    answer is read the same way, or as interval ids, "23" or "23 to 40", whose
+    names go into `age` ("Cenomanian to Rupelian"); otherwise `age` is the
+    answer as typed. `omit` sets omit = true on
     the unit's polygons instead, for unmapped or unnamed ones; `skip` (or `q`)
     moves on to the next map. Each unit is
     shown as its first polygon's whole row, and written and committed once
     confirmed, so stopping keeps what is done.
     """
-    from ..utils.gems_utils import AGE_ALIASES, lookup_and_validate_age
-    from ..utils.ingestion_utils import get_age_interval_df
-
     existing = get_existing_columns(target)
     missing = {"_pkid", "b_interval", "t_interval"} - existing
     if missing:
@@ -2170,13 +2182,14 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
         )
     shown = {
         c: Identifier(c) if c in existing else SQL("NULL")
-        for c in ("name", "descrip", "age", "omit")
+        for c in ("name", "descrip", "age", "omit", "fullname")
     }
     units = db.run_query(
         """
         SELECT {name}::text AS name, {descrip}::text AS descrip, {age}::text AS age,
             b_interval::text AS b_interval, t_interval::text AS t_interval,
-            array_agg(_pkid ORDER BY _pkid) AS ids
+            array_agg(_pkid ORDER BY _pkid) AS ids,
+            min({fullname}::text) AS fullname
         FROM {table}
         WHERE (b_interval IS NULL OR t_interval IS NULL)
           AND {omit} IS NOT TRUE
@@ -2192,46 +2205,72 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
     if not units:
         return
 
-    intervals = get_age_interval_df(db)
-    by_id = {
-        int(r.id): (r.interval_name, r.age_bottom, r.age_top)
-        for r in intervals.itertuples()
-    }
-    lookup = {str(r.interval_name).lower(): int(r.id) for r in intervals.itertuples()}
-    for alias, name in AGE_ALIASES.items():
-        if name in lookup:
-            lookup.setdefault(alias, lookup[name])
-    ages = {i: (bottom, top) for i, (_, bottom, top) in by_id.items()}
+    reader = _age_reader(db)
 
     def label(interval) -> str:
         if interval in (None, ""):
             return "[dim]-[/dim]"
-        name, bottom, top = by_id.get(int(interval), ("?", None, None))
+        interval = int(interval)
+        bottom, top = reader.ages.get(interval, (None, None))
+        name = reader.names.get(interval, "?")
         return f"{name} [dim]({interval}; {bottom}-{top} Ma)[/dim]"
 
     def resolve(answer: str):
         ids = re.fullmatch(r"\s*(\d+)\s*(?:(?:to|-)\s*(\d+)\s*)?", answer)
         if ids:
             found = [int(i) for i in ids.groups() if i is not None]
-            if any(i not in by_id for i in found):
+            if any(i not in reader.names for i in found):
                 return None
             # The older interval is the bottom one.
-            found.sort(key=lambda i: -by_id[i][1])
+            found.sort(key=lambda i: -reader.ages[i][0])
             return found[0], found[-1]
-        # "middle to late Pleistocene": each qualifier takes the shared epoch.
-        shared = re.fullmatch(
-            r"\s*(early|middle|late|lower|upper)\s*(?:to|-)\s*"
-            r"(early|middle|late|lower|upper)\s+(.+?)\s*",
-            answer,
-            re.I,
+        return reader.read(answer)
+
+    def write(ids: list[int], b: int, t: int, age: str) -> None:
+        db.run_query(
+            """
+            UPDATE {table} SET b_interval = :b, t_interval = :t {set_age}
+            WHERE _pkid = ANY(CAST(:ids AS bigint[]))
+            """,
+            dict(
+                table=target.fq_identifier,
+                set_age=SQL(", age = :age" if "age" in existing else ""),
+                b=b,
+                t=t,
+                age=age,
+                ids=list(ids),
+            ),
         )
-        if shared:
-            first, second, epoch = shared.groups()
-            answer = f"{first} {epoch} to {second} {epoch}"
-        b, t = lookup_and_validate_age(answer, lookup, ages)
-        if pd.isna(b) or pd.isna(t):
-            return None
-        return int(b), int(t)
+        db.session.commit()
+
+    # The units whose own text gives their age, answered without asking.
+    automatic = 0
+    if auto:
+        asked = []
+        for unit in units:
+            found, source = reader.read(unit.age), unit.age
+            if found is None:
+                for name in (unit.name, unit.fullname):
+                    if (hit := reader.find(name)) is not None:
+                        source, found = name, hit[1:]
+                        break
+            if found is None:
+                asked.append(unit)
+                continue
+            b, t = found
+            console.print(
+                f"  [green]auto[/green] {len(unit.ids):>5} polygon(s)  "
+                f"{escape(str(source))[:70]} [dim]->[/dim] {reader.label(b, t)}"
+            )
+            if not dry_run:
+                write(unit.ids, b, t, reader.label(b, t))
+            automatic += len(unit.ids)
+        units = asked
+        if not units:
+            console.print(
+                f"\n[green]{automatic} polygon(s) given an age by itself[/green]"
+            )
+            return
 
     # Every column but the geometry, as text, for showing a polygon's row.
     shown_columns = [
@@ -2292,7 +2331,7 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
             b, t = found
             age = answer
             if re.fullmatch(r"[\d\s-]+|\s*\d+\s*to\s*\d+\s*", answer):
-                age = by_id[b][0] if b == t else f"{by_id[b][0]} to {by_id[t][0]}"
+                age = reader.label(b, t)
             console.print(f"  b_interval -> {label(b)}\n  t_interval -> {label(t)}")
             if "age" in existing:
                 console.print(f"  age        -> {age}")
@@ -2314,25 +2353,11 @@ def review_ages(db, target: TableTarget, dry_run: bool = False) -> None:
             db.session.commit()
             omitted += len(unit.ids)
             continue
-        db.run_query(
-            """
-            UPDATE {table} SET b_interval = :b, t_interval = :t {set_age}
-            WHERE _pkid = ANY(CAST(:ids AS bigint[]))
-            """,
-            dict(
-                table=target.fq_identifier,
-                set_age=SQL(", age = :age" if "age" in existing else ""),
-                b=b,
-                t=t,
-                age=age,
-                ids=list(unit.ids),
-            ),
-        )
-        db.session.commit()
+        write(unit.ids, b, t, age)
         applied += len(unit.ids)
     console.print(
-        f"\n[green]{applied} polygon(s) given an age and intervals, "
-        f"{omitted} omitted[/green]"
+        f"\n[green]{automatic} polygon(s) given an age by itself, {applied} by "
+        f"answer, {omitted} omitted[/green]"
     )
 
 
@@ -4017,15 +4042,22 @@ def normalize_add_metadata_csv(
 def normalize_calculate_age(
     target: TableTarget,
     dry_run: bool = Option(False, "--dry-run", help="Ask, but write nothing"),
+    auto: bool = Option(
+        True,
+        "--auto/--no-auto",
+        help="Answer the units whose own age or name gives their age, "
+        "misspelt or in years, without asking.",
+    ),
 ):
     """
-    Review the polygons with no b_interval or t_interval, one map unit at a
-    time: shows its name, descrip, age and intervals, asks for its age ("Late
-    Pleistocene", "Miocene to Pliocene", or interval ids) and sets b_interval
-    and t_interval from the answer, and age to it. Select maps before the command:
+    Give the polygons with no b_interval or t_interval an age, one map unit at
+    a time. A unit whose age or name gives it ("Permain", "Recent", "< 2 Ma",
+    "Dacite (Oligocene to Lower Miocene)") is answered without asking; the
+    rest are shown and asked for ("Late Pleistocene", "Miocene to Pliocene", or
+    interval ids). Select maps before the command:
     normalize --slug 'arizona-%' --since 2026-11-17 calculate-age
     """
-    review_ages(get_database(), target, dry_run=dry_run)
+    review_ages(get_database(), target, dry_run=dry_run, auto=auto)
 
 
 @normalize_cli.command("copy-age")
