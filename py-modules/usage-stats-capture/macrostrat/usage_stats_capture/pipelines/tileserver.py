@@ -10,8 +10,9 @@ indexes are the durable artifact.
 """
 
 import re
-from collections import defaultdict
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from ipaddress import ip_address, ip_network
 from urllib.parse import urlsplit
 
 # A tile request path is `/<layer>/<z>/<x>/<y>[.ext]`, where <layer> may span
@@ -44,6 +45,12 @@ SOURCES_FIELD = "downstream_X-Macrostrat-Sources"
 KNOWN_BOTS = {
     "96.19.11.45",
 }
+
+# Clients are also tagged by volume, since sweepers rotate addresses. Measured
+# 2026-11-12: a sweeper sent ~600k tiles/hour; the busiest other client sent 6.6k.
+HEAVY_CLIENT_TILES_PER_HOUR = 20_000
+# Short log objects are judged as if this long, so a brief burst is not a rate.
+MIN_RATE_SPAN = timedelta(minutes=15)
 
 
 def parse_tile_path(path: str | None) -> dict | None:
@@ -124,6 +131,38 @@ def is_known_bot(client: str | None) -> bool:
     return client in KNOWN_BOTS
 
 
+def client_network(client: str | None) -> str | None:
+    """The unit a client is counted as: its /64 for IPv6, else its address.
+
+    An IPv6 host picks new addresses within its /64 at will.
+    """
+    if not client:
+        return None
+    try:
+        address = ip_address(client)
+    except ValueError:
+        return client
+    if address.version == 6:
+        return str(ip_network(f"{address}/64", strict=False))
+    return client
+
+
+def tag_heavy_clients(rows: list[dict]) -> list[dict]:
+    """Mark `is_bot` on every request from a client whose rate over the batch
+    exceeds HEAVY_CLIENT_TILES_PER_HOUR. A batch is one log object."""
+    times = [r["time"] for r in rows if r["time"] is not None]
+    if not times:
+        return rows
+    span = max(max(times) - min(times), MIN_RATE_SPAN)
+    limit = HEAVY_CLIENT_TILES_PER_HOUR * span / timedelta(hours=1)
+    counts = Counter(r["client"] for r in rows if r.get("client") is not None)
+    heavy = {client for client, n in counts.items() if n > limit}
+    for r in rows:
+        if r.get("client") in heavy:
+            r["is_bot"] = True
+    return rows
+
+
 # Upserts accumulate counts (new_system rows; legacy rows carry new_system=false
 # and never collide). Aggregation dedupes keys, so no in-batch conflicts. Passed
 # a list of param dicts, db.run_query runs them as an executemany.
@@ -199,6 +238,7 @@ class TileserverPipeline:
             "z": tile["z"],
             "time": parse_timestamp(rec),
             "is_bot": is_known_bot(rec.get("ClientHost")),
+            "client": client_network(rec.get("ClientHost")),
             "referrer": referrer_host(rec),
             # Client-facing cache status ('' when the header is absent, e.g.
             # pre-config-change logs). downstream_* is what the client got.
@@ -208,7 +248,7 @@ class TileserverPipeline:
         }
 
     def write(self, db, rows: list[dict]) -> None:
-        day_rows, loc_rows, source_rows = aggregate(rows)
+        day_rows, loc_rows, source_rows = aggregate(tag_heavy_clients(rows))
         if day_rows:
             db.run_query(DAY_UPSERT, day_rows)
         if loc_rows:
