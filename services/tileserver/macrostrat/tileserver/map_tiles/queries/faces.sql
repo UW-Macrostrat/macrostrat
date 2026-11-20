@@ -30,9 +30,11 @@
       Measured on that tile: 5.6 s and 1.7 MB before, 3.3 s and 0.7 MB now.
    6. Then the legend and the tile encoding, over what survives.
 
-   Every stage is a MATERIALIZED CTE on purpose: a subquery column referenced
-   twice has its expression evaluated twice, and the geometry expressions here
-   are the whole cost. */
+   Stages are MATERIALIZED CTEs on purpose: a subquery column referenced twice
+   has its expression evaluated twice, and the geometry expressions here are the
+   whole cost. The clip, though, is an `OFFSET 0` lateral subquery, not a stage of
+   its own: a stored stage held full-resolution geometry with a copy of the face
+   on every row, and wrote 2 GB of temp files on the z6 Missouri tile (2026-11-20). */
 WITH tile AS (
     SELECT
       ST_TileEnvelope(:z, :x, :y) AS mercator_bbox,
@@ -68,30 +70,26 @@ map_content AS MATERIALIZED (
    AND cs.scale = ANY(enum_range(NULL::maps.map_scale)::text[])
 ),
 -- Units
-unit_clipped AS MATERIALIZED (
+unit_owned AS MATERIALIZED (
   SELECT
     p.map_id,
     b.source_id,
-    b.geometry AS face,
-    ST_ClipByBox2D(p.geom, (SELECT projected_bbox FROM tile)) AS geom
+    ST_Simplify(
+      CASE WHEN ST_Covers(b.geometry, ST_Envelope(c.geom)) THEN c.geom
+           ELSE ST_Intersection(c.geom, b.geometry) END,
+      (SELECT tolerance FROM tile)) AS geom
   FROM map_content b
   JOIN maps.polygons p
     ON p.source_id = b.content_id
    AND p.scale = CAST(b.content_scale AS maps.map_scale)
    AND ST_Intersects(p.geom, b.geometry)
+  -- OFFSET 0 keeps the clip a subquery, so it runs once per polygon.
+  CROSS JOIN LATERAL (
+    SELECT ST_ClipByBox2D(p.geom, (SELECT projected_bbox FROM tile)) AS geom OFFSET 0
+  ) c
   -- A mosaic member reads its holder's polygons through its own footprint.
-  WHERE b.footprint IS NULL OR ST_Contains(b.footprint, ST_PointOnSurface(p.geom))
-),
-unit_owned AS MATERIALIZED (
-  SELECT
-    map_id,
-    source_id,
-    ST_Simplify(
-      CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
-           ELSE ST_Intersection(geom, face) END,
-      (SELECT tolerance FROM tile)) AS geom
-  FROM unit_clipped
-  WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
+  WHERE (b.footprint IS NULL OR ST_Contains(b.footprint, ST_PointOnSurface(p.geom)))
+    AND c.geom IS NOT NULL AND NOT ST_IsEmpty(c.geom)
 ),
 unit_features AS (
   SELECT
@@ -111,43 +109,33 @@ unit_features AS (
   ::detail_joins
 ),
 -- Lines, the same way; a line needs no validity repair.
-line_clipped AS MATERIALIZED (
+line_features AS (
   SELECT
     l.line_id,
     b.source_id,
-    b.geometry AS face,
-    b.lines_oriented,
     coalesce(l.descrip, '') AS descrip,
     coalesce(l.name, '') AS name,
     coalesce(l.direction, '') AS direction,
     coalesce(l.type, '') AS "type",
-    ST_ClipByBox2D(l.geom, (SELECT projected_bbox FROM tile)) AS geom
+    b.lines_oriented AS oriented,
+    ST_Scale(ST_AsMVTGeom(
+      ST_Transform(ST_Simplify(
+        CASE WHEN ST_Covers(b.geometry, ST_Envelope(c.geom)) THEN c.geom
+             ELSE ST_Intersection(c.geom, b.geometry) END,
+        (SELECT tolerance FROM tile)), 3857),
+      (SELECT mercator_bbox FROM tile), 2048, 8, true
+    ), 2, 2) AS geom
   FROM map_content b
   JOIN maps.lines l
     ON l.source_id = b.content_id
    AND l.scale = CAST(b.content_scale AS maps.map_scale)
    AND ST_Intersects(l.geom, b.geometry)
-  WHERE b.footprint IS NULL OR ST_Contains(b.footprint, ST_PointOnSurface(l.geom))
-),
-line_features AS (
-  SELECT
-    line_id,
-    source_id,
-    descrip,
-    name,
-    direction,
-    "type",
-    lines_oriented AS oriented,
-    ST_Scale(ST_AsMVTGeom(
-      ST_Transform(ST_Simplify(
-        CASE WHEN ST_Covers(face, ST_Envelope(geom)) THEN geom
-             ELSE ST_Intersection(geom, face) END,
-        (SELECT tolerance FROM tile)), 3857),
-      (SELECT mercator_bbox FROM tile), 2048, 8, true
-    ), 2, 2) AS geom
-  FROM line_clipped
-  WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom)
-    AND ST_Length(geom) > (SELECT weed FROM tile)
+  CROSS JOIN LATERAL (
+    SELECT ST_ClipByBox2D(l.geom, (SELECT projected_bbox FROM tile)) AS geom OFFSET 0
+  ) c
+  WHERE (b.footprint IS NULL OR ST_Contains(b.footprint, ST_PointOnSurface(l.geom)))
+    AND c.geom IS NOT NULL AND NOT ST_IsEmpty(c.geom)
+    AND ST_Length(c.geom) > (SELECT weed FROM tile)
 ), units_tile AS (
   SELECT ST_AsMVT(unit_features, 'units') AS units
   FROM unit_features
