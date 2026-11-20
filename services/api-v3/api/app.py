@@ -26,6 +26,7 @@ from api.routes.object import router as object_router
 from api.routes.sources import router as sources_router
 from api.routes.status import router as status_router
 from api.routes.tasks import router as tasks_router
+from api.routes.usage_stats import router as usage_stats_router
 
 
 @asynccontextmanager
@@ -80,6 +81,7 @@ app.include_router(regions_router)
 app.include_router(map_router, prefix="/map")
 app.include_router(cache_router, prefix="/cache")
 app.include_router(tasks_router)
+app.include_router(usage_stats_router)
 
 app.include_router(convert_router, prefix="/dev")
 app.include_router(match_router, prefix="/dev/match")
