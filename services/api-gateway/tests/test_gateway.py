@@ -233,7 +233,7 @@ class RenderThrottle(unittest.TestCase):
         self.assertEqual(res.status, 429)
         self.assertEqual(res.getheader("X-Throttle"), "deny")
         self.assertEqual(res.getheader("Retry-After"), "600")
-        self.assertIn(b"bulk access", body)
+        self.assertIn(b"contact@macrostrat.org", body)
 
     def test_refused_client_still_gets_cached_tiles(self):
         client = client_ipv4()

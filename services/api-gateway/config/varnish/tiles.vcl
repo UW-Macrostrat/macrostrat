@@ -179,7 +179,7 @@ sub vcl_synth {
         set resp.http.X-Throttle = req.http.X-Throttle;
         set resp.http.Retry-After = "600";
         set resp.http.Content-Type = "text/plain; charset=utf-8";
-        set resp.body = {"Too many uncached tile requests from this address. Please slow down, or contact the Macrostrat team about bulk access.
+        set resp.body = {"Too many uncached tile requests from this address. Please slow down, or write to contact@macrostrat.org about bulk access.
 "};
         return (deliver);
     }
