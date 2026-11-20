@@ -152,9 +152,9 @@ sub throttle_renders {
         "\1::/64"
     );
     if (vsthrottle.is_denied("burst:" + req.http.X-Throttle-Client,
-            ${TILE_THROTTLE_BURST:-300}, 10s, ${TILE_THROTTLE_BLOCK:-10m}) ||
+            ${TILE_THROTTLE_BURST:-1500}, 10s, ${TILE_THROTTLE_BLOCK:-10m}) ||
         vsthrottle.is_denied("sustained:" + req.http.X-Throttle-Client,
-            ${TILE_THROTTLE_SUSTAINED:-3000}, 10m, ${TILE_THROTTLE_BLOCK:-10m})) {
+            ${TILE_THROTTLE_SUSTAINED:-10000}, 10m, ${TILE_THROTTLE_BLOCK:-10m})) {
         unset req.http.X-Throttle-Client;
         if ("${TILE_THROTTLE_MODE:-enforce}" == "report") {
             set req.http.X-Throttle = "would-deny";
