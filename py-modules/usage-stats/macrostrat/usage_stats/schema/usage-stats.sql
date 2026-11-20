@@ -243,6 +243,8 @@ GRANT SELECT, INSERT, UPDATE ON usage_stats.processed_logs TO logs_writer;
 GRANT SELECT, INSERT, UPDATE ON usage_stats.tileserver_day_index TO logs_writer;
 GRANT SELECT, INSERT, UPDATE
   ON usage_stats.tileserver_location_index TO logs_writer;
+GRANT SELECT, INSERT, UPDATE
+  ON usage_stats.tileserver_source_index TO logs_writer;
 
 -- Dashboard loads are append-only, so no UPDATE. SELECT is required despite
 -- that: the insert's ON CONFLICT (time, client_id) names those columns, and
