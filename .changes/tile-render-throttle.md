@@ -2,4 +2,4 @@
 api-gateway: minor
 ---
 
-- Tile cache marks clients over a render limit with `X-Throttle: would-deny` (report-only; 429 enforcement is commented out in `tiles.vcl`)
+- Tile cache answers 429 to clients over a per-client render limit; `TILE_THROTTLE_MODE=report` only marks them (`X-Throttle: would-deny`)

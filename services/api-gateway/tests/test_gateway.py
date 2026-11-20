@@ -9,6 +9,7 @@ from http.client import HTTPConnection
 
 API = int(os.environ.get("GATEWAY_TEST_API_PORT", 18080))
 TILES = int(os.environ.get("GATEWAY_TEST_TILES_PORT", 18081))
+TILES_REPORT = int(os.environ.get("GATEWAY_TEST_TILES_REPORT_PORT", 18082))
 
 
 def request(port, path, method="GET", headers=None):
@@ -38,7 +39,10 @@ def setUpModule():
     while time.monotonic() < deadline:
         try:
             if request(API, "/api/health")[0].status == 200:
-                if request(TILES, "/legacy/version")[0].status == 200:
+                if all(
+                    request(port, "/legacy/version")[0].status == 200
+                    for port in (TILES, TILES_REPORT)
+                ):
                     return
         except OSError:
             pass
@@ -207,73 +211,86 @@ def client_ipv6_net():
     return f"2001:db8:{n[:4]}:{n[4:8]}"
 
 
-def throttle(path, client):
-    """The X-Throttle mark on a tile, as relayed by an edge proxy for `client`."""
-    res, _ = echoed(TILES, path, headers={"X-Forwarded-For": client})
-    return res.getheader("X-Throttle")
+def tile(path, client=None, port=TILES, **headers):
+    """A tile as relayed by an edge proxy for `client`, or called directly."""
+    if client is not None:
+        headers["X-Forwarded-For"] = client
+    res, body = request(port, path, headers=headers)
+    return res, body
+
+
+def statuses(n, client, port=TILES):
+    return [tile(unique("/carto/3/2/1.png"), client, port)[0].status for _ in range(n)]
 
 
 class RenderThrottle(unittest.TestCase):
     """TILE_THROTTLE_BURST is 5 in tests/compose.yaml."""
 
-    def test_sixth_miss_is_marked(self):
+    def test_sixth_miss_is_refused(self):
         client = client_ipv4()
-        marks = [throttle(unique("/carto/3/2/1.png"), client) for _ in range(6)]
-        self.assertEqual(marks[:5], [None] * 5)
-        self.assertEqual(marks[5], "would-deny")
+        self.assertEqual(statuses(5, client), [200] * 5)
+        res, body = tile(unique("/carto/3/2/1.png"), client)
+        self.assertEqual(res.status, 429)
+        self.assertEqual(res.getheader("X-Throttle"), "deny")
+        self.assertEqual(res.getheader("Retry-After"), "600")
+        self.assertIn(b"bulk access", body)
 
-    def test_report_only_still_serves(self):
+    def test_refused_client_still_gets_cached_tiles(self):
         client = client_ipv4()
-        for _ in range(6):
-            res, body = echoed(
-                TILES, unique("/carto/3/2/1.png"), headers={"X-Forwarded-For": client}
-            )
-        self.assertEqual(res.getheader("X-Throttle"), "would-deny")
-        self.assertEqual(body["service"], "tileserver_legacy")
-        self.assertNotIn("x-throttle-client", body["headers"])
+        path = unique("/carto/3/2/1.png")
+        tile(path, client_ipv4())
+        statuses(6, client)
+        self.assertEqual(tile(path, client)[0].status, 200)
 
     def test_clients_are_counted_apart(self):
-        busy = client_ipv4()
-        for _ in range(6):
-            throttle(unique("/carto/3/2/1.png"), busy)
-        self.assertIsNone(throttle(unique("/carto/3/2/1.png"), client_ipv4()))
+        statuses(6, client_ipv4())
+        self.assertEqual(statuses(1, client_ipv4()), [200])
 
     def test_cache_hits_are_not_counted(self):
         client = client_ipv4()
         path = unique("/carto/3/2/1.png")
-        marks = [throttle(path, client) for _ in range(10)]
-        self.assertEqual(marks, [None] * 10)
+        self.assertEqual([tile(path, client)[0].status for _ in range(10)], [200] * 10)
 
     def test_ipv6_counts_by_64(self):
         net = client_ipv6_net()
-        marks = [
-            throttle(unique("/carto/3/2/1.png"), f"{net}:{i:x}:0:0:{i + 1:x}")
+        codes = [
+            tile(unique("/carto/3/2/1.png"), f"{net}:{i:x}:0:0:{i + 1:x}")[0].status
             for i in range(6)
         ]
-        self.assertEqual(marks[5], "would-deny")
+        self.assertEqual(codes[5], 429)
 
     def test_forged_entries_do_not_reset_the_count(self):
         client = client_ipv4()
-        marks = [
-            throttle(unique("/carto/3/2/1.png"), f"{client_ipv4()}, {client}")
+        codes = [
+            tile(unique("/carto/3/2/1.png"), f"{client_ipv4()}, {client}")[0].status
             for _ in range(6)
         ]
-        self.assertEqual(marks[5], "would-deny")
+        self.assertEqual(codes[5], 429)
 
     def test_direct_internal_calls_are_exempt(self):
-        marks = [
-            echoed(TILES, unique("/carto/3/2/1.png"))[0].getheader("X-Throttle")
-            for _ in range(6)
-        ]
-        self.assertEqual(marks, [None] * 6)
+        codes = [tile(unique("/carto/3/2/1.png"))[0].status for _ in range(6)]
+        self.assertEqual(codes, [200] * 6)
 
     def test_client_cannot_set_the_mark(self):
-        res, _ = echoed(
-            TILES,
-            unique("/carto/3/2/1.png"),
-            headers={"X-Forwarded-For": client_ipv4(), "X-Throttle": "deny"},
+        res, _ = tile(
+            unique("/carto/3/2/1.png"), client_ipv4(), **{"X-Throttle": "deny"}
         )
+        self.assertEqual(res.status, 200)
         self.assertIsNone(res.getheader("X-Throttle"))
+
+
+class RenderThrottleReport(unittest.TestCase):
+    """TILE_THROTTLE_MODE=report marks over-limit clients but serves them."""
+
+    def test_sixth_miss_is_marked_and_served(self):
+        client = client_ipv4()
+        statuses(5, client, TILES_REPORT)
+        res, body = tile(unique("/carto/3/2/1.png"), client, TILES_REPORT)
+        self.assertEqual(res.status, 200)
+        self.assertEqual(res.getheader("X-Throttle"), "would-deny")
+        body = json.loads(body)
+        self.assertEqual(body["service"], "tileserver_legacy")
+        self.assertNotIn("x-throttle-client", body["headers"])
 
 
 if __name__ == "__main__":

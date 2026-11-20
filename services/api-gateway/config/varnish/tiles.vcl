@@ -134,8 +134,8 @@ sub vcl_recv {
 # crowd out everyone else; cache hits cost nothing and are never counted. See
 # "Tile request rate limiting" in the workbench vault.
 #
-# Report-only: a client over a limit is marked `X-Throttle: would-deny`, which
-# Traefik keeps in the access log, but still served.
+# A client over a limit gets a 429 marked `X-Throttle: deny`. With
+# TILE_THROTTLE_MODE=report it is served, marked `would-deny`, as a dry run.
 sub throttle_renders {
     # A direct call from inside the cluster carries one entry (see BAN above).
     if (req.http.X-Forwarded-For !~ ",") {
@@ -155,12 +155,13 @@ sub throttle_renders {
             ${TILE_THROTTLE_BURST:-300}, 10s, ${TILE_THROTTLE_BLOCK:-10m}) ||
         vsthrottle.is_denied("sustained:" + req.http.X-Throttle-Client,
             ${TILE_THROTTLE_SUSTAINED:-3000}, 10m, ${TILE_THROTTLE_BLOCK:-10m})) {
-        set req.http.X-Throttle = "would-deny";
-
-        # To enforce, once the access logs show only sweepers would be denied:
-        # set req.http.X-Throttle = "deny";
-        # unset req.http.X-Throttle-Client;
-        # return (synth(429, "Too Many Requests"));
+        unset req.http.X-Throttle-Client;
+        if ("${TILE_THROTTLE_MODE:-enforce}" == "report") {
+            set req.http.X-Throttle = "would-deny";
+            return;
+        }
+        set req.http.X-Throttle = "deny";
+        return (synth(429, "Too Many Requests"));
     }
     unset req.http.X-Throttle-Client;
 }
