@@ -1,5 +1,7 @@
 vcl 4.1;
 
+import vsthrottle;
+
 # Hosts are filled in from the environment when the container starts (bin/gateway).
 backend backend-core {
     .host = "${TILESERVER_HOST}";
@@ -26,6 +28,8 @@ acl internal {
 
 # Bypass Varnish if tile has a cache=bypass query parameter
 sub vcl_recv {
+    unset req.http.X-Throttle;
+
     # Cache invalidation via BAN, from inside the network only.
     #
     # The comment this replaces asserted the docker network was the only way in,
@@ -126,9 +130,67 @@ sub vcl_recv {
     }
 }
 
+# Per-client limits on renders, so one client sweeping the tile pyramid cannot
+# crowd out everyone else; cache hits cost nothing and are never counted. See
+# "Tile request rate limiting" in the workbench vault.
+#
+# Report-only: a client over a limit is marked `X-Throttle: would-deny`, which
+# Traefik keeps in the access log, but still served.
+sub throttle_renders {
+    # A direct call from inside the cluster carries one entry (see BAN above).
+    if (req.http.X-Forwarded-For !~ ",") {
+        return;
+    }
+    # The edge proxy's entry, just before Varnish's own; earlier ones are the client's to forge.
+    set req.http.X-Throttle-Client = regsub(
+        req.http.X-Forwarded-For, "^(?:.*,)?\s*([^,\s]+)\s*,[^,]*$", "\1"
+    );
+    # IPv6 hosts pick new addresses within their /64 at will.
+    set req.http.X-Throttle-Client = regsub(
+        req.http.X-Throttle-Client,
+        "^((?:[0-9A-Fa-f]{1,4}:){3}[0-9A-Fa-f]{1,4})(?::[0-9A-Fa-f]{1,4}){4}$",
+        "\1::/64"
+    );
+    if (vsthrottle.is_denied("burst:" + req.http.X-Throttle-Client,
+            ${TILE_THROTTLE_BURST:-300}, 10s, ${TILE_THROTTLE_BLOCK:-10m}) ||
+        vsthrottle.is_denied("sustained:" + req.http.X-Throttle-Client,
+            ${TILE_THROTTLE_SUSTAINED:-3000}, 10m, ${TILE_THROTTLE_BLOCK:-10m})) {
+        set req.http.X-Throttle = "would-deny";
+
+        # To enforce, once the access logs show only sweepers would be denied:
+        # set req.http.X-Throttle = "deny";
+        # unset req.http.X-Throttle-Client;
+        # return (synth(429, "Too Many Requests"));
+    }
+    unset req.http.X-Throttle-Client;
+}
+
+sub vcl_miss {
+    call throttle_renders;
+}
+
+sub vcl_pass {
+    call throttle_renders;
+}
+
+sub vcl_synth {
+    if (resp.status == 429) {
+        set resp.http.X-Throttle = req.http.X-Throttle;
+        set resp.http.Retry-After = "600";
+        set resp.http.Content-Type = "text/plain; charset=utf-8";
+        set resp.body = {"Too many uncached tile requests from this address. Please slow down, or contact the Macrostrat team about bulk access.
+"};
+        return (deliver);
+    }
+}
+
 sub vcl_deliver {
     # Internal bookkeeping (see vcl_backend_response), not for clients.
     unset resp.http.X-Ban-Url;
+
+    if (req.http.X-Throttle) {
+        set resp.http.X-Throttle = req.http.X-Throttle;
+    }
 
     # The tileserver answers any origin (`*`), but adds the header only when a
     # request carries `Origin`, and a cached object keeps the headers of the

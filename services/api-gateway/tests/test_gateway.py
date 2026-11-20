@@ -197,5 +197,84 @@ class TileCache(unittest.TestCase):
         self.assertEqual(res.status, 403)
 
 
+def client_ipv4():
+    n = uuid.uuid4().int
+    return f"198.18.{n % 256}.{(n >> 8) % 256}"
+
+
+def client_ipv6_net():
+    n = uuid.uuid4().hex
+    return f"2001:db8:{n[:4]}:{n[4:8]}"
+
+
+def throttle(path, client):
+    """The X-Throttle mark on a tile, as relayed by an edge proxy for `client`."""
+    res, _ = echoed(TILES, path, headers={"X-Forwarded-For": client})
+    return res.getheader("X-Throttle")
+
+
+class RenderThrottle(unittest.TestCase):
+    """TILE_THROTTLE_BURST is 5 in tests/compose.yaml."""
+
+    def test_sixth_miss_is_marked(self):
+        client = client_ipv4()
+        marks = [throttle(unique("/carto/3/2/1.png"), client) for _ in range(6)]
+        self.assertEqual(marks[:5], [None] * 5)
+        self.assertEqual(marks[5], "would-deny")
+
+    def test_report_only_still_serves(self):
+        client = client_ipv4()
+        for _ in range(6):
+            res, body = echoed(
+                TILES, unique("/carto/3/2/1.png"), headers={"X-Forwarded-For": client}
+            )
+        self.assertEqual(res.getheader("X-Throttle"), "would-deny")
+        self.assertEqual(body["service"], "tileserver_legacy")
+        self.assertNotIn("x-throttle-client", body["headers"])
+
+    def test_clients_are_counted_apart(self):
+        busy = client_ipv4()
+        for _ in range(6):
+            throttle(unique("/carto/3/2/1.png"), busy)
+        self.assertIsNone(throttle(unique("/carto/3/2/1.png"), client_ipv4()))
+
+    def test_cache_hits_are_not_counted(self):
+        client = client_ipv4()
+        path = unique("/carto/3/2/1.png")
+        marks = [throttle(path, client) for _ in range(10)]
+        self.assertEqual(marks, [None] * 10)
+
+    def test_ipv6_counts_by_64(self):
+        net = client_ipv6_net()
+        marks = [
+            throttle(unique("/carto/3/2/1.png"), f"{net}:{i:x}:0:0:{i + 1:x}")
+            for i in range(6)
+        ]
+        self.assertEqual(marks[5], "would-deny")
+
+    def test_forged_entries_do_not_reset_the_count(self):
+        client = client_ipv4()
+        marks = [
+            throttle(unique("/carto/3/2/1.png"), f"{client_ipv4()}, {client}")
+            for _ in range(6)
+        ]
+        self.assertEqual(marks[5], "would-deny")
+
+    def test_direct_internal_calls_are_exempt(self):
+        marks = [
+            echoed(TILES, unique("/carto/3/2/1.png"))[0].getheader("X-Throttle")
+            for _ in range(6)
+        ]
+        self.assertEqual(marks, [None] * 6)
+
+    def test_client_cannot_set_the_mark(self):
+        res, _ = echoed(
+            TILES,
+            unique("/carto/3/2/1.png"),
+            headers={"X-Forwarded-For": client_ipv4(), "X-Throttle": "deny"},
+        )
+        self.assertIsNone(res.getheader("X-Throttle"))
+
+
 if __name__ == "__main__":
     unittest.main()

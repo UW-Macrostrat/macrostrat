@@ -34,6 +34,7 @@ tiles ─▶ Varnish :8000 (tiles.vcl) ─▶ core and legacy tileservers
 | `GATEWAY_VCL` | Varnish | `api` (default) or `tiles` |
 | `TILESERVER_HOST`, `TILESERVER_LEGACY_HOST` | Varnish, tiles | backend hosts; `_PORT` variants default to 80 |
 | `VARNISH_HTTP_PORT`, `VARNISH_SIZE` | Varnish | listen port (8000) and cache size (100M) |
+| `TILE_THROTTLE_BURST`, `_SUSTAINED`, `_BLOCK` | Varnish, tiles | renders allowed per client in 10 s (300) and 10 min (3000), and how long one over either stays marked (10m) |
 
 Extra arguments to `gateway varnish` pass to `varnishd`, e.g. `-p nuke_limit=500`.
 

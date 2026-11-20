@@ -46,6 +46,8 @@ services:
       TILESERVER_PORT: "8000"
       TILESERVER_LEGACY_HOST: tileserver_legacy
       TILESERVER_LEGACY_PORT: "8000"
+      # Small enough for the tests to reach
+      TILE_THROTTLE_BURST: "5"
     ports:
       - "127.0.0.1:18081:8000"
 
