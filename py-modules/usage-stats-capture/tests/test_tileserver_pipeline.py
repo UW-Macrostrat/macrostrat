@@ -1,16 +1,19 @@
 """The tileserver pipeline's parsing and aggregation, database-free."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from macrostrat.usage_stats_capture.pipelines.tileserver import (
     HEAVY_CLIENT_TILES_PER_HOUR,
     KEEP_LAYERS,
     SOURCES_FIELD,
+    THROTTLE_FIELD,
     TileserverPipeline,
     aggregate,
+    aggregate_throttled,
     client_network,
     parse_sources,
     parse_tile_path,
+    served,
     tag_heavy_clients,
 )
 
@@ -156,3 +159,47 @@ class TestHeavyClients:
         for r in rows:
             r["is_bot"] = True
         assert all(r["is_bot"] for r in tag_heavy_clients(rows))
+
+
+class TestThrottled:
+    t = datetime(2026, 11, 20, 12)
+
+    def row(self, client, throttle, status, minutes=0):
+        return {
+            "client": client,
+            "throttle": throttle,
+            "status": status,
+            "time": self.t + timedelta(minutes=minutes),
+        }
+
+    def test_parse_reads_status_and_mark(self):
+        row = TileserverPipeline().parse(
+            record(
+                "/carto-slim/14/2438/7481.mvt",
+                DownstreamStatus=429,
+                **{THROTTLE_FIELD: "deny"},
+            )
+        )
+        assert row["status"] == 429
+        assert row["throttle"] == "deny"
+
+    def test_refused_requests_are_not_served_tiles(self):
+        rows = [self.row("a", "deny", 429), self.row("a", "would-deny", 200)]
+        assert served(rows) == [rows[1]]
+
+    def test_counts_per_client_day_and_action(self):
+        rows = [
+            self.row("a", "deny", 429, 0),
+            self.row("a", "deny", 429, 30),
+            self.row("a", "would-deny", 200, 5),
+            self.row("b", "", 200, 1),
+        ]
+        out = {(r["client"], r["action"]): r for r in aggregate_throttled(rows)}
+        assert set(out) == {("a", "deny"), ("a", "would-deny")}
+        deny = out[("a", "deny")]
+        assert deny["num_requests"] == 2
+        assert deny["date"] == datetime(2026, 11, 20)
+        assert deny["first_seen"] == self.t.replace(tzinfo=timezone.utc)
+        assert deny["last_seen"] == (self.t + timedelta(minutes=30)).replace(
+            tzinfo=timezone.utc
+        )
