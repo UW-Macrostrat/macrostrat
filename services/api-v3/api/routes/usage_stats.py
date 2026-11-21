@@ -8,7 +8,7 @@ than `/tileserver`: the services are merging into one API.
 or only the known automated clients the harvester tags `is_bot`.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from api.database import DatabaseDep
+from api.presumed_bots import presumed_bots
 from api.routes.security import require_admin
 
 router = APIRouter(
@@ -87,26 +88,23 @@ async def get_status(database: DatabaseDep) -> list[PipelineStatus]:
 
 class RequestsBin(BaseModel):
     date: date
+    #: Requests from clients not tagged as bots, presumed bots included.
     organic: Optional[int] = None
     bot: Optional[int] = None
+    #: The part of `organic` presumed automated (see `api.presumed_bots`).
+    presumed_bot: Optional[int] = None
     #: False for rows migrated from the pre-2026 direct-push logger.
     new_system: Optional[bool] = None
 
 
-REQUESTS = text(f"""
-WITH counts AS (
-  SELECT date_trunc(CAST(:bin AS text), date) AS bin,
-         sum(num_requests) FILTER (WHERE NOT is_bot)::bigint AS organic,
-         sum(num_requests) FILTER (WHERE is_bot)::bigint AS bot,
-         bool_or(new_system) AS new_system
-  FROM usage_stats.tileserver_day_index
-  WHERE {_IN_RANGE}
-  GROUP BY 1
-),
-{_FILL_BINS}
-SELECT b.bin::date AS date, c.organic, c.bot, c.new_system
-FROM bins b
-LEFT JOIN counts c USING (bin)
+# Every day, whatever the range: a day's baseline depends on its neighbours.
+DAILY_REQUESTS = text("""
+SELECT date::date AS date,
+       sum(num_requests) FILTER (WHERE NOT is_bot)::bigint AS organic,
+       sum(num_requests) FILTER (WHERE is_bot)::bigint AS bot,
+       bool_or(new_system) AS new_system
+FROM usage_stats.tileserver_day_index
+GROUP BY 1
 ORDER BY 1
 """)
 
@@ -118,11 +116,55 @@ async def get_tile_requests(
     end: EndQuery = None,
     bin: BinQuery = "day",
 ) -> list[RequestsBin]:
-    """Tile requests over time, split into organic and bot traffic."""
+    """Tile requests over time: organic, known bots, and presumed bots."""
     async with database.async_connection() as conn:
-        res = await conn.execute(REQUESTS, _params(start, end, bin=bin))
-        rows = res.mappings().all()
-    return [RequestsBin(**row) for row in rows]
+        rows = (await conn.execute(DAILY_REQUESTS)).mappings().all()
+    presumed = presumed_bots(
+        [r["date"] for r in rows], [r["organic"] or 0 for r in rows]
+    )
+    days = [
+        {**row, "presumed_bot": p}
+        for row, p in zip(rows, presumed)
+        if (start is None or row["date"] >= start)
+        and (end is None or row["date"] <= end)
+    ]
+    return [RequestsBin(**row) for row in _bin_days(days, bin)]
+
+
+def _bin_start(day: date, bin: Bin) -> date:
+    if bin == "week":
+        return day - timedelta(days=day.weekday())
+    if bin == "month":
+        return day.replace(day=1)
+    return day
+
+
+def _next_bin(start: date, bin: Bin) -> date:
+    if bin == "week":
+        return start + timedelta(days=7)
+    if bin == "month":
+        return (start + timedelta(days=31)).replace(day=1)
+    return start + timedelta(days=1)
+
+
+def _bin_days(days: list[dict], bin: Bin) -> list[dict]:
+    """Sums days into bins as `date_trunc` does; empty bins are rows of nulls."""
+    bins: dict[date, dict] = {}
+    for day in days:
+        key = _bin_start(day["date"], bin)
+        total = bins.setdefault(key, {"date": key})
+        for field in ("organic", "bot", "presumed_bot"):
+            if day[field] is not None:
+                total[field] = total.get(field, 0) + day[field]
+        total["new_system"] = total.get("new_system", False) or day["new_system"]
+    if not bins:
+        return []
+    filled = []
+    current, last = min(bins), max(bins)
+    while current <= last:
+        filled.append(bins.get(current, {"date": current}))
+        current = _next_bin(current, bin)
+    return filled
 
 
 class Referrer(BaseModel):
@@ -257,11 +299,8 @@ async def get_tile_layers(
 
 
 class MapViews(BaseModel):
+    #: A production source id, whichever database this API reads.
     source_id: int
-    #: Null for a source no longer in `maps.sources`.
-    slug: Optional[str] = None
-    name: Optional[str] = None
-    scale: Optional[str] = None
     requests: int
     days: int
 
@@ -274,24 +313,19 @@ class MapViewsList(BaseModel):
     maps: list[MapViews]
 
 
+# The harvester reads production logs in every environment, so no local
+# `maps.sources` join: its ids would name other maps outside production.
 MAPS = text(f"""
-WITH counts AS (
-  SELECT source_id,
-         sum(num_requests)::bigint AS requests,
-         count(DISTINCT date) AS days,
-         min(date) AS first_date,
-         max(date) AS last_date
-  FROM usage_stats.tileserver_source_index
-  WHERE {_IN_RANGE} AND {_BOTS}
-  GROUP BY source_id
-)
-SELECT c.source_id, m.slug, m.name, m.scale::text AS scale, c.requests, c.days,
+SELECT source_id,
+       sum(num_requests)::bigint AS requests,
+       count(DISTINCT date) AS days,
        count(*) OVER () AS n_maps,
-       min(c.first_date) OVER ()::date AS first_date,
-       max(c.last_date) OVER ()::date AS last_date
-FROM counts c
-LEFT JOIN maps.sources m ON m.source_id = c.source_id
-ORDER BY c.requests DESC
+       min(min(date)) OVER ()::date AS first_date,
+       max(max(date)) OVER ()::date AS last_date
+FROM usage_stats.tileserver_source_index
+WHERE {_IN_RANGE} AND {_BOTS}
+GROUP BY source_id
+ORDER BY requests DESC
 LIMIT :limit
 """)
 
@@ -358,3 +392,42 @@ async def get_map_view_series(
     async with database.async_connection() as conn:
         rows = (await conn.execute(MAP_SERIES, params)).mappings().all()
     return [MapViewsBin(**row) for row in rows]
+
+
+class ThrottledClient(BaseModel):
+    #: An IPv4 address or an IPv6 /64, as the tile cache keys it.
+    client: str
+    #: `deny`, or `would-deny` while the cache only reports.
+    action: str
+    requests: int
+    days: int
+    first_seen: datetime
+    last_seen: datetime
+
+
+THROTTLED = text(f"""
+SELECT client, action,
+       sum(num_requests)::bigint AS requests,
+       count(DISTINCT date) AS days,
+       min(first_seen) AS first_seen,
+       max(last_seen) AS last_seen
+FROM usage_stats.tileserver_throttled_clients
+WHERE {_IN_RANGE}
+GROUP BY client, action
+ORDER BY last_seen DESC
+LIMIT :limit
+""")
+
+
+@router.get("/tiles/throttled")
+async def get_throttled_clients(
+    database: DatabaseDep,
+    start: StartQuery = None,
+    end: EndQuery = None,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 50,
+) -> list[ThrottledClient]:
+    """Clients the tile cache refused, or would have, most recent first."""
+    async with database.async_connection() as conn:
+        res = await conn.execute(THROTTLED, _params(start, end, limit=limit))
+        rows = res.mappings().all()
+    return [ThrottledClient(**row) for row in rows]
