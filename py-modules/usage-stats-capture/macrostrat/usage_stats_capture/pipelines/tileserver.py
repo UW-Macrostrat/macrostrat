@@ -10,8 +10,9 @@ indexes are the durable artifact.
 """
 
 import re
-from collections import defaultdict
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta, timezone
+from ipaddress import ip_address, ip_network
 from urllib.parse import urlsplit
 
 # A tile request path is `/<layer>/<z>/<x>/<y>[.ext]`, where <layer> may span
@@ -36,6 +37,9 @@ KEEP_LAYERS = {"carto", "carto-slim", "map/carto", "dev/carto"}
 # `downstream_` prefix it gives every response header.
 SOURCES_FIELD = "downstream_X-Macrostrat-Sources"
 
+# The tile cache's render limit: `deny` (answered 429) or `would-deny` (report mode).
+THROTTLE_FIELD = "downstream_X-Throttle"
+
 # Known automated clients (cache-warmers, prefetchers, scrapers) by source IP.
 # Their requests are still aggregated, but tagged `is_bot` so organic traffic
 # can be separated from machine traffic. See the 2026-06-28 spike investigation:
@@ -44,6 +48,12 @@ SOURCES_FIELD = "downstream_X-Macrostrat-Sources"
 KNOWN_BOTS = {
     "96.19.11.45",
 }
+
+# Clients are also tagged by volume, since sweepers rotate addresses. Measured
+# 2026-11-12: a sweeper sent ~600k tiles/hour; the busiest other client sent 6.6k.
+HEAVY_CLIENT_TILES_PER_HOUR = 20_000
+# Short log objects are judged as if this long, so a brief burst is not a rate.
+MIN_RATE_SPAN = timedelta(minutes=15)
 
 
 def parse_tile_path(path: str | None) -> dict | None:
@@ -124,6 +134,68 @@ def is_known_bot(client: str | None) -> bool:
     return client in KNOWN_BOTS
 
 
+def served(rows: list[dict]) -> list[dict]:
+    """Requests that delivered a tile; the render limit's 429s did not."""
+    return [r for r in rows if r.get("status") != 429]
+
+
+def aggregate_throttled(rows: list[dict]) -> list[dict]:
+    """Per-client, per-day counts of requests the render limit refused or marked."""
+    groups: dict[tuple, list] = {}
+    for r in rows:
+        t = r["time"]
+        if not r.get("throttle") or t is None or r.get("client") is None:
+            continue
+        key = (datetime(t.year, t.month, t.day), r["client"], r["throttle"])
+        group = groups.setdefault(key, [0, t, t])
+        group[0] += 1
+        group[1] = min(group[1], t)
+        group[2] = max(group[2], t)
+    return [
+        {
+            "date": date,
+            "client": client,
+            "action": action,
+            "num_requests": n,
+            "first_seen": first.replace(tzinfo=timezone.utc),
+            "last_seen": last.replace(tzinfo=timezone.utc),
+        }
+        for (date, client, action), (n, first, last) in groups.items()
+    ]
+
+
+def client_network(client: str | None) -> str | None:
+    """The unit a client is counted as: its /64 for IPv6, else its address.
+
+    An IPv6 host picks new addresses within its /64 at will.
+    """
+    if not client:
+        return None
+    try:
+        address = ip_address(client)
+    except ValueError:
+        return client
+    if address.version == 6:
+        return str(ip_network(f"{address}/64", strict=False))
+    return client
+
+
+def tag_heavy_clients(rows: list[dict]) -> list[dict]:
+    """Mark `is_bot` on every request from a client whose rate over the batch
+    exceeds HEAVY_CLIENT_TILES_PER_HOUR. A batch is one log object."""
+    times = [r["time"] for r in rows if r["time"] is not None]
+    if not times:
+        return rows
+    span = max(max(times) - min(times), MIN_RATE_SPAN)
+    limit = HEAVY_CLIENT_TILES_PER_HOUR * span / timedelta(hours=1)
+    counts = Counter(r["client"] for r in rows if r.get("client") is not None)
+    heavy = {client for client, n in counts.items() if n > limit}
+    for r in rows:
+        if r.get("client") in heavy:
+            r["is_bot"] = True
+    return rows
+
+
 # Upserts accumulate counts (new_system rows; legacy rows carry new_system=false
 # and never collide). Aggregation dedupes keys, so no in-batch conflicts. Passed
 # a list of param dicts, db.run_query runs them as an executemany.
@@ -164,6 +236,22 @@ SOURCE_UPSERT = """
 """
 
 
+THROTTLED_UPSERT = """
+    INSERT INTO usage_stats.tileserver_throttled_clients
+        (date, client, action, num_requests, first_seen, last_seen)
+    VALUES (:date, :client, :action, :num_requests, :first_seen, :last_seen)
+    ON CONFLICT (date, client, action)
+    DO UPDATE SET
+        num_requests = usage_stats.tileserver_throttled_clients.num_requests
+            + EXCLUDED.num_requests,
+        first_seen = least(
+            usage_stats.tileserver_throttled_clients.first_seen, EXCLUDED.first_seen
+        ),
+        last_seen = greatest(
+            usage_stats.tileserver_throttled_clients.last_seen, EXCLUDED.last_seen
+        )
+"""
+
 DAILY_SERIES = """
     SELECT date, new_system, sum(num_requests)::bigint AS count
     FROM usage_stats.tileserver_day_index
@@ -199,16 +287,23 @@ class TileserverPipeline:
             "z": tile["z"],
             "time": parse_timestamp(rec),
             "is_bot": is_known_bot(rec.get("ClientHost")),
+            "client": client_network(rec.get("ClientHost")),
             "referrer": referrer_host(rec),
             # Client-facing cache status ('' when the header is absent, e.g.
             # pre-config-change logs). downstream_* is what the client got.
             "x_cache": (rec.get("downstream_X-Cache") or "").lower(),
             "x_tile_cache": (rec.get("downstream_X-Tile-Cache") or "").lower(),
+            "status": rec.get("DownstreamStatus"),
+            "throttle": (rec.get(THROTTLE_FIELD) or "").lower(),
             "sources": parse_sources(rec.get(SOURCES_FIELD)),
         }
 
     def write(self, db, rows: list[dict]) -> None:
-        day_rows, loc_rows, source_rows = aggregate(rows)
+        rows = tag_heavy_clients(rows)
+        throttled_rows = aggregate_throttled(rows)
+        if throttled_rows:
+            db.run_query(THROTTLED_UPSERT, throttled_rows)
+        day_rows, loc_rows, source_rows = aggregate(served(rows))
         if day_rows:
             db.run_query(DAY_UPSERT, day_rows)
         if loc_rows:
@@ -237,8 +332,12 @@ class TileserverPipeline:
         ).rowcount
         # Entirely from the log dumps: no legacy lineage to keep.
         n_src = db.run_query("DELETE FROM usage_stats.tileserver_source_index").rowcount
+        n_thr = db.run_query(
+            "DELETE FROM usage_stats.tileserver_throttled_clients"
+        ).rowcount
         return (
-            f"{n_day} day rows, {n_loc} location rows, {n_src} source rows"
+            f"{n_day} day rows, {n_loc} location rows, {n_src} source rows,"
+            f" {n_thr} throttled-client rows"
             " (legacy lineage kept)"
         )
 

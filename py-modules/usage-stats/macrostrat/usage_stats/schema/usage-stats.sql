@@ -97,6 +97,23 @@ CREATE TABLE IF NOT EXISTS usage_stats.tileserver_source_index (
 CREATE INDEX IF NOT EXISTS tileserver_source_index_source_date
   ON usage_stats.tileserver_source_index (source_id, date);
 
+-- Clients the tile cache's render limit refused (`deny`, answered 429) or, in
+-- report mode, would have refused (`would-deny`, served), per day. Refused
+-- requests are not tile views, so they appear here and in no other index.
+--
+-- client is the address itself -- a /64 for IPv6 -- unlike the hashed client_id
+-- of the Rockd pipeline: telling a sweeper from a shared address needs a whois
+-- lookup, and only the few clients over the limit are recorded.
+CREATE TABLE IF NOT EXISTS usage_stats.tileserver_throttled_clients (
+  date timestamp without time zone NOT NULL,
+  client text NOT NULL,
+  action text NOT NULL,
+  num_requests integer NOT NULL,
+  first_seen timestamptz NOT NULL,
+  last_seen timestamptz NOT NULL,
+  CONSTRAINT tileserver_throttled_clients_unique UNIQUE (date, client, action)
+);
+
 --------------------------------------------------------------------------------
 -- Rockd dashboard pipeline
 --------------------------------------------------------------------------------
@@ -245,6 +262,8 @@ GRANT SELECT, INSERT, UPDATE
   ON usage_stats.tileserver_location_index TO logs_writer;
 GRANT SELECT, INSERT, UPDATE
   ON usage_stats.tileserver_source_index TO logs_writer;
+GRANT SELECT, INSERT, UPDATE
+  ON usage_stats.tileserver_throttled_clients TO logs_writer;
 
 -- Dashboard loads are append-only, so no UPDATE. SELECT is required despite
 -- that: the insert's ON CONFLICT (time, client_id) names those columns, and
