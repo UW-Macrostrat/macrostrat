@@ -15,20 +15,37 @@ def test_steady_traffic_has_no_bots():
     assert presumed_bots(_days(200), counts) == [0] * 200
 
 
-def test_spike_excess_over_baseline():
-    counts = [1000] * 100
-    counts[50] = 5000
-    presumed = presumed_bots(_days(100), counts)
-    assert presumed[50] == 4000
-    assert sum(presumed) == 4000
+def test_modest_bumps_are_not_bots():
+    counts = [1000] * 200
+    for i in range(100, 105):
+        counts[i] = 4000
+    assert presumed_bots(_days(200), counts) == [0] * 200
+
+
+def test_mega_spike_overage():
+    counts = [1000] * 200
+    counts[100] = 10_000
+    presumed = presumed_bots(_days(200), counts)
+    assert presumed[100] == 9000
+    assert sum(presumed) == 9000
+
+
+def test_phase_spans_short_lulls():
+    counts = [1000] * 200
+    for i in (100, 101, 102, 105):
+        counts[i] = 10_000
+    counts[103] = counts[104] = 1500
+    presumed = presumed_bots(_days(200), counts)
+    assert presumed[100:106] == [9000, 9000, 9000, 500, 500, 9000]
+    assert presumed[99] == presumed[106] == 0
 
 
 def test_months_long_sweep():
-    counts = [1000] * 400
-    for i in range(150, 300):
+    counts = [1000] * 800
+    for i in range(300, 450):
         counts[i] = 20_000
-    presumed = presumed_bots(_days(400), counts)
-    assert presumed[150:300] == [19_000] * 150
+    presumed = presumed_bots(_days(800), counts)
+    assert presumed[300:450] == [19_000] * 150
     assert sum(presumed) == 19_000 * 150
 
 

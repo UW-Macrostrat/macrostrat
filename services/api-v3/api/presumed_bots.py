@@ -1,85 +1,61 @@
 """Presumed bots: automated tile traffic nobody identified at the time.
 
 The harvester tags the clients it recognizes (`is_bot`). Sweeps it missed show
-up only as days far above their neighbours, so each day is compared with a
-local baseline and its excess on spike days is presumed automated. This runs
-over the whole archive on every read, so a change to these rules is a change
-to every period.
+up as phases of traffic far above the long-term trend, and the overage during
+such a phase is presumed automated. This runs over the whole archive on every
+read, so a change to these rules is a change to every period.
 """
 
 from bisect import bisect_left, bisect_right
 from datetime import date
-from statistics import median
 
-#: A day more than this many times its baseline is a spike.
-SPIKE_RATIO = 1.5
-#: A day's baseline is the median of this many nearest days that are not spikes.
-BASELINE_DAYS = 28
-#: Days either side of the first estimate; a months-long sweep stays a minority.
-SEED_HALF_WINDOW = 182
-#: The first estimate is low on purpose: later passes clear days it wrongly flags.
-SEED_QUANTILE = 0.25
-MAX_PASSES = 20
+#: Days either side of each day that set its long-term trend.
+TREND_HALF_WINDOW = 365
+#: The trend is the mean of the days between these quantiles of the window.
+TREND_BAND = (0.35, 0.65)
+#: Days above this multiple of the trend are anomalous.
+ANOMALY_RATIO = 2.0
+#: Anomalous days this close together form one phase.
+MAX_GAP_DAYS = 2
+#: A phase counts only if some day in it reaches this multiple of the trend.
+MIN_PEAK_RATIO = 5.0
 
 
-def presumed_bots(
-    days: list[date],
-    counts: list[int],
-    *,
-    spike_ratio: float = SPIKE_RATIO,
-    baseline_days: int = BASELINE_DAYS,
-) -> list[int]:
-    """Requests above the baseline on each spike day, and 0 on other days.
+def presumed_bots(days: list[date], counts: list[int]) -> list[int]:
+    """Requests above the trend on each day of a bot phase, and 0 on other days.
 
-    `days` are sorted and distinct. A day with no row is an outage, neither
-    a spike nor part of any baseline.
+    `days` are sorted and distinct. A day with no row is an outage.
     """
     ordinals = [d.toordinal() for d in days]
-    baselines = [_seed(ordinals, counts, i) for i in range(len(days))]
-    spikes = _spikes(counts, baselines, spike_ratio)
-    # Excluding spikes lowers nearby baselines, which can expose more spikes.
-    for _ in range(MAX_PASSES):
-        baselines = [
-            _nearest_median(ordinals, counts, spikes, i, baseline_days)
-            for i in range(len(days))
-        ]
-        updated = _spikes(counts, baselines, spike_ratio)
-        if updated == spikes:
-            break
-        spikes = updated
-    return [
-        round(count - base) if spike else 0
-        for count, base, spike in zip(counts, baselines, spikes)
-    ]
+    trend = [_trend(ordinals, counts, i) for i in range(len(days))]
+    presumed = [0] * len(days)
+    for first, last in _phases(ordinals, counts, trend):
+        peak = max(counts[i] / trend[i] for i in range(first, last + 1))
+        if peak < MIN_PEAK_RATIO:
+            continue
+        for i in range(first, last + 1):
+            presumed[i] = max(0, round(counts[i] - trend[i]))
+    return presumed
 
 
-def _spikes(counts, baselines, ratio) -> list[bool]:
-    return [count > ratio * base for count, base in zip(counts, baselines)]
-
-
-def _seed(ordinals, counts, i) -> float:
-    lo = bisect_left(ordinals, ordinals[i] - SEED_HALF_WINDOW)
-    hi = bisect_right(ordinals, ordinals[i] + SEED_HALF_WINDOW)
+def _trend(ordinals, counts, i) -> float:
+    lo = bisect_left(ordinals, ordinals[i] - TREND_HALF_WINDOW)
+    hi = bisect_right(ordinals, ordinals[i] + TREND_HALF_WINDOW)
     window = sorted(counts[lo:hi])
-    return window[int(SEED_QUANTILE * (len(window) - 1))]
+    start = int(TREND_BAND[0] * len(window))
+    end = max(int(TREND_BAND[1] * len(window)), start + 1)
+    band = window[start:end]
+    # A zero trend would make any traffic infinitely anomalous.
+    return max(sum(band) / len(band), 1)
 
 
-def _nearest_median(ordinals, counts, spikes, i, k) -> float:
-    """Median of the `k` days nearest in time to day `i` that are not spikes."""
-    values = []
-    if not spikes[i]:
-        values.append(counts[i])
-    lo, hi = i - 1, i + 1
-    while len(values) < k and (lo >= 0 or hi < len(ordinals)):
-        take_lo = hi >= len(ordinals) or (
-            lo >= 0 and ordinals[i] - ordinals[lo] <= ordinals[hi] - ordinals[i]
-        )
-        if take_lo:
-            j, lo = lo, lo - 1
+def _phases(ordinals, counts, trend) -> list[tuple[int, int]]:
+    """Index ranges of anomalous days, joined across short gaps."""
+    anomalous = [i for i in range(len(counts)) if counts[i] > ANOMALY_RATIO * trend[i]]
+    phases = []
+    for i in anomalous:
+        if phases and ordinals[i] - ordinals[phases[-1][1]] <= MAX_GAP_DAYS + 1:
+            phases[-1][1] = i
         else:
-            j, hi = hi, hi + 1
-        if not spikes[j]:
-            values.append(counts[j])
-    if not values:
-        return counts[i]
-    return median(values)
+            phases.append([i, i])
+    return [(first, last) for first, last in phases]
