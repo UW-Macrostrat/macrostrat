@@ -35,6 +35,7 @@ def test_requires_a_session(api_client: TestClient, path):
         "/usage-stats/tiles/cache",
         "/usage-stats/tiles/layers",
         "/usage-stats/tiles/maps/-1",
+        "/usage-stats/tiles/throttled",
     ],
 )
 def test_series_are_lists(admin_api: TestClient, path):
