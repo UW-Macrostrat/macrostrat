@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-11-20
+
+- Compilation tiles no longer spill geometry to temp files (2 GB on dense z6 tiles)
+
 ## [3.4.0] - 2026-11-19
 
 - Regions (the `geologic_boundaries` tables): `/regions`, `/regions/sources`

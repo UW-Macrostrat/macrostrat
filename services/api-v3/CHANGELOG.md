@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-20
+
+- Admin-only `/usage-stats` routes: harvester status, and tile requests, referrers, cache outcomes, layers and per-map views over time
+- `/usage-stats/tiles/requests` adds `presumed_bot`: the overage above the long-term trend during phases of anomalous traffic, recomputed over the whole archive on each read, and `trend`: the organic requests the long-term trend expects
+- `/usage-stats/tiles/throttled` lists the clients the tile cache refused
+- `/usage-stats/tiles/maps` returns source ids only, since they are production ids in every environment
+
 ## [3.2.0] - 2026-11-19
 
 - `/refs` and `/refs/{id}` return references with geometry diagnostics; `/refs.geojson` returns them with their geometries
