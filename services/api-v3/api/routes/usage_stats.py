@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from api.database import DatabaseDep
-from api.presumed_bots import presumed_bots
+from api.presumed_bots import long_term_trend, presumed_bots
 from api.routes.security import require_admin
 
 router = APIRouter(
@@ -93,6 +93,8 @@ class RequestsBin(BaseModel):
     bot: Optional[int] = None
     #: The part of `organic` presumed automated (see `api.presumed_bots`).
     presumed_bot: Optional[int] = None
+    #: Organic requests expected from the long-term trend, bot phases aside.
+    trend: Optional[int] = None
     #: False for rows migrated from the pre-2026 direct-push logger.
     new_system: Optional[bool] = None
 
@@ -119,12 +121,13 @@ async def get_tile_requests(
     """Tile requests over time: organic, known bots, and presumed bots."""
     async with database.async_connection() as conn:
         rows = (await conn.execute(DAILY_REQUESTS)).mappings().all()
-    presumed = presumed_bots(
-        [r["date"] for r in rows], [r["organic"] or 0 for r in rows]
-    )
+    dates = [r["date"] for r in rows]
+    counts = [r["organic"] or 0 for r in rows]
+    trend = long_term_trend(dates, counts)
+    presumed = presumed_bots(dates, counts, trend)
     days = [
-        {**row, "presumed_bot": p}
-        for row, p in zip(rows, presumed)
+        {**row, "presumed_bot": p, "trend": round(t)}
+        for row, p, t in zip(rows, presumed, trend)
         if (start is None or row["date"] >= start)
         and (end is None or row["date"] <= end)
     ]
@@ -153,7 +156,7 @@ def _bin_days(days: list[dict], bin: Bin) -> list[dict]:
     for day in days:
         key = _bin_start(day["date"], bin)
         total = bins.setdefault(key, {"date": key})
-        for field in ("organic", "bot", "presumed_bot"):
+        for field in ("organic", "bot", "presumed_bot", "trend"):
             if day[field] is not None:
                 total[field] = total.get(field, 0) + day[field]
         total["new_system"] = total.get("new_system", False) or day["new_system"]

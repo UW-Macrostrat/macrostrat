@@ -21,13 +21,22 @@ MAX_GAP_DAYS = 2
 MIN_PEAK_RATIO = 5.0
 
 
-def presumed_bots(days: list[date], counts: list[int]) -> list[int]:
-    """Requests above the trend on each day of a bot phase, and 0 on other days.
+def long_term_trend(days: list[date], counts: list[int]) -> list[float]:
+    """Each day's expected count without bot phases.
 
     `days` are sorted and distinct. A day with no row is an outage.
     """
     ordinals = [d.toordinal() for d in days]
-    trend = [_trend(ordinals, counts, i) for i in range(len(days))]
+    return [_trend(ordinals, counts, i) for i in range(len(days))]
+
+
+def presumed_bots(
+    days: list[date], counts: list[int], trend: list[float] | None = None
+) -> list[int]:
+    """Requests above the trend on each day of a bot phase, and 0 on other days."""
+    ordinals = [d.toordinal() for d in days]
+    if trend is None:
+        trend = long_term_trend(days, counts)
     presumed = [0] * len(days)
     for first, last in _phases(ordinals, counts, trend):
         peak = max(counts[i] / trend[i] for i in range(first, last + 1))

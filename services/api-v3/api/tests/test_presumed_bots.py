@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from api.presumed_bots import presumed_bots
+from api.presumed_bots import long_term_trend, presumed_bots
 from api.routes.usage_stats import _bin_days
 
 START = date(2026, 1, 1)
@@ -80,6 +80,8 @@ def test_weekly_bins_fill_gaps():
             "new_system": True,
         },
     ]
+    for day in days:
+        day["trend"] = 4
     bins = _bin_days(days, "week")
     assert [b["date"] for b in bins] == [
         date(2026, 1, 5),
@@ -88,12 +90,21 @@ def test_weekly_bins_fill_gaps():
     ]
     assert bins[0] == {
         "date": date(2026, 1, 5),
+        "trend": 8,
         "organic": 15,
         "bot": 1,
         "presumed_bot": 2,
         "new_system": True,
     }
     assert bins[1] == {"date": date(2026, 1, 12)}
+
+
+def test_trend_ignores_phases():
+    counts = [1000] * 200
+    for i in range(90, 110):
+        counts[i] = 50_000
+    trend = long_term_trend(_days(200), counts)
+    assert trend == [1000] * 200
 
 
 def test_monthly_bins():
@@ -103,6 +114,7 @@ def test_monthly_bins():
             "organic": 1,
             "bot": None,
             "presumed_bot": 0,
+            "trend": 1,
             "new_system": False,
         },
         {
@@ -110,6 +122,7 @@ def test_monthly_bins():
             "organic": 2,
             "bot": None,
             "presumed_bot": 0,
+            "trend": 1,
             "new_system": True,
         },
     ]
