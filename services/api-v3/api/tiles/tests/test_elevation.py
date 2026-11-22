@@ -13,12 +13,12 @@ import pytest
 
 pytest.importorskip("macrostrat.raster_layers.sampling")
 
-# Nothing from `macrostrat.tileserver` is imported at module level: importing
+# Nothing from `api.tiles` is imported at module level: importing
 # any of its subpackages builds the whole app, and that must not happen before
 # the `app` fixture has pointed `DATABASE_URL` at the test database.
 
 # The two layer slugs the service composites, finest first — mirrored from
-# `macrostrat.tileserver.elevation.ELEVATION_LAYERS` and asserted equal below.
+# `api.tiles.elevation.ELEVATION_LAYERS` and asserted equal below.
 ELEVATION_LAYERS = ["srtm-gl1", "srtm15plus"]
 
 FINE_BOUNDS = (-105.0, 40.0, -104.9, 40.1)
@@ -38,8 +38,8 @@ def elevation_app(app, test_database_url):
     imported earlier (another test module at collection time) they are added
     here, against the same database the fixtures fill.
     """
-    from macrostrat.tileserver.elevation import ELEVATION_LAYERS as declared
-    from macrostrat.tileserver.elevation import (
+    from api.tiles.elevation import ELEVATION_LAYERS as declared
+    from api.tiles.elevation import (
         ELEVATION_PREFIX,
         register_elevation_routes,
     )
@@ -99,7 +99,7 @@ class TestMounting:
 
     def test_the_raster_view_is_declared(self, elevation_app):
         """The same layers are also a mosaic under `/rasters/layer/elevation`."""
-        from macrostrat.tileserver.rasters import raster_layer_configs
+        from api.tiles.rasters import raster_layer_configs
 
         config = next(c for c in raster_layer_configs() if c.slug == "elevation")
         assert config.layer_slugs == ELEVATION_LAYERS
@@ -261,9 +261,9 @@ class TestLegacyBackend:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
+        from api.tiles.elevation import build_elevation_router
+        from api.tiles.elevation.legacy import LegacyElevation
         from macrostrat.raster_index import RasterIndex
-        from macrostrat.tileserver.elevation import build_elevation_router
-        from macrostrat.tileserver.elevation.legacy import LegacyElevation
 
         app = FastAPI()
         app.include_router(
@@ -329,8 +329,8 @@ class TestLegacyBackend:
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
-        from macrostrat.tileserver.elevation import build_elevation_router
-        from macrostrat.tileserver.elevation.legacy import LegacyElevation
+        from api.tiles.elevation import build_elevation_router
+        from api.tiles.elevation.legacy import LegacyElevation
 
         app = FastAPI()
         app.include_router(
@@ -359,7 +359,7 @@ class TestSelection:
             return [TestSelection.FakeLayer(s) for s in self.slugs]
 
     def test_legacy_until_the_index_has_a_layer(self):
-        from macrostrat.tileserver.elevation import ElevationBackends
+        from api.tiles.elevation import ElevationBackends
 
         backends = ElevationBackends(self.FakeIndex(["emit-minerals"]), legacy=object())
         assert backends.choose(None) == "legacy"
@@ -367,7 +367,7 @@ class TestSelection:
         assert backends.choose(None) == "cog"
 
     def test_readiness_is_remembered(self):
-        from macrostrat.tileserver.elevation import ElevationBackends
+        from api.tiles.elevation import ElevationBackends
 
         index = self.FakeIndex(["srtm-gl1"])
         backends = ElevationBackends(index, legacy=object())
@@ -376,6 +376,6 @@ class TestSelection:
         assert index.calls == 1
 
     def test_index_alone_answers_even_when_empty(self):
-        from macrostrat.tileserver.elevation import ElevationBackends
+        from api.tiles.elevation import ElevationBackends
 
         assert ElevationBackends(self.FakeIndex([]), legacy=None).choose(None) == "cog"

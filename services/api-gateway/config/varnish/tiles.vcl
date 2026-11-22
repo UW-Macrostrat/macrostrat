@@ -56,14 +56,6 @@ sub vcl_recv {
         return(synth(200, "Banned"));
     }
 
-    # The tileserver's cache-management routes expire both cache layers, so they
-    # are reached through the admin-gated /api/v3/cache proxy and are not served
-    # to the public. The footprints tile layer is a read that the cache UI draws,
-    # so it stays open.
-    if (req.url ~ "^/cache/" && req.url !~ "^/cache/footprints/") {
-        return(synth(403, "Cache management is internal-only"));
-    }
-
     # Set the backend hints to route to the correct upstream
     # For now the index.html route is served from the legacy tileserver
     if (req.url ~ "^/legacy/(version|health)$") {
@@ -76,6 +68,7 @@ sub vcl_recv {
         # to the legacy one.
         # https://github.com/UW-Macrostrat/macrostrat/pull/303
         set req.backend_hint = backend-core;
+        call tile_host_allowlist;
     } else if (req.url ~ "^/$" || req.url ~ "^/preview$") {
         set req.backend_hint = backend-legacy;
     } else if (req.url ~ ".*\.png(\?.*)?$") {
@@ -86,10 +79,11 @@ sub vcl_recv {
         set req.url = regsub(req.url, "\.mvt(\?.*)?$", "\1");
         # Mvt tiles are served from the core tileserver
         set req.backend_hint = backend-core;
+        call tile_host_allowlist;
     } else {
         # Everything else is served from the core tileserver
         set req.backend_hint = backend-core;
-        # TODO: could add a v3 prefix here if needed
+        call tile_host_allowlist;
     }
 
     # Bypass the cache for zoom levels greater than 14
@@ -128,6 +122,35 @@ sub vcl_recv {
         req.url ~ "^/map/[^/]+/[0-9]+/[0-9]+/[0-9]+(\?.*)?$") {
         return (hash);
     }
+}
+
+# The tile host serves the tileserver's routes as they stood before it merged
+# into API v3, not the rest of API v3. The target is carto and carto-slim
+# alone; delete a line once its routes are reached only through /api/v3.
+sub tile_host_allowlist {
+    if (req.url ~ "^/(carto|carto-slim)/([0-9]+/[0-9]+/[0-9]+|tilejson\.json)(\?|$)" ||
+        req.url ~ "^/(carto-slim-rotated|all-maps|igcp-orogens|igcp-orogens-rotated|weaver-tile|map)/([0-9]+/[0-9]+/[0-9]+|tilejson\.json)(\?|$)" ||
+        req.url ~ "^/map/[^/]+/([0-9]+/[0-9]+/[0-9]+|tilejson\.json)(\?|$)" ||
+        req.url ~ "^/carto/rotation-models(\?|$)" ||
+        req.url ~ "^/dev/carto/" ||
+        req.url ~ "^/v2/" ||
+        req.url ~ "^/maps/bounds/" ||
+        req.url ~ "^/search/[^/]+/tiles/" ||
+        req.url ~ "^/pbdb/" ||
+        req.url ~ "^/measurements/" ||
+        req.url ~ "^/integrations/" ||
+        req.url ~ "^/regions/tiles/" ||
+        req.url ~ "^/stats/" ||
+        req.url ~ "^/ingestion/" ||
+        req.url ~ "^/dev/topology/" ||
+        req.url ~ "^/cache/footprints/" ||
+        req.url ~ "^/cog/" ||
+        req.url ~ "^/rasters/" ||
+        req.url ~ "^/elevation/" ||
+        req.url ~ "^/(version|health|docs|redoc|openapi\.json)(\?|$)") {
+        return;
+    }
+    return (synth(404, "Not served on the tile host"));
 }
 
 # Per-client limits on renders, so one client sweeping the tile pyramid cannot
@@ -180,6 +203,12 @@ sub vcl_synth {
         set resp.http.Retry-After = "600";
         set resp.http.Content-Type = "text/plain; charset=utf-8";
         set resp.body = {"Too many uncached tile requests from this address. Please slow down, or write to contact@macrostrat.org about bulk access.
+"};
+        return (deliver);
+    }
+    if (resp.status == 404 && resp.reason == "Not served on the tile host") {
+        set resp.http.Content-Type = "text/plain; charset=utf-8";
+        set resp.body = {"This host serves map tiles only. Macrostrat's other routes are under /api/v3 on the main site.
 "};
         return (deliver);
     }

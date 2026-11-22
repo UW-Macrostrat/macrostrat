@@ -10,8 +10,8 @@ from os import environ
 
 from pytest import fixture, mark
 
-from macrostrat.tileserver.vector_tiles import StoredFunction
-from macrostrat.tileserver.vector_tiles.factory import (
+from api.tiles.vector_tiles import StoredFunction
+from api.tiles.vector_tiles.factory import (
     queryparams_to_kwargs,
     resolve_cache_mode,
 )
@@ -35,7 +35,8 @@ def app():
     by the startup event, which never runs here.
     """
     environ.setdefault("DATABASE_URL", "postgresql://localhost:5432/unused")
-    from macrostrat.tileserver import app
+    environ.setdefault("SECRET_KEY", "tile-tests")
+    from api.app import app
 
     return app
 
@@ -164,7 +165,7 @@ class TestTileURLTemplate:
     def template(self):
         from starlette.requests import Request
 
-        from macrostrat.tileserver.vector_tiles.factory import VectorTileFactory
+        from api.tiles.vector_tiles.factory import VectorTileFactory
 
         factory = VectorTileFactory()
         request = Request(

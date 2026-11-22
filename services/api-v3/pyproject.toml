@@ -31,10 +31,21 @@ dependencies = [
     "macrostrat.map_utils",
     "macrostrat.task-runner",
     "macrostrat.raster-tasks",
-    "morecantile>=7.0.2",
+    "morecantile>=7.0.2,<8",
     "pydantic-settings>2",
-    "celery[redis]>=5.3,<6"
-
+    "celery[redis]>=5.3,<6",
+    # Tile routes
+    "macrostrat.utils>=1.2.0,<2",
+    "macrostrat.tileserver-utils",
+    "macrostrat.raster_index>=0.5.0,<1",
+    "macrostrat.raster_layers>=0.4.2,<1",
+    # titiler 1.x ships as separate subpackages; only `core` is used directly.
+    "titiler.core>=1,<2",
+    "buildpg>=0.4,<0.5",
+    "orjson>=3.9,<4",
+    "starlette-cramjam>=0.3,<0.5",
+    "mapbox-vector-tile>=2.1.0,<3",
+    "sqlparse>=0.5.1,<0.6",
 ]
 
 [dependency-groups]
@@ -45,6 +56,7 @@ dev = [
     "safety>=2.3,<2.4",
     "pytest>=8.3.5,<9",
     "docker>=7.1.0",
+    "testcontainers>=4.8,<5",
 ]
 
 [build-system]
@@ -58,3 +70,4 @@ build-backend = "hatchling.build"
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
 "macrostrat.task-runner" = { path = "../../py-modules/task-runner", editable = true }
 "macrostrat.raster-tasks" = { path = "../../py-modules/raster-tasks", editable = true }
+"macrostrat.tileserver-utils" = { path = "../../py-modules/tileserver-utils", editable = true }

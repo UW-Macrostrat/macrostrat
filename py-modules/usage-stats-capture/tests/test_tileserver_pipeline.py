@@ -7,9 +7,11 @@ from macrostrat.usage_stats_capture.pipelines.tileserver import (
     KEEP_LAYERS,
     SOURCES_FIELD,
     THROTTLE_FIELD,
+    USER_AGENT_FIELD,
     TileserverPipeline,
     aggregate,
     aggregate_throttled,
+    app_identity,
     client_network,
     parse_sources,
     parse_tile_path,
@@ -68,6 +70,8 @@ class TestAggregate:
             ext="",
             is_bot=False,
             referrer="",
+            app="none",
+            app_version="none",
             x_cache="hit",
             x_tile_cache="miss",
         )
@@ -90,6 +94,8 @@ class TestAggregate:
                 ext="mvt",
                 is_bot=False,
                 referrer="",
+                app="none",
+                app_version="none",
                 x_cache="",
                 x_tile_cache="",
                 z=3,
@@ -203,3 +209,37 @@ class TestThrottled:
         assert deny["last_seen"] == (self.t + timedelta(minutes=30)).replace(
             tzinfo=timezone.utc
         )
+
+
+class TestAppIdentity:
+    def ua(self, value):
+        return {USER_AGENT_FIELD: value}
+
+    def test_rockd_webview(self):
+        android = (
+            "Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/88.0.4324.181 Mobile Safari/537.36 Rockd/4.2.3"
+        )
+        assert app_identity(self.ua(android)) == ("rockd", "4.2.3")
+
+    def test_map_cache_downloads(self):
+        assert app_identity(self.ua("RockdMapCache/4.2.3 (iOS)")) == (
+            "rockd-map-cache",
+            "4.2.3",
+        )
+        assert app_identity(self.ua("RockdMapCache (Android)")) == (
+            "rockd-map-cache",
+            "none",
+        )
+
+    def test_other_clients_name_no_app(self):
+        assert app_identity({}) == ("none", "none")
+        assert app_identity(self.ua("Mozilla/5.0 Firefox/130.0")) == ("none", "none")
+        assert app_identity(self.ua("NotRockd/1.0")) == ("none", "none")
+
+    def test_parse_carries_the_app(self):
+        rec = record("/carto/6/15/23.mvt", **{USER_AGENT_FIELD: "x Rockd/4.2.3"})
+        row = TileserverPipeline().parse(rec)
+        assert (row["app"], row["app_version"]) == ("rockd", "4.2.3")
+        day_rows = aggregate([{**row, "sources": []}])[0]
+        assert day_rows[0]["app"] == "rockd"

@@ -6,23 +6,22 @@ into. Expiring either one is a destructive, cheap-to-request operation, which
 makes it a denial-of-service vector if left open — so every route here is gated
 on ``require_admin``.
 
-These routes live in api_v3 rather than the tileserver because this is where the
-session-based admin check already is. The web app is served from the same origin
-as ``/api/v3``, so its auth cookie travels with the request; the tiles host
-answers ``Access-Control-Allow-Origin: *``, which browsers refuse to combine
-with credentials, so a button posting straight there could not be authenticated
-at all. The tileserver's own ``/cache/*`` routes stay internal (see the ACL in
-the Varnish VCL) and are reached through this proxy.
+The web app is served from the same origin as ``/api/v3``, so its auth cookie
+travels with the request. The tiles host answers ``Access-Control-Allow-Origin:
+*``, which browsers refuse to combine with credentials, and the tile VCL refuses
+``/cache/*`` there (footprints excepted).
 """
 
 from os import environ
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.routes.security import TokenData, require_admin
+from api.tiles.cache_management import InvalidationRequest, invalidate_carto
+from api.tiles.cache_management import router as footprints_router
 
 router = APIRouter(tags=["Cache"])
 
@@ -77,28 +76,16 @@ async def flush_tile_cache(
 
 @router.post("/refresh/carto")
 async def refresh_carto_cache(
-    body: dict,
+    body: InvalidationRequest,
+    request: Request,
     user_token: TokenData = Depends(require_admin),
 ) -> dict:
-    """Expire a region or a set of source maps from both cache layers. Admin only.
+    """Expire a region or a set of source maps from both cache layers. Admin only."""
+    return await invalidate_carto(request.app.state.pool, body)
 
-    Forwarded verbatim to the tileserver, which owns the L2 expiry logic (it has
-    the tile-geometry SQL and the connection pool for it). The body shape is the
-    tileserver's ``InvalidationRequest``.
-    """
-    url = _require_setting(environ.get("TILESERVER_URL"), "TILESERVER_URL")
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                url.rstrip("/") + "/cache/refresh/carto", json=body, timeout=60.0
-            )
-    except httpx.HTTPError as exc:
-        raise HTTPException(
-            status_code=502, detail=f"Could not reach the tileserver: {exc}"
-        )
-    if resp.status_code >= 400:
-        raise HTTPException(status_code=resp.status_code, detail=resp.text)
-    return resp.json()
+
+# The footprints tile layer the cache page draws; open, like other tiles.
+router.include_router(footprints_router)
 
 
 async def _ban(expression: str) -> None:

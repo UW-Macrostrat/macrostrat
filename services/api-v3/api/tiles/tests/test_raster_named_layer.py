@@ -11,7 +11,7 @@ pytest.importorskip("macrostrat.raster_layers")
 from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from macrostrat.tileserver.rasters import (  # noqa: E402
+from api.tiles.rasters import (  # noqa: E402
     NAMED_LAYER_PREFIX,
     _named_layer_router,
 )
@@ -63,7 +63,7 @@ def test_serves_wmts(client):
 
 def test_wmts_classes_come_from_the_named_layer():
     """Each by-name layer advertises its own vocabulary, not a configured one."""
-    from macrostrat.tileserver.rasters import _class_renders
+    from api.tiles.rasters import _class_renders
 
     class Category:
         label = "Alunite"
@@ -79,7 +79,7 @@ def test_wmts_classes_come_from_the_named_layer():
 
 
 def _registered(index, monkeypatch, configs):
-    from macrostrat.tileserver import rasters
+    from api.tiles import rasters
 
     monkeypatch.setattr(rasters, "sync_engine", lambda url: url)
     monkeypatch.setattr("macrostrat.raster_index.RasterIndex", lambda engine: index)
@@ -130,8 +130,8 @@ def test_an_override_takes_the_same_scopes(index, monkeypatch):
 
 def test_registration_requires_the_tile_scope(index, monkeypatch):
     """Refused with no token; the website's tile token is the one that works."""
-    from macrostrat.tileserver import rasters
-    from macrostrat.tileserver.map_tiles import SCOPE
+    from api.tiles import rasters
+    from api.tiles.map_tiles import SCOPE
 
     assert rasters.NAMED_LAYER_SCOPE == SCOPE
     monkeypatch.setattr(rasters, "sync_engine", lambda url: url)

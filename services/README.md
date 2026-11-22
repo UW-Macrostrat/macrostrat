@@ -1,8 +1,9 @@
 # Macrostrat services
 
 This directory contains application root directories for the various services
-that make up the Macrostrat platform: the APIs (`api-v3`, and the legacy
-TypeScript `api-v2`), the tile servers (`tileserver`, `legacy-tileserver`), the
+that make up the Macrostrat platform: the APIs (`api-v3`, which also serves
+tiles, and the legacy TypeScript `api-v2`), the Mapnik image tile server
+(`legacy-tileserver`), the
 Celery `worker`, the `usage-stats` harvester and the `api-gateway` (Caddy and
 Varnish in front of the APIs and tiles). Each service is a separate application that can be run independently,
 and each is built into its own image by `.github/workflows/build-<service>.yaml`.

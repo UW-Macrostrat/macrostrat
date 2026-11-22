@@ -1,14 +1,6 @@
+"""Options for the tile tests, which pytest reads only from a root conftest."""
+
 import pytest
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from macrostrat.tileserver.tests.fixtures import (  # noqa
-    app,
-    client,
-    db,
-    test_database_url,
-)
 
 
 def pytest_addoption(parser):

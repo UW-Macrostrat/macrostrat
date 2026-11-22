@@ -10,12 +10,12 @@ pytest.importorskip("macrostrat.raster_layers")
 from fastapi import FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from macrostrat.raster_index.testing import create_test_rasters  # noqa: E402
-from macrostrat.tileserver.rasters import (  # noqa: E402
+from api.tiles.rasters import (  # noqa: E402
     SINGLE_RASTER_PREFIX,
     _single_raster_router,
     raster_layer_configs,
 )
+from macrostrat.raster_index.testing import create_test_rasters  # noqa: E402
 
 
 @pytest.fixture(scope="module")

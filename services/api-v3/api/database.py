@@ -45,7 +45,8 @@ def get_db_url():
     # - MACROSTRAT_DATABASE_URL is used by PyTest embedded in the macrostrat cli
     # - uri is how the Postgres Operator passes
     # - DB_URL is nicer for .env files
-    for env in ["MACROSTRAT_DATABASE_URL", "uri", "DB_URL"]:
+    # - DATABASE_URL is the former tileserver's
+    for env in ["MACROSTRAT_DATABASE_URL", "uri", "DB_URL", "DATABASE_URL"]:
         if environ.get(env, None) is not None:
             return environ.get(env)
     raise ValueError("No database URL found")

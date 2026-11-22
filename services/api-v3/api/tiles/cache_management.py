@@ -1,4 +1,4 @@
-"""Cache management routes — expire tiles from Varnish (L1) and the database (L2).
+"""Tile cache invalidation, L1 (Varnish) and L2 (database), and the footprints layer.
 
 L2 (the ``tile_cache.tile`` table) is expired precisely by region: a bbox maps
 to a tile set via ``tile_utils.containing_tiles`` and those rows are deleted,
@@ -23,12 +23,8 @@ from macrostrat.utils import get_logger
 
 log = get_logger(__name__)
 
-# These routes are not exposed to the public. Varnish refuses `/cache/*` from
-# outside the network (the footprints tile layer excepted, since the cache UI
-# draws it), and callers reach them through api_v3's `/cache/*` proxy, which is
-# gated on an admin session. That is what closes the denial-of-service hole this
-# module used to carry a TODO about: expiring a cache is cheap to ask for and
-# expensive to serve.
+# Only the footprints tile layer is a route here, mounted by API v3's cache
+# router; invalidation is called from its admin-only `/cache/refresh/carto`.
 router = APIRouter()
 
 # L2 profiles to expire on cache invalidation (rotated paleo layer excluded):
@@ -87,16 +83,13 @@ _BBOX_ARRAY = (
 )
 
 
-@router.post("/refresh/carto")
-async def invalidate_cache(body: InvalidationRequest, request: Request):
-    """Expire tiles from L1 (Varnish) and L2 (database) caches.
+async def invalidate_carto(pool, body: InvalidationRequest) -> dict:
+    """Expire carto tiles from L2 (database) and L1 (Varnish).
 
     Map mode (``source_ids``): each source is expired across its own scale band.
     Region mode (``bbox`` or ``layer_slug``): expired across the given zoom range.
     L1 is flushed wholesale once at the end either way.
     """
-    pool = request.app.state.pool
-
     if body.source_ids:
         deleted_l2 = await _delete_l2_for_sources(pool, body.source_ids)
     else:
@@ -116,20 +109,6 @@ async def invalidate_cache(body: InvalidationRequest, request: Request):
     flushed_l1 = await _flush_l1_cache("|".join(_CARTO_URL_PREFIXES))
 
     return {"deleted_l2": deleted_l2, "flushed_l1": flushed_l1}
-
-
-@router.post("/refresh/{prefix}")
-async def invalidate_l1_cache(
-    body: Optional[InvalidationRequest], request: Request, prefix: str
-):
-    """Expire L1 (Varnish) cache for a given prefix.
-
-    This is a more general endpoint than /refresh/carto, which only flushes the
-    carto profiles. This endpoint can be used to flush any prefix, e.g. /cog or
-    /paleo.
-    """
-    flushed_l1 = await _flush_l1_cache(prefix)
-    return {"flushed_l1": flushed_l1}
 
 
 # ─── Footprints tile layer (for the cache UI) ─────────────────────────────────

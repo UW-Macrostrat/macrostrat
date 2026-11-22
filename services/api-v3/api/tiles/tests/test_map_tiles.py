@@ -11,7 +11,7 @@ from os import environ
 from fastapi.testclient import TestClient
 from pytest import fixture
 
-from macrostrat.tileserver.map_tiles import (
+from api.tiles.map_tiles import (
     CACHE_PROFILES,
     LEGACY_CARTO,
     PUBLIC_SLUGS,
@@ -27,7 +27,8 @@ from macrostrat.tileserver.map_tiles import (
 @fixture(scope="module")
 def app():
     environ.setdefault("DATABASE_URL", "postgresql://localhost:5432/unused")
-    from macrostrat.tileserver import app
+    environ.setdefault("SECRET_KEY", "tile-tests")
+    from api.app import app
 
     return app
 
@@ -83,10 +84,16 @@ class TestSourcesHeader:
         assert "AS tile" in sql and "AS sources" in sql
 
     def test_header_is_exposed_to_pages(self, app):
-        from starlette.middleware.cors import CORSMiddleware
+        from starlette.testclient import TestClient
 
-        cors = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
-        assert SOURCES_HEADER in cors.kwargs["expose_headers"]
+        from api.cors import CREDENTIALED_ORIGINS
+
+        # Without the lifespan, so no database: `/docs` needs none.
+        client = TestClient(app)
+        for origin in ("https://example.org", CREDENTIALED_ORIGINS[0]):
+            resp = client.get("/docs", headers={"Origin": origin})
+            exposed = resp.headers["access-control-expose-headers"]
+            assert SOURCES_HEADER in exposed
 
 
 class TestRouting:
@@ -118,7 +125,7 @@ class TestLegacyCartoRewrite:
 
     @fixture
     def rewriting(self, app):
-        from macrostrat.tileserver import CartoBuild, db_settings
+        from api.tiles import CartoBuild, db_settings
 
         db_settings.carto_build = CartoBuild.compilation
         yield
@@ -130,7 +137,7 @@ class TestLegacyCartoRewrite:
         and report what it was asked for."""
         from starlette.responses import JSONResponse
 
-        from macrostrat.tileserver import map_tiles
+        from api.tiles import map_tiles
 
         calls = []
 
@@ -176,14 +183,14 @@ class TestLegacyCartoRewrite:
         assert served == []
 
     def test_off_by_default(self, app):
-        from macrostrat.tileserver import db_settings
+        from api.tiles import db_settings
 
         assert db_settings.carto_from_compilation is False
 
 
 class TestRewriteAddress:
     def test_slim_and_full(self):
-        from macrostrat.tileserver import rewrite_legacy_carto
+        from api.tiles import rewrite_legacy_carto
 
         assert rewrite_legacy_carto("/carto-slim/3/1/2", "") == ("/map/carto/3/1/2", "")
         assert rewrite_legacy_carto("/carto/3/1/2", "cache=bypass") == (

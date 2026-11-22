@@ -33,3 +33,7 @@ test-object:
 
 
 
+
+# The tile tests restore their own database into a PostGIS container.
+test-tiles:
+	uv run python -m pytest --confcutdir=. api/tiles/tests

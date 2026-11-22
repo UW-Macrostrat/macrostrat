@@ -171,9 +171,41 @@ class TileCache(unittest.TestCase):
         )
 
     def test_cache_management_hidden(self):
-        self.assertEqual(request(TILES, "/cache/clear")[0].status, 403)
+        self.assertEqual(request(TILES, "/cache/flush", method="POST")[0].status, 404)
         _, data = echoed(TILES, unique("/cache/footprints/1/1/1"))
         self.assertEqual(data["service"], "tileserver_core")
+
+    def test_tileserver_routes_allowed(self):
+        for path in (
+            "/carto/3/2/1",
+            "/carto-slim/3/2/1.mvt",
+            "/carto/tilejson.json",
+            "/map/3/2/1?source_id=1",
+            "/map/sgmc/3/2/1",
+            "/map/sgmc/tilejson.json",
+            "/carto/rotation-models",
+            "/regions/tiles/3/2/1",
+            "/cog/info?url=x",
+            "/rasters/layer/relief/tilejson.json",
+            "/version",
+        ):
+            with self.subTest(path=path):
+                _, data = echoed(TILES, unique(path))
+                self.assertEqual(data["service"], "tileserver_core")
+
+    def test_other_api_routes_refused(self):
+        for path in (
+            "/columns",
+            "/regions",
+            "/regions/1",
+            "/map/sgmc/legend",
+            "/dev/match/liths",
+            "/carto/3/2",
+        ):
+            with self.subTest(path=path):
+                res, body = request(TILES, path)
+                self.assertEqual(res.status, 404)
+                self.assertIn(b"/api/v3", body)
 
     def test_high_zoom_bypasses_cache(self):
         # tiles.vcl reports a pass as a miss, so a repeat must not hit

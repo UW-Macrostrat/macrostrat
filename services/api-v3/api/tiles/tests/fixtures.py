@@ -93,8 +93,12 @@ def db(pytestconfig, test_database_url):
 
 @fixture(scope="session")
 def app(db):
-    environ["DATABASE_URL"] = getenv("TEST_DATABASE_URL")
-    from macrostrat.tileserver import app
+    url = getenv("TEST_DATABASE_URL")
+    # First in `get_db_url`'s order, so a developer's `.env` can't redirect it.
+    environ["MACROSTRAT_DATABASE_URL"] = url
+    environ["DATABASE_URL"] = url
+    environ.setdefault("SECRET_KEY", "tile-tests")
+    from api.app import app
 
     yield app
 

@@ -37,9 +37,9 @@ CREATE INDEX IF NOT EXISTS processed_logs_pipeline
 --
 -- referrer holds the *host* of the Referer header (scheme, `www.`, path and
 -- query stripped; '' when absent) — bounded cardinality, unlike full URLs.
--- app / app_version came from the legacy `?referrer=`/`?version=` query params,
--- which current clients no longer send; they are retained for the legacy
--- lineage and written as 'none' by the current pipeline.
+-- app / app_version come from a native app's User-Agent product token
+-- (`Rockd/4.2.3` -> rockd, 4.2.3); 'none' when it names no known app. Legacy
+-- rows took them from the old `?referrer=`/`?version=` query params.
 CREATE TABLE IF NOT EXISTS usage_stats.tileserver_day_index (
   layer text NOT NULL,
   ext text NOT NULL,

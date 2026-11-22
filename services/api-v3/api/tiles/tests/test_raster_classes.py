@@ -8,7 +8,7 @@ the generic `?algorithm=` form.
 
 import pytest
 
-from macrostrat.tileserver.rasters import (
+from api.tiles.rasters import (
     NAMED_LAYER_PREFIX,
     _class_filter_dependency,
     _named_layer_router,
@@ -109,7 +109,7 @@ class TestTileMatrixSets:
     """
 
     def test_only_web_mercator(self):
-        from macrostrat.tileserver.rasters import _supported_tms
+        from api.tiles.rasters import _supported_tms
 
         assert _supported_tms().list() == ["WebMercatorQuad"]
 
@@ -147,7 +147,7 @@ class TestWMTS:
             return self._categories
 
     def test_one_render_per_class(self):
-        from macrostrat.tileserver.rasters import _class_renders
+        from api.tiles.rasters import _class_renders
 
         index = self.FakeIndex(
             [self.FakeCategory("Alunite"), self.FakeCategory("Kaolin")]
@@ -160,13 +160,13 @@ class TestWMTS:
 
     def test_no_vocabulary_means_no_extra_layers(self):
         """A layer without class names still gets WMTS, just the one layer."""
-        from macrostrat.tileserver.rasters import _class_renders
+        from api.tiles.rasters import _class_renders
 
         assert _class_renders(self.FakeIndex([]))(self.FakeBackend) == {}
 
     def test_vocabulary_is_read_per_request(self):
         """So classes added later appear without restarting the tile server."""
-        from macrostrat.tileserver.rasters import _class_renders
+        from api.tiles.rasters import _class_renders
 
         index = self.FakeIndex([self.FakeCategory("Alunite")])
         get_renders = _class_renders(index)

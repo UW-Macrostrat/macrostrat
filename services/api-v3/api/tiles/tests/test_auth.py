@@ -10,7 +10,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from macrostrat.tileserver.auth import (
+from api.tiles.auth import (
     NEGATIVE_TTL,
     POSITIVE_TTL,
     clear_token_cache,

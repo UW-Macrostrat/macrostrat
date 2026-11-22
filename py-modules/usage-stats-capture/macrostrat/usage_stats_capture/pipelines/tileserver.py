@@ -40,6 +40,12 @@ SOURCES_FIELD = "downstream_X-Macrostrat-Sources"
 # The tile cache's render limit: `deny` (answered 429) or `would-deny` (report mode).
 THROTTLE_FIELD = "downstream_X-Throttle"
 
+# Native apps send no Referer, so they name themselves in the User-Agent:
+# `Rockd/4.2.3` (the app) and `RockdMapCache/4.2.3 (iOS)` (offline downloads).
+USER_AGENT_FIELD = "request_User-Agent"
+APP_TOKENS = {"Rockd": "rockd", "RockdMapCache": "rockd-map-cache"}
+APP_TOKEN_RE = re.compile(r"(?<![\w/])(RockdMapCache|Rockd)(?:/([\w.\-]+))?(?!\w)")
+
 # Known automated clients (cache-warmers, prefetchers, scrapers) by source IP.
 # Their requests are still aggregated, but tagged `is_bot` so organic traffic
 # can be separated from machine traffic. See the 2026-06-28 spike investigation:
@@ -104,6 +110,15 @@ def referrer_host(rec: dict) -> str:
     if host.startswith("www."):
         host = host[4:]
     return host.lower()
+
+
+def app_identity(rec: dict) -> tuple[str, str]:
+    """(app, app_version) from a known product token in the User-Agent, else
+    ('none', 'none'), the convention for requests that name no app."""
+    m = APP_TOKEN_RE.search(rec.get(USER_AGENT_FIELD) or "")
+    if m is None:
+        return "none", "none"
+    return APP_TOKENS[m.group(1)], (m.group(2) or "none")[:64]
 
 
 def parse_sources(value: str | None) -> list[int]:
@@ -200,14 +215,12 @@ def tag_heavy_clients(rows: list[dict]) -> list[dict]:
 # and never collide). Aggregation dedupes keys, so no in-batch conflicts. Passed
 # a list of param dicts, db.run_query runs them as an executemany.
 #
-# app / app_version came from the legacy `?referrer=`/`?version=` query params,
-# which current clients no longer send (357 of 20,315 sampled tile requests
-# carried any query string at all). They stay 'none' rather than being invented;
-# the referrer host is the dimension that carries the signal now.
+# app / app_version once came from legacy `?referrer=`/`?version=` query params;
+# they now come from the User-Agent (see app_identity).
 DAY_UPSERT = """
     INSERT INTO usage_stats.tileserver_day_index
         (layer, ext, referrer, app, app_version, date, num_requests, new_system, is_bot, x_cache, x_tile_cache)
-    VALUES (:layer, :ext, :referrer, 'none', 'none', :date, :num_requests, true, :is_bot, :x_cache, :x_tile_cache)
+    VALUES (:layer, :ext, :referrer, :app, :app_version, :date, :num_requests, true, :is_bot, :x_cache, :x_tile_cache)
     ON CONFLICT (layer, ext, referrer, app, app_version, date, new_system, is_bot, x_cache, x_tile_cache)
     DO UPDATE SET num_requests =
         usage_stats.tileserver_day_index.num_requests + EXCLUDED.num_requests
@@ -279,6 +292,7 @@ class TileserverPipeline:
             return None
         if not is_relevant_request(rec.get("RequestHost"), tile["layer"]):
             return None
+        app, app_version = app_identity(rec)
         return {
             "layer": tile["layer"],
             "ext": (tile["ext"] or "").lower(),
@@ -289,6 +303,8 @@ class TileserverPipeline:
             "is_bot": is_known_bot(rec.get("ClientHost")),
             "client": client_network(rec.get("ClientHost")),
             "referrer": referrer_host(rec),
+            "app": app,
+            "app_version": app_version,
             # Client-facing cache status ('' when the header is absent, e.g.
             # pre-config-change logs). downstream_* is what the client got.
             "x_cache": (rec.get("downstream_X-Cache") or "").lower(),
@@ -369,6 +385,8 @@ def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
                     r["layer"],
                     r["ext"],
                     r["referrer"],
+                    r["app"],
+                    r["app_version"],
                     date,
                     bot,
                     r["x_cache"],
@@ -381,10 +399,12 @@ def aggregate(rows: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
             "layer": k[0],
             "ext": k[1],
             "referrer": k[2],
-            "date": k[3],
-            "is_bot": k[4],
-            "x_cache": k[5],
-            "x_tile_cache": k[6],
+            "app": k[3],
+            "app_version": k[4],
+            "date": k[5],
+            "is_bot": k[6],
+            "x_cache": k[7],
+            "x_tile_cache": k[8],
             "num_requests": n,
         }
         for k, n in day.items()

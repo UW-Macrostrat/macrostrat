@@ -155,7 +155,7 @@ class Macrostrat(Application):
             restart_commands={
                 "gateway": "gateway reload-caddy",
                 # Varnish resolves its backends' hostnames once, when the VCL is
-                # loaded. A recreated tileserver_core therefore leaves the cache
+                # loaded. A recreated api_v3 therefore leaves the cache
                 # dialing a stale container IP, and every core-backed tile route
                 # 503s until varnish itself is restarted. Reloading the VCL
                 # re-resolves the backends (and picks up edits to
