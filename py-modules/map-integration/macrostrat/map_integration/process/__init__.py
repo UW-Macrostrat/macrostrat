@@ -18,10 +18,11 @@ Map processing pipeline (v2)
 """
 
 from functools import partial
+from pathlib import Path
 from typing import Annotated, Optional
 
 from rich import print
-from typer import Argument, Option
+from typer import Argument, Exit, Option
 
 from macrostrat.app_frame.environments import AccessScope
 from macrostrat.core.exc import MacrostratError
@@ -35,7 +36,9 @@ from ..utils.map_info import (
     MapExclude,
     MapInfo,
     MapSelector,
+    MapSince,
     MapState,
+    MapUnfinalized,
     has_map_schema_data,
     resolve_maps,
 )
@@ -60,7 +63,9 @@ _REQUIREMENTS = {
 }
 
 
-def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
+def for_each_map(
+    selectors, step, exclude=None, state=None, since=None, unfinalized=False, **kwargs
+):
     """Run a single-map processing step over every selected map.
 
     Every step in this module takes a `MapInfo` first and options after, so one
@@ -69,7 +74,9 @@ def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
     run, and the summary says which to look at.
     """
     db = get_database()
-    maps = resolve_maps(db, selectors, exclude=exclude, state=state)
+    maps = resolve_maps(
+        db, selectors, exclude=exclude, state=state, since=since, unfinalized=unfinalized
+    )
     many = len(maps) > 1
     if many:
         print(f"[dim]{len(maps)} maps[/]")
@@ -157,6 +164,131 @@ def run_legend(map: MapInfo):
     db.run_sql(proc, {"source_id": map.id})
 
 
+@cli.command(name="preflight", rich_help_panel="Process")
+def preflight_command(
+    maps: MapSelector,
+    exclude: MapExclude = None,
+    state: MapState = None,
+    since: MapSince = None,
+    unfinalized: MapUnfinalized = False,
+    out: Annotated[
+        Optional[Path],
+        Option("--out", help="Also write every finding to this CSV."),
+    ] = None,
+):
+    """
+    Report what `insert` would refuse in each selected map's staged tables, and
+    the layers none of whose features has any details. Reads only; exits 1 if
+    any map would fail to insert. Run before `pipeline`.
+
+        macrostrat maps process preflight 'arizona-*' --since 2026-11-17
+
+    Blocks insert: no scale, no polygons, a missing copied column or one of a
+    type maps refuses, geometry maps refuses (pipeline --fix-geometries),
+    strike, dip or dip_dir out of range (normalize review-points), text longer
+    than its maps column, and lith/t_interval/b_interval null on every polygon
+    (pipeline --allow-unattributed).
+
+    No details: a polygons, lines or points table none of whose features has a
+    name, description, type, lithology (or strike and dip). Every column it does
+    have is listed per source layer, with examples, to decide the legend merge
+    or column mapping it needs in data-integration.
+    """
+    import csv
+
+    from rich.markup import escape
+
+    from ..commands.preflight import Finding, maps_limits, preflight
+
+    db = get_database()
+    selected = resolve_maps(
+        db, maps, exclude=exclude, state=state, since=since, unfinalized=unfinalized
+    )
+    scales = dict(
+        db.run_query(
+            "SELECT source_id, scale FROM maps.sources WHERE source_id = ANY(:ids)",
+            dict(ids=[m.id for m in selected]),
+        ).all()
+    )
+    limits = maps_limits(db)
+    everything: list[Finding] = []
+    blocked: dict[str, list[str]] = {}
+    no_details: list[tuple[str, str, int]] = []
+    for position, m in enumerate(selected, start=1):
+        print(f"\n[bold cyan]({position}/{len(selected)}) {m.slug}[/bold cyan]")
+        try:
+            findings, counts, details = preflight(
+                db, m.slug, m.id, scales.get(m.id), limits
+            )
+        except Exception as e:  # noqa: BLE001 -- reported per map
+            db.session.rollback()
+            print(f"  [red]Failed:[/red] {escape(str(e))}")
+            blocked[m.slug] = [f"preflight failed: {e}"]
+            continue
+        print(
+            "  "
+            + "   ".join(
+                f"{kind} {n:,}"
+                + (f" ([yellow]{bare:,} undescribed[/yellow])" if bare else "")
+                for kind, (n, bare) in counts.items()
+            )
+        )
+        for f in findings:
+            mark = "[red]blocks insert[/red]" if f.blocks else "[yellow]warning[/yellow]"
+            count = f" {f.count:,}" if f.count else ""
+            print(f"  {mark} {f.table} {f.check}{count} [dim]{escape(f.detail)}[/dim]")
+        if blocks := [
+            f"{f.table}: {f.check}" if f.table else f.check
+            for f in findings
+            if f.blocks
+        ]:
+            blocked[m.slug] = blocks
+        for kind, (n, bare) in counts.items():
+            if not n or bare != n:
+                continue
+            no_details.append((m.slug, kind, n))
+            everything.append(Finding(m.slug, kind, "no feature has details", n))
+            print(
+                f"  [yellow]no details[/yellow] {kind}: none of {n:,} features"
+                " says what it is. Its columns:"
+            )
+            layer = None
+            for d in (d for d in details if d.table == kind):
+                if d.source_layer != layer:
+                    layer = d.source_layer
+                    print(f"    [bold]{escape(layer or '(no source_layer)')}[/bold]")
+                print(
+                    f"      {d.check.removeprefix('column '):<28} {d.count:>7,}"
+                    f"  [dim]{escape(d.detail)}[/dim]"
+                )
+        everything += findings + details
+
+    print(f"\n[bold]{len(selected)} map(s)[/bold]")
+    if blocked:
+        print(f"[red]{len(blocked)} would fail to insert:[/red]")
+        for slug, blocks in blocked.items():
+            print(f"  {slug}: {escape('; '.join(blocks))}")
+    else:
+        print("[green]None would fail to insert.[/green]")
+    if no_details:
+        print(f"[yellow]{len(no_details)} layer(s) with no details:[/yellow]")
+        for slug, kind, n in no_details:
+            print(f"  {slug} {kind} ({n:,} features)")
+    if out is not None:
+        with Path(out).open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                ["slug", "table", "source_layer", "check", "count", "detail", "blocks_insert"]
+            )
+            for x in everything:
+                writer.writerow(
+                    [x.slug, x.table, x.source_layer, x.check, x.count, x.detail, x.blocks]
+                )
+        print(f"{len(everything):,} row(s) -> {out}")
+    if blocked:
+        raise Exit(1)
+
+
 @cli.command(name="pipeline", rich_help_panel="Process")
 def pipeline(
     maps: MapSelector,
@@ -164,6 +296,23 @@ def pipeline(
     scale: str = None,
     exclude: MapExclude = None,
     state: MapState = None,
+    since: MapSince = None,
+    unfinalized: MapUnfinalized = False,
+    fix_geometries: Annotated[
+        bool,
+        Option(
+            "--fix-geometries",
+            help="Repair each map's invalid staged geometries first"
+            " (macrostrat maps fix-geometries)",
+        ),
+    ] = False,
+    allow_unattributed: Annotated[
+        bool,
+        Option(
+            "--allow-unattributed",
+            help="Insert even though lith/t_interval/b_interval are entirely null",
+        ),
+    ] = False,
 ):
     """
     Run the full post-pipeline for the selected map sources
@@ -176,14 +325,34 @@ def pipeline(
     - Match units
     - Match liths
     - Make lookup
+    - Finalize
+
+    A bulk ingest's maps, picking up after a run that failed partway:
+
+        macrostrat maps process pipeline 'arizona-*' --exclude 'arizona-adgm-*' \\
+            --since 2026-11-17 --state ready --unfinalized --fix-geometries \\
+            --delete-existing
+
+    --delete-existing replaces what a failed run left in the maps schema.
     """
+
+    def step(source: MapInfo, **kwargs):
+        if fix_geometries:
+            from ..commands.fix_geometries import fix_geometries as repair
+
+            repair(get_database(), source)
+        run_pipeline(source, **kwargs)
+
     for_each_map(
         maps,
-        run_pipeline,
+        step,
         exclude=exclude,
         state=state,
+        since=since,
+        unfinalized=unfinalized,
         delete_existing=delete_existing,
         scale=scale,
+        allow_unattributed=allow_unattributed,
         # Its first step is the insert, so a map without polygons yet is the usual case.
         requires=None,
     )

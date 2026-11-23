@@ -20,6 +20,7 @@ from macrostrat.map_integration.utils.gems_utils import (
     map_legend_ages,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
+    match_legend_codes,
     transform_gdb_layer,
 )
 from macrostrat.map_utils.slugs import check_slug, staging_table, table_prefix
@@ -36,6 +37,12 @@ console = Console()
 #: from a .gdb or .gpkg, `.tsv`/`.csv`/`.xls`/`.xlsx` read a legend table,
 #: `.gpkg` maps epoch/period columns to intervals, and `none` merges nothing.
 PIPELINES = ("gems", ".tsv", ".csv", ".xls", ".xlsx", ".gpkg", "none")
+
+
+#: The column a GeMS legend and its polygons are joined on: the polygons' map
+#: unit code, or the legend's code where it writes that code another way
+#: (`match_legend_codes`). Dropped after the merge.
+LEGEND_KEY = "_legend_key"
 
 
 def merge_metadata_polygons(polygon_df, meta_df, join_col) -> G.GeoDataFrame:
@@ -141,19 +148,40 @@ def preprocess_dataframe(
             if ingest_pipeline == "Gems pipeline" and comments != "":
                 state = "failed"
                 return poly_line_pt_df, ingest_pipeline, comments, state
+            # A legend with gaps (no Age column, as Yuma East's, or no
+            # lithology) is still merged: its names and descriptions are the
+            # map's. What is missing is noted, and the map left pending.
             meta_df, comments = transform_gdb_layer(meta_df)
             if comments != "":
                 # TODO update to needs review. this status makes UI fail for some reason so kept it at pending.
                 state = "pending"
-                return poly_line_pt_df, ingest_pipeline, comments, state
             meta_df = map_legend_ages(db, meta_df)
             if (
                 meta_df["b_interval"].isna().all()
                 and meta_df["t_interval"].isna().all()
             ):
                 comments += "Both b_interval and t_interval are NA. "
-                state = "failed"
-                return poly_line_pt_df, ingest_pipeline, comments, state
+                state = "pending"
+            # Polygons whose code the legend writes another way ("J²s" for
+            # "J^s", "Tc?" for "Tc") join to it through a key column, so the
+            # polygons keep their own code.
+            codes = match_legend_codes(
+                poly_line_pt_df[join_col].dropna().astype(str).unique(),
+                meta_df[join_col].dropna().astype(str),
+            )
+            poly_line_pt_df[LEGEND_KEY] = (
+                poly_line_pt_df[join_col]
+                .astype(str)
+                .map(lambda c: codes.get(c, (c,))[0])
+            )
+            meta_df = meta_df.rename(columns={join_col: LEGEND_KEY})
+            join_col = LEGEND_KEY
+            if codes:
+                comments += (
+                    f"{len(codes)} map unit codes joined to the legend's: "
+                    + ", ".join(f"{c} -> {m} ({how})" for c, (m, how) in codes.items())
+                    + ". "
+                )
         elif feature_suffix == "lines":
             meta_df, comments, state = map_lines_to_preferred_fields(
                 poly_line_pt_df, comments, state
@@ -163,7 +191,7 @@ def preprocess_dataframe(
                 comments = "No lines to ingest"
             if state != "pending":
                 state = "ingested"
-                comments = " Lines successfully ingested"
+                comments += " Lines successfully ingested"
             print("Lines df merge successful")
             return meta_df, ingest_pipeline, comments, state
 
@@ -194,10 +222,11 @@ def preprocess_dataframe(
     merged_df = merge_metadata_polygons(poly_line_pt_df, meta_df, join_col)
     if pipeline == "gems":
         merged_df = name_dmu_columns(poly_line_pt_df, merged_df)
+        merged_df = merged_df.drop(columns=[LEGEND_KEY], errors="ignore")
     print("Polygon df merge successful")
 
-    comments += "Polygons metadata merged and ingested"
-    state = "ingested"
+    comments = f"{comments} Polygons metadata merged and ingested".strip()
+    state = state or "ingested"
     return merged_df, ingest_pipeline, comments, state
 
 

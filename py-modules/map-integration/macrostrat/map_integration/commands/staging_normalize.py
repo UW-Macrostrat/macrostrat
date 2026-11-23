@@ -3242,8 +3242,10 @@ def copy_age_columns(
 
 normalize_cli = IngestionCLI(
     no_args_is_help=True,
-    help="Normalize or bulk-fix staged table data. Selection options go before "
-    "the command: normalize --slug 'arizona-%' --layer polygons copy-column ...",
+    help="Normalize or bulk-fix staged table data. After ingest or bulk-ingest, "
+    "run the Steps in order, then `macrostrat maps process preflight` and "
+    "`pipeline`; Utils fix a map by hand. Selection options go before the "
+    "command: normalize --slug 'arizona-%' --since 2026-11-17 review-layers",
 )
 
 ALL_LAYERS = ("polygons", "lines", "points")
@@ -3628,238 +3630,6 @@ def calculate_dip_dir_from_columns(
     console.print(
         f"[green]Done:[/green] populated dip_dir in {target.schema}.{target.table}"
     )
-
-
-# `maps.points` check constraints (dip_lt_90, dip_positive, strike_lt_360,
-# strike_positive) as (column, min, max). NULL never violates a CHECK
-# constraint, so bounds only apply to non-null values.
-#
-# dip_dir has its own pair (direction_lt_360, direction_positive) but is
-# deliberately left out here -- fixing it needs a compass-direction judgment
-# call this command doesn't make, so it's shown for context only and never
-# edited, cleared or used to flag a row.
-ORIENTATION_BOUNDS = {
-    "strike": (0, 360),
-    "dip": (0, 90),
-}
-
-
-def _warn_if_still_out_of_range(col: str, value: Optional[int]):
-    lo, hi = ORIENTATION_BOUNDS[col]
-    if value is not None and not (lo <= value <= hi):
-        console.print(
-            f"  [yellow]warning:[/yellow] {col}={value} is still outside "
-            f"[{lo}, {hi}] -- applying it anyway"
-        )
-
-
-def review_orientation_values(target: TableTarget, dry_run: bool = False):
-    """Interactively walk every non-omitted point whose strike or dip would
-    fail a `maps.points` check constraint, and let the user resolve it.
-
-    For each flagged row the user can: edit strike and/or dip, clear both to
-    NULL, omit the row from insertion entirely, apply a bulk fix to every row
-    sharing the same offending value, or leave it for later (skip). Only rows
-    that would actually be inserted are shown -- already-omitted rows are not
-    this command's business. dip_dir is shown for context but is out of scope
-    for this pass.
-    """
-    db = get_database()
-    existing_cols = get_existing_columns(target)
-    required = set(ORIENTATION_BOUNDS) | {"_pkid", "dip_dir"}
-    missing = required - existing_cols
-    if missing:
-        raise ValueError(
-            f"{target.schema}.{target.table} is missing column(s): "
-            f"{', '.join(sorted(missing))}"
-        )
-
-    violation = " OR ".join(
-        f"({col} IS NOT NULL AND ({col} < {lo} OR {col} > {hi}))"
-        for col, (lo, hi) in ORIENTATION_BOUNDS.items()
-    )
-    rows = db.run_query(
-        f"""
-        SELECT _pkid, orig_id, strike, dip, dip_dir, point_type, certainty, comments
-        FROM {{table}}
-        WHERE NOT coalesce(omit, false) AND ({violation})
-        ORDER BY _pkid
-        """,
-        dict(table=target.fq_identifier),
-    ).fetchall()
-
-    if not rows:
-        console.print(
-            f"[green]No out-of-range strike/dip rows in[/green] "
-            f"{target.schema}.{target.table}"
-        )
-        return
-
-    console.print(
-        f"[blue]{len(rows)} row(s) with out-of-range strike/dip values in[/blue] "
-        f"[bold]{target.schema}.{target.table}[/bold]"
-    )
-
-    # Rows a bulk fix already disposed of; skipped without re-prompting.
-    resolved_pkids: set[int] = set()
-
-    for i, row in enumerate(rows, start=1):
-        if row._pkid in resolved_pkids:
-            continue
-
-        console.print(
-            f"\n[bold]{i}/{len(rows)}[/bold] "
-            f"[dim]_pkid={row._pkid} orig_id={row.orig_id}[/dim]"
-        )
-        console.print(
-            f"  strike=[yellow]{row.strike}[/yellow]  "
-            f"dip=[yellow]{row.dip}[/yellow]  "
-            f"dip_dir=[dim]{row.dip_dir}[/dim] [dim](not editable here)[/dim]"
-        )
-        console.print(f"  point_type={row.point_type!r}  certainty={row.certainty!r}")
-        if row.comments:
-            console.print(f"  comments={row.comments!r}")
-
-        action = Prompt.ask(
-            "  [edit/clear/omit/bulk/skip]",
-            choices=["edit", "clear", "omit", "bulk", "skip"],
-            default="skip",
-            show_choices=False,
-        )
-
-        if action == "skip":
-            continue
-
-        if action == "omit":
-            console.print("  [yellow]-> omitting row[/yellow]")
-            if not dry_run:
-                db.run_sql(
-                    "UPDATE {table} SET omit = true WHERE _pkid = :pkid",
-                    dict(table=target.fq_identifier, pkid=row._pkid),
-                )
-            continue
-
-        if action == "clear":
-            console.print("  [yellow]-> clearing strike/dip to NULL[/yellow]")
-            if not dry_run:
-                db.run_sql(
-                    """
-                    UPDATE {table}
-                    SET strike = NULL, dip = NULL
-                    WHERE _pkid = :pkid
-                    """,
-                    dict(table=target.fq_identifier, pkid=row._pkid),
-                )
-            continue
-
-        if action == "bulk":
-            # Same offending value shows up on many rows (e.g. a -999 sentinel
-            # for "unknown"); fix every row sharing it in one shot instead of
-            # walking each one individually.
-            bad_cols = [
-                col
-                for col, (lo, hi) in ORIENTATION_BOUNDS.items()
-                if getattr(row, col) is not None and not (lo <= getattr(row, col) <= hi)
-            ]
-            col = Prompt.ask(
-                "  bulk column",
-                choices=list(ORIENTATION_BOUNDS),
-                default=bad_cols[0] if len(bad_cols) == 1 else None,
-                show_choices=True,
-            )
-            current = getattr(row, col)
-            match_raw = Prompt.ask(
-                f"  match value (blank = this row's {col}={current})",
-                default="",
-                show_default=False,
-            ).strip()
-            try:
-                match_value = current if match_raw == "" else float(match_raw)
-            except ValueError:
-                console.print(
-                    f"  [red]'{match_raw}' is not a number, aborting bulk[/red]"
-                )
-                continue
-            new_raw = Prompt.ask(
-                f"  new {col} for every matching row ('null' to clear)"
-            ).strip()
-            if new_raw.lower() in ("null", "none"):
-                new_value = None
-            else:
-                try:
-                    new_value = int(round(float(new_raw)))
-                except ValueError:
-                    console.print(
-                        f"  [red]'{new_raw}' is not a number, aborting bulk[/red]"
-                    )
-                    continue
-            _warn_if_still_out_of_range(col, new_value)
-
-            select_or_update = (
-                f"SELECT _pkid FROM {{table}} WHERE {col} = :match AND NOT coalesce(omit, false)"
-                if dry_run
-                else (
-                    f"UPDATE {{table}} SET {col} = :new WHERE {col} = :match "
-                    f"AND NOT coalesce(omit, false) RETURNING _pkid"
-                )
-            )
-            affected = (
-                db.run_query(
-                    select_or_update,
-                    dict(table=target.fq_identifier, match=match_value, new=new_value),
-                )
-                .scalars()
-                .all()
-            )
-            resolved_pkids.update(affected)
-            verb = "would set" if dry_run else "set"
-            console.print(
-                f"  [yellow]-> {verb} {col}={new_value} for {len(affected)} row(s) "
-                f"where {col} = {match_value}[/yellow]"
-            )
-            continue
-
-        # action == "edit": prompt per field, blank keeps the current value.
-        updates: dict[str, Optional[int]] = {}
-        for col in ORIENTATION_BOUNDS:
-            entered = Prompt.ask(
-                f"  new {col} (blank to leave unchanged, 'null' to clear)",
-                default="",
-                show_default=False,
-            ).strip()
-            if entered == "":
-                continue
-            if entered.lower() in ("null", "none"):
-                updates[col] = None
-                continue
-            try:
-                updates[col] = int(round(float(entered)))
-            except ValueError:
-                console.print(
-                    f"  [red]'{entered}' is not a number, skipping {col}[/red]"
-                )
-
-        if not updates:
-            console.print("  [dim]No changes entered[/dim]")
-            continue
-
-        for col, value in updates.items():
-            _warn_if_still_out_of_range(col, value)
-
-        console.print(f"  [yellow]-> setting {updates}[/yellow]")
-        if dry_run:
-            continue
-
-        set_clause = ", ".join(f"{col} = :{col}" for col in updates)
-        params = dict(updates)
-        params["table"] = target.fq_identifier
-        params["pkid"] = row._pkid
-        db.run_sql(f"UPDATE {{table}} SET {set_clause} WHERE _pkid = :pkid", params)
-
-    if dry_run:
-        console.print("[green]Dry run only; no changes applied[/green]")
-    else:
-        console.print("[green]Done:[/green] orientation review complete")
 
 
 # ____________________________________CLI COMMANDS________________________________________________
@@ -4690,30 +4460,232 @@ def normalize_calculate_dip_dir(
     )
 
 
-@normalize_cli.command("points-review-orientation")
-@for_each("points")
-def normalize_points_review_orientation(
-    target: TableTarget,
+def _write_report(path: Path, header: list[str], log: Counter, examples: dict):
+    """A review's tallies as a CSV, one row per key, commonest first per map."""
+    with Path(path).open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([*header, "features", "example_pkid"])
+        for key, n in sorted(log.items(), key=lambda kv: (kv[0][0], -kv[1])):
+            writer.writerow([*key, n, examples.get(key, "")])
+    console.print(f"\n{len(log):,} row(s) -> {path}")
+
+
+@normalize_cli.command("review-layers")
+def normalize_review_layers(
+    ctx: Context,
+    out: Annotated[
+        Optional[Path],
+        Option("--out", help="Also write every layer and its columns to this CSV."),
+    ] = None,
     dry_run: bool = Option(False, "--dry-run", help="Preview only"),
 ):
     """
-    Interactively resolve strike/dip values that would violate a
-    `maps.points` check constraint (e.g. strike=555, dip=410), across the
-    `_points` table of every selected map.
+    List every source layer in each selected map's staged tables with its
+    columns and example values, flag the ones that are not the geologic map,
+    and ask before omitting them.
 
-        macrostrat maps staging normalize --slug 'arizona-%' \\
-            --exclude 'arizona-adgm-%' points-review-orientation
+        macrostrat maps staging normalize --slug 'arizona-%' --since 2026-11-17 \\
+            review-layers
 
-    dip_dir is shown for context but is out of scope for this pass -- it needs
-    a compass-direction judgment call this command doesn't make.
-
-    For each flagged row you can:
-    - edit: enter new value(s) for strike and/or dip
-    - clear: set strike and dip to NULL
-    - omit: set omit=true so the row is not inserted at all
-    - skip: leave the row unchanged for now
+    Flagged: drafting, index and field-data layers (CartographicLines,
+    DataSourcePolys, CMU*, cross sections, stations, samples, annotation), and
+    layers none of whose features says what it is. A map with more than one
+    layer of a kind is tagged extra-poly-layers / extra-line-layers /
+    extra-point-layers. After the review, "Continue to omit?" omits every
+    flagged layer, and removes the tag where one layer is left.
     """
-    review_orientation_values(target=target, dry_run=dry_run)
+    from rich.prompt import Confirm
+
+    from .review_layers import ilike_literal, review_map_layers
+
+    db = get_database()
+    selection: Selection = ctx.obj
+    kinds = selection.layers_in(ALL_LAYERS)
+    slugs = selection.slugs(db)
+    flagged = []
+    rows = []
+    for position, slug in enumerate(slugs, start=1):
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
+        try:
+            layers = review_map_layers(db, slug, kinds)
+        except Exception as e:
+            db.session.rollback()
+            console.print(f"  [red]Failed:[/red] {e}")
+            continue
+        for kind in kinds:
+            ofs = [layer for layer in layers if layer.kind == kind]
+            if not ofs:
+                continue
+            console.print(f"  [bold]{kind}[/bold]")
+            for layer in ofs:
+                name = escape(layer.name or "(no source_layer)")
+                if not layer.features:
+                    console.print(f"    [dim]already omitted  {name}[/dim]")
+                    continue
+                mark = "[yellow]omit?[/yellow]" if layer.flag else "keep "
+                console.print(
+                    f"    {mark} [bold]{name}[/bold]  {layer.features:,} features,"
+                    f" {layer.described:,} described"
+                    + (f" [yellow]({layer.flag})[/yellow]" if layer.flag else "")
+                )
+                for column, n, detail in layer.columns:
+                    console.print(f"          {column:<28} {n:>7,}  [dim]{escape(detail)}[/dim]")
+                    rows.append([slug, kind, layer.name, layer.flag, column, n, detail])
+                if layer.flag:
+                    flagged.append((slug, kind, layer))
+            if sum(1 for layer in ofs if layer.features) > 1:
+                tag = EXTRA_LAYERS_TAGS[kind]
+                if not _has_ingest_process_tag(db, slug, tag):
+                    add_ingest_process_tag(slug, tag, dry_run=dry_run)
+
+    if out is not None:
+        with Path(out).open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["slug", "table", "source_layer", "flag", "column", "features", "detail"])
+            writer.writerows(rows)
+        console.print(f"\n{len(rows):,} row(s) -> {out}")
+    if not flagged:
+        console.print("\n[green]No layer flagged for omission.[/green]")
+        return
+    console.print(f"\n[bold]{len(flagged)} layer(s) flagged for omission[/bold]")
+    for slug, kind, layer in flagged:
+        console.print(
+            f"  {slug} {kind} [bold]{escape(layer.name)}[/bold]"
+            f" ({layer.features:,} features): {layer.flag}"
+        )
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+        return
+    if not Confirm.ask("Continue to omit?", default=False):
+        console.print("Nothing omitted.")
+        return
+    for slug, kind, layer in flagged:
+        console.print(f"[cyan]{slug} {kind}[/cyan]")
+        omit_source_layers(
+            db,
+            slug,
+            TableTarget(schema="sources", table=staging_table(slug, kind)),
+            [ilike_literal(layer.name)],
+        )
+
+
+def _run_review(ctx: Context, kind: str, review_table, out, dry_run: bool):
+    """Run a `review_points.review_table` review over each selected map's
+    `kind` table, printing what it writes and reports, map by map."""
+    db = get_database()
+    selection: Selection = ctx.obj
+    selection.layers_in((kind,))
+    slugs = selection.slugs(db)
+    noun = kind.removesuffix("s")
+    report, examples = Counter(), {}
+    for position, slug in enumerate(slugs, start=1):
+        console.print(f"\n[bold cyan]({position}/{len(slugs)}) {slug}[/bold cyan]")
+        try:
+            counts = review_table(
+                db, slug, staging_table(slug, kind), dry_run, report, examples
+            )
+        except Exception as e:
+            db.session.rollback()
+            console.print(f"  [red]Failed:[/red] {escape(str(e))}")
+            report[slug, "", "", f"failed: {type(e).__name__}: {e}", "", ""] += 1
+            continue
+        if not counts:
+            console.print("  [dim]nothing to fill or clear[/dim]")
+        for column, n in counts.items():
+            console.print(f"  {column:<11} {n:>7,} {noun}(s)")
+        mine = sorted(
+            ((key, n) for key, n in report.items() if key[0] == slug),
+            key=lambda kv: (kv[0][1], kv[0][2], -kv[1]),
+        )
+        if mine:
+            console.print("  [yellow]reported[/yellow]")
+        for key, n in mine:
+            _, layer, column, issue, value, new_value = key
+            change = f" -> {escape(new_value[:100])}" if new_value else ""
+            console.print(
+                f"    {n:>6,}  {escape(layer)} [bold]{escape(column)}[/bold]:"
+                f" {escape(issue)}"
+                + (f"  [dim]{escape(value[:100])}{change}[/dim]" if value else "")
+                + f"  [dim](e.g. _pkid {examples.get(key, '')})[/dim]"
+            )
+
+    issues = Counter()
+    for (_, _, column, issue, _, _), n in report.items():
+        issues[column, issue] += n
+    if issues:
+        console.print("\n[bold]Reported, all maps[/bold]")
+        for (column, issue), n in issues.most_common():
+            console.print(f"  {n:>7,}  {column}: {issue}")
+    if out is not None:
+        _write_report(
+            out,
+            ["slug", "source_layer", "column", "issue", "value", "new_value"],
+            report,
+            examples,
+        )
+    if dry_run:
+        console.print("[green]Dry run only; no changes applied[/green]")
+
+
+ReviewOut = Annotated[
+    Optional[Path],
+    Option("--out", help="Also write what is reported to this CSV."),
+]
+
+
+@normalize_cli.command("review-lines")
+def normalize_review_lines(
+    ctx: Context,
+    out: ReviewOut = None,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Fill each selected map's blank line columns from the lines' own metadata.
+
+        macrostrat maps staging normalize --slug 'arizona-%' --since 2026-11-17 \\
+            review-lines --dry-run
+
+    A value a line already has is kept. A blank type is filled from its type
+    columns, else from the lines drawn with the same symbol rule (ruleid) in its
+    layer; certainty from its identity confidence; name from the feature it
+    names ("Buckskin-Rawhide detachment fault") or its label; descrip from its
+    descriptions, with throw directions Macrostrat has no direction for
+    ("down to the southwest") and "(concealed)"; direction from right-lateral,
+    left-lateral, overturned or plunging. Nothing is omitted.
+
+    Every value not carried over is printed under its map with how many lines
+    have it and an example _pkid.
+    """
+    from .review_lines import review_lines_table
+
+    _run_review(ctx, "lines", review_lines_table, out, dry_run)
+
+
+@normalize_cli.command("review-points")
+def normalize_review_points(
+    ctx: Context,
+    out: ReviewOut = None,
+    dry_run: bool = Option(False, "--dry-run", help="Preview only"),
+):
+    """
+    Fill each selected map's blank point columns from the points' own metadata,
+    and clear what maps.points would refuse.
+
+        macrostrat maps staging normalize --slug 'arizona-%' --since 2026-11-17 \\
+            review-points --dry-run
+
+    A value a point already has is kept. A blank strike or dip is filled from
+    its azimuth or inclination, point_type from its type, certainty from its
+    identity confidence, descrip and comments from its descriptions and a dated
+    sample's age. A strike, dip or dip_dir out of range is cleared, and
+    point_type and certainty are cut to 100 characters. Nothing is omitted.
+
+    Every value not carried over, and every measurement not written, is printed
+    under its map with how many points have it and an example _pkid.
+    """
+    from .review_points import review_points_table
+
+    _run_review(ctx, "points", review_points_table, out, dry_run)
 
 
 @normalize_cli.command("update-state")
@@ -5119,3 +5091,27 @@ def normalize_remove_tag(
     Remove a maps_metadata.ingest_process_tag row. Silent if the tag is absent.
     """
     remove_ingest_process_tag(slug, tag, dry_run=dry_run)
+
+
+#: The order to run the normalize steps in after `ingest` or `bulk-ingest`,
+#: shown first in `--help`. Then `macrostrat maps process preflight` and
+#: `pipeline`.
+STEPS = [
+    "review-layers",
+    "calculate-orig-id",
+    "calculate-age",
+    "fuzzy-match-lith",
+    "calculate-strat-name",
+    "strat-name-report",
+    "review-lines",
+    "review-points",
+    "update-state",
+]
+STEPS_PANEL = "Steps, in order"
+UTILS_PANEL = "Utils"
+
+for _info in normalize_cli.registered_commands:
+    _info.rich_help_panel = STEPS_PANEL if _info.name in STEPS else UTILS_PANEL
+normalize_cli.registered_commands.sort(
+    key=lambda info: STEPS.index(info.name) if info.name in STEPS else len(STEPS)
+)

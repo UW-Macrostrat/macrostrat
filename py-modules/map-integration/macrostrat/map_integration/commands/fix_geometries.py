@@ -6,7 +6,7 @@ from typer import Option
 from macrostrat.map_utils.slugs import table_prefix
 
 from ..database import get_database
-from ..utils import MapInfo
+from ..utils import MapInfo, table_exists
 
 # `ST_MakeValid` repairs a self-intersection by *decomposing* the geometry, and
 # what comes back is frequently a `GeometryCollection`: the repaired area plus
@@ -47,6 +47,9 @@ def fix_geometries(
     """
     prefix = staging_prefix or table_prefix(map.slug)
     for table, repair in REPAIR.items():
+        # A map without lines or points has no table for them.
+        if not table_exists(db, f"{prefix}_{table}", schema="sources"):
+            continue
         ident = Identifier("sources", f"{prefix}_{table}")
         db.run_sql(
             "UPDATE {table} SET geom = {repair}"

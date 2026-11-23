@@ -1,3 +1,4 @@
+from datetime import datetime
 from fnmatch import fnmatch
 from typing import Optional
 
@@ -70,6 +71,8 @@ def resolve_maps(
     selectors: list[str],
     exclude: Optional[list[str]] = None,
     state: Optional[str] = None,
+    since: Optional[datetime] = None,
+    unfinalized: bool = False,
 ) -> list[_MapInfo]:
     """Expand map selectors -- source ids, slugs, or slug globs -- to map info.
 
@@ -88,6 +91,11 @@ def resolve_maps(
     `state` keeps only maps whose `maps_metadata.ingest_process.state` equals
     the given value (e.g. `ready`). A map with no `ingest_process` row has no
     state to match, so it drops out along with the rest.
+
+    `since` keeps only maps whose ingest process was created on or after it, as
+    `maps staging normalize --since` selects them (a date without a zone is local
+    time), and `unfinalized` only those `maps.sources.is_finalized` is not true
+    for: a bulk ingest's maps, without the ones a re-run already finished.
     """
     found: dict[int, _MapInfo] = {}
     for value in selectors:
@@ -136,6 +144,30 @@ def resolve_maps(
         if not result:
             raise MacrostratError(f"--state {state!r} left no maps in the selection")
 
+    if since is not None:
+        matching_ids = set(
+            db.run_query(
+                "SELECT source_id FROM maps_metadata.ingest_process"
+                " WHERE source_id = ANY(:ids) AND created_on >= CAST(:since AS timestamptz)",
+                dict(ids=[m.id for m in result], since=since.astimezone()),
+            ).scalars()
+        )
+        result = [m for m in result if m.id in matching_ids]
+        if not result:
+            raise MacrostratError(f"--since {since:%Y-%m-%d} left no maps in the selection")
+
+    if unfinalized:
+        finalized = set(
+            db.run_query(
+                "SELECT source_id FROM maps.sources"
+                " WHERE source_id = ANY(:ids) AND is_finalized",
+                dict(ids=[m.id for m in result]),
+            ).scalars()
+        )
+        result = [m for m in result if m.id not in finalized]
+        if not result:
+            raise MacrostratError("Every selected map is already finalized")
+
     return result
 
 
@@ -162,6 +194,25 @@ MapState = Annotated[
         "--state",
         help="Only include maps whose maps_metadata.ingest_process.state"
         " equals this (e.g. 'ready')",
+    ),
+]
+
+
+MapSince = Annotated[
+    Optional[datetime],
+    Option(
+        "--since",
+        help="Only include maps whose ingest process was created on or after"
+        " this date (2026-11-17) or time, local time",
+    ),
+]
+
+MapUnfinalized = Annotated[
+    bool,
+    Option(
+        "--unfinalized",
+        help="Leave out maps already finalized (maps.sources.is_finalized), so a"
+        " re-run picks up only the maps that failed or were not reached",
     ),
 ]
 

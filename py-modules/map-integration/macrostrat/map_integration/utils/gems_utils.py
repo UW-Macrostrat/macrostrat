@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 import geopandas as G
 import pandas as pd
@@ -133,6 +133,105 @@ def transform_gdb_layer(meta_df: G.GeoDataFrame) -> Tuple[G.GeoDataFrame, str]:
         comments += "Polygon required fields are empty or missing (age/name)."
     meta_df = meta_df.dropna(axis=1, how="all")
     return meta_df, comments
+
+
+#: Characters of the geologic-age fonts (FGDC GeoAge and others) that a map's
+#: polygons and its legend may write differently: "J²s" and "J^s". Any
+#: character outside ASCII counts too.
+AGE_FONT = set("^_|~`")
+
+
+def _font_key(code: str) -> str:
+    return "".join("*" if ord(c) > 127 or c in AGE_FONT else c for c in code)
+
+
+def match_legend_codes(
+    codes: Iterable[str], legend_codes: Iterable[str]
+) -> dict[str, tuple[str, str]]:
+    """{polygon map unit code: (the legend's code for it, how)} for the codes
+    a GeMS legend (DescriptionOfMapUnits) does not write the same way: a
+    queried code ("Tc?" for "Tc"), or one an age-font character is written
+    differently in ("J²s" for "J^s"), where exactly one legend code matches.
+    Codes the legend has as they are, and codes it has no match for, are left
+    out."""
+    legend = [c for c in dict.fromkeys(str(c) for c in legend_codes)]
+    exact = set(legend)
+    found = {}
+    for code in dict.fromkeys(str(c) for c in codes):
+        if code in exact:
+            continue
+        plain = code.strip().rstrip("?").strip()
+        if plain != code and plain in exact:
+            found[code] = (plain, "queried code")
+            continue
+        key = _font_key(plain)
+        if "*" in key:
+            hits = [c for c in legend if _font_key(c) == key]
+            if len(hits) == 1:
+                found[code] = (hits[0], "age-font character")
+    return found
+
+
+#: Representation rule ids that are no rule: ArcGIS's free representations and
+#: none.
+NO_RULE = {"", "none", "nan", "-1", "0"}
+
+
+def infer_line_types(
+    df: pd.DataFrame, min_lines: int = 5, agreement: float = 0.9
+) -> tuple[pd.DataFrame, int]:
+    """Fill a blank line `type` from the lines drawn with the same ArcGIS
+    representation rule (`ruleid`) in the same layer of the same map.
+
+    A GeMS geodatabase symbolises its lines by rule, so lines sharing a rule are
+    the same kind of line. Where at least `min_lines` of a rule's lines have a
+    type and `agreement` of them agree on it, the rule's untyped lines take it,
+    and a blank `descrip` takes their description where it agrees as often.
+    Rules are scoped to a layer: rule 3 of ContactsAndFaults is not rule 3 of
+    GeologicLines. Returns the frame and how many lines were typed."""
+    from .feature_text import pertinent
+
+    if not {"ruleid", "type"} <= set(df.columns) or df.empty:
+        return df, 0
+    rule = pd.to_numeric(df["ruleid"], errors="coerce").astype("Int64").astype(str)
+    rule = rule.where(~rule.str.lower().isin(NO_RULE | {"<na>"}))
+    layer = (
+        df["source_layer"].astype(str)
+        if "source_layer" in df
+        else pd.Series("", index=df.index)
+    )
+    line_type = df["type"].map(pertinent)
+    descrip = (
+        df["descrip"].map(pertinent)
+        if "descrip" in df
+        else pd.Series(None, index=df.index, dtype=object)
+    )
+
+    typed = 0
+    ruled = rule.notna()
+    for _, group in df[ruled].groupby([layer[ruled], rule[ruled]]):
+        types = line_type[group.index].dropna()
+        if len(types) < min_lines:
+            continue
+        folded = types.str.lower().value_counts()
+        if folded.iloc[0] / len(types) < agreement:
+            continue
+        top = types[types.str.lower() == folded.index[0]].value_counts().index[0]
+        blank = line_type[group.index].isna()
+        targets = group.index[blank]
+        if len(targets) == 0:
+            continue
+        df.loc[targets, "type"] = top
+        typed += len(targets)
+
+        descs = descrip[types.index].dropna()
+        if len(descs) and descs.value_counts().iloc[0] / len(types) >= agreement:
+            empty = [i for i in targets if descrip[i] is None]
+            if empty:
+                if "descrip" not in df:
+                    df["descrip"] = None
+                df.loc[empty, "descrip"] = descs.value_counts().index[0]
+    return df, typed
 
 
 QUALIFIERS = {"early", "middle", "late", "lower", "upper"}
@@ -402,6 +501,9 @@ def map_lines_to_preferred_fields(
             rename_map.pop("Label", None)
 
     meta_df = copy_columns(meta_df, rename_map)
+    meta_df, typed = infer_line_types(meta_df)
+    if typed:
+        comments += f"{typed} untyped lines typed from their symbol rule (ruleid). "
 
     def col_empty(df: G.GeoDataFrame, col: str) -> bool:
         if col not in df.columns:
