@@ -2,10 +2,38 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-20
+
+- Admin-only `/usage-stats` routes: harvester status, and tile requests, referrers, cache outcomes, layers and per-map views over time
+- `/usage-stats/tiles/requests` adds `presumed_bot`: the overage above the long-term trend during phases of anomalous traffic, recomputed over the whole archive on each read, and `trend`: the organic requests the long-term trend expects
+- `/usage-stats/tiles/throttled` lists the clients the tile cache refused
+- `/usage-stats/tiles/maps` returns source ids only, since they are production ids in every environment
+
+## [3.2.0] - 2026-11-19
+
 - `/refs` and `/refs/{id}` return references with geometry diagnostics; `/refs.geojson` returns them with their geometries
 - Regions (the `geologic_boundaries` tables): `/regions`, `/regions/sources`
   and `/regions/{region_id}` in the API, and `/regions/tiles/{z}/{x}/{y}` tiles
 - Updated Dockerfiles for quicker cached rebuilds
+- `PATCH /security/users/{id}` also changes display name and email; an admin may edit their own record but not their own role
+- `DELETE /security/users/{id}` deletes a user; tokens delegated to them are expired and kept
+- `PATCH /security/tokens/{id}` replaces a token's scopes
+- `GET /security/tokens` names the delegated user (`user_name`)
+- `/security/login`, `/security/callback` and `/security/refresh` come from `macrostrat.auth_system` 1.2.0
+- Sign-in checks a state nonce, and returns only to the API's own origin or one listed in `AUTH_RETURN_ORIGINS`
+- A refresh token is no longer accepted as a session
+- FastAPI 0.136 and Starlette 1
+- `GET /columns/{col_id}/nearby` lists the columns, in any project, that overlap or lie within a kilometre of a column
+- `/rasters/layer/{layer}` serves any layer in the raster index by name, for tokens scoped `tiles:map`
+- `rasters.scan` task registers the rasters under a bucket prefix, without a layer
+- `macrostrat.raster_index` 0.4.0
+- `/tasks/{task}/recent/{param}` lists the values a parameter took in recent runs; the scan prefix is marked to offer them
+- `/rasters/raster/{raster_id}` serves one indexed raster by id, in a layer or not, for tokens scoped `tiles:map`
+- `/rasters/layer/{layer}/WMTSCapabilities.xml`: WMTS for any indexed layer, one layer per class where it has a vocabulary
+- Removed the configured `/rasters/emit-minerals` mount; the layer is served at `/rasters/layer/emit-minerals`
+- `/rasters/layer/{layer}` also accepts delegated tokens scoped `rasters:<layer>`, for that layer alone
+- Configured raster layers are served at `/rasters/layer/<slug>`, overriding the by-name defaults for that slug; `/rasters/elevation` moves to `/rasters/layer/elevation`
+- Removed the per-layer `/rasters/<slug>/refresh` routes, which never flushed; `POST /cache/refresh/rasters` does
 
 ## [3.1.2] - 2026-11-03
 

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
+- Tile cache answers 429 to clients over a per-client render limit; `TILE_THROTTLE_MODE=report` only marks them (`X-Throttle: would-deny`)
+
 ## [1.0.0]
 
 - One image holding Caddy and Varnish with all gateway configuration, replacing the

@@ -217,7 +217,7 @@ never loads Macrostrat's config. Keep heavy imports inside the command body rath
 than at module scope, so importing a subsystem stays cheap.
 
 `column-ingestion` is the model — `get_database()` appears only in its
-`__init__.py`, and commands are three lines:
+`cli.py`, and commands are three lines:
 
 ```python
 @app.command(name="ingest")

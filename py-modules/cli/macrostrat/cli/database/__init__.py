@@ -40,7 +40,7 @@ from ..subsystems.base import MacrostratSubsystem
 from ._legacy import get_db
 
 # NOTE: right now, this is quite implicit.
-from .load_csv import load_csv
+from .load_csv import load_csv_command
 from .load_geo import load_geo
 from .utils import engine_for_db_name, libpq_environment, setup_postgrest_access
 
@@ -582,7 +582,7 @@ db_app.command(name="permissions", rich_help_panel="Helpers")(update_permissions
 # Gated at registration rather than at the definition, so the commands stay
 # importable and callable without a policy check.
 db_app.command(name="load-csv", rich_help_panel="Helpers")(
-    writes(AccessScope.Data, action="CSV load")(load_csv)
+    writes(AccessScope.Data, action="CSV load")(load_csv_command)
 )
 db_app.command(name="load-geo", rich_help_panel="Helpers")(
     writes(AccessScope.Data, action="GIS load")(load_geo)

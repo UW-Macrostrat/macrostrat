@@ -151,11 +151,6 @@ def unit_identity(row: dict) -> tuple:
 
 
 def _desired_unit_row(unit: Unit) -> dict:
-    thickness = (
-        abs(float(unit.t_pos) - float(unit.b_pos))
-        if unit.t_pos is not None and unit.b_pos is not None
-        else None
-    )
     row = {
         "col_id": unit.col_id,
         "section_id": unit.section_id,
@@ -163,8 +158,8 @@ def _desired_unit_row(unit: Unit) -> dict:
         "position_bottom": unit.b_pos,
         "position_top": unit.t_pos,
         "orig_id": unit.orig_id,
-        "max_thick": thickness,
-        "min_thick": thickness,
+        "max_thick": unit.max_thick,
+        "min_thick": unit.min_thick,
         "outcrop": unit.outcrop,
         "color": "",
     }

@@ -54,7 +54,7 @@ def ingest_columns_task(ref: dict) -> dict:
     and runs the ingest; on ``dry_run`` the ingest rolls back instead of
     committing (enforced inside ``ingest_columns_from_file``).
     """
-    from macrostrat.column_ingestion.ingest import Placement, ingest_columns_from_file
+    from macrostrat.column_ingestion import Placement, ingest_columns_from_file
 
     dry_run = ref.get("dry_run", True)
     placement = Placement.from_dict(ref.get("placement"))
@@ -86,7 +86,7 @@ def ingest_column_data_task(payload: dict) -> dict:
     ``payload`` = ``{data: {metadata, columns, units, refs?, facies?}, dry_run,
     placement?}``; ``placement`` as for the upload task.
     """
-    from macrostrat.column_ingestion.ingest import Placement, ingest_column_data
+    from macrostrat.column_ingestion import Placement, ingest_column_data
 
     dry_run = payload.get("dry_run", True)
     placement = Placement.from_dict(payload.get("placement"))
@@ -104,7 +104,7 @@ def _run(fn, db, source, *, dry_run: bool, placement=None) -> dict:
     outcome to report — the notices are the point — not a task failure, so it comes
     back as the same result shape with ``ok: false`` and no summary.
     """
-    from macrostrat.column_ingestion.notices import IngestValidationError
+    from macrostrat.column_ingestion import IngestValidationError
 
     try:
         return fn(db, source, dry_run=dry_run, placement=placement)

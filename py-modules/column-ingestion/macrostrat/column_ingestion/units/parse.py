@@ -30,6 +30,10 @@ class Unit:
     section_id: int = -1
     b_pos: float | None = None
     t_pos: float | None = None
+    #: `macrostrat.units.min_thick` / `max_thick`, in metres. Left unset on a height or
+    #: depth axis they are the unit's span there; an age axis has no span to give.
+    min_thick: float | None = None
+    max_thick: float | None = None
     lithology: set[Lithology] = field(default_factory=set)
     environment: set[Environ] = field(default_factory=set)
     description: str | None = None

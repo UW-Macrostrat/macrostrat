@@ -147,7 +147,7 @@ wheels = [
 
 [[package]]
 name = "api"
-version = "3.2.0b1"
+version = "3.3.0"
 source = { editable = "services/api-v3" }
 dependencies = [
     { name = "aiohttp" },
@@ -1921,7 +1921,7 @@ wheels = [
 
 [[package]]
 name = "macrostrat-worker"
-version = "1.1.4b1"
+version = "1.2.0"
 source = { editable = "services/worker" }
 dependencies = [
     { name = "celery", extra = ["redis"] },

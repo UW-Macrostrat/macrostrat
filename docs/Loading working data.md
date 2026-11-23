@@ -190,7 +190,7 @@ The work is done by the `macrostrat.loader_utils` package
 (`py-modules/loader-utils`), so that pipelines and notebooks can call it as well
 as the CLI: `tables.py` holds everything tabular and geospatial loads share —
 identifier sanitization, type mapping, table creation, and the `COPY` itself —
-and `layers.py` holds `load_layer`. The commands in
+`tabular.py` holds `load_csv` and `layers.py` holds `load_layer`. The commands in
 `py-modules/cli/macrostrat/cli/database/` (`load_csv.py`, `load_geo.py`) only
 parse options and print. Changes to shared behaviour belong in `tables.py` so
 the loaders cannot drift. Library functions raise `LoadError`, which the
@@ -211,8 +211,8 @@ A few decisions worth knowing before changing this code:
   numbers arrive as `NaN`, which Postgres would otherwise store as a literal
   `NaN` instead of `NULL`. Integer fields that pandas widened to float to hold
   nulls are cast back to the type OGR declares for them.
-- **`load_layer` commits as it goes**, each statement on its own connection. A
-  caller whose open transaction has read the target table must commit before a
+- **`load_csv` and `load_layer` commit as they go**, each statement on its own
+  connection. A caller whose open transaction has read the target table must commit before a
   replace, or the `DROP` waits on it indefinitely.
 - **Geometry travels as hex WKB** in the same `COPY` stream; PostGIS parses it on
   input. Hex WKB carries no SRID, so the geometry column is created untyped and

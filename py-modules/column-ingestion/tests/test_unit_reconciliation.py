@@ -127,6 +127,7 @@ class FakeUnit:
         self.section_id = 2
         self.b_pos = 10.0
         self.t_pos = 0.0
+        self.min_thick = self.max_thick = None
         self.orig_id = None
         self.outcrop = "surface"
 

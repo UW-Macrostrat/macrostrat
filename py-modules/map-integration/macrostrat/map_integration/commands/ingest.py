@@ -17,9 +17,9 @@ from typer import Argument, Option
 
 from macrostrat.map_integration.utils.gems_utils import (
     extract_gdb_layer,
+    map_legend_ages,
     map_lines_to_preferred_fields,
     map_points_to_preferred_fields,
-    map_legend_ages,
     transform_gdb_layer,
 )
 from macrostrat.map_utils.slugs import check_slug, staging_table, table_prefix
