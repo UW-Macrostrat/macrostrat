@@ -120,11 +120,22 @@ def for_each_map(selectors, step, exclude=None, state=None, **kwargs):
         raise MacrostratError(f"{len(failed)} maps failed")
 
 
-def run_pipeline(source: MapInfo, delete_existing: bool = False, scale: str = None):
+def run_pipeline(
+    source: MapInfo,
+    delete_existing: bool = False,
+    scale: str = None,
+    allow_unattributed: bool = False,
+):
     """Run the full post-ingestion pipeline for one map source."""
     db = get_database()
     try:
-        copy_to_maps(db, source, delete_existing=delete_existing, scale=scale)
+        copy_to_maps(
+            db,
+            source,
+            delete_existing=delete_existing,
+            scale=scale,
+            allow_unattributed=allow_unattributed,
+        )
     except ValueError as e:
         print(e)
         if not delete_existing:

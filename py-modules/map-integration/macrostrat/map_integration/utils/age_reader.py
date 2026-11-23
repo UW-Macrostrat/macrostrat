@@ -71,7 +71,8 @@ _NUMBER = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
 _YEARS = re.compile(
     rf"(?P<under><|less than|younger than)?\s*[~≈]?\s*(?P<a>{_NUMBER})\s*"
     rf"(?:(?:to|-|–|—)\s*[~≈]?\s*(?P<b>{_NUMBER})\s*)?"
-    r"(?P<unit>ma|ka|m\.?y\.?|years?|yrs?)\b",
+    # Years only as a word of their own: "5YR" is a Munsell colour.
+    r"(?P<unit>ma|ka|m\.?y\.?|(?<=\s)(?:years?|yrs?))\b",
     re.I,
 )
 _UNIT_MA = {"ma": 1.0, "my": 1.0, "m.y.": 1.0, "m.y": 1.0, "ka": 1e-3}
@@ -86,6 +87,19 @@ INTERNATIONAL = [
     "international periods",
     "international epochs",
     "international ages",
+]
+
+
+#: Interval types `coarse` keeps: an epoch or anything larger.
+COARSE_TYPES = {"epoch", "superepoch", "period", "era", "eon", "supereon"}
+
+#: What `coarse` puts in place of a smaller interval, finest first: the
+#: Precambrian has no epochs, so a period there, and so on.
+COARSE_SCALES = [
+    "international epochs",
+    "international periods",
+    "international eras",
+    "international eons",
 ]
 
 
@@ -112,17 +126,25 @@ class AgeReader:
                     JOIN macrostrat.timescales t ON t.id = ti.timescale_id
                     WHERE ti.interval_id = i.id
                       AND t.timescale = 'international epochs'
-                ) AS epoch
+                ) AS epoch,
+                ARRAY(
+                    SELECT t.timescale FROM macrostrat.timescales_intervals ti
+                    JOIN macrostrat.timescales t ON t.id = ti.timescale_id
+                    WHERE ti.interval_id = i.id
+                      AND t.timescale = ANY(CAST(:coarse AS text[]))
+                ) AS scales
             FROM macrostrat.intervals i
             -- An international interval wins a name it shares.
             ORDER BY international DESC, i.id
             """,
-            dict(international=INTERNATIONAL),
+            dict(international=INTERNATIONAL, coarse=COARSE_SCALES),
         ).all()
         self.ids: dict[str, int] = {}
         self.ages: dict[int, tuple[float, float]] = {}
         self.names: dict[int, str] = {}
         self.epochs: list[int] = []
+        self.types: dict[int, str] = {}
+        self.scales: dict[str, list[int]] = {scale: [] for scale in COARSE_SCALES}
         spelling = set()
         for row in rows:
             name = str(row.interval_name).lower()
@@ -131,6 +153,9 @@ class AgeReader:
             self.names[int(row.id)] = row.interval_name
             if row.epoch:
                 self.epochs.append(int(row.id))
+            self.types[int(row.id)] = row.interval_type
+            for scale in row.scales or []:
+                self.scales[scale].append(int(row.id))
             if row.international or row.interval_type in ("period", "era", "eon"):
                 spelling.update(w for w in name.split() if w.isalpha())
         # One-word interval names, the periods a qualifier can go with.
@@ -205,6 +230,27 @@ class AgeReader:
                 b, t = hit[1:]
                 return b, t, self.label(b, t)
         return None
+
+    def coarse(self, b: int, t: int) -> tuple[int, int]:
+        """(b, t) as epochs or larger: an age, sub-epoch or zone as the
+        international epoch it falls in ("Gelasian to Holocene" is the
+        Pleistocene to Holocene, "Early Miocene" the Miocene), before the
+        epochs the period, era or eon. An epoch, period, era or eon, whether
+        international or not (Tertiary), is kept."""
+        return self._coarse(b, bottom=True), self._coarse(t, bottom=False)
+
+    def _coarse(self, interval: int, bottom: bool) -> int:
+        """The epoch or larger interval holding `interval`'s base (`bottom`)
+        or its top."""
+        if self.types.get(interval) in COARSE_TYPES:
+            return interval
+        age = self.ages[interval][0 if bottom else 1]
+        for scale in COARSE_SCALES:
+            for i in self.scales[scale]:
+                b, t = self.ages[i]
+                if (t < age <= b) if bottom else (t <= age < b):
+                    return i
+        return interval
 
     def label(self, b: int, t: int) -> str:
         """The interval names, as `age` is written: "Holocene", "Pleistocene to
