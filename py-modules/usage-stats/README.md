@@ -39,5 +39,23 @@ macrostrat usage-stats capture --limit 5
 `usage_stats.processed_logs` per pipeline, written last within the object's
 transaction, so an interrupted run re-processes only the object it died on.
 
+## Pre-switchover data
+
+Tile counts from 2018 to March 2026 predate the log dumps and cannot be
+harvested. They live in each environment's standalone `tileserver_stats`
+database (the `[<env>.databases]` entry of that name) and are copied in once:
+
+```bash
+macrostrat usage-stats import-legacy
+```
+
+It reads the legacy `day_index` / `location_index` tables (schema `stats`, or
+`tileserver_stats` where the retired `migrate-old` renamed it) and inserts them
+as the `new_system = false` lineage, in one transaction. The source is not
+modified. Rows already present are kept (`ON CONFLICT DO NOTHING`), so re-running
+is harmless and order relative to `capture` does not matter. It ends by
+comparing row and request totals with the source, and exits non-zero if they
+differ.
+
 See the `Usage stats` feature-area document for the design and the dated
 progress log.

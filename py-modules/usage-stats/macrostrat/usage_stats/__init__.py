@@ -354,29 +354,57 @@ def plot_command(
     )
 
 
-@app.command(name="migrate-old", rich_help_panel="Development")
-def migrate_data(drop: bool = False):
-    """Merge the standalone tileserver_stats database into the core Macrostrat
-    database. Legacy one-off, kept for reference."""
-    import asyncio
+@app.command(name="import-legacy")
+def import_legacy_command(
+    source: str = Option(
+        "tileserver_stats",
+        "--source",
+        help="Named database in macrostrat.toml holding the legacy tileserver stats.",
+    ),
+    yes: bool = Option(False, "--yes", "-y", help="Skip the write confirmation."),
+):
+    """Copy the pre-switchover tileserver stats (2018 to March 2026) into
+    usage_stats, from this environment's standalone tileserver_stats database.
 
-    from macrostrat.core import get_database
-    from macrostrat.core.config import settings
-    from macrostrat.database import Database
-    from macrostrat.database.transfer import move_tables
+    The source is only read. Re-running adds nothing, and the import is a single
+    transaction. Ends by reconciling row and request totals against the source.
+    """
+    from macrostrat.app_frame.environments import AccessScope
+    from macrostrat.core.connections import DatabaseRole
+    from macrostrat.core.database import database_for
+    from macrostrat.core.safety import require_write_access
 
-    tileserver_db = settings.databases.get("tileserver_stats")
-    print(f"Connecting to {tileserver_db}")
-    if not tileserver_db:
-        print("No tileserver_stats database configured; nothing to do.")
+    from .legacy import import_legacy_lineage
+
+    source_db = database_for(source, role=DatabaseRole.Reader)
+    require_write_access(
+        AccessScope.Data, assume_yes=yes, action="importing legacy usage stats"
+    )
+    db = get_db()
+    with db.transaction():
+        results = import_legacy_lineage(source_db, db)
+
+    table = Table(box=None, pad_edge=False)
+    for column in ("table", "source rows", "inserted", "legacy rows", "requests"):
+        table.add_column(column, justify="left" if column == "table" else "right")
+    for r in results:
+        table.add_row(
+            r.table,
+            f"{r.source_rows:,}",
+            f"{r.inserted:,}",
+            f"{r.after_rows:,}",
+            f"{r.after_requests:,}",
+        )
+    print(table)
+
+    if all(r.reconciles for r in results):
+        print("[green]OK[/] — legacy lineage matches the source exactly.")
         return
-
-    tdb = Database(tileserver_db)
-    tdb.run_sql("ALTER SCHEMA stats RENAME TO tileserver_stats")
-    tdb.run_sql("ALTER TABLE requests SET SCHEMA tileserver_stats")
-
-    db = get_database()
-    asyncio.run(move_tables(tdb.engine, db.engine, schemas=["tileserver_stats"]))
+    print(
+        "[bold yellow]Mismatch[/] — the legacy lineage here differs from the "
+        "source. Rows already present were kept, not overwritten."
+    )
+    raise Exit(code=1)
 
 
 @app.command(name="show-sample")
