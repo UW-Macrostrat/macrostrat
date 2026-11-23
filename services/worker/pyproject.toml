@@ -26,7 +26,8 @@ columns = [
     "macrostrat.column-ingestion",
 ]
 tasks = [
-    "macrostrat.task-runner",
+    "macrostrat.task-ledger",
+    "macrostrat.task_runner>=0.1.0,<0.2",
     "macrostrat.map-topology[topology]",
     "macrostrat.map_integration",
     "macrostrat.raster-tasks[index]",
@@ -35,7 +36,7 @@ tasks = [
 [tool.uv.sources]
 "macrostrat.map_utils" = { path = "../../py-modules/map-utils", editable = true }
 "macrostrat.column-ingestion" = { path = "../../py-modules/column-ingestion", editable = true }
-"macrostrat.task-runner" = { path = "../../py-modules/task-runner", editable = true }
+"macrostrat.task-ledger" = { path = "../../py-modules/task-ledger", editable = true }
 "macrostrat.raster-tasks" = { path = "../../py-modules/raster-tasks", editable = true }
 "macrostrat.map-topology" = { path = "../../py-modules/map-topology", editable = true }
 "macrostrat.map_integration" = { path = "../../py-modules/map-integration", editable = true }

@@ -28,7 +28,8 @@ from sqlalchemy.exc import IntegrityError
 from api.celery_app import celery_app
 from api.database import DatabaseDep
 from api.routes.security import TokenData, require_admin
-from macrostrat.task_runner import ledger, load_registry
+from macrostrat.task_ledger import ledger
+from macrostrat.task_runner import load_registry
 from macrostrat.task_runner.output import control_channel, output_key, read_all
 from macrostrat.task_runner.tail import tail_output
 

@@ -36,16 +36,16 @@ class Params(BaseModel):
     seconds: float = 1.0
 
 def run(db, params, ctx):
-    from rich import print
+    from rich import print as rich_print
     from rich.progress import Progress
-    print("[bold green]e2e[/] start")
+    rich_print("[bold green]e2e[/] start")
     with Progress() as progress:
         task = progress.add_task("Sleeping", total=params.steps)
         for i in range(params.steps):
             try:
                 db.run_query("SELECT pg_sleep(:s)", dict(s=params.seconds))
             except Exception as err:
-                print(f"  [red]caught[/] {type(err).__name__}")
+                rich_print(f"  [red]caught[/] {type(err).__name__}")
                 db.session.rollback()
             progress.update(task, advance=1)
             print(f"  step {i} done")
@@ -56,7 +56,7 @@ TASKS = [TaskSpec(name="e2e.sleep", title="Sleep", description="", params=Params
 
 RUNNER = """
 import sys
-from macrostrat.task_runner.run import execute_run
+from macrostrat.task_ledger.run import execute_run
 import e2e_task
 registry = {s.name: s for s in e2e_task.TASKS}
 print(execute_run(run_id=sys.argv[1], db_url=sys.argv[2], redis_url=sys.argv[3], registry=registry))
@@ -98,7 +98,7 @@ def _start(db, task_module, run_id):
 
 
 def _wait_state(db, run_id, states, timeout=30):
-    from macrostrat.task_runner import ledger
+    from macrostrat.task_ledger import ledger
 
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -110,7 +110,7 @@ def _wait_state(db, run_id, states, timeout=30):
 
 
 def test_run_succeeds_and_archives_its_output(db, redis, task_module):
-    from macrostrat.task_runner import ledger
+    from macrostrat.task_ledger import ledger
     from macrostrat.task_runner.output import read_all
 
     run_id = ledger.create_run(
@@ -127,7 +127,7 @@ def test_run_succeeds_and_archives_its_output(db, redis, task_module):
 
 
 def test_cancel_interrupts_a_running_statement(db, redis, task_module):
-    from macrostrat.task_runner import ledger
+    from macrostrat.task_ledger import ledger
     from macrostrat.task_runner.output import control_channel
 
     run_id = ledger.create_run(

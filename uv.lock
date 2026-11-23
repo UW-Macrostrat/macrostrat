@@ -164,6 +164,7 @@ dependencies = [
     { name = "macrostrat-map-utils" },
     { name = "macrostrat-match-utils" },
     { name = "macrostrat-raster-tasks" },
+    { name = "macrostrat-task-ledger" },
     { name = "macrostrat-task-runner" },
     { name = "minio" },
     { name = "morecantile" },
@@ -196,7 +197,8 @@ requires-dist = [
     { name = "macrostrat-map-utils", editable = "py-modules/map-utils" },
     { name = "macrostrat-match-utils", editable = "py-modules/match-utils" },
     { name = "macrostrat-raster-tasks", editable = "py-modules/raster-tasks" },
-    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
+    { name = "macrostrat-task-ledger", editable = "py-modules/task-ledger" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.0,<0.2" },
     { name = "minio", specifier = ">=7.2.3,<8" },
     { name = "morecantile", specifier = ">=7.0.2" },
     { name = "numpy", specifier = ">=2.4.4,<3" },
@@ -1518,7 +1520,7 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "py-modules/map-utils" },
     { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
-    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.0,<0.2" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
@@ -1667,7 +1669,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "macrostrat-raster-index", extras = ["s3", "footprints"], marker = "extra == 'index'", specifier = ">=0.5.0,<1" },
-    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.0,<0.2" },
     { name = "pydantic", specifier = ">=2" },
     { name = "rich", marker = "extra == 'index'", specifier = ">=13" },
 ]
@@ -1768,7 +1770,7 @@ dependencies = [
     { name = "macrostrat-raster-layers" },
     { name = "macrostrat-raster-tasks" },
     { name = "macrostrat-schema" },
-    { name = "macrostrat-task-runner" },
+    { name = "macrostrat-task-ledger" },
     { name = "macrostrat-tileserver-utils" },
     { name = "macrostrat-worker", extra = ["maps"] },
     { name = "psycopg", extra = ["binary"] },
@@ -1798,7 +1800,7 @@ requires-dist = [
     { name = "macrostrat-raster-layers", specifier = ">=0.3.2,<1" },
     { name = "macrostrat-raster-tasks", editable = "py-modules/raster-tasks" },
     { name = "macrostrat-schema", editable = "py-modules/schema" },
-    { name = "macrostrat-task-runner", editable = "py-modules/task-runner" },
+    { name = "macrostrat-task-ledger", editable = "py-modules/task-ledger" },
     { name = "macrostrat-tileserver-utils", editable = "py-modules/tileserver-utils" },
     { name = "macrostrat-worker", extras = ["maps"], editable = "services/worker" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.3" },
@@ -1816,24 +1818,36 @@ dev = [
 gis = [{ name = "macrostrat-cli", extras = ["gis"], editable = "py-modules/cli" }]
 
 [[package]]
-name = "macrostrat-task-runner"
+name = "macrostrat-task-ledger"
 version = "0.1.0"
-source = { editable = "py-modules/task-runner" }
+source = { editable = "py-modules/task-ledger" }
 dependencies = [
     { name = "macrostrat-database" },
-    { name = "pydantic" },
-    { name = "redis" },
+    { name = "macrostrat-task-runner" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.2.0" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "redis", specifier = ">=4.5" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.0,<0.2" },
 ]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]
+
+[[package]]
+name = "macrostrat-task-runner"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "macrostrat-database" },
+    { name = "pydantic" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e5/81/45a6ddd439fff1ce193b871af8df47d41dc1f1b1ca68d7f6ab33bd1a3873/macrostrat_task_runner-0.1.0.tar.gz", hash = "sha256:1b94070b67bc8c2c15a6ed1f2cbd59e507f91537aa9676599566cad0fdb96fd6", size = 7737, upload-time = "2026-11-23T11:27:29.709Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/2e/266af7f4281544945b50d2fef7c8706d7cc4746e9e518601e10c36ac1bf6/macrostrat_task_runner-0.1.0-py3-none-any.whl", hash = "sha256:8ea9e59d44cfc85abfa50a8dc741adc26d0a63800e25255fe8ee19ae383efd00", size = 10321, upload-time = "2026-11-23T11:27:28.875Z" },
+]
 
 [[package]]
 name = "macrostrat-tileserver-utils"
@@ -1941,7 +1955,8 @@ requires-dist = [
     { name = "macrostrat-map-topology", extras = ["topology"], marker = "extra == 'tasks'", editable = "py-modules/map-topology" },
     { name = "macrostrat-map-utils", marker = "extra == 'maps'", editable = "py-modules/map-utils" },
     { name = "macrostrat-raster-tasks", extras = ["index"], marker = "extra == 'tasks'", editable = "py-modules/raster-tasks" },
-    { name = "macrostrat-task-runner", marker = "extra == 'tasks'", editable = "py-modules/task-runner" },
+    { name = "macrostrat-task-ledger", marker = "extra == 'tasks'", editable = "py-modules/task-ledger" },
+    { name = "macrostrat-task-runner", marker = "extra == 'tasks'", specifier = ">=0.1.0,<0.2" },
     { name = "sqlalchemy", specifier = "<2.1" },
 ]
 provides-extras = ["maps", "columns", "tasks"]
