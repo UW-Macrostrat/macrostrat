@@ -10,7 +10,7 @@ readme = "README.md"
 dependencies = [
     "macrostrat.database>=4.2.0",
     "macrostrat.schema_management>=2.0.0,<3",
-    "macrostrat.task_runner>=0.1.0,<0.2",
+    "macrostrat.task_runner>=0.1.1,<0.2",
     "pydantic>=2",
 ]
 

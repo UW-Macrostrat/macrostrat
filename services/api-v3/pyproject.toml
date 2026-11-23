@@ -30,7 +30,7 @@ dependencies = [
     "macrostrat.column-utils",
     "macrostrat.map_utils",
     "macrostrat.task-ledger",
-    "macrostrat.task_runner>=0.1.0,<0.2",
+    "macrostrat.task_runner>=0.1.1,<0.2",
     "macrostrat.raster-tasks",
     "morecantile>=7.0.2",
     "pydantic-settings>2",

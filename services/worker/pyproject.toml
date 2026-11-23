@@ -27,7 +27,7 @@ columns = [
 ]
 tasks = [
     "macrostrat.task-ledger",
-    "macrostrat.task_runner>=0.1.0,<0.2",
+    "macrostrat.task_runner>=0.1.1,<0.2",
     "macrostrat.map-topology[topology]",
     "macrostrat.map_integration",
     "macrostrat.raster-tasks[index]",

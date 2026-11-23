@@ -610,7 +610,7 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "../map-utils" },
     { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
-    { name = "macrostrat-task-runner", specifier = ">=0.1.0,<0.2" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.1,<0.2" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "../../submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
@@ -659,16 +659,16 @@ wheels = [
 
 [[package]]
 name = "macrostrat-task-runner"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
     { name = "pydantic" },
     { name = "redis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/81/45a6ddd439fff1ce193b871af8df47d41dc1f1b1ca68d7f6ab33bd1a3873/macrostrat_task_runner-0.1.0.tar.gz", hash = "sha256:1b94070b67bc8c2c15a6ed1f2cbd59e507f91537aa9676599566cad0fdb96fd6", size = 7737, upload-time = "2026-11-23T11:27:29.709Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/5e/9d1e7091e41e8ac2c911f562b976ffa59a9113adf1371f4d7e582ac8e52a/macrostrat_task_runner-0.1.1.tar.gz", hash = "sha256:359da9fc615447e7802a6f2de494e7604b9bfeb9c3d731e199a38aff2305c636", size = 7735, upload-time = "2026-11-23T18:08:28.504Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b5/2e/266af7f4281544945b50d2fef7c8706d7cc4746e9e518601e10c36ac1bf6/macrostrat_task_runner-0.1.0-py3-none-any.whl", hash = "sha256:8ea9e59d44cfc85abfa50a8dc741adc26d0a63800e25255fe8ee19ae383efd00", size = 10321, upload-time = "2026-11-23T11:27:28.875Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/85/148500d8cfa2b7751b723886d54fcb5443b9857b7980190a163442fd6d6a/macrostrat_task_runner-0.1.1-py3-none-any.whl", hash = "sha256:f6b0615ae2a76ef494f50e9a3ac55468b025322e3c5d458fdd94960d60f305c6", size = 10320, upload-time = "2026-11-23T18:08:27.735Z" },
 ]
 
 [[package]]
@@ -1180,14 +1180,14 @@ wheels = [
 
 [[package]]
 name = "redis"
-version = "7.4.1"
+version = "8.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/93/05e7d4a65285066a74f48697f9b9cde5cfce71398033d69ed83c3d98f5c9/redis-7.4.1.tar.gz", hash = "sha256:1a1df5067062cf7cbe677994e391f8ee0840f499d370f1a71266e0dd3aa9308e", size = 4945742, upload-time = "2026-06-05T09:10:06.703Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/99/604f0b666d4c616d891cf77ebb9db6bb21601344c051aebf1b72b9ff915f/redis-8.1.0.tar.gz", hash = "sha256:6e1a19beef9225c83efd689c7e6b7da2d5215b1f42cd13b7fc3714d0a09c7b25", size = 5254356, upload-time = "2026-07-30T08:51:00.269Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4a/2e/2677f3f93dae0497e7e33b6637302e7f3744efc553f34231183e32584885/redis-7.4.1-py3-none-any.whl", hash = "sha256:1fa4647af1c5e93a2c685aa248ee44cce092691146d41390518dabe9a99839b0", size = 410171, upload-time = "2026-06-05T09:10:05.128Z" },
+    { url = "https://files.pythonhosted.org/packages/66/9d/c5731f6e3608663d4d3656fd8d3aecee8b509c3082818f5a13eae925baea/redis-8.1.0-py3-none-any.whl", hash = "sha256:a4fe1aac3d3b3cc791d4b3d5931c5a956045dc951ee74d1c913ee3ac4d2ee9fb", size = 560618, upload-time = "2026-07-30T08:50:58.497Z" },
 ]
 
 [[package]]
