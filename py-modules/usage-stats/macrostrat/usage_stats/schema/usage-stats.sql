@@ -273,3 +273,10 @@ GRANT SELECT, INSERT ON usage_stats.rockd_dashboard_loads TO logs_writer;
 
 -- Covers rockd_dashboard_loads' bigserial id, and anything added later.
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA usage_stats TO logs_writer;
+
+-- The operator's macrostrat-reader login is the `db copy` source; it reads only.
+GRANT USAGE ON SCHEMA usage_stats, tileserver_stats TO macrostrat_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA usage_stats TO macrostrat_reader;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA usage_stats TO macrostrat_reader;
+GRANT SELECT ON tileserver_stats.day_index, tileserver_stats.location_index
+  TO macrostrat_reader;
