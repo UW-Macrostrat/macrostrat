@@ -12,6 +12,9 @@ machinery.
     USAGE_STATS_S3_ACCESS_KEY
     USAGE_STATS_S3_SECRET_KEY
     USAGE_STATS_CLIENT_SALT     Secret used to pseudonymize client addresses.
+    USAGE_STATS_TILE_HOSTS      Comma-separated hosts whose tile requests count.
+    USAGE_STATS_API_HOSTS       Comma-separated hosts whose Rockd dashboard
+                                loads count. Both default to production's.
 """
 
 from os import environ
@@ -77,3 +80,9 @@ def client_salt() -> bytes:
             "against already-ingested rows."
         )
     return value.encode()
+
+
+def hosts(var: str) -> list[str] | None:
+    """A comma-separated host list, or None to keep the pipeline's default."""
+    value = [h.strip().lower() for h in environ.get(var, "").split(",")]
+    return [h for h in value if h] or None

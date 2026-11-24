@@ -18,8 +18,8 @@ from .tileserver import parse_timestamp
 
 # Observed hosts serving the dashboard route. As sampled (2026-08-14, 25,180
 # requests) this is macrostrat.org for 100% of them — rockd.org serves the web
-# app but not this API route.
-KEEP_HOSTS = {"macrostrat.org"}
+# app but not this API route. Frontends pass others to count another instance.
+KEEP_HOSTS = frozenset({"macrostrat.org"})
 
 DASHBOARD_PATH = "/api/v2/mobile/dashboard"
 
@@ -99,10 +99,11 @@ DAILY_SERIES = """
 class RockdDashboardPipeline:
     name = "rockd-dashboard"
 
-    def __init__(self, client_salt: bytes):
+    def __init__(self, client_salt: bytes, hosts=KEEP_HOSTS):
         # Injected rather than read from configuration: this library holds no
         # configuration of its own, and the salt is a secret the frontends own.
         self._salt = client_salt
+        self.hosts = frozenset(hosts)
 
     plot_label = "Rockd dashboard loads per day"
     plot_options = frozenset({"dedup"})
@@ -114,7 +115,7 @@ class RockdDashboardPipeline:
     def parse(self, rec: dict) -> dict | None:
         if rec.get("RequestMethod") != KEEP_METHOD:
             return None
-        if rec.get("RequestHost") not in KEEP_HOSTS:
+        if rec.get("RequestHost") not in self.hosts:
             return None
 
         path = rec.get("RequestPath") or ""

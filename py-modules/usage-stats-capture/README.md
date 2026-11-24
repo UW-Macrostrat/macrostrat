@@ -27,6 +27,9 @@ Each picks its own records out of the shared log stream and owns its tables:
 - **`rockd-dashboard`** — Rockd app dashboard loads, stored raw with the GPS
   coordinates the app reported.
 
+Both count production's hosts unless the caller passes `tile_hosts` / `api_hosts`
+to `get_pipelines`, to count another instance's traffic.
+
 One `capture` run streams each object **once** and feeds every pipeline that
 hasn't processed it — a full backfill moves 15-20 GB, so re-reading per pipeline
 is not affordable. Idempotent and resumable: each object is recorded per pipeline
