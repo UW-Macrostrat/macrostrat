@@ -19,7 +19,7 @@ COPY --from=py-modules match-utils /py-modules/match-utils
 COPY --from=py-modules map-topology /py-modules/map-topology
 COPY --from=py-modules column-utils /py-modules/column-utils
 COPY --from=py-modules map-utils /py-modules/map-utils
-COPY --from=py-modules task-runner /py-modules/task-runner
+COPY --from=py-modules task-ledger /py-modules/task-ledger
 COPY --from=py-modules raster-tasks /py-modules/raster-tasks
 
 ADD . /services/main

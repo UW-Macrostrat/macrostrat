@@ -1,15 +1,13 @@
 [project]
-name = "macrostrat.task-runner"
+name = "macrostrat.task-ledger"
 version = "0.1.0"
-description = "Registered management tasks, run on the worker with live terminal output"
+description = "Macrostrat's record of management task runs, executed by macrostrat.task_runner"
 authors = [{ name = "Daven Quinn", email = "code@davenquinn.com" }]
 requires-python = ">=3.11"
 readme = "README.md"
-# Light by design: the API holds the task catalog without the code that runs it.
 dependencies = [
     "macrostrat.database>=4.2.0",
-    "pydantic>=2",
-    "redis>=4.5",
+    "macrostrat.task_runner>=0.1.1,<0.2",
 ]
 
 [dependency-groups]

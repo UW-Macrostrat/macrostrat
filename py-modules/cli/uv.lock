@@ -1341,7 +1341,7 @@ requires-dist = [
     { name = "macrostrat-database", specifier = ">=4.2.0" },
     { name = "macrostrat-map-utils", marker = "extra == 'topology'", editable = "../map-utils" },
     { name = "macrostrat-schema-management", specifier = ">=2.0.0,<3" },
-    { name = "macrostrat-task-runner", editable = "../task-runner" },
+    { name = "macrostrat-task-runner", specifier = ">=0.1.1,<0.2" },
     { name = "mapboard-topology-manager", marker = "extra == 'topology'", editable = "../../submodules/topology-manager" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pytest", marker = "extra == 'topology'", specifier = ">=8.3.4,<10" },
@@ -1494,23 +1494,17 @@ wheels = [
 
 [[package]]
 name = "macrostrat-task-runner"
-version = "0.1.0"
-source = { editable = "../task-runner" }
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "macrostrat-database" },
     { name = "pydantic" },
     { name = "redis" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "macrostrat-database", specifier = ">=4.2.0" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "redis", specifier = ">=4.5" },
+sdist = { url = "https://files.pythonhosted.org/packages/60/5e/9d1e7091e41e8ac2c911f562b976ffa59a9113adf1371f4d7e582ac8e52a/macrostrat_task_runner-0.1.1.tar.gz", hash = "sha256:359da9fc615447e7802a6f2de494e7604b9bfeb9c3d731e199a38aff2305c636", size = 7735, upload-time = "2026-11-23T18:08:28.504Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4e/85/148500d8cfa2b7751b723886d54fcb5443b9857b7980190a163442fd6d6a/macrostrat_task_runner-0.1.1-py3-none-any.whl", hash = "sha256:f6b0615ae2a76ef494f50e9a3ac55468b025322e3c5d458fdd94960d60f305c6", size = 10320, upload-time = "2026-11-23T18:08:27.735Z" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8" }]
 
 [[package]]
 name = "macrostrat-usage-stats"

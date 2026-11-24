@@ -28,7 +28,7 @@ COPY --from=py-modules map-utils /py-modules/map-utils
 COPY --from=py-modules core /py-modules/core
 COPY --from=py-modules column-utils /py-modules/column-utils
 COPY --from=py-modules column-ingestion /py-modules/column-ingestion
-COPY --from=py-modules task-runner /py-modules/task-runner
+COPY --from=py-modules task-ledger /py-modules/task-ledger
 # Raster index tasks; rasterio ships as a wheel, so still no system GDAL (libexpat aside).
 COPY --from=py-modules raster-tasks /py-modules/raster-tasks
 COPY --from=py-modules map-topology /py-modules/map-topology
