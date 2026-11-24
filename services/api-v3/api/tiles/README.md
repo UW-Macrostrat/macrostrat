@@ -15,8 +15,8 @@ the standalone tileserver until it merged into API v3; its history is in
 ## Accessing tiles
 
 Under `/api/v3`. The tile host (`tiles.macrostrat.local`, `tiles.macrostrat.org`)
-serves only these routes, through an allowlist in the gateway's `tiles.vcl`, which
-shrinks toward `carto` and `carto-slim` as clients move to `/api/v3`.
+rewrites these routes to `/api/v3` in the gateway's `tiles.caddy`, an allowlist
+that shrinks toward `carto` and `carto-slim` as clients move to `/api/v3`.
 
 - `/map/{slug}/{z}/{x}/{y}` — any source by slug or id, drawn through the
   compilation system; `carto` is the served map (`/dev/carto` is its deprecated

@@ -1,0 +1,59 @@
+# The tile host, before the cache: thin rewrites to API v3 and the legacy
+# image tileserver, so a tile has one cache entry whichever host asked for it.
+# Usage: import tile-edge <cache address>
+(tile-edge) {
+	uri path_regexp \.mvt$ ""
+
+	# Image tiles and the old index page stay with the legacy Mapnik tileserver.
+	@legacy expression <<CEL
+		(path('*.png') && !path('/rasters/*'))
+		|| path('/', '/preview', '/legacy/version', '/legacy/health')
+		CEL
+	handle @legacy {
+		# `route` keeps this order; Caddy would otherwise rewrite before stripping
+		route {
+			uri strip_prefix /legacy
+			rewrite * /legacy-tiles{uri}
+			reverse_proxy {args[0]} {
+				header_up X-Gateway-Client {client_ip}
+			}
+		}
+	}
+
+	# The tileserver's routes as they stood before it merged into API v3. The
+	# target is carto and carto-slim alone; delete a line once its routes are
+	# reached only through /api/v3.
+	@tileserver expression <<CEL
+		path_regexp('^/(carto|carto-slim)/([0-9]+/[0-9]+/[0-9]+|tilejson[.]json)$')
+		|| path_regexp('^/(carto-slim-rotated|all-maps|igcp-orogens|igcp-orogens-rotated|weaver-tile|map)/([0-9]+/[0-9]+/[0-9]+|tilejson[.]json)$')
+		|| path_regexp('^/map/[^/]+/([0-9]+/[0-9]+/[0-9]+|tilejson[.]json)$')
+		|| path('/carto/rotation-models')
+		|| path('/dev/carto/*')
+		|| path('/v2/*')
+		|| path('/maps/bounds/*')
+		|| path_regexp('^/search/[^/]+/tiles/')
+		|| path('/pbdb/*')
+		|| path('/measurements/*')
+		|| path('/integrations/*')
+		|| path('/regions/tiles/*')
+		|| path('/stats/*')
+		|| path('/ingestion/*')
+		|| path('/dev/topology/*')
+		|| path('/cache/footprints/*')
+		|| path('/cog/*')
+		|| path('/rasters/*')
+		|| path('/elevation/*')
+		|| path('/version', '/health', '/docs', '/redoc', '/openapi.json')
+		CEL
+	handle @tileserver {
+		rewrite * /v3{uri}
+		reverse_proxy {args[0]} {
+			header_up X-Gateway-Client {client_ip}
+		}
+	}
+
+	handle {
+		respond "This host serves map tiles only. Macrostrat's other routes are under /api/v3 on the main site.
+" 404
+	}
+}

@@ -1,5 +1,13 @@
 vcl 4.1;
 
+# The gateway's cache, for /api and the tile host alike. Caddy has already
+# rewritten tile-host URLs to their API v3 addresses (tiles.caddy), so a tile is
+# one object whichever host asked for it. Tiles and API responses are kept in
+# separate storages, `tiles` and `api`, so each evicts on its own.
+
+import std;
+import vsthrottle;
+
 # Route to Caddy server on the same backend
 backend default {
     .host = "localhost";
@@ -15,18 +23,71 @@ backend default {
 }
 
 
-# Bypass Varnish if tile has a cache=bypass query parameter
+# Private address space: the docker-compose network locally, the pod network in
+# the cluster. Gates BAN, and exempts internal callers from the render throttle.
+acl internal {
+    "localhost";
+    "10.0.0.0"/8;
+    "172.16.0.0"/12;
+    "192.168.0.0"/16;
+}
+
+
 sub vcl_recv {
+    unset req.http.X-Throttle;
+    unset req.http.X-Gateway-Tile;
+    unset req.http.X-Gateway-Render;
+
+    # Cache invalidation via BAN, from inside the network only.
+    #
+    # The client must be on a private address — and, because Caddy in front is
+    # itself on one, that alone cannot tell an internal caller from a proxied
+    # external one. The second condition does: Varnish stamps its own view of
+    # the client into X-Forwarded-For on every request, so a direct internal
+    # call arrives with exactly one entry, while one relayed by Caddy carries
+    # Caddy's entry plus Varnish's — two entries, hence a comma. A forged header
+    # does not help an attacker: Caddy appends to whatever it is given.
+    if (req.method == "BAN") {
+        if (req.http.X-Forwarded-For ~ "," || client.ip !~ internal) {
+            return(synth(403, "Cache invalidation is internal-only"));
+        }
+        if (!req.http.X-Ban-Expression) {
+            return(synth(400, "Missing X-Ban-Expression header"));
+        }
+        ban(req.http.X-Ban-Expression);
+        return(synth(200, "Banned"));
+    }
+
+    # Tiles are recognized by their trailing /{z}/{x}/{y}, wherever the route sits.
+    if (req.url ~ "^[^?]*/[0-9]+/[0-9]+/[0-9]+(@[0-9]+x)?(\.[a-z]+)?(\?.*)?$") {
+        set req.http.X-Gateway-Tile = "1";
+    }
+    # Renders count toward the throttle: tiles, and raster reads of any shape.
+    if (req.http.X-Gateway-Tile || req.url ~ "^/v3/(cog|rasters|elevation)/") {
+        set req.http.X-Gateway-Render = "1";
+    }
+
     # If the request is for /v2, remove all cookies (it is always safe to cache these routes)
     if (req.url ~ "^/v2") {
         unset req.http.Cookie;
     }
 
-    # To remove expired cookies, we may need to decode them using Caddy first and then route to the appropriate backend
+    # Tile routes authenticate by bearer token only, so a session cookie riding
+    # along from the main site would only stop the tile being cached.
+    if (req.http.X-Gateway-Tile) {
+        unset req.http.Cookie;
+    }
 
     # The task runner's routes are admin-only and one of them is a Server-Sent
     # Events stream: never cache them, and stream the response as it arrives.
     if (req.url ~ "^/v3/tasks(/|$)") {
+        set req.http.X-Cache = "bypass";
+        return (pass);
+    }
+
+    # Bypass the cache for zoom levels greater than 14
+    if (req.http.X-Gateway-Tile &&
+        req.url ~ ".*\/([0-9][56789]|[0-9]{3,})\/[0-9]+\/[0-9]+(\.png|\.mvt)?") {
         set req.http.X-Cache = "bypass";
         return (pass);
     }
@@ -42,9 +103,151 @@ sub vcl_recv {
         set req.http.X-Cache = "bypass";
         return (pass);
     }
+
+    # Guarded map tiles (`/map/<slug>/{z}/{x}/{y}`) are cached despite their
+    # `Authorization` header, which the built-in rules would otherwise pass
+    # straight to the backend. The token is cost control: API v3 spends a render
+    # only for a known caller, and a cached tile costs no render. So a hit is
+    # served to anyone, and a miss goes to API v3, which checks the token before
+    # it touches the database. The header is not part of the cache key, so every
+    # caller shares one copy of each tile.
+    #
+    # Interim, by decision (2026-09-28): the intent is to verify the token here
+    # instead -- it is HS256, an HMAC-SHA256 over the header and payload plus an
+    # `exp` check -- once the image carries an HMAC VMOD, so that tokens can
+    # gate access and not only cost. Until then, nothing that must stay private
+    # may be served under `/map/`.
+    if ((req.method == "GET" || req.method == "HEAD") &&
+        req.url ~ "^/v3/map/[^/]+/[0-9]+/[0-9]+/[0-9]+(\?.*)?$") {
+        return (hash);
+    }
+}
+
+# A tile is the same whichever host asked for it. Other responses may embed the
+# host (TileJSON, redirects), so they keep the default key.
+sub vcl_hash {
+    hash_data(req.url);
+    if (!req.http.X-Gateway-Tile) {
+        if (req.http.host) {
+            hash_data(req.http.host);
+        } else {
+            hash_data(server.ip);
+        }
+    }
+    return (lookup);
+}
+
+# Per-client limits on renders, so one client sweeping the tile pyramid cannot
+# crowd out everyone else; cache hits cost nothing and are never counted. See
+# "Tile request rate limiting" in the workbench vault.
+#
+# Caddy names the client in X-Gateway-Client, overwriting any copy the client
+# sent. A request without it came straight to Varnish from inside the network.
+#
+# A client over a limit gets a 429 marked `X-Throttle: deny`. With
+# TILE_THROTTLE_MODE=report it is served, marked `would-deny`, as a dry run.
+sub throttle_renders {
+    if (!req.http.X-Gateway-Render || !req.http.X-Gateway-Client ||
+        std.ip(req.http.X-Gateway-Client, "127.0.0.1") ~ internal) {
+        return;
+    }
+    # IPv6 hosts pick new addresses within their /64 at will. Caddy writes
+    # addresses compressed, where `::` stands for two or more zero groups.
+    set req.http.X-Throttle-Client = regsub(
+        req.http.X-Gateway-Client,
+        "^((?:[0-9A-Fa-f]{1,4}:){3}[0-9A-Fa-f]{1,4}):.*$",
+        "\1::/64"
+    );
+    set req.http.X-Throttle-Client = regsub(
+        req.http.X-Throttle-Client,
+        "^((?:[0-9A-Fa-f]{1,4}:){1,2}[0-9A-Fa-f]{1,4})::.*$",
+        "\1::/64"
+    );
+    if (vsthrottle.is_denied("burst:" + req.http.X-Throttle-Client,
+            ${TILE_THROTTLE_BURST:-1500}, 10s, ${TILE_THROTTLE_BLOCK:-10m}) ||
+        vsthrottle.is_denied("sustained:" + req.http.X-Throttle-Client,
+            ${TILE_THROTTLE_SUSTAINED:-10000}, 10m, ${TILE_THROTTLE_BLOCK:-10m})) {
+        unset req.http.X-Throttle-Client;
+        if ("${TILE_THROTTLE_MODE:-enforce}" == "report") {
+            set req.http.X-Throttle = "would-deny";
+            return;
+        }
+        set req.http.X-Throttle = "deny";
+        return (synth(429, "Too Many Requests"));
+    }
+    unset req.http.X-Throttle-Client;
+}
+
+sub vcl_miss {
+    call throttle_renders;
+}
+
+sub vcl_pass {
+    call throttle_renders;
+}
+
+sub vcl_synth {
+    if (resp.status == 429) {
+        set resp.http.X-Throttle = req.http.X-Throttle;
+        set resp.http.Retry-After = "600";
+        set resp.http.Content-Type = "text/plain; charset=utf-8";
+        set resp.body = {"Too many uncached tile requests from this address. Please slow down, or write to contact@macrostrat.org about bulk access.
+"};
+        return (deliver);
+    }
+}
+
+sub vcl_backend_response {
+    # Record the cached URL on the object so invalidations can be written over
+    # obj.*. A ban over req.url cannot be applied by the background ban lurker,
+    # so it stays on the ban list and is re-tested against every request for the
+    # life of the process; one over obj.* is retired once it has been applied.
+    set beresp.http.X-Ban-Url = bereq.url;
+
+    # A guarded tile is looked up whatever its token (vcl_recv), so only a tile
+    # may be stored: a 401 for a caller without one, or any other error, cached
+    # under the tile's URL would be served to callers who have one. Marked
+    # hit-for-miss, so each such request goes to the backend on its own.
+    if (bereq.url ~ "^/v3/map/[^/]+/[0-9]+/[0-9]+/[0-9]+" && beresp.status != 200) {
+        set beresp.uncacheable = true;
+        set beresp.ttl = 30s;
+        return (deliver);
+    }
+
+    # `ban obj.http.X-Cache-Profile != api` expires every tile and nothing else.
+    if (bereq.http.X-Gateway-Tile ||
+        beresp.http.Content-Type ~ "^(application/x-protobuf|application/vnd\.mapbox-vector-tile|image/)") {
+        set beresp.http.X-Cache-Profile = "tile";
+        set beresp.storage = storage.tiles;
+        # A failed copy into storage must reach clients as a 503, not a short
+        # 200. Tiles arrive whole, so streaming them saves little.
+        set beresp.do_stream = false;
+        set beresp.ttl = 1d;
+        # Allow stale content while revalidating
+        set beresp.grace = 5m;
+    } else {
+        set beresp.http.X-Cache-Profile = "api";
+        set beresp.storage = storage.api;
+    }
 }
 
 sub vcl_deliver {
+    # Internal bookkeeping (see vcl_backend_response), not for clients.
+    unset resp.http.X-Ban-Url;
+    unset resp.http.X-Cache-Profile;
+
+    if (req.http.X-Throttle) {
+        set resp.http.X-Throttle = req.http.X-Throttle;
+    }
+
+    # API v3 answers any origin, but adds the header only when a request
+    # carries `Origin`, and a cached object keeps the headers of the request that
+    # filled it. Restated here, on delivery, so no cached tile depends on who
+    # asked for it first.
+    if (req.http.X-Gateway-Tile && req.http.Origin && !resp.http.Access-Control-Allow-Origin) {
+        set resp.http.Access-Control-Allow-Origin = "*";
+    }
+
     # If the cache was bypassed, indicate that in the response header
     # If the response header is already set to bypass, keep it that way
     if (req.http.X-Cache == "bypass") {

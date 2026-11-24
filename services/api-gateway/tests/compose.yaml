@@ -14,18 +14,23 @@ x-echo: &echo
     - ./echo.py:/echo.py:ro
 
 services:
+  # The gateway pod: /api and the tile host, through one cache
   gateway:
     <<: *gateway
     command: caddy
-    environment:
+    environment: &caddy-env
       GATEWAY_ENV: cluster
+      GATEWAY_TILE_HOSTS: tiles.test
       MACROSTRAT_API_V2_HOST: api_v2:8000
       MACROSTRAT_API_V3_HOST: api_v3:8000
       MACROSTRAT_API_POSTGREST_HOST: postgrest:8000
       MACROSTRAT_KG_API_HOST: kg:8000
       MACROSTRAT_TILESERVER_HOST: tilehost:8000
+      MACROSTRAT_TILESERVER_LEGACY_HOST: tileserver_legacy:8000
     ports:
       - "127.0.0.1:18080:80"
+      # Varnish itself, for calls from inside the network
+      - "127.0.0.1:18083:8000"
 
   # Shares the gateway's network namespace, as the containers of a pod do
   gateway_cache:
@@ -34,7 +39,27 @@ services:
     network_mode: service:gateway
     environment:
       GATEWAY_VCL: api
+      # Small enough for the tests to reach
+      TILE_THROTTLE_BURST: "5"
 
+  # The same pod as a dry run: over-limit clients are marked, not refused
+  gateway_report:
+    <<: *gateway
+    command: caddy
+    environment: *caddy-env
+    ports:
+      - "127.0.0.1:18082:80"
+
+  gateway_report_cache:
+    <<: *gateway
+    command: varnish
+    network_mode: service:gateway_report
+    environment:
+      GATEWAY_VCL: api
+      TILE_THROTTLE_BURST: "5"
+      TILE_THROTTLE_MODE: report
+
+  # The separate tile cache, until the cluster retires it
   tile_cache:
     <<: *gateway
     command: varnish
@@ -46,26 +71,8 @@ services:
       TILESERVER_PORT: "8000"
       TILESERVER_LEGACY_HOST: tileserver_legacy
       TILESERVER_LEGACY_PORT: "8000"
-      # Small enough for the tests to reach
-      TILE_THROTTLE_BURST: "5"
     ports:
       - "127.0.0.1:18081:8000"
-
-  # The same cache as a dry run: over-limit clients are marked, not refused
-  tile_cache_report:
-    <<: *gateway
-    command: varnish
-    depends_on: [tileserver_core, tileserver_legacy]
-    environment:
-      GATEWAY_VCL: tiles
-      TILESERVER_HOST: tileserver_core
-      TILESERVER_PORT: "8000"
-      TILESERVER_LEGACY_HOST: tileserver_legacy
-      TILESERVER_LEGACY_PORT: "8000"
-      TILE_THROTTLE_BURST: "5"
-      TILE_THROTTLE_MODE: report
-    ports:
-      - "127.0.0.1:18082:8000"
 
   api_v2:
     <<: *echo

@@ -1,9 +1,22 @@
-# Local stack. /api passes Caddy → Varnish (gateway_cache) → Caddy :8080, as in
-# the cluster pod. Set GATEWAY_API_CACHE=localhost:8080 to skip the cache.
+# Local stack. /api and the tile host pass Caddy → Varnish (gateway_cache) →
+# Caddy :8080, as in the cluster pod. Set GATEWAY_API_CACHE=localhost:8080 to skip
+# the cache.
+{
+	servers {
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+	}
+}
+
 import routes.caddy
+import tiles.caddy
 
 (local-api) {
 	import api-edge {$GATEWAY_API_CACHE:localhost:8000}
+}
+
+(local-tiles) {
+	import tile-edge {$GATEWAY_API_CACHE:localhost:8000}
 }
 
 # Handler for requests post-Varnish.
@@ -67,7 +80,7 @@ localhost, macrostrat.local {
 	}
 
 	handle_path /tiles/* {
-		reverse_proxy tileserver_cache:8000
+		import local-tiles
 	}
 
 	handle_path /cache/* {
@@ -107,17 +120,14 @@ storage-ui.macrostrat.local {
 
 tiles.macrostrat.local {
 	tls internal
-	reverse_proxy tileserver_cache:8000 {
-		header_down -Access-Control-Allow-Origin
-		header_down -Access-Control-Allow-Credentials
-		header_down -Access-Control-Allow-Methods
-	}
+	import local-tiles
 
-	# Local CORS headers
-
+	# Deferred, so these replace whatever CORS headers an upstream sent
 	header {
+		defer
 		Access-Control-Allow-Origin *
 		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		-Access-Control-Allow-Credentials
 	}
 }
 

@@ -60,7 +60,9 @@
 
 	# Strip /api, so the cache and the routes below see /v2, /v3, /pg…
 	handle_path /api* {
-		reverse_proxy {args[0]}
+		reverse_proxy {args[0]} {
+			header_up X-Gateway-Client {client_ip}
+		}
 	}
 }
 
@@ -94,6 +96,11 @@
 
 	handle_path /v2/* {
 		reverse_proxy {$MACROSTRAT_API_V2_HOST}
+	}
+
+	# The tile host's image tiles (tiles.caddy). Port 9 refuses: a 502 where unset.
+	handle_path /legacy-tiles/* {
+		reverse_proxy {$MACROSTRAT_TILESERVER_LEGACY_HOST:localhost:9}
 	}
 
 	handle /health {

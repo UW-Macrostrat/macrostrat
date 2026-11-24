@@ -10,7 +10,9 @@ services:
       - MACROSTRAT_API_V2_HOST=api_v2:5000
       - MACROSTRAT_API_V3_HOST=api_v3:80
       - MACROSTRAT_API_POSTGREST_HOST=postgrest:3000
-      - MACROSTRAT_TILESERVER_HOST=tileserver_cache:8000
+      # Image tiles: the tile host's, and the legacy v2 route's (straight, locally)
+      - MACROSTRAT_TILESERVER_LEGACY_HOST=tileserver_legacy:8000
+      - MACROSTRAT_TILESERVER_HOST=tileserver_legacy:8000
       # localhost:8080 skips the API cache
       - GATEWAY_API_CACHE
     ports:
@@ -111,8 +113,8 @@ services:
       # Sign-in returns only to the API's own origin unless another is listed.
       - AUTH_RETURN_ORIGINS=${AUTH_RETURN_ORIGINS:-https://dev.macrostrat.local,http://localhost:3000}
       # Tile-cache management (admin-only, api/routes/cache.py): the BAN goes
-      # straight to Varnish, in the network.
-      - VARNISH_URL=http://tileserver_cache:8000
+      # straight to the gateway's Varnish, in the network.
+      - VARNISH_URL=http://gateway:8000
       # Verifies the short-lived tile tokens the website mints. Derived from
       # SECRET_KEY by `macrostrat up` when unset (see compose_env.py).
       - TILESERVER_SECRET_KEY=${TILESERVER_SECRET_KEY}
@@ -189,23 +191,6 @@ services:
       # Perhaps we can put this config in the database?
       - PGRST_DB_AGGREGATES_ENABLED=true
   # Tileserver
-  tileserver_cache:
-    image: macrostrat.local/api-gateway:latest
-    build:
-      context: ../services/api-gateway
-    command: varnish
-    environment:
-      - GATEWAY_VCL=tiles
-      # Tile routes are API v3's.
-      - TILESERVER_HOST=api_v3
-      - TILESERVER_PORT=80
-      - TILESERVER_LEGACY_HOST=tileserver_legacy
-      - TILESERVER_LEGACY_PORT=8000
-    volumes:
-      # `macrostrat up` reloads the VCL (see restart_commands in macrostrat.core.main),
-      # which picks up edits here and re-resolves the backend hostnames. A folder
-      # mount, for the same reason as the gateway's.
-      - ../services/api-gateway/config:/etc/gateway
   tileserver_legacy:
     image: hub.opensciencegrid.org/macrostrat/legacy-tileserver:main
     build:

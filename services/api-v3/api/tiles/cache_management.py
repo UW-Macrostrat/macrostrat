@@ -35,6 +35,10 @@ _CARTO_URL_PREFIXES = ["carto", "carto-slim", "map/carto", "dev/carto"]
 
 _VARNISH_URL = environ.get("VARNISH_URL", None)
 
+# Cached tile URLs: bare in the separate tile cache; under /v3 or /legacy-tiles
+# in the gateway's combined cache, where Caddy rewrites tile-host URLs.
+TILE_URL_PREFIX = "^/(?:v3/|legacy-tiles/)?"
+
 # A source is expired only across its own scale band. The bands come from
 # `map_bounds.scale_band`, the one place the zoom thresholds live, and are read
 # once per process. Unknown scales fall back to the full zoom range.
@@ -272,7 +276,7 @@ async def _flush_l1_cache(pattern: str) -> bool:
     # over `obj.*` rather than `req.url` so Varnish's ban lurker can apply it in
     # the background instead of re-testing it on every request forever.
     # `X-Ban-Url` is set on stored objects by the VCL for this purpose.
-    ban_expr = f"obj.http.X-Ban-Url ~ ^/(?:{pattern})/"
+    ban_expr = f"obj.http.X-Ban-Url ~ {TILE_URL_PREFIX}(?:{pattern})/"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.request(

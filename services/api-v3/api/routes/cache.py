@@ -7,9 +7,8 @@ makes it a denial-of-service vector if left open — so every route here is gate
 on ``require_admin``.
 
 The web app is served from the same origin as ``/api/v3``, so its auth cookie
-travels with the request. The tiles host answers ``Access-Control-Allow-Origin:
-*``, which browsers refuse to combine with credentials, and the tile VCL refuses
-``/cache/*`` there (footprints excepted).
+travels with the request. The tile host serves only ``/cache/footprints`` of
+these (the gateway's ``tiles.caddy``).
 """
 
 from os import environ
@@ -20,7 +19,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.routes.security import TokenData, require_admin
-from api.tiles.cache_management import InvalidationRequest, invalidate_carto
+from api.tiles.cache_management import (
+    TILE_URL_PREFIX,
+    InvalidationRequest,
+    invalidate_carto,
+)
 from api.tiles.cache_management import router as footprints_router
 
 router = APIRouter(tags=["Cache"])
@@ -37,8 +40,9 @@ _BAN_FIELD = "obj.http.X-Ban-Url"
 # original invalidation did, makes them literal characters in the pattern, so the
 # ban parses, registers, reports success and matches nothing.
 
-# Matches every cached object.
-_MATCH_ALL = "^/"
+# Every tile, and no API response, in the gateway's combined cache. The separate
+# tile cache sets no profile, so there it matches everything, as before.
+_MATCH_TILES = "obj.http.X-Cache-Profile != api"
 
 
 class FlushRequest(BaseModel):
@@ -57,19 +61,19 @@ async def flush_tile_cache(
     body: Optional[FlushRequest] = None,
     user_token: TokenData = Depends(require_admin),
 ) -> FlushResult:
-    """Drop everything from the Varnish tile cache. Admin only.
+    """Drop every tile from the Varnish cache. Admin only.
 
     This does not touch L2, so tiles come back without being re-rendered from
     the database — it is the cheap "the cache is serving something stale" fix,
     not a rebuild. Expiring L2 as well is what ``/cache/refresh/carto`` does.
     """
-    pattern = _MATCH_ALL
+    expression = _MATCH_TILES
     if body is not None and body.prefix:
         # A prefix is a path segment, not a regex — anchor it so `carto` cannot
         # match `/dev/carto/…` and so a stray `.` can't widen the ban.
-        pattern = "^/" + _escape(body.prefix) + "/"
+        pattern = TILE_URL_PREFIX + _escape(body.prefix) + "/"
+        expression = f"{_BAN_FIELD} ~ {pattern}"
 
-    expression = f"{_BAN_FIELD} ~ {pattern}"
     await _ban(expression)
     return FlushResult(banned=expression, flushed=True)
 

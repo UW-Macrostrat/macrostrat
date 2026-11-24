@@ -8,13 +8,18 @@ import uuid
 from http.client import HTTPConnection
 
 API = int(os.environ.get("GATEWAY_TEST_API_PORT", 18080))
-TILES = int(os.environ.get("GATEWAY_TEST_TILES_PORT", 18081))
-TILES_REPORT = int(os.environ.get("GATEWAY_TEST_TILES_REPORT_PORT", 18082))
+OLD_TILE_CACHE = int(os.environ.get("GATEWAY_TEST_OLD_TILES_PORT", 18081))
+REPORT = int(os.environ.get("GATEWAY_TEST_REPORT_PORT", 18082))
+VARNISH = int(os.environ.get("GATEWAY_TEST_VARNISH_PORT", 18083))
+TILE_HOST = "tiles.test"
 
 
-def request(port, path, method="GET", headers=None):
+def request(port, path, method="GET", headers=None, host=None):
+    headers = dict(headers or {})
+    if host is not None:
+        headers["Host"] = host
     conn = HTTPConnection("127.0.0.1", port, timeout=10)
-    conn.request(method, path, headers=headers or {})
+    conn.request(method, path, headers=headers)
     res = conn.getresponse()
     body = res.read()
     conn.close()
@@ -38,11 +43,13 @@ def setUpModule():
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         try:
-            if request(API, "/api/health")[0].status == 200:
-                if all(
-                    request(port, "/legacy/version")[0].status == 200
-                    for port in (TILES, TILES_REPORT)
-                ):
+            if all(
+                request(port, "/api/health")[0].status == 200 for port in (API, REPORT)
+            ) and all(
+                request(port, "/legacy/version", host=TILE_HOST)[0].status == 200
+                for port in (API, REPORT)
+            ):
+                if request(OLD_TILE_CACHE, "/legacy/version")[0].status == 200:
                     return
         except OSError:
             pass
@@ -146,34 +153,51 @@ class PostgRESTRoutes(unittest.TestCase):
         self.assertEqual(res.getheader("Location"), "pg/")
 
 
-class TileCache(unittest.TestCase):
-    def test_mvt_goes_to_core_without_extension(self):
-        _, data = echoed(TILES, "/map/carto/3/2/1.mvt?x=1")
-        self.assertEqual(data["service"], "tileserver_core")
-        self.assertEqual(data["path"], "/map/carto/3/2/1?x=1")
+def tile(path, client=None, port=API, host=TILE_HOST, **headers):
+    """A request to the tile host, relayed by an edge proxy for `client`."""
+    if client is not None:
+        headers["X-Forwarded-For"] = client
+    return request(port, path, headers=headers, host=host)
+
+
+def tile_echo(path, **kwargs):
+    res, body = tile(path, **kwargs)
+    assert res.status == 200, (path, res.status, body)
+    return res, json.loads(body)
+
+
+def ban(expression):
+    res, body = request(
+        VARNISH, "/", method="BAN", headers={"X-Ban-Expression": expression}
+    )
+    assert res.status == 200, body
+
+
+class TileHost(unittest.TestCase):
+    def test_mvt_goes_to_api_v3_without_extension(self):
+        _, data = tile_echo("/map/carto/3/2/1.mvt?x=1")
+        self.assertEqual(
+            (data["service"], data["path"]), ("api_v3", "/map/carto/3/2/1?x=1")
+        )
 
     def test_png_goes_to_legacy(self):
-        _, data = echoed(TILES, unique("/carto/3/2/1.png"))
+        _, data = tile_echo(unique("/carto/3/2/1.png"))
         self.assertEqual(data["service"], "tileserver_legacy")
+        self.assertTrue(data["path"].startswith("/carto/3/2/1.png?"))
 
-    def test_raster_png_goes_to_core(self):
-        _, data = echoed(TILES, unique("/rasters/relief/3/2/1.png"))
-        self.assertEqual(data["service"], "tileserver_core")
+    def test_raster_png_goes_to_api_v3(self):
+        _, data = tile_echo(unique("/rasters/relief/3/2/1.png"))
+        self.assertEqual(data["service"], "api_v3")
 
     def test_index_goes_to_legacy(self):
-        _, data = echoed(TILES, "/")
-        self.assertEqual(data["service"], "tileserver_legacy")
+        _, data = tile_echo("/")
+        self.assertEqual((data["service"], data["path"]), ("tileserver_legacy", "/"))
 
     def test_legacy_status_routes(self):
-        _, data = echoed(TILES, "/legacy/version")
+        _, data = tile_echo("/legacy/version")
         self.assertEqual(
             (data["service"], data["path"]), ("tileserver_legacy", "/version")
         )
-
-    def test_cache_management_hidden(self):
-        self.assertEqual(request(TILES, "/cache/flush", method="POST")[0].status, 404)
-        _, data = echoed(TILES, unique("/cache/footprints/1/1/1"))
-        self.assertEqual(data["service"], "tileserver_core")
 
     def test_tileserver_routes_allowed(self):
         for path in (
@@ -185,13 +209,18 @@ class TileCache(unittest.TestCase):
             "/map/sgmc/tilejson.json",
             "/carto/rotation-models",
             "/regions/tiles/3/2/1",
+            "/search/units/tiles/3/2/1",
             "/cog/info?url=x",
             "/rasters/layer/relief/tilejson.json",
+            "/cache/footprints/1/1/1",
             "/version",
         ):
             with self.subTest(path=path):
-                _, data = echoed(TILES, unique(path))
-                self.assertEqual(data["service"], "tileserver_core")
+                _, data = tile_echo(unique(path))
+                self.assertEqual(data["service"], "api_v3")
+                self.assertEqual(
+                    data["path"].split("?")[0], path.split("?")[0].removesuffix(".mvt")
+                )
 
     def test_other_api_routes_refused(self):
         for path in (
@@ -200,37 +229,109 @@ class TileCache(unittest.TestCase):
             "/regions/1",
             "/map/sgmc/legend",
             "/dev/match/liths",
+            "/cache/flush",
             "/carto/3/2",
+            "/api/v3/columns",
         ):
             with self.subTest(path=path):
-                res, body = request(TILES, path)
+                res, body = tile(path)
                 self.assertEqual(res.status, 404)
                 self.assertIn(b"/api/v3", body)
 
-    def test_high_zoom_bypasses_cache(self):
-        # tiles.vcl reports a pass as a miss, so a repeat must not hit
-        path = unique("/carto/15/2/1.png")
-        echoed(TILES, path)
-        res, _ = echoed(TILES, path)
+    def test_other_hosts_are_the_api(self):
+        _, data = echoed(API, "/api/v3/columns")
+        self.assertEqual((data["service"], data["path"]), ("api_v3", "/columns"))
+
+    def test_one_entry_per_tile_across_hosts(self):
+        path = unique("/carto/3/2/1")
+        first, _ = tile_echo(path)
+        second, _ = echoed(API, "/api/v3" + path)
+        self.assertEqual(
+            (first.getheader("X-Cache"), second.getheader("X-Cache")), ("miss", "hit")
+        )
+
+    def test_api_responses_keyed_by_host(self):
+        path = unique("/carto/tilejson.json")
+        tile_echo(path)
+        res, _ = echoed(API, "/api/v3" + path)
         self.assertEqual(res.getheader("X-Cache"), "miss")
 
-    def test_tiles_are_cached(self):
-        path = unique("/carto/3/2/1.png")
-        echoed(TILES, path)
-        res, _ = echoed(TILES, path)
+    def test_tile_cookies_dropped(self):
+        path = unique("/api/v3/carto/3/2/1")
+        _, data = echoed(API, path, headers={"Cookie": "access_token=abc"})
+        self.assertNotIn("cookie", data["headers"])
+        res, _ = echoed(API, path, headers={"Cookie": "access_token=abc"})
         self.assertEqual(res.getheader("X-Cache"), "hit")
 
+    def test_guarded_map_tiles_cached_despite_token(self):
+        path = unique("/map/sgmc/3/2/1")
+        tile_echo(path, Authorization="Bearer a")
+        res, _ = tile_echo(path, Authorization="Bearer b")
+        self.assertEqual(res.getheader("X-Cache"), "hit")
+
+    def test_high_zoom_bypasses_cache(self):
+        for get in (lambda p: tile_echo(p), lambda p: echoed(API, "/api/v3" + p)):
+            path = unique("/carto/15/2/1")
+            get(path)
+            res, _ = get(path)
+            self.assertEqual(res.getheader("X-Cache"), "bypass")
+
     def test_cors_restated_on_delivery(self):
-        res, _ = echoed(
-            TILES, unique("/carto/3/2/1.png"), headers={"Origin": "https://x.org"}
-        )
+        res, _ = tile_echo(unique("/carto/3/2/1.png"), Origin="https://x.org")
         self.assertEqual(res.getheader("Access-Control-Allow-Origin"), "*")
 
     def test_relayed_ban_refused(self):
-        res, _ = request(
-            TILES, "/", method="BAN", headers={"X-Forwarded-For": "203.0.113.1"}
+        headers = {"X-Ban-Expression": "obj.http.X-Ban-Url ~ ^/"}
+        for host, path in ((TILE_HOST, "/carto/3/2/1"), (None, "/api/v3/columns")):
+            with self.subTest(host=host):
+                res, _ = request(API, path, method="BAN", host=host, headers=headers)
+                self.assertEqual(res.status, 403)
+
+
+class CacheStorage(unittest.TestCase):
+    def test_tile_ban_spares_api_responses(self):
+        tile_path = unique("/carto/3/2/1")
+        api_path = unique("/api/v3/columns")
+        tile_echo(tile_path)
+        echoed(API, api_path)
+        ban("obj.http.X-Cache-Profile != api")
+        self.assertEqual(tile_echo(tile_path)[0].getheader("X-Cache"), "miss")
+        self.assertEqual(echoed(API, api_path)[0].getheader("X-Cache"), "hit")
+
+    def test_url_ban_reaches_both_prefixes(self):
+        vector = unique("/carto/3/2/1")
+        image = unique("/carto/3/2/1.png")
+        tile_echo(vector)
+        tile_echo(image)
+        ban("obj.http.X-Ban-Url ~ ^/(?:v3/|legacy-tiles/)?(?:carto)/")
+        self.assertEqual(tile_echo(vector)[0].getheader("X-Cache"), "miss")
+        self.assertEqual(tile_echo(image)[0].getheader("X-Cache"), "miss")
+
+
+class OldTileCache(unittest.TestCase):
+    """tiles.vcl, kept while the cluster still runs the separate tile cache."""
+
+    def test_routes(self):
+        _, data = echoed(OLD_TILE_CACHE, "/map/carto/3/2/1.mvt?x=1")
+        self.assertEqual(
+            (data["service"], data["path"]), ("tileserver_core", "/map/carto/3/2/1?x=1")
         )
-        self.assertEqual(res.status, 403)
+        _, data = echoed(OLD_TILE_CACHE, unique("/carto/3/2/1.png"))
+        self.assertEqual(data["service"], "tileserver_legacy")
+        self.assertEqual(request(OLD_TILE_CACHE, "/columns")[0].status, 404)
+
+    def test_tile_ban_expression_applies(self):
+        # API v3's total flush, before and after the combined cache
+        path = unique("/carto/3/2/1")
+        echoed(OLD_TILE_CACHE, path)
+        res, body = request(
+            OLD_TILE_CACHE,
+            "/",
+            method="BAN",
+            headers={"X-Ban-Expression": "obj.http.X-Cache-Profile != api"},
+        )
+        self.assertEqual(res.status, 200, body)
+        self.assertEqual(echoed(OLD_TILE_CACHE, path)[0].getheader("X-Cache"), "miss")
 
 
 def client_ipv4():
@@ -243,15 +344,7 @@ def client_ipv6_net():
     return f"2001:db8:{n[:4]}:{n[4:8]}"
 
 
-def tile(path, client=None, port=TILES, **headers):
-    """A tile as relayed by an edge proxy for `client`, or called directly."""
-    if client is not None:
-        headers["X-Forwarded-For"] = client
-    res, body = request(port, path, headers=headers)
-    return res, body
-
-
-def statuses(n, client, port=TILES):
+def statuses(n, client, port=API):
     return [tile(unique("/carto/3/2/1.png"), client, port)[0].status for _ in range(n)]
 
 
@@ -266,6 +359,31 @@ class RenderThrottle(unittest.TestCase):
         self.assertEqual(res.getheader("X-Throttle"), "deny")
         self.assertEqual(res.getheader("Retry-After"), "600")
         self.assertIn(b"contact@macrostrat.org", body)
+
+    def test_api_tile_routes_are_counted(self):
+        client = client_ipv4()
+        codes = [
+            request(
+                API, unique("/api/v3/carto/3/2/1"), headers={"X-Forwarded-For": client}
+            )[0].status
+            for _ in range(6)
+        ]
+        self.assertEqual(codes[5], 429)
+
+    def test_raster_reads_are_counted(self):
+        client = client_ipv4()
+        codes = [tile(unique("/cog/info?url=x"), client)[0].status for _ in range(6)]
+        self.assertEqual(codes[5], 429)
+
+    def test_api_responses_are_not_counted(self):
+        client = client_ipv4()
+        codes = [
+            request(
+                API, unique("/api/v3/columns"), headers={"X-Forwarded-For": client}
+            )[0].status
+            for _ in range(10)
+        ]
+        self.assertEqual(codes, [200] * 10)
 
     def test_refused_client_still_gets_cached_tiles(self):
         client = client_ipv4()
@@ -299,7 +417,19 @@ class RenderThrottle(unittest.TestCase):
         ]
         self.assertEqual(codes[5], 429)
 
-    def test_direct_internal_calls_are_exempt(self):
+    def test_client_header_cannot_be_forged(self):
+        client = client_ipv4()
+        codes = [
+            tile(
+                unique("/carto/3/2/1.png"),
+                client,
+                **{"X-Gateway-Client": client_ipv4()},
+            )[0].status
+            for _ in range(6)
+        ]
+        self.assertEqual(codes[5], 429)
+
+    def test_internal_callers_are_exempt(self):
         codes = [tile(unique("/carto/3/2/1.png"))[0].status for _ in range(6)]
         self.assertEqual(codes, [200] * 6)
 
@@ -316,8 +446,8 @@ class RenderThrottleReport(unittest.TestCase):
 
     def test_sixth_miss_is_marked_and_served(self):
         client = client_ipv4()
-        statuses(5, client, TILES_REPORT)
-        res, body = tile(unique("/carto/3/2/1.png"), client, TILES_REPORT)
+        statuses(5, client, REPORT)
+        res, body = tile(unique("/carto/3/2/1.png"), client, REPORT)
         self.assertEqual(res.status, 200)
         self.assertEqual(res.getheader("X-Throttle"), "would-deny")
         body = json.loads(body)

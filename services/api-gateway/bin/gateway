@@ -2,7 +2,7 @@
 # Entrypoint: one image runs as separate Caddy and Varnish containers.
 #
 #   gateway caddy            Caddy with config/caddy/Caddyfile.$GATEWAY_ENV (cluster | local)
-#   gateway varnish [args]   Varnish with config/varnish/$GATEWAY_VCL.vcl (api | tiles)
+#   gateway varnish [args]   Varnish with config/varnish/$GATEWAY_VCL.vcl (api; tiles until retired)
 #   gateway reload-caddy     reload Caddy's configuration in place
 #   gateway reload-varnish   re-render and reload the VCL, keeping cached objects
 #   gateway validate         check every Caddyfile and VCL
@@ -39,7 +39,12 @@ caddy)
 	;;
 varnish)
 	vcl=$(render_vcl "${GATEWAY_VCL:-api}")
-	exec varnishd -F -f "$vcl" -a ":${VARNISH_HTTP_PORT:-8000}" -s "malloc,${VARNISH_SIZE:-100M}" "$@"
+	if [ "${GATEWAY_VCL:-api}" = api ]; then
+		set -- -s "api=malloc,${VARNISH_SIZE:-100M}" -s "tiles=malloc,${VARNISH_TILE_SIZE:-100M}" "$@"
+	else
+		set -- -s "malloc,${VARNISH_SIZE:-100M}" "$@"
+	fi
+	exec varnishd -F -f "$vcl" -a ":${VARNISH_HTTP_PORT:-8000}" "$@"
 	;;
 reload-caddy)
 	exec caddy reload --config "$(caddyfile)" --adapter caddyfile
@@ -55,7 +60,11 @@ validate)
 	# Placeholder backends: varnishd -C only compiles, it never connects
 	export TILESERVER_HOST=${TILESERVER_HOST:-localhost} TILESERVER_LEGACY_HOST=${TILESERVER_LEGACY_HOST:-localhost}
 	for vcl in api tiles; do
-		if ! varnishd -C -f "$(render_vcl $vcl)" >/dev/null 2>"$RENDERED/vcc.log"; then
+		# The VCL names its storages, so the compiler has to be told they exist
+		storages=""
+		[ $vcl = api ] && storages="-s api=malloc -s tiles=malloc"
+		# shellcheck disable=SC2086
+		if ! varnishd -C $storages -f "$(render_vcl $vcl)" >/dev/null 2>"$RENDERED/vcc.log"; then
 			cat "$RENDERED/vcc.log" >&2
 			exit 1
 		fi

@@ -154,13 +154,8 @@ class Macrostrat(Application):
             compose_files=compose_files,
             restart_commands={
                 "gateway": "gateway reload-caddy",
-                # Varnish resolves its backends' hostnames once, when the VCL is
-                # loaded. A recreated api_v3 therefore leaves the cache
-                # dialing a stale container IP, and every core-backed tile route
-                # 503s until varnish itself is restarted. Reloading the VCL
-                # re-resolves the backends (and picks up edits to
-                # services/api-gateway/config/varnish) without dropping cached objects.
-                "tileserver_cache": "gateway reload-varnish",
+                # Picks up edits to services/api-gateway/config/varnish without
+                # dropping cached objects.
                 "gateway_cache": "gateway reload-varnish",
             },
         )

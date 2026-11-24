@@ -1,9 +1,26 @@
-# Cluster gateway. Traefik terminates TLS and routes /api here; requests pass
-# Caddy :80 → Varnish :8000 → Caddy :8080, all in one pod.
+# Cluster gateway. Traefik terminates TLS and routes /api and the tile host here;
+# requests pass Caddy :80 → Varnish :8000 → Caddy :8080, all in one pod.
+{
+	servers {
+		# Traefik is on the pod network. Strict: the rightmost untrusted address
+		# is the client, since entries to its left are the client's to forge.
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+	}
+}
+
 import routes.caddy
+import tiles.caddy
 
 :80 {
-	import api-edge localhost:8000
+	@tile_host host {$GATEWAY_TILE_HOSTS:tiles.macrostrat.org}
+	handle @tile_host {
+		import tile-edge localhost:8000
+	}
+
+	handle {
+		import api-edge localhost:8000
+	}
 
 	log {
 		output stdout

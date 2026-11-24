@@ -25,7 +25,7 @@ build-restart:
 start-services:
 	macrostrat --verbose up
 stop-services:
-	macrostrat compose stop postgrest api_v2 api_v3 tileserver_legacy tileserver_cache gateway gateway_cache
+	macrostrat compose stop postgrest api_v2 api_v3 tileserver_legacy gateway gateway_cache
 stop-gateway:
 	macrostrat compose stop gateway gateway_cache
 test:
