@@ -25,3 +25,7 @@ CREATE TABLE tileserver_stats.processing_status (
   last_row_time timestamp DEFAULT NOW()
 );
 
+-- Readable by the `db copy` source login, as the rest of this schema is.
+GRANT SELECT ON tileserver_stats.requests, tileserver_stats.processing_status
+  TO macrostrat_reader;
+GRANT SELECT ON SEQUENCE tileserver_stats.requests_req_id_seq TO macrostrat_reader;
