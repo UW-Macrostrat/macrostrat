@@ -70,8 +70,8 @@ class TableImport:
 def legacy_schema(source) -> str:
     """The schema holding the legacy tables in the source database.
 
-    `stats` as the legacy tileserver left it; `tileserver_stats` where the
-    retired `migrate-old` command renamed it in place.
+    `stats` as the legacy tileserver left it, or `tileserver_stats` where an
+    earlier merge into the core database renamed it in place.
     """
     found = [
         schema

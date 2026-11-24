@@ -22,11 +22,12 @@ TILE_PATH_RE = re.compile(
     r"^/(?P<layer>.+?)/(?P<z>\d+)/(?P<x>\d+)/(?P<y>\d+)(?:\.(?P<ext>[A-Za-z0-9]+))?/?$"
 )
 
-# We only care about tile requests served from the production tile host for a
-# small set of canonical map layers. Everything else in the access logs — other
-# hosts, garbled layer names (`carto/lite`, `carto|PNG`, `tiles/carto`, …),
+# We only care about tile requests served from the tile host for a small set of
+# canonical map layers. Everything else in the access logs — other hosts,
+# garbled layer names (`carto/lite`, `carto|PNG`, `tiles/carto`, …),
 # subsidiary/dev layers, and scraper noise — is dropped before aggregation.
-KEEP_HOSTS = {"tiles.macrostrat.org"}
+# The production host by default; frontends pass others to count another instance.
+KEEP_HOSTS = frozenset({"tiles.macrostrat.org"})
 # `map/carto` is the compilation-system carto (`/map/carto/{z}/{x}/{y}`), which
 # the legacy routes redirect to once an environment switches over; `dev/carto`
 # its deprecated alias.
@@ -121,12 +122,6 @@ def parse_sources(value: str | None) -> list[int]:
         if token.isdigit():
             ids.append(int(token))
     return ids
-
-
-def is_relevant_request(host: str | None, layer: str) -> bool:
-    """Whether a tile request counts toward the stats: production host + a
-    canonical layer. Tweak KEEP_HOSTS / KEEP_LAYERS to widen coverage."""
-    return host in KEEP_HOSTS and layer in KEEP_LAYERS
 
 
 def is_known_bot(client: str | None) -> bool:
@@ -271,13 +266,16 @@ class TileserverPipeline:
     # default here.
     plot_omit_spikes = True
 
+    def __init__(self, hosts=KEEP_HOSTS):
+        self.hosts = frozenset(hosts)
+
     def parse(self, rec: dict) -> dict | None:
         if rec.get("RequestMethod") != "GET":
             return None
         tile = parse_tile_path(rec.get("RequestPath"))
         if tile is None:
             return None
-        if not is_relevant_request(rec.get("RequestHost"), tile["layer"]):
+        if rec.get("RequestHost") not in self.hosts or tile["layer"] not in KEEP_LAYERS:
             return None
         return {
             "layer": tile["layer"],

@@ -50,7 +50,7 @@ macrostrat usage-stats import-legacy
 ```
 
 It reads the legacy `day_index` / `location_index` tables (schema `stats`, or
-`tileserver_stats` where the retired `migrate-old` renamed it) and inserts them
+`tileserver_stats` where an earlier merge renamed it in place) and inserts them
 as the `new_system = false` lineage, in one transaction. The source is not
 modified. Rows already present are kept (`ON CONFLICT DO NOTHING`), so re-running
 is harmless and order relative to `capture` does not matter. It ends by

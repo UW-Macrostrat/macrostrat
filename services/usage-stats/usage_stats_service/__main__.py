@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 
 from macrostrat.usage_stats_capture import PIPELINE_NAMES, capture, get_pipelines
 
-from .config import ConfigError, client_salt, get_db, storage
+from .config import ConfigError, client_salt, get_db, hosts, storage
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,8 +23,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prefix",
         default="prod",
         help="Object-key prefix to scan. Defaults to production logs in every "
-        "environment: a map of requests to a development cluster is close to "
-        "useless, so development harvests production traffic too.",
+        "environment; set it with USAGE_STATS_*_HOSTS to count another instance.",
     )
     parser.add_argument(
         "--pipeline",
@@ -48,7 +47,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        pipelines = get_pipelines(args.pipeline, client_salt=client_salt())
+        pipelines = get_pipelines(
+            args.pipeline,
+            client_salt=client_salt(),
+            tile_hosts=hosts("USAGE_STATS_TILE_HOSTS"),
+            api_hosts=hosts("USAGE_STATS_API_HOSTS"),
+        )
         config = storage()
         db = get_db()
     except (ConfigError, ValueError) as err:
@@ -56,7 +60,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {err}", file=sys.stderr)
         return 2
 
-    print(f"Pipelines: {', '.join(p.name for p in pipelines)}")
+    for p in pipelines:
+        print(f"Pipeline {p.name}: hosts {', '.join(sorted(p.hosts))}")
     capture(
         db,
         config,

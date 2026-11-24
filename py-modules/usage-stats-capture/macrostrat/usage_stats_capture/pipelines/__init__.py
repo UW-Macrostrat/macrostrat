@@ -23,15 +23,18 @@ exactly one log object's rows, which is the unit the ingestion ledger records
 and therefore the unit that must be written atomically.
 """
 
-from typing import Protocol, runtime_checkable
+from typing import Iterable, Protocol, runtime_checkable
 
+from .rockd_dashboard import KEEP_HOSTS as API_HOSTS
 from .rockd_dashboard import RockdDashboardPipeline
+from .tileserver import KEEP_HOSTS as TILE_HOSTS
 from .tileserver import TileserverPipeline
 
 
 @runtime_checkable
 class Pipeline(Protocol):
     name: str
+    hosts: frozenset[str]  # request hosts whose traffic this pipeline counts
 
     def parse(self, rec: dict) -> dict | None:
         """Extract a row from a log record, or None if the record isn't ours."""
@@ -64,9 +67,11 @@ class Pipeline(Protocol):
 #: Every pipeline, by name. Values are factories rather than instances because
 #: some need configuration injected (the Rockd pipeline needs the hashing salt).
 PIPELINE_FACTORIES = {
-    TileserverPipeline.name: lambda **kw: TileserverPipeline(),
-    RockdDashboardPipeline.name: lambda *, client_salt, **kw: RockdDashboardPipeline(
-        client_salt
+    TileserverPipeline.name: lambda *, tile_hosts, **kw: TileserverPipeline(
+        tile_hosts or TILE_HOSTS
+    ),
+    RockdDashboardPipeline.name: lambda *, client_salt, api_hosts, **kw: (
+        RockdDashboardPipeline(client_salt, api_hosts or API_HOSTS)
     ),
 }
 
@@ -74,12 +79,17 @@ PIPELINE_NAMES = tuple(PIPELINE_FACTORIES)
 
 
 def get_pipelines(
-    names: list[str] | None = None, *, client_salt: bytes | None = None
+    names: list[str] | None = None,
+    *,
+    client_salt: bytes | None = None,
+    tile_hosts: Iterable[str] | None = None,
+    api_hosts: Iterable[str] | None = None,
 ) -> list[Pipeline]:
     """Construct pipelines by name, defaulting to all of them.
 
     `client_salt` is required by the Rockd pipeline; omit it only when selecting
-    pipelines that do not need it.
+    pipelines that do not need it. `tile_hosts` and `api_hosts` are the request
+    hosts the tileserver and Rockd pipelines count, production's by default.
     """
     selected = list(names) if names else list(PIPELINE_NAMES)
     unknown = set(selected) - set(PIPELINE_FACTORIES)
@@ -94,7 +104,19 @@ def get_pipelines(
             f"The {RockdDashboardPipeline.name!r} pipeline needs a client salt."
         )
 
-    return [PIPELINE_FACTORIES[n](client_salt=client_salt) for n in selected]
+    return [
+        PIPELINE_FACTORIES[n](
+            client_salt=client_salt, tile_hosts=tile_hosts, api_hosts=api_hosts
+        )
+        for n in selected
+    ]
 
 
-__all__ = ["Pipeline", "PIPELINE_FACTORIES", "PIPELINE_NAMES", "get_pipelines"]
+__all__ = [
+    "API_HOSTS",
+    "Pipeline",
+    "PIPELINE_FACTORIES",
+    "PIPELINE_NAMES",
+    "TILE_HOSTS",
+    "get_pipelines",
+]
