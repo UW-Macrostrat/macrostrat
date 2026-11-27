@@ -153,7 +153,7 @@ CREATE TABLE macrostrat_kg.entity_type (
     description text,
     id integer NOT NULL,
     color text,
-    source text
+    user_id uuid
 );
 
 CREATE VIEW macrostrat_kg.model_run AS
@@ -307,7 +307,8 @@ CREATE TABLE macrostrat_kg.relationship_type (
     description text,
     id integer NOT NULL,
     src_entity_type_id integer NOT NULL,
-    dst_entity_type_id integer NOT NULL
+    dst_entity_type_id integer NOT NULL,
+    user_id uuid
 );
 
 CREATE SEQUENCE macrostrat_kg.relationship_type_id_seq
@@ -353,9 +354,6 @@ ALTER TABLE ONLY macrostrat_kg.source_text ALTER COLUMN id SET DEFAULT nextval('
 
 ALTER TABLE ONLY macrostrat_kg.entity
     ADD CONSTRAINT entity_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY macrostrat_kg.relationship
-    ADD CONSTRAINT relationship_one_parent_per_run UNIQUE (run_id, dst_entity_id);
 
 ALTER TABLE ONLY macrostrat_kg.entity_type
     ADD CONSTRAINT entity_type_name_key UNIQUE (name);

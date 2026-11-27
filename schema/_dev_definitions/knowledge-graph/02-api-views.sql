@@ -195,8 +195,34 @@ CREATE VIEW macrostrat_api.kg_entity_type AS
 SELECT entity_type.id,
   entity_type.name,
   entity_type.description,
-  entity_type.color
+  entity_type.color,
+  entity_type.user_id
 FROM macrostrat_kg.entity_type;
+
+CREATE VIEW macrostrat_api.kg_legend AS
+SELECT DISTINCT
+    r.source_text_id,
+    l.source_id AS map_id,
+    l.legend_id,
+    l.name AS legend_name
+FROM macrostrat_kg.all_runs r
+JOIN macrostrat_kg.source_text st
+    ON st.id = r.source_text_id
+JOIN maps.legend l
+    ON l.legend_id = st.map_legend_id;
+
+CREATE VIEW macrostrat_api.kg_model_details AS
+SELECT
+    m.id AS model_id,
+    m.name AS model_name,
+    m.description AS model_description,
+    m.url AS modelurl,
+    mv.id AS version_id,
+    mv.name AS version_name,
+    mv.description AS version_description
+FROM macrostrat_kg.model AS m
+LEFT JOIN macrostrat_kg.model_version AS mv
+    ON mv.model_id = m.id;
 
 CREATE VIEW macrostrat_api.kg_extraction_feedback_type AS
 SELECT extraction_feedback_type.type_id,
@@ -642,6 +668,10 @@ GRANT SELECT ON TABLE macrostrat_api.kg_entity_tree TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_context_entities TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_anon;
 GRANT SELECT ON TABLE macrostrat_api.kg_entity_type TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.kg_legend TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_legend TO web_user;
+GRANT SELECT ON TABLE macrostrat_api.kg_model_details TO web_anon;
+GRANT SELECT ON TABLE macrostrat_api.kg_model_details TO web_user;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE macrostrat_api.kg_entity_type TO web_admin;
 GRANT UPDATE(name) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
 GRANT UPDATE(description) ON TABLE macrostrat_api.kg_entity_type TO web_admin;
